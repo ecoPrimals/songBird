@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.9-wave79] - 2026-06-04 - P0 TLS Fix: Direct-Mode Crypto Routing (SB-TLS-01)
+
+### Added
+- **Direct-mode routing in `SecurityTlsCryptoClient`**: When `SECURITY_PROVIDER_MODE=direct` or
+  `BEARDOG_MODE=direct`, TLS crypto calls now use bearDog's semantic methods directly
+  (`crypto.sign_ed25519`, `crypto.x25519_generate_ephemeral`, `crypto.x25519_derive_secret`,
+  `crypto.chacha20_poly1305_encrypt`, `crypto.chacha20_poly1305_decrypt`, `crypto.hmac_sha256`)
+  instead of wrapping in `capability.call` envelope (which bearDog rejects with -32601).
+- **`SecurityTlsCryptoClient::new_direct()`**: Explicit constructor for direct-mode targeting
+  bearDog's signing socket without env var detection.
+- **`map_to_direct_method()`**: Deterministic operation-to-method mapping covering all TLS crypto
+  operations plus forward-looking TLS helper methods (`tls.derive_handshake_secrets`,
+  `tls.derive_application_secrets`, `tls.compute_finished_verify_data`).
+- **2 new tests**: `map_to_direct_method_covers_all_tls_operations` (13 mappings verified),
+  `direct_mode_sends_semantic_method_not_capability_call` (E2E TCP mock verifying wire format).
+
+### Changed
+- `SecurityTlsCryptoClient` struct gains `direct_mode: bool` field.
+- `call_capability()` routes based on mode: Neural API path unchanged, direct path sends
+  `{"method": "crypto.sign_ed25519", "params": {...}}` without `capability.call` wrapping.
+- `new()` auto-detects mode from environment variables at construction time.
+- `with_socket_path()` defaults to Neural API mode (backward compatible with all existing tests).
+- Discovery doc comments updated to reflect dual-mode operation.
+
+### Fixed
+- **SB-TLS-01 (P0)**: eastGate Songbird can now originate TLS connections when `BEARDOG_MODE=direct`.
+  Previously returned `-32601 Method not found` because bearDog does not implement `capability.call`
+  (that's a biomeOS Neural API orchestration envelope). Symmetric 2-gate mesh unblocked.
+
+---
+
 ## [v0.2.8-wave78] - 2026-06-04 - Phase 3.5: Ed25519 Relay Signature Verification
 
 ### Added

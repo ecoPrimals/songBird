@@ -413,6 +413,60 @@ fn capability_call_request_json_shape_matches_neural_api() {
 }
 
 #[test]
+fn map_to_direct_method_covers_all_tls_operations() {
+    let mappings = [
+        ("crypto", "generate_keypair", "crypto.x25519_generate_ephemeral"),
+        ("crypto", "derive_secret", "crypto.x25519_derive_secret"),
+        ("crypto", "encrypt", "crypto.chacha20_poly1305_encrypt"),
+        ("crypto", "decrypt", "crypto.chacha20_poly1305_decrypt"),
+        ("crypto", "sign", "crypto.sign_ed25519"),
+        ("crypto", "sign_ed25519", "crypto.sign_ed25519"),
+        ("crypto", "verify", "crypto.verify_ed25519"),
+        ("crypto", "verify_ed25519", "crypto.verify_ed25519"),
+        ("crypto", "hmac_sha256", "crypto.hmac_sha256"),
+        ("crypto", "hash_sha3_256", "crypto.hash_sha3_256"),
+        ("tls", "derive_handshake_secrets", "tls.derive_handshake_secrets"),
+        ("tls", "derive_application_secrets", "tls.derive_application_secrets"),
+        ("tls", "compute_finished_verify_data", "tls.compute_finished_verify_data"),
+    ];
+    for (cap, op, expected) in mappings {
+        assert_eq!(
+            SecurityTlsCryptoClient::map_to_direct_method(cap, op),
+            expected,
+            "mapping ({cap}, {op}) should be {expected}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn direct_mode_sends_semantic_method_not_capability_call() {
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let addr = listener.local_addr().expect("addr");
+
+    tokio::spawn(async move {
+        let (mut stream, _) = listener.accept().await.expect("accept");
+        let mut buf = vec![0u8; 16_384];
+        let n = stream.read(&mut buf).await.expect("read");
+        let req: serde_json::Value = serde_json::from_slice(&buf[..n]).expect("parse request");
+
+        assert_eq!(
+            req["method"], "crypto.sign_ed25519",
+            "direct mode must send semantic method, not capability.call"
+        );
+        assert!(req["params"]["message"].is_string());
+
+        let sig = general_purpose::STANDARD.encode(vec![0xABu8; 64]);
+        let resp = format!(r#"{{"jsonrpc":"2.0","result":{{"signature":"{sig}"}},"id":1}}"#);
+        stream.write_all(resp.as_bytes()).await.expect("write");
+        let _ = stream.shutdown().await;
+    });
+
+    let client = SecurityTlsCryptoClient::new_direct(format!("tcp:{addr}"));
+    let sig = client.ed25519_sign(b"hello world", "test-key-id").await.expect("sign");
+    assert_eq!(sig, vec![0xABu8; 64]);
+}
+
+#[test]
 fn jsonrpc_error_response_parses_for_client_logic() {
     let raw = r#"{"jsonrpc":"2.0","error":{"code":-1,"message":"fail"},"id":null}"#;
     let v: serde_json::Value = serde_json::from_str(raw).expect("json");

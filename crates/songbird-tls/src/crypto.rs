@@ -98,23 +98,45 @@ impl AsyncWrite for CryptoStream {
 /// TLS crypto client backed by the security (crypto) provider
 ///
 /// Communicates with the provider via Unix socket JSON-RPC.
+///
+/// Supports two modes:
+/// - **Neural API** (default): Wraps calls in `capability.call` envelope for biomeOS routing
+/// - **Direct**: Calls bearDog semantic methods directly (required when `BEARDOG_MODE=direct`)
 #[derive(Clone)]
 pub struct SecurityTlsCryptoClient {
     socket_path: String,
+    /// When true, uses direct bearDog semantic methods instead of `capability.call`.
+    direct_mode: bool,
 }
 
 impl SecurityTlsCryptoClient {
     /// Create a new TLS crypto client for the discovered security provider socket
     ///
-    /// Uses runtime discovery to find the Neural API socket for capability.call.
+    /// Auto-detects mode from `SECURITY_PROVIDER_MODE` or `BEARDOG_MODE` env vars.
+    /// When set to `"direct"`, calls bearDog semantic methods directly (no `capability.call`).
     ///
     /// # Errors
     ///
     /// Returns an error if socket discovery fails or the socket does not exist (Unix only).
     pub fn new() -> Result<Self> {
+        let direct_mode = songbird_process_env::var("SECURITY_PROVIDER_MODE")
+            .or_else(|_| songbird_process_env::var("BEARDOG_MODE"))
+            .map(|v| v.eq_ignore_ascii_case("direct"))
+            .unwrap_or(false);
+
         let socket_path = Self::discover_socket()?;
 
-        tracing::info!("🌐 SecurityTlsCryptoClient using socket: {}", socket_path);
+        if direct_mode {
+            tracing::info!(
+                socket = %socket_path,
+                "SecurityTlsCryptoClient: DIRECT mode (semantic methods)"
+            );
+        } else {
+            tracing::info!(
+                socket = %socket_path,
+                "SecurityTlsCryptoClient: Neural API mode (capability.call)"
+            );
+        }
 
         // Verify socket exists (Unix only - Windows uses TCP)
         #[cfg(unix)]
@@ -126,7 +148,24 @@ impl SecurityTlsCryptoClient {
 
         Ok(Self {
             socket_path,
+            direct_mode,
         })
+    }
+
+    /// Create a client in direct mode targeting bearDog's signing socket.
+    ///
+    /// Calls semantic methods (`crypto.sign_ed25519`, `crypto.x25519_generate_ephemeral`,
+    /// etc.) directly — no `capability.call` wrapping.
+    #[must_use]
+    pub fn new_direct(socket_path: String) -> Self {
+        tracing::info!(
+            socket = %socket_path,
+            "SecurityTlsCryptoClient: DIRECT mode (explicit)"
+        );
+        Self {
+            socket_path,
+            direct_mode: true,
+        }
     }
 
     /// Create a client with explicit socket path (for testing)
@@ -134,6 +173,7 @@ impl SecurityTlsCryptoClient {
     pub const fn with_socket_path(socket_path: String) -> Self {
         Self {
             socket_path,
+            direct_mode: false,
         }
     }
 
@@ -228,11 +268,13 @@ impl SecurityTlsCryptoClient {
         )))
     }
 
-    /// Discover Neural API socket for capability.call routing
+    /// Discover the crypto provider socket.
+    ///
+    /// In Neural API mode this is the biomeOS neural-api socket;
+    /// in direct mode this is bearDog's signing socket.
     ///
     /// **Platform-agnostic discovery (TRUE PRIMAL pattern)**
     ///
-    /// Uses capability-based discovery with platform-specific validation:
     /// - Unix: Checks filesystem for socket files
     /// - Windows: Uses TCP localhost fallback (named pipes future)
     fn discover_socket() -> Result<String> {
@@ -299,32 +341,60 @@ impl SecurityTlsCryptoClient {
         }
     }
 
-    /// Make a capability.call to Neural API (TRUE PRIMAL pattern)
+    /// Make a crypto call — auto-routes based on mode.
     ///
-    /// Routes through the unified JSON-RPC transport, building a `capability.call`
-    /// envelope per the Neural API standard.
+    /// - **Neural API mode**: Wraps in `capability.call` envelope for biomeOS routing.
+    /// - **Direct mode**: Calls bearDog semantic methods directly (e.g. `crypto.sign_ed25519`).
     async fn call_capability(
         &self,
         capability: &str,
         operation: &str,
         args: serde_json::Value,
     ) -> Result<serde_json::Value> {
-        let request = serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": "capability.call",
-            "params": {
-                "capability": capability,
-                "operation": operation,
-                "args": args
-            },
-            "id": 1
-        });
-        self.send_request(request, "Capability call").await
+        if self.direct_mode {
+            let method = Self::map_to_direct_method(capability, operation);
+            let request = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": method,
+                "params": args,
+                "id": 1
+            });
+            self.send_request(request, &format!("Direct: {method}")).await
+        } else {
+            let request = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "capability.call",
+                "params": {
+                    "capability": capability,
+                    "operation": operation,
+                    "args": args
+                },
+                "id": 1
+            });
+            self.send_request(request, "Capability call").await
+        }
+    }
+
+    /// Map (capability, operation) to bearDog's direct semantic method name.
+    ///
+    /// These mappings match bearDog's `capability_registry.toml` crypto domain.
+    fn map_to_direct_method(_capability: &str, operation: &str) -> &'static str {
+        match operation {
+            "generate_keypair" => "crypto.x25519_generate_ephemeral",
+            "derive_secret" => "crypto.x25519_derive_secret",
+            "encrypt" => "crypto.chacha20_poly1305_encrypt",
+            "decrypt" => "crypto.chacha20_poly1305_decrypt",
+            "sign" | "sign_ed25519" => "crypto.sign_ed25519",
+            "verify" | "verify_ed25519" => "crypto.verify_ed25519",
+            "hash_sha3_256" => "crypto.hash_sha3_256",
+            "derive_handshake_secrets" => "tls.derive_handshake_secrets",
+            "derive_application_secrets" => "tls.derive_application_secrets",
+            "compute_finished_verify_data" => "tls.compute_finished_verify_data",
+            _ => "crypto.hmac_sha256",
+        }
     }
 
     /// Send a JSON-RPC request over the platform transport and return the result.
-    ///
-    /// Shared transport for both `capability.call` and direct method invocations.
     async fn send_request(
         &self,
         request: serde_json::Value,
