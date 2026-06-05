@@ -92,6 +92,7 @@ pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
         "Auto-seeding mesh from SONGBIRD_PEERS"
     );
 
+    let peers_for_trust = peers.clone();
     tokio::spawn(async move {
         let bootstrap_peers: Vec<serde_json::Value> = peers
             .iter()
@@ -118,6 +119,15 @@ pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
                     peers_added = added,
                     "Mesh auto-seeded from SONGBIRD_PEERS — discovery.peers is live"
                 );
+
+                // Phase 2: auto-exchange trust keys with peers (BD-TRUST-01)
+                let peer_addrs: Vec<(String, std::net::SocketAddr)> = peers_for_trust
+                    .iter()
+                    .filter_map(|(nid, addr)| {
+                        addr.parse::<std::net::SocketAddr>().ok().map(|sa| (nid.clone(), sa))
+                    })
+                    .collect();
+                crate::mesh_trust_exchange::spawn_trust_exchange(peer_addrs);
             }
             Err(e) => {
                 warn!(error = %e, "Failed to auto-seed mesh from SONGBIRD_PEERS");

@@ -1,0 +1,204 @@
+# Songbird Capability Registry
+# Machine-readable capability declaration for ecosystem tooling.
+# Format: ecosystem standard (Wave 78 parity)
+
+[meta]
+primal = "songbird"
+version = "0.2.9"
+wire_standard = "L3"
+owner = "ecoPrimals"
+
+[capabilities.discovery]
+owner = "songbird"
+stability = "stable"
+description = "Peer discovery, registration, and rendezvous"
+methods = [
+    "discovery.peers",
+    "discovery.announce",
+    "rendezvous.register",
+    "rendezvous.lookup",
+    "peer.connect",
+]
+
+[capabilities.mesh]
+owner = "songbird"
+stability = "stable"
+description = "Distributed beacon mesh networking — path finding, relay announcement, topology"
+methods = [
+    "mesh.init",
+    "mesh.status",
+    "mesh.find_path",
+    "mesh.announce",
+    "mesh.peers",
+    "mesh.topology",
+    "mesh.health_check",
+    "mesh.auto_discover",
+    "mesh.discover_remotes",
+    "mesh.mirror",
+    "mesh.publish",
+]
+
+[capabilities.relay]
+owner = "songbird"
+stability = "stable"
+description = "TURN relay allocation and virtual relay management"
+methods = [
+    "relay.serve",
+    "relay.stop",
+    "relay.status",
+    "relay.allocate",
+    "relay.refresh",
+]
+
+[capabilities.stun]
+owner = "songbird"
+stability = "stable"
+description = "STUN binding, NAT type detection, and public address discovery"
+methods = [
+    "stun.serve",
+    "stun.stop",
+    "stun.status",
+    "stun.get_public_address",
+    "stun.bind",
+    "stun.probe_port_pattern",
+    "stun.detect_nat_type",
+]
+
+[capabilities.igd]
+owner = "songbird"
+stability = "stable"
+description = "IGD/UPnP router auto-configuration for NAT traversal"
+methods = [
+    "igd.discover",
+    "igd.map_port",
+    "igd.unmap_port",
+    "igd.status",
+    "igd.external_ip",
+    "igd.auto_configure",
+]
+
+[capabilities.punch]
+owner = "songbird"
+stability = "stable"
+description = "UDP/TCP hole punching coordination"
+methods = [
+    "punch.request",
+    "punch.coordinate",
+    "punch.status",
+]
+
+[capabilities.federation]
+owner = "songbird"
+stability = "stable"
+description = "Federation coordination and peer management"
+methods = [
+    "federation.peers",
+    "federation.status",
+]
+
+[capabilities.btsp]
+owner = "songbird"
+stability = "stable"
+description = "BTSP secure tunnel negotiation and capability advertisement"
+methods = [
+    "btsp.negotiate",
+    "btsp.capabilities",
+]
+
+[capabilities.ipc]
+owner = "songbird"
+stability = "stable"
+description = "IPC service registry, resolution, and capability routing"
+methods = [
+    "ipc.register",
+    "ipc.resolve",
+    "ipc.discover",
+    "ipc.list",
+    "ipc.watch",
+    "capability.resolve",
+    "capability.call",
+]
+
+[capabilities.tls]
+owner = "songbird"
+stability = "provisional"
+description = "Sovereign TLS with security-provider-backed crypto"
+methods = [
+    "http.request",
+    "http.get",
+    "http.post",
+]
+
+[capabilities.onion]
+owner = "songbird"
+stability = "provisional"
+description = "Sovereign onion service (Tor-compatible hidden service)"
+methods = [
+    "onion.start",
+    "onion.stop",
+    "onion.status",
+    "onion.connect",
+    "onion.address",
+]
+
+[capabilities.tor]
+owner = "songbird"
+stability = "provisional"
+description = "Tor circuit management and consensus fetching"
+methods = [
+    "tor.status",
+    "tor.connect",
+    "tor.service.start",
+    "tor.service.stop",
+    "tor.consensus.fetch",
+    "tor.circuit.build",
+    "tor.circuit.close",
+]
+
+[capabilities.birdsong]
+owner = "songbird"
+stability = "stable"
+description = "Encrypted beacon discovery with lineage verification"
+methods = [
+    "birdsong.generate_encrypted_beacon",
+    "birdsong.decrypt_beacon",
+    "birdsong.verify_lineage",
+    "birdsong.get_lineage",
+    "birdsong.advertise",
+    "birdsong.schema",
+]
+
+[capabilities.inference]
+owner = "songbird"
+stability = "provisional"
+description = "Inference routing (delegates to downstream primals)"
+methods = [
+    "inference.infer",
+    "inference.status",
+    "inference.list",
+    "inference.load",
+]
+
+[consumed_capabilities]
+description = "Capabilities Songbird consumes from other primals (bearDog, nestGate)"
+crypto = [
+    "crypto.sign_ed25519",
+    "crypto.verify_ed25519",
+    "crypto.x25519_generate_ephemeral",
+    "crypto.x25519_derive_secret",
+    "crypto.chacha20_poly1305_encrypt",
+    "crypto.chacha20_poly1305_decrypt",
+    "crypto.hmac_sha256",
+    "crypto.hkdf_extract",
+    "crypto.hkdf_expand",
+]
+auth = [
+    "auth.exchange_trust",
+    "auth.verify_ionic",
+    "auth.check",
+]
+storage = [
+    "storage.put",
+    "storage.get",
+    "storage.consent.store",
+]

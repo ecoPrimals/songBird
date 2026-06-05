@@ -5138,6 +5138,7 @@ dependencies = [
  "getrandom 0.3.4",
  "hkdf",
  "hmac",
+ "http-body-util",
  "hyper",
  "hyper-util",
  "netdev",

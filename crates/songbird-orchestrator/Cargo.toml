@@ -136,6 +136,7 @@ axum = { workspace = true, features = ["multipart", "ws"] }
 # Modern pure Rust TLS stack (no axum-server needed!)
 hyper = { workspace = true }
 hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = { workspace = true }
 songbird-tls = { path = "../songbird-tls" }  # ✅ Pure Rust TLS implementation (future)
 tower = { workspace = true }
 tower-http = { workspace = true }

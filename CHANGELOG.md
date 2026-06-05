@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.10-wave80] - 2026-06-05 - P0 Mesh Trust Exchange (BD-TRUST-01)
+
+### Added
+- **`mesh_trust_exchange.rs`**: Automatic `auth.exchange_trust` after mesh seeding. After BTSP
+  handshake, Songbird calls remote peer's bearDog to exchange Ed25519 trust keys bidirectionally.
+  Zero operator intervention for cross-gate trust seeding.
+- **`spawn_trust_exchange()`**: Spawns async trust exchange for all seeded peers after mesh.init.
+  Graceful degradation — if bearDog is offline or peer unreachable, logs warning and continues.
+- **`config/capability_registry.toml`**: Machine-readable capability declaration per ecosystem
+  standard (Wave 78 parity). 13 capability domains, 60+ methods, consumed capabilities listed.
+- **7 new tests**: bearDog socket discovery, node ID resolution, UDS call failure, spawn behavior.
+
+### Changed
+- `spawn_mesh_seed()` now triggers `spawn_trust_exchange()` after successful mesh initialization.
+- README version banner synced to v0.2.10-wave80 (was stale at v0.2.8-wave76).
+
+### Fixed
+- **BD-TRUST-01 (P0)**: Symmetric mesh no longer requires manual `auth.trust_issuer` per gate.
+  Trust is automatically seeded during mesh join via `auth.exchange_trust` protocol.
+- **P3 Doc Drift**: README, REMAINING_WORK, CHANGELOG versions aligned.
+
+---
+
 ## [v0.2.9-wave79] - 2026-06-04 - P0 TLS Fix: Direct-Mode Crypto Routing (SB-TLS-01)
 
 ### Added
