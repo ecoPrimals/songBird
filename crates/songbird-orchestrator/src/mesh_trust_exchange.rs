@@ -216,25 +216,27 @@ async fn register_remote_key(remote: &RemoteKeyMaterial) -> Result<(), String> {
     Ok(())
 }
 
-/// Discover bearDog's UDS socket path.
+/// Discover the security provider's UDS socket via capability-based discovery.
+///
+/// Resolution: env vars → XDG runtime (`$XDG_RUNTIME_DIR/biomeos/*.sock`)
 fn discover_beardog_socket() -> Result<String, String> {
     let path = security_crypto_ipc_socket_from_env(|| {
         if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-            let p =
-                std::path::PathBuf::from(&xdg).join("biomeos").join("beardog").join("signing.sock");
-            if p.exists() {
-                return p.to_string_lossy().to_string();
-            }
-            let sec = std::path::PathBuf::from(&xdg).join("biomeos").join("security.sock");
-            if sec.exists() {
-                return sec.to_string_lossy().to_string();
+            let biomeos_dir = std::path::PathBuf::from(&xdg).join("biomeos");
+            for name in ["security.sock", "crypto.sock", "signing.sock"] {
+                let p = biomeos_dir.join(name);
+                if p.exists() {
+                    return p.to_string_lossy().to_string();
+                }
             }
         }
         String::new()
     });
 
     if path.is_empty() {
-        return Err("No bearDog socket discovered (set SECURITY_PROVIDER_SOCKET)".to_string());
+        return Err(
+            "No security provider socket discovered (set SECURITY_PROVIDER_SOCKET)".to_string()
+        );
     }
     Ok(path)
 }

@@ -150,8 +150,10 @@ async fn query_mdns_services(
 
     debug!("Querying mDNS for service type: {}", service_type);
 
-    // RFC 6762: mDNS uses IPv4 link-local multicast 224.0.0.251, UDP port 5353 (IANA).
-    let mdns_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(224, 0, 0, 251), 5353));
+    let mdns_addr = SocketAddr::V4(SocketAddrV4::new(
+        Ipv4Addr::new(224, 0, 0, 251),
+        songbird_types::constants::MDNS_PORT,
+    ));
     let socket = UdpSocket::bind("0.0.0.0:0")
         .await
         .map_err(|e| DiscoveryError::NetworkError(format!("mDNS bind failed: {e}")))?;

@@ -27,8 +27,9 @@ use tokio::sync::RwLock;
 
 /// Discover the bearDog signing socket for Phase 3.5 relay signature verification.
 ///
-/// Checks `CAPABILITY_SECURITY_ENDPOINT` env var first, then falls back to
-/// XDG runtime dir standard path. Returns None if no socket is found.
+/// Discover security provider's crypto signing socket via capability-based resolution.
+///
+/// Resolution: `CAPABILITY_SECURITY_ENDPOINT` → XDG runtime discovery.
 fn discover_crypto_signing_socket() -> Option<String> {
     if let Ok(endpoint) = songbird_process_env::var("CAPABILITY_SECURITY_ENDPOINT")
         && !endpoint.is_empty()
@@ -36,12 +37,13 @@ fn discover_crypto_signing_socket() -> Option<String> {
         return Some(endpoint);
     }
 
-    // Standard XDG path for bearDog signing socket
     if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-        let path =
-            std::path::PathBuf::from(xdg).join("biomeos").join("beardog").join("signing.sock");
-        if path.exists() {
-            return path.to_str().map(String::from);
+        let biomeos_dir = std::path::PathBuf::from(xdg).join("biomeos");
+        for name in ["security.sock", "signing.sock", "crypto.sock"] {
+            let path = biomeos_dir.join(name);
+            if path.exists() {
+                return path.to_str().map(String::from);
+            }
         }
     }
 

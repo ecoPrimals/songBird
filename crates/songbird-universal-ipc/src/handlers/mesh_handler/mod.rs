@@ -490,9 +490,12 @@ impl MeshHandler {
         let timeout_ms =
             params.get("timeout_ms").and_then(serde_json::Value::as_u64).unwrap_or(3000);
         let broadcast_port = u16::try_from(
-            params.get("broadcast_port").and_then(serde_json::Value::as_u64).unwrap_or(5353),
+            params
+                .get("broadcast_port")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or_else(|| u64::from(songbird_types::constants::MDNS_PORT)),
         )
-        .unwrap_or(5353);
+        .unwrap_or(songbird_types::constants::MDNS_PORT);
 
         let node_id = self.node_id.read().await.clone();
         info!(

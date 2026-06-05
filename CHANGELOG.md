@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.11-wave81] - 2026-06-05 - Deep Debt Cleanup & Evolution
+
+### Fixed
+- **NFC crypto DH**: Production code now returns `Err` when crypto provider unavailable (was
+  silently returning zero shared secret). Test mode retains fallback via `#[cfg(test)]`.
+- **Lineage verify_signatures**: Returns `Err` when security provider is absent (was silently
+  returning `Ok(true)` in production). Empty chains (root-only) correctly skip verification.
+- **TLS extract_public_key**: Now properly rejects non-X.509 DER data with `Err` (was returning
+  32 zero bytes as a placeholder).
+- **8 inline port literals** replaced with `songbird_types::defaults::ports::*` constants across
+  `service_registry_api.rs`, `mesh_handler/mod.rs`, `consolidated_canonical/discovery.rs`,
+  `canonical/network/core.rs`, and `songbird-universal` mDNS.
+- **Hardcoded `"beardog"` path segments** removed from `mesh_trust_exchange.rs` and
+  `construction.rs` — replaced with capability-based socket discovery iterating generic names.
+
+### Changed
+- `songbird-tls::cert::test_utils` module gated behind `#[cfg(test)]` (was publicly compiled).
+- `dirs` dependency updated `5.0` → `6.0`.
+- `config/network/core.rs` port defaults now reference named constants instead of raw literals.
+
+### Added
+- **19 new TURN client tests**: channel data framing (empty/large/truncated/buffer-overflow),
+  Data Indication edge cases, config validation, connect error paths, hex decode, error display.
+- Total workspace tests: 14,004+.
+
+---
+
 ## [v0.2.10-wave80] - 2026-06-05 - P0 Mesh Trust Exchange (BD-TRUST-01)
 
 ### Added

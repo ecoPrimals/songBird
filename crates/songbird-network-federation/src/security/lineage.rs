@@ -130,9 +130,12 @@ impl LineageChain {
     /// Verify all signatures in the lineage chain
     ///
     /// Uses `security provider` security service for cryptographic verification.
-    /// In development mode without `security provider`, returns Ok(true) with warning.
+    /// Returns `Err` if the security provider is not configured and signatures exist.
     async fn verify_signatures(&self) -> anyhow::Result<bool> {
-        // Check if security provider is available
+        if self.links.is_empty() {
+            return Ok(true);
+        }
+
         let Ok(security_provider_base) = songbird_process_env::var("SECURITY_ENDPOINT")
             .or_else(|_| songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT"))
             .or_else(|_| {
@@ -143,10 +146,10 @@ impl LineageChain {
                 })
             })
         else {
-            tracing::warn!(
-                "security provider not configured, skipping signature verification (dev mode)"
-            );
-            return Ok(true);
+            return Err(anyhow::anyhow!(
+                "security provider not configured — cannot verify lineage signatures \
+                 (set SECURITY_ENDPOINT or SECURITY_PROVIDER_ENDPOINT)"
+            ));
         };
 
         tracing::debug!("Verifying {} lineage signatures via security provider", self.links.len());

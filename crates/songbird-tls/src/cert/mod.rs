@@ -8,7 +8,8 @@
 //! Full X.509 parsing will be added as needed.
 
 pub mod generator;
-pub mod test_utils; // Pure Rust certificate generation (hybrid standalone + security provider)
+#[cfg(test)]
+pub mod test_utils;
 
 #[cfg(test)]
 mod test_cert_gen;
@@ -120,18 +121,15 @@ impl CertificateValidator {
 
     /// Extract public key material from certificate data
     ///
-    /// For X.509 DER, returns the subject public key bit string; otherwise a 32-byte placeholder.
+    /// Extract the subject public key from an X.509 DER-encoded certificate.
     ///
     /// # Errors
     ///
-    /// Never returns an error.
+    /// Returns `TlsError::CertificateError` if the data is not valid X.509 DER.
     pub fn extract_public_key(&self, cert_data: &[u8]) -> Result<Vec<u8>> {
-        if let Ok((_, cert)) = X509Certificate::from_der(cert_data) {
-            return Ok(cert.public_key().subject_public_key.data.as_ref().to_vec());
-        }
-
-        // Non-X.509 blobs (e.g. internal test format): placeholder Ed25519-sized key
-        Ok(vec![0u8; 32])
+        let (_, cert) = X509Certificate::from_der(cert_data)
+            .map_err(|e| TlsError::CertificateError(format!("invalid X.509 DER: {e}")))?;
+        Ok(cert.public_key().subject_public_key.data.as_ref().to_vec())
     }
 
     /// Check certificate validity period
@@ -303,12 +301,12 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_public_key() {
+    fn test_extract_public_key_rejects_non_x509() {
         let validator = CertificateValidator::new();
         let cert_data = vec![1, 2, 3, 4];
 
-        let public_key = validator.extract_public_key(&cert_data).unwrap();
-        assert_eq!(public_key.len(), 32); // Ed25519 public key
+        let result = validator.extract_public_key(&cert_data);
+        assert!(result.is_err(), "non-X.509 data should be rejected");
     }
 
     #[test]
