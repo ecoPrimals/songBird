@@ -259,6 +259,9 @@ fn register_and_resolve_result_serialization() {
         socket: None,
         virtual_endpoint: "/primal/x".into(),
         native_endpoint: "native".into(),
+        endpoint: TransportEndpoint::Uds {
+            path: "/tmp/x.sock".into(),
+        },
         capabilities: vec!["c".into()],
         relay: false,
         relay_socket: None,
@@ -267,6 +270,7 @@ fn register_and_resolve_result_serialization() {
     };
     let v2 = serde_json::to_value(&res).expect("ResolveResult json");
     assert_eq!(v2["capabilities"][0], "c");
+    assert_eq!(v2["endpoint"]["transport"], "uds");
 }
 
 #[tokio::test]

@@ -79,6 +79,36 @@ pub struct RegisterResult {
     pub signed_payload: Option<String>,
 }
 
+/// Structured transport endpoint — Phase 2 transport-qualified resolution.
+///
+/// Consumers use this to determine how to connect without parsing URI strings.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "transport")]
+pub enum TransportEndpoint {
+    /// Unix Domain Socket — local primal on same host.
+    #[serde(rename = "uds")]
+    Uds {
+        /// Filesystem path to the socket.
+        path: String,
+    },
+    /// Mesh relay — primal reachable via Songbird's mesh network.
+    #[serde(rename = "mesh_relay")]
+    MeshRelay {
+        /// Mesh peer identifier (e.g. `"strand-gate"`).
+        peer_id: String,
+        /// Capability being resolved on the remote peer.
+        capability: String,
+    },
+    /// TCP — direct network connection.
+    #[serde(rename = "tcp")]
+    Tcp {
+        /// Host address (IP or hostname).
+        host: String,
+        /// TCP port.
+        port: u16,
+    },
+}
+
 /// IPC service response for resolution
 #[derive(Debug, Clone, Serialize)]
 pub struct ResolveResult {
@@ -90,6 +120,9 @@ pub struct ResolveResult {
     pub virtual_endpoint: String,
     /// Transport-qualified URI (e.g. `unix:///path/to/sock`, `tcp://127.0.0.1:8080`).
     pub native_endpoint: String,
+    /// Structured transport endpoint (Phase 2). Consumers should prefer this
+    /// over parsing `native_endpoint` URI strings.
+    pub endpoint: TransportEndpoint,
     pub capabilities: Vec<String>,
     /// Whether traffic flows through Songbird's virtual relay.
     pub relay: bool,
@@ -159,6 +192,8 @@ pub struct CapabilityResolveResult {
     pub virtual_endpoint: String,
     /// Transport-qualified URI (e.g. `unix:///path/to/sock`, `tcp://127.0.0.1:8080`).
     pub native_endpoint: String,
+    /// Structured transport endpoint (Phase 2).
+    pub endpoint: TransportEndpoint,
     pub capabilities: Vec<String>,
     /// Ed25519 signature from the original registration (base64).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -322,6 +357,9 @@ mod tests {
             socket: Some("/tmp/security.sock".to_string()),
             virtual_endpoint: "/primal/security".to_string(),
             native_endpoint: "unix:///tmp/security.sock".to_string(),
+            endpoint: TransportEndpoint::Uds {
+                path: "/tmp/security.sock".to_string(),
+            },
             capabilities: vec!["crypto".to_string(), "auth".to_string()],
             relay: false,
             relay_socket: None,
@@ -334,6 +372,8 @@ mod tests {
         assert_eq!(caps.len(), 2);
         assert!(json.get("signature").is_none(), "None fields should be omitted");
         assert_eq!(json["relay"], false);
+        assert_eq!(json["endpoint"]["transport"], "uds");
+        assert_eq!(json["endpoint"]["path"], "/tmp/security.sock");
     }
 
     #[test]
@@ -457,6 +497,9 @@ mod tests {
             socket: Some("/run/user/1000/biomeos/beardog.sock".to_string()),
             virtual_endpoint: "/primal/beardog".to_string(),
             native_endpoint: "unix:///run/user/1000/biomeos/beardog.sock".to_string(),
+            endpoint: TransportEndpoint::Uds {
+                path: "/run/user/1000/biomeos/beardog.sock".to_string(),
+            },
             capabilities: vec!["crypto".to_string()],
             relay: false,
             relay_socket: None,
@@ -467,6 +510,7 @@ mod tests {
         assert_eq!(json["signature"], "sig_b64");
         assert_eq!(json["signed_payload"], "payload_json");
         assert_eq!(json["socket"], "/run/user/1000/biomeos/beardog.sock");
+        assert_eq!(json["endpoint"]["transport"], "uds");
     }
 
     #[test]
@@ -476,6 +520,9 @@ mod tests {
             socket: Some("/tmp/songbird.sock".to_string()),
             virtual_endpoint: "/primal/songbird".to_string(),
             native_endpoint: "unix:///tmp/songbird.sock".to_string(),
+            endpoint: TransportEndpoint::Uds {
+                path: "/tmp/songbird.sock".to_string(),
+            },
             capabilities: vec!["network.discovery".to_string()],
             signature: None,
             signed_payload: None,
@@ -484,5 +531,115 @@ mod tests {
         assert!(json.get("signature").is_none());
         assert!(json.get("signed_payload").is_none());
         assert_eq!(json["socket"], "/tmp/songbird.sock");
+        assert_eq!(json["endpoint"]["transport"], "uds");
+    }
+
+    #[test]
+    fn transport_endpoint_uds_serializes_tagged() {
+        let ep = TransportEndpoint::Uds {
+            path: "/run/membrane/beardog.sock".to_string(),
+        };
+        let json = serde_json::to_value(&ep).unwrap();
+        assert_eq!(json["transport"], "uds");
+        assert_eq!(json["path"], "/run/membrane/beardog.sock");
+        assert!(json.get("host").is_none());
+        assert!(json.get("port").is_none());
+        assert!(json.get("peer_id").is_none());
+    }
+
+    #[test]
+    fn transport_endpoint_mesh_relay_serializes_tagged() {
+        let ep = TransportEndpoint::MeshRelay {
+            peer_id: "strand-gate".to_string(),
+            capability: "security".to_string(),
+        };
+        let json = serde_json::to_value(&ep).unwrap();
+        assert_eq!(json["transport"], "mesh_relay");
+        assert_eq!(json["peer_id"], "strand-gate");
+        assert_eq!(json["capability"], "security");
+        assert!(json.get("path").is_none());
+        assert!(json.get("host").is_none());
+    }
+
+    #[test]
+    fn transport_endpoint_tcp_serializes_tagged() {
+        let ep = TransportEndpoint::Tcp {
+            host: "192.168.1.144".to_string(),
+            port: 7700,
+        };
+        let json = serde_json::to_value(&ep).unwrap();
+        assert_eq!(json["transport"], "tcp");
+        assert_eq!(json["host"], "192.168.1.144");
+        assert_eq!(json["port"], 7700);
+        assert!(json.get("path").is_none());
+        assert!(json.get("peer_id").is_none());
+    }
+
+    #[test]
+    fn transport_endpoint_uds_round_trips() {
+        let ep = TransportEndpoint::Uds {
+            path: "/tmp/test.sock".to_string(),
+        };
+        let json_str = serde_json::to_string(&ep).unwrap();
+        let deserialized: TransportEndpoint = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(ep, deserialized);
+    }
+
+    #[test]
+    fn transport_endpoint_mesh_relay_round_trips() {
+        let ep = TransportEndpoint::MeshRelay {
+            peer_id: "east-gate".to_string(),
+            capability: "crypto".to_string(),
+        };
+        let json_str = serde_json::to_string(&ep).unwrap();
+        let deserialized: TransportEndpoint = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(ep, deserialized);
+    }
+
+    #[test]
+    fn transport_endpoint_tcp_round_trips() {
+        let ep = TransportEndpoint::Tcp {
+            host: "10.0.0.1".to_string(),
+            port: 8080,
+        };
+        let json_str = serde_json::to_string(&ep).unwrap();
+        let deserialized: TransportEndpoint = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(ep, deserialized);
+    }
+
+    #[test]
+    fn transport_endpoint_deserializes_from_spec_examples() {
+        let uds: TransportEndpoint =
+            serde_json::from_str(r#"{"transport":"uds","path":"/run/membrane/beardog.sock"}"#)
+                .unwrap();
+        assert_eq!(
+            uds,
+            TransportEndpoint::Uds {
+                path: "/run/membrane/beardog.sock".to_string()
+            }
+        );
+
+        let relay: TransportEndpoint = serde_json::from_str(
+            r#"{"transport":"mesh_relay","peer_id":"strand-gate","capability":"security"}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            relay,
+            TransportEndpoint::MeshRelay {
+                peer_id: "strand-gate".to_string(),
+                capability: "security".to_string()
+            }
+        );
+
+        let tcp: TransportEndpoint =
+            serde_json::from_str(r#"{"transport":"tcp","host":"192.168.1.144","port":7700}"#)
+                .unwrap();
+        assert_eq!(
+            tcp,
+            TransportEndpoint::Tcp {
+                host: "192.168.1.144".to_string(),
+                port: 7700
+            }
+        );
     }
 }

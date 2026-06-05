@@ -373,6 +373,22 @@ pub async fn capability_resolve_json(
     };
     let virtual_endpoint = format!("capability://{}@{}", request.capability, provider.primal_name);
 
+    let transport = if provider.endpoint.starts_with('/') {
+        songbird_universal_ipc::TransportEndpoint::Uds {
+            path: provider.endpoint.clone(),
+        }
+    } else if let Some(addr) = provider.endpoint.strip_prefix("tcp://") {
+        let (host, port) = addr.rsplit_once(':').unwrap_or((addr, "0"));
+        songbird_universal_ipc::TransportEndpoint::Tcp {
+            host: host.to_string(),
+            port: port.parse().unwrap_or(0),
+        }
+    } else {
+        songbird_universal_ipc::TransportEndpoint::Uds {
+            path: provider.endpoint.clone(),
+        }
+    };
+
     let resp = CapabilityResolveResponse {
         service_id: provider.service_id,
         primal_name: provider.primal_name,
@@ -380,6 +396,7 @@ pub async fn capability_resolve_json(
         protocol: provider.protocol,
         socket,
         native_endpoint,
+        transport,
         virtual_endpoint,
         capabilities: provider.capabilities,
     };

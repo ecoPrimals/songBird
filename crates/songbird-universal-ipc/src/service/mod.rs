@@ -59,7 +59,8 @@ pub use crate::service_types::{
     CapabilityCallParams, CapabilityCallResult, CapabilityResolveParams, CapabilityResolveResult,
     CompositionPrimalInfo, CompositionState, DiscoverParams, DiscoverResult,
     FederationPeersResponse, FederationStatusResponse, ListResult, ProviderInfo, RegisterParams,
-    RegisterResult, ResolveParams, ResolveResult, ServiceInfo, ValidateConsumedResult,
+    RegisterResult, ResolveParams, ResolveResult, ServiceInfo, TransportEndpoint,
+    ValidateConsumedResult,
 };
 
 /// Songbird IPC Service Handler

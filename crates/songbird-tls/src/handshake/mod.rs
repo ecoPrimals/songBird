@@ -555,6 +555,200 @@ mod tests {
         assert_eq!(a.state(), b.state());
     }
 
+    #[test]
+    fn is_connected_false_for_all_non_connected_states() {
+        let mut hsm = HandshakeStateMachine::new();
+        assert!(!hsm.is_connected());
+
+        hsm.process_client_hello(create_test_client_hello()).unwrap();
+        assert!(!hsm.is_connected());
+
+        hsm.state = HandshakeState::SentServerHello;
+        assert!(!hsm.is_connected());
+
+        hsm.state = HandshakeState::Error;
+        assert!(!hsm.is_connected());
+    }
+
+    #[test]
+    fn is_connected_true_only_in_connected_state() {
+        let mut hsm = HandshakeStateMachine::new();
+        hsm.state = HandshakeState::Connected;
+        assert!(hsm.is_connected());
+    }
+
+    #[test]
+    fn complete_handshake_success_from_sent_server_hello() {
+        let mut hsm = HandshakeStateMachine::new();
+        hsm.state = HandshakeState::SentServerHello;
+
+        hsm.complete_handshake().unwrap();
+        assert_eq!(hsm.state(), HandshakeState::Connected);
+        assert!(hsm.is_connected());
+    }
+
+    #[test]
+    fn complete_handshake_rejects_received_client_hello_state() {
+        let mut hsm = HandshakeStateMachine::new();
+        hsm.process_client_hello(create_test_client_hello()).unwrap();
+
+        let err = hsm.complete_handshake().unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+        assert_eq!(hsm.state(), HandshakeState::ReceivedClientHello);
+        assert!(!hsm.is_connected());
+    }
+
+    #[test]
+    fn complete_handshake_rejects_connected_state() {
+        let mut hsm = HandshakeStateMachine::new();
+        hsm.state = HandshakeState::Connected;
+
+        let err = hsm.complete_handshake().unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+        assert!(hsm.is_connected());
+    }
+
+    #[test]
+    fn complete_handshake_rejects_error_state() {
+        let mut hsm = HandshakeStateMachine::new();
+        hsm.state = HandshakeState::Error;
+
+        let err = hsm.complete_handshake().unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+    }
+
+    #[tokio::test]
+    async fn generate_server_hello_rejects_start_state() {
+        let mut hsm = HandshakeStateMachine::new();
+        let err = hsm.generate_server_hello().await.unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+    }
+
+    #[tokio::test]
+    async fn generate_server_hello_rejects_sent_server_hello_state() {
+        let mut hsm = HandshakeStateMachine::new();
+        hsm.state = HandshakeState::SentServerHello;
+
+        let err = hsm.generate_server_hello().await.unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+    }
+
+    #[tokio::test]
+    async fn generate_server_hello_missing_stored_client_hello() {
+        let mut hsm = HandshakeStateMachine::new();
+        hsm.state = HandshakeState::ReceivedClientHello;
+        hsm.set_crypto_client(SecurityTlsCryptoClient::with_socket_path(
+            "/tmp/unused.sock".to_string(),
+        ));
+
+        let err = hsm.generate_server_hello().await.unwrap_err();
+        assert!(matches!(err, TlsError::InternalError(_)));
+    }
+
+    #[tokio::test]
+    async fn generate_server_hello_success_with_mock_crypto() {
+        use base64::Engine;
+        use base64::engine::general_purpose;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+
+        let public_key = vec![0xAAu8; 32];
+        let secret_key = vec![0xBBu8; 32];
+        let body = format!(
+            r#"{{"jsonrpc":"2.0","result":{{"public_key":"{}","secret_key":"{}"}},"id":1}}"#,
+            general_purpose::STANDARD.encode(&public_key),
+            general_purpose::STANDARD.encode(&secret_key),
+        );
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut buf = vec![0u8; 16_384];
+            let _ = stream.read(&mut buf).await;
+            stream.write_all(body.as_bytes()).await.unwrap();
+            let _ = stream.shutdown().await;
+        });
+
+        let mut hsm = HandshakeStateMachine::new();
+        hsm.set_crypto_client(SecurityTlsCryptoClient::with_socket_path(format!("tcp:{addr}")));
+        hsm.process_client_hello(create_test_client_hello()).unwrap();
+
+        let server_hello = hsm.generate_server_hello().await.unwrap();
+
+        assert_eq!(hsm.state(), HandshakeState::SentServerHello);
+        assert!(!hsm.is_connected());
+        assert_eq!(server_hello.cipher_suite, 0x1303);
+        assert_eq!(server_hello.get_supported_version(), Some(0x0304));
+        assert_eq!(server_hello.get_key_share(), Some(public_key.as_slice()));
+        assert!(server_hello.validate().is_ok());
+        assert!(hsm.server_hello.is_some());
+    }
+
+    #[tokio::test]
+    async fn full_handshake_state_machine_with_mock_crypto() {
+        use base64::Engine;
+        use base64::engine::general_purpose;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+
+        let body = format!(
+            r#"{{"jsonrpc":"2.0","result":{{"public_key":"{}","secret_key":"{}"}},"id":1}}"#,
+            general_purpose::STANDARD.encode([1u8; 32]),
+            general_purpose::STANDARD.encode([2u8; 32]),
+        );
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut buf = vec![0u8; 16_384];
+            let _ = stream.read(&mut buf).await;
+            stream.write_all(body.as_bytes()).await.unwrap();
+            let _ = stream.shutdown().await;
+        });
+
+        let mut hsm = HandshakeStateMachine::new();
+        assert_eq!(hsm.state(), HandshakeState::Start);
+        assert!(!hsm.is_connected());
+
+        hsm.set_crypto_client(SecurityTlsCryptoClient::with_socket_path(format!("tcp:{addr}")));
+        hsm.process_client_hello(create_test_client_hello()).unwrap();
+        assert_eq!(hsm.state(), HandshakeState::ReceivedClientHello);
+
+        hsm.generate_server_hello().await.unwrap();
+        assert_eq!(hsm.state(), HandshakeState::SentServerHello);
+
+        hsm.complete_handshake().unwrap();
+        assert_eq!(hsm.state(), HandshakeState::Connected);
+        assert!(hsm.is_connected());
+    }
+
+    #[tokio::test]
+    async fn generate_server_hello_propagates_crypto_failure() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+
+        let body = r#"{"jsonrpc":"2.0","error":{"code":-32000,"message":"keygen failed"},"id":1}"#;
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut buf = vec![0u8; 16_384];
+            let _ = stream.read(&mut buf).await;
+            stream.write_all(body.as_bytes()).await.unwrap();
+            let _ = stream.shutdown().await;
+        });
+
+        let mut hsm = HandshakeStateMachine::new();
+        hsm.set_crypto_client(SecurityTlsCryptoClient::with_socket_path(format!("tcp:{addr}")));
+        hsm.process_client_hello(create_test_client_hello()).unwrap();
+
+        let err = hsm.generate_server_hello().await.unwrap_err();
+        assert!(matches!(err, TlsError::CryptoError(_)));
+        assert_eq!(hsm.state(), HandshakeState::ReceivedClientHello);
+    }
+
     // Helper function for creating test ClientHello
     fn create_test_client_hello() -> ClientHello {
         let random = [42u8; 32];

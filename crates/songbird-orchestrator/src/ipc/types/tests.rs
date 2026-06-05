@@ -405,6 +405,9 @@ fn capability_resolve_response_roundtrip() {
         protocol: "json-rpc".to_string(),
         socket: Some("/run/user/1000/biomeos/security.sock".to_string()),
         native_endpoint: "unix:///run/user/1000/biomeos/security.sock".to_string(),
+        transport: songbird_universal_ipc::TransportEndpoint::Uds {
+            path: "/run/user/1000/biomeos/security.sock".to_string(),
+        },
         virtual_endpoint: "capability://crypto@bearDog".to_string(),
         capabilities: vec!["crypto".to_string(), "identity".to_string()],
     };

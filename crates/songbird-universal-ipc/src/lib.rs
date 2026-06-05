@@ -223,3 +223,5 @@ pub use error::{IpcError, IpcResult};
 pub use platform::{AsyncStream, AsyncStreamImpl, PlatformIpcImpl};
 /// In-memory service registry and metadata for registered primals.
 pub use registry::{ServiceMetadata, ServiceRegistry};
+/// Phase 2 transport-qualified endpoint for `ipc.resolve` consumers.
+pub use service_types::TransportEndpoint;

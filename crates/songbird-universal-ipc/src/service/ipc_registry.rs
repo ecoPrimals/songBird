@@ -4,7 +4,8 @@
 use super::{
     CapabilityResolveParams, CapabilityResolveResult, CompositionPrimalInfo, CompositionState,
     DiscoverParams, DiscoverResult, IpcServiceHandler, ListResult, ProviderInfo, RegisterParams,
-    RegisterResult, ResolveParams, ResolveResult, ServiceInfo, ValidateConsumedResult,
+    RegisterResult, ResolveParams, ResolveResult, ServiceInfo, TransportEndpoint,
+    ValidateConsumedResult,
 };
 use crate::endpoint::NativeEndpoint;
 use crate::introspection::CONSUMED_CAPABILITIES;
@@ -310,8 +311,10 @@ impl IpcServiceHandler {
             );
         };
 
+        let native_transport = transport_endpoint_from_native(&entry.native_endpoint);
         let native_socket = entry.native_endpoint.socket_path();
         let native_display = entry.native_endpoint.display();
+        let resolved_capability = params.capability.clone().unwrap_or_default();
         let capabilities = entry.capabilities;
         let signature = entry.signature;
         let signed_payload = entry.signed_payload;
@@ -328,10 +331,21 @@ impl IpcServiceHandler {
             native_socket
         };
 
+        // Build transport-qualified endpoint (Phase 2)
+        let endpoint = if use_relay {
+            TransportEndpoint::MeshRelay {
+                peer_id: resolved_name.clone(),
+                capability: resolved_capability,
+            }
+        } else {
+            native_transport
+        };
+
         let result = ResolveResult {
             socket,
             virtual_endpoint: virtual_path,
             native_endpoint: native_display,
+            endpoint,
             capabilities,
             relay: use_relay,
             relay_socket: relay_path.map(|p| p.display().to_string()),
@@ -490,11 +504,13 @@ impl IpcServiceHandler {
             .await
             .ok_or_else(|| format!("No provider found for capability: {}", params.capability))?;
 
+        let endpoint = transport_endpoint_from_native(&entry.native_endpoint);
         let result = CapabilityResolveResult {
             primal_id: name,
             socket: entry.native_endpoint.socket_path(),
             virtual_endpoint: entry.virtual_endpoint.path,
             native_endpoint: entry.native_endpoint.display(),
+            endpoint,
             capabilities: entry.capabilities,
             signature: entry.signature,
             signed_payload: entry.signed_payload,
@@ -675,6 +691,35 @@ impl IpcServiceHandler {
     }
 }
 
+/// Convert a `NativeEndpoint` to the Phase 2 `TransportEndpoint` wire type.
+fn transport_endpoint_from_native(ep: &NativeEndpoint) -> TransportEndpoint {
+    match ep {
+        NativeEndpoint::UnixSocket(path) => TransportEndpoint::Uds {
+            path: path.display().to_string(),
+        },
+        NativeEndpoint::AbstractSocket(name) => TransportEndpoint::Uds {
+            path: format!("@{name}"),
+        },
+        NativeEndpoint::TcpLocal(port) => TransportEndpoint::Tcp {
+            host: "127.0.0.1".to_string(),
+            port: *port,
+        },
+        NativeEndpoint::NamedPipe(name) => TransportEndpoint::Uds {
+            path: name.clone(),
+        },
+        NativeEndpoint::XPC(service) => TransportEndpoint::Uds {
+            path: service.clone(),
+        },
+        NativeEndpoint::InProcess(id) => TransportEndpoint::Tcp {
+            host: "127.0.0.1".to_string(),
+            port: *id,
+        },
+        NativeEndpoint::SharedMemory(region) => TransportEndpoint::Uds {
+            path: region.clone(),
+        },
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
@@ -730,5 +775,55 @@ mod tests {
             let result = songbird_turn_client::TurnSessionConfig::from_env(peer_addr);
             assert!(result.is_err(), "Should fail when TURN env vars are absent");
         }
+    }
+
+    #[test]
+    fn transport_endpoint_from_unix_socket() {
+        let ep = NativeEndpoint::UnixSocket("/run/membrane/beardog.sock".into());
+        let te = transport_endpoint_from_native(&ep);
+        assert_eq!(
+            te,
+            TransportEndpoint::Uds {
+                path: "/run/membrane/beardog.sock".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn transport_endpoint_from_abstract_socket() {
+        let ep = NativeEndpoint::AbstractSocket("biomeos_security".into());
+        let te = transport_endpoint_from_native(&ep);
+        assert_eq!(
+            te,
+            TransportEndpoint::Uds {
+                path: "@biomeos_security".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn transport_endpoint_from_tcp_local() {
+        let ep = NativeEndpoint::TcpLocal(7700);
+        let te = transport_endpoint_from_native(&ep);
+        assert_eq!(
+            te,
+            TransportEndpoint::Tcp {
+                host: "127.0.0.1".to_string(),
+                port: 7700
+            }
+        );
+    }
+
+    #[test]
+    fn transport_endpoint_from_in_process() {
+        let ep = NativeEndpoint::InProcess(42);
+        let te = transport_endpoint_from_native(&ep);
+        assert_eq!(
+            te,
+            TransportEndpoint::Tcp {
+                host: "127.0.0.1".to_string(),
+                port: 42
+            }
+        );
     }
 }
