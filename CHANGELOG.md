@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.12-wave82c] - 2026-06-06 - Coverage Sprint & Registry Sync
+
+### Added
+- **+124 new tests** across 5 crates (cumulative +553 from Wave 79b):
+  - `songbird-network-federation` (+41): ProductionSecurityProvider RPC (health, lineage, revoke),
+    multi-federation auto-join policy (IP allowlist/denylist, capability requirements), network config
+    defaults, rendezvous client mock UDS server (register, heartbeat, query, HMAC fingerprint).
+  - `songbird-genesis` (+27): Ceremony flow (synthetic lineage, multi-primal, degraded path),
+    security_capability_client RPC construction and env discovery, witness validation paths.
+  - `songbird-primal-coordination` (+18): Bridge state management (mock/failing/counting variants),
+    static discovery, capability updates, operational paths (health, pooling, compute deploy).
+  - `songbird-sovereign-onion` (+21): Key storage V2 roundtrips, identity generation via mock crypto,
+    service lifecycle (bind, accept, port conflict), address derivation with delegated SHA3-256.
+  - `songbird-igd` (+17): SSDP header parsing, SOAP XML escaping, IPv6 mapping, gateway XML trimming,
+    NAT-PMP timeout probes.
+
+### Fixed
+- **Rendezvous client test race**: Added `OnceLock<Mutex<()>>` env guards to all tests mutating
+  `RENDEZVOUS_SOCKET_PATH` — eliminates parallel test interference on env-dependent socket discovery.
+
+### Changed
+- `config/capability_registry.toml`: Version synced `0.2.9` → `0.2.11`, added `gate = "southGate"`
+  and `domain = "network-orchestration"` metadata for DOMAIN_OWNER_MAP auto-discovery.
+
+---
+
 ## [v0.2.11-wave81] - 2026-06-05 - Deep Debt Cleanup & Evolution
 
 ### Fixed
