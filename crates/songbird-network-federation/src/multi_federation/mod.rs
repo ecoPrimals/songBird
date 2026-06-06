@@ -553,5 +553,129 @@ mod tests {
     fn trust_policy_default_allows_anonymous() {
         let t = TrustPolicy::default();
         assert!(t.allow_anonymous);
+        assert_eq!(t.min_trust_level, "anonymous");
+    }
+
+    #[test]
+    fn federation_id_new_and_from_uuid() {
+        let a = FederationId::new();
+        let b = FederationId::new();
+        assert_ne!(a, b);
+        let uuid = uuid::Uuid::new_v4();
+        assert_eq!(FederationId::from_uuid(uuid), FederationId(uuid));
+    }
+
+    #[test]
+    fn federation_id_default_is_unique() {
+        let a = FederationId::default();
+        let b = FederationId::default();
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn resource_quota_and_data_policy_defaults() {
+        let quota = ResourceQuota::default();
+        assert!(quota.max_cpu_cores.is_none());
+        assert_eq!(quota.priority, 50);
+        let data = DataPolicy::default();
+        assert!(data.accessible_paths.is_empty());
+        assert!(!data.encryption_required);
+    }
+
+    #[test]
+    fn auto_join_disabled_returns_false() {
+        let policy = AutoJoinPolicy {
+            enabled: false,
+            ..AutoJoinPolicy::default()
+        };
+        assert!(!policy.should_auto_join(&sample_peer([10, 0, 0, 1]), 0));
+    }
+
+    #[test]
+    fn auto_join_ip_allowlist_rejects_outside_network() {
+        let policy = AutoJoinPolicy {
+            enabled: true,
+            ip_allowlist: Some(vec![IpNetwork {
+                address: IpAddr::V4(Ipv4Addr::new(192, 168, 1, 0)),
+                prefix_len: 24,
+            }]),
+            ..AutoJoinPolicy::default()
+        };
+        assert!(!policy.should_auto_join(&sample_peer([10, 0, 0, 1]), 0));
+        assert!(policy.should_auto_join(&sample_peer([192, 168, 1, 50]), 0));
+    }
+
+    #[test]
+    fn auto_join_ip_denylist_blocks_peer() {
+        let policy = AutoJoinPolicy {
+            enabled: true,
+            ip_denylist: vec![IpNetwork {
+                address: IpAddr::V4(Ipv4Addr::new(10, 0, 0, 0)),
+                prefix_len: 8,
+            }],
+            ..AutoJoinPolicy::default()
+        };
+        assert!(!policy.should_auto_join(&sample_peer([10, 1, 2, 3]), 0));
+    }
+
+    #[test]
+    fn auto_join_missing_required_capability() {
+        let policy = AutoJoinPolicy {
+            enabled: true,
+            required_capabilities: vec!["gpu".into()],
+            ..AutoJoinPolicy::default()
+        };
+        assert!(!policy.should_auto_join(&sample_peer([192, 168, 1, 1]), 0));
+    }
+
+    #[test]
+    fn auto_join_require_approval_blocks() {
+        let policy = AutoJoinPolicy {
+            enabled: true,
+            require_approval: true,
+            ..AutoJoinPolicy::default()
+        };
+        assert!(!policy.should_auto_join(&sample_peer([192, 168, 1, 1]), 0));
+    }
+
+    #[tokio::test]
+    async fn federation_context_try_join_registers_peer() {
+        let ctx = FederationContext::new("school".into());
+        let peer = DiscoveredPeer {
+            node_id: None,
+            node_name: None,
+            session_id: "peer-1".into(),
+            endpoints: None,
+            capabilities: vec!["compute".into()],
+            protocols: vec!["https".into()],
+            port: 8080,
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9000),
+            last_seen: SystemTime::now(),
+            version: "2.1".into(),
+            tags: None,
+            timestamp: None,
+            identity_attestations: Some(vec![]),
+        };
+        ctx.try_join(&peer, "127.0.0.1:9000").await.unwrap();
+        assert_eq!(ctx.node_count().await, 1);
+        let nodes = ctx.nodes.read().await;
+        let reg = nodes.get("peer-1").unwrap();
+        assert_eq!(reg.node_address, "127.0.0.1:9000");
+        assert_eq!(reg.status, crate::state::NodeStatus::Active);
+    }
+
+    #[tokio::test]
+    async fn remove_federation_missing_returns_none() {
+        let st = MultiFederationState::new(uuid::Uuid::new_v4());
+        let id = FederationId::new();
+        assert!(st.remove_federation(&id).await.is_none());
+    }
+
+    #[tokio::test]
+    async fn federation_context_new_has_unique_id_and_name() {
+        let ctx = FederationContext::new("work".into());
+        assert_eq!(ctx.federation_name, "work");
+        assert!(ctx.node_count().await == 0);
+        assert!(ctx.auto_join_policy.enabled);
     }
 }

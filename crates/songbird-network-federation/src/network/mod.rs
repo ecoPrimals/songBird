@@ -481,4 +481,82 @@ mod tests {
         assert_eq!(health.active_connections, 0);
         assert!(health.gaming_health.is_none());
     }
+
+    #[test]
+    fn network_config_default_has_discovery_enabled() {
+        let cfg = NetworkConfig::default();
+        assert!(cfg.discovery.enabled);
+        assert!(cfg.gaming.enabled);
+        assert!(!cfg.proxy.enabled);
+    }
+
+    #[test]
+    fn discovery_config_default_methods_and_timing() {
+        let d = DiscoveryConfig::default();
+        assert!(d.methods.contains(&DiscoveryMethod::Multicast));
+        assert!(d.methods.contains(&DiscoveryMethod::Broadcast));
+        assert_eq!(d.interval, Duration::from_secs(30));
+        assert_eq!(d.timeout, Duration::from_secs(5));
+    }
+
+    #[test]
+    fn performance_config_default_values() {
+        let p = PerformanceConfig::default();
+        assert_eq!(p.buffer_size, 8192);
+        assert!(p.tcp_nodelay);
+        assert_eq!(p.keepalive, Some(Duration::from_secs(60)));
+    }
+
+    #[test]
+    fn gaming_config_default_protocols_and_ports() {
+        let g = GamingConfig::default();
+        assert!(g.protocols.contains(&GameProtocolType::UDP));
+        assert_eq!(g.port_range, (6112, 6200));
+        assert_eq!(g.max_sessions, 100);
+    }
+
+    #[test]
+    fn interface_config_default_port_and_limits() {
+        let i = InterfaceConfig::default();
+        assert_eq!(i.max_connections, 1000);
+        assert_eq!(i.connection_timeout, Duration::from_secs(30));
+        assert!(i.port_ranges.reserved.len() >= 4);
+    }
+
+    #[test]
+    fn network_status_and_proxy_type_equality() {
+        assert_eq!(NetworkStatus::Healthy, NetworkStatus::Healthy);
+        assert_ne!(NetworkStatus::Healthy, NetworkStatus::Offline);
+        assert_eq!(ProxyType::Http, ProxyType::Http);
+        assert_eq!(LoadBalancingStrategy::RoundRobin, LoadBalancingStrategy::RoundRobin);
+    }
+
+    #[test]
+    fn network_capability_serde_roundtrip() {
+        let caps = vec![
+            NetworkCapability::Gaming,
+            NetworkCapability::Discovery,
+            NetworkCapability::Security,
+        ];
+        let json = serde_json::to_string(&caps).unwrap();
+        let back: Vec<NetworkCapability> = serde_json::from_str(&json).unwrap();
+        assert_eq!(caps, back);
+    }
+
+    #[tokio::test]
+    async fn network_manager_health_check_with_gaming() {
+        let mut mgr = NetworkManager::new(NetworkConfig {
+            gaming: GamingConfig {
+                enabled: true,
+                ..GamingConfig::default()
+            },
+            ..NetworkConfig::default()
+        });
+        mgr.initialize().await.unwrap();
+        let health = mgr.health_check().await.unwrap();
+        assert_eq!(health.overall_status, NetworkStatus::Healthy);
+        assert!(health.gaming_health.is_some());
+        assert_eq!(health.latency_ms, 25.0);
+        assert_eq!(health.bandwidth_usage, 0.0);
+    }
 }

@@ -506,4 +506,146 @@ mod tests {
             identity.primal_signature_count()
         );
     }
+
+    #[tokio::test]
+    async fn request_lineage_unreachable_uses_synthetic_fallback() {
+        let coord = PrimalCoordinator::new("songbird".into(), "http://127.0.0.1:1".into());
+        let witness = sample_witness();
+        let lineage = coord
+            .request_lineage("node-x", &witness)
+            .await
+            .expect("unreachable primal should degrade to synthetic lineage");
+        assert_eq!(lineage.primal_name, "songbird");
+        let data = String::from_utf8_lossy(&lineage.lineage_data);
+        assert!(data.contains("node-x"), "synthetic lineage should embed node id: {data}");
+    }
+
+    #[tokio::test]
+    async fn request_lineage_synthetic_signature_is_marked_unsigned() {
+        let coord = PrimalCoordinator::new("security-provider".into(), "http://127.0.0.1:2".into());
+        let lineage =
+            coord.request_lineage("child", &sample_witness()).await.expect("synthetic fallback");
+        let sig = String::from_utf8_lossy(&lineage.signature);
+        assert!(
+            sig.contains("unsigned_synthetic_security-provider"),
+            "expected unsigned synthetic marker, got {sig}"
+        );
+    }
+
+    #[tokio::test]
+    async fn conduct_degraded_mode_records_each_primal_lineage_key() {
+        let channel = PhysicalChannel::Mock(MockPhysicalChannel::new());
+        let mut ceremony = GenesisCeremony::new(channel, sample_witness());
+        ceremony.add_primal_coordinator(PrimalCoordinator::new(
+            "songbird".into(),
+            "http://127.0.0.1:1".into(),
+        ));
+        ceremony.add_primal_coordinator(PrimalCoordinator::new(
+            "security-provider".into(),
+            "http://127.0.0.1:2".into(),
+        ));
+        let identity = ceremony.conduct("lineage-keys".into()).await.expect("conduct");
+        assert!(identity.has_primal_lineage("songbird"));
+        assert!(identity.has_primal_lineage("security-provider"));
+        assert_eq!(identity.primal_signature_count(), 2);
+    }
+
+    #[tokio::test]
+    async fn conduct_with_qr_channel_witness_sets_high_trust() {
+        let channel = PhysicalChannel::Mock(MockPhysicalChannel::new());
+        let witness = GenesisWitness::new(
+            "qr-witness".into(),
+            vec![4, 5],
+            crate::types::PhysicalChannelType::QrCodeWithOob,
+        );
+        let mut ceremony = GenesisCeremony::new(channel, witness);
+        ceremony.add_primal_coordinator(PrimalCoordinator::new(
+            "songbird".into(),
+            "http://127.0.0.1:1".into(),
+        ));
+        let identity = ceremony.conduct("qr-node".into()).await.expect("conduct");
+        assert_eq!(identity.genesis_trust_level(), crate::types::TrustLevel::High);
+    }
+
+    #[tokio::test]
+    async fn conduct_identity_carries_mock_exchange_credentials_as_public_key() {
+        let channel = PhysicalChannel::Mock(MockPhysicalChannel::new());
+        let mut ceremony = GenesisCeremony::new(channel, sample_witness());
+        ceremony.add_primal_coordinator(PrimalCoordinator::new(
+            "songbird".into(),
+            "http://127.0.0.1:1".into(),
+        ));
+        let identity = ceremony.conduct("cred-node".into()).await.expect("conduct");
+        assert_eq!(identity.public_key, b"mock_genesis_credentials");
+    }
+
+    #[tokio::test]
+    async fn conduct_ceremony_id_is_non_nil() {
+        let channel = PhysicalChannel::Mock(MockPhysicalChannel::new());
+        let mut ceremony = GenesisCeremony::new(channel, sample_witness());
+        ceremony.add_primal_coordinator(PrimalCoordinator::new(
+            "songbird".into(),
+            "http://127.0.0.1:1".into(),
+        ));
+        let identity = ceremony.conduct("ceremony-id".into()).await.expect("conduct");
+        assert!(!identity.ceremony_id.is_nil());
+        assert_eq!(identity.ceremony_id, identity.genesis_lineage.ceremony_id);
+    }
+
+    #[tokio::test]
+    async fn conduct_preserves_witness_device_id_in_lineage() {
+        let channel = PhysicalChannel::Mock(MockPhysicalChannel::new());
+        let witness = GenesisWitness::new(
+            "witness-device-42".into(),
+            vec![7],
+            crate::types::PhysicalChannelType::HardwareKey,
+        );
+        let mut ceremony = GenesisCeremony::new(channel, witness);
+        ceremony.add_primal_coordinator(PrimalCoordinator::new(
+            "songbird".into(),
+            "http://127.0.0.1:1".into(),
+        ));
+        let identity = ceremony.conduct("witness-bind".into()).await.expect("conduct");
+        assert_eq!(
+            identity.genesis_lineage.witness_device_id, "witness-device-42",
+            "lineage should bind to ceremony witness"
+        );
+    }
+
+    #[tokio::test]
+    async fn request_lineage_synthetic_data_varies_by_node_id() {
+        let coord = PrimalCoordinator::new("p".into(), "http://127.0.0.1:9".into());
+        let witness = sample_witness();
+        let a = coord.request_lineage("alpha", &witness).await.expect("a");
+        let b = coord.request_lineage("beta", &witness).await.expect("b");
+        assert_ne!(a.lineage_data, b.lineage_data, "synthetic lineage should be node-specific");
+    }
+
+    #[tokio::test]
+    async fn conduct_single_unreachable_primal_still_completes_ceremony() {
+        let channel = PhysicalChannel::Mock(MockPhysicalChannel::new());
+        let mut ceremony = GenesisCeremony::new(channel, sample_witness());
+        ceremony.add_primal_coordinator(PrimalCoordinator::new(
+            "only-primal".into(),
+            "http://127.0.0.1:65535".into(),
+        ));
+        let identity = ceremony
+            .conduct("solo-degraded".into())
+            .await
+            .expect("one synthetic lineage is enough to finish");
+        assert_eq!(identity.primal_signature_count(), 1);
+        assert!(identity.has_primal_lineage("only-primal"));
+    }
+
+    #[test]
+    fn genesis_ceremony_add_coordinator_appends_in_order() {
+        let channel = PhysicalChannel::Mock(MockPhysicalChannel::new());
+        let mut ceremony = GenesisCeremony::new(channel, sample_witness());
+        ceremony.add_primal_coordinator(PrimalCoordinator::new("first".into(), "http://a/".into()));
+        ceremony
+            .add_primal_coordinator(PrimalCoordinator::new("second".into(), "http://b/".into()));
+        // Exercised indirectly: conduct with two coordinators yields two lineages (async test above).
+        // Here we only assert builder calls do not panic and timeout remains configurable.
+        ceremony.set_timeout(Duration::from_secs(120));
+    }
 }

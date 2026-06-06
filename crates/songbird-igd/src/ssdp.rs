@@ -319,4 +319,42 @@ mod tests {
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 1900);
         assert!(SsdpClient::parse_response(response, addr).is_none());
     }
+
+    #[test]
+    fn parse_ssdp_response_header_names_are_case_insensitive() {
+        let response = b"HTTP/1.1 200 OK\r\n\
+            location: http://192.168.1.50:8080/desc.xml\r\n\
+            st: urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n\
+            server: TestRouter/1.0\r\n\
+            \r\n";
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 50)), 1900);
+        let ssdp = SsdpClient::parse_response(response, addr).expect("lowercase headers");
+        assert_eq!(ssdp.location, "http://192.168.1.50:8080/desc.xml");
+        assert_eq!(ssdp.server, "TestRouter/1.0");
+    }
+
+    #[test]
+    fn parse_ssdp_response_usn_defaults_to_empty_when_missing() {
+        let response = b"HTTP/1.1 200 OK\r\n\
+            LOCATION: http://192.168.1.1/desc.xml\r\n\
+            ST: urn:schemas-upnp-org:service:WANIPConnection:1\r\n\
+            \r\n";
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 1900);
+        let ssdp = SsdpClient::parse_response(response, addr).expect("WANIP without USN");
+        assert!(ssdp.usn.is_empty());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn discover_gateways_returns_empty_when_no_responses() {
+        let client = SsdpClient::with_timeout(Duration::from_millis(1));
+        let responses = client
+            .discover_gateways()
+            .await
+            .expect("discovery should not error when no devices reply");
+        assert!(
+            responses.is_empty(),
+            "no SSDP replies should yield empty list, got {:?}",
+            responses
+        );
+    }
 }

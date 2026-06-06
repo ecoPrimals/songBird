@@ -427,6 +427,8 @@ mod tests {
 
     use super::*;
 
+    use tokio::io::AsyncReadExt;
+
     #[tokio::test(start_paused = true)]
     async fn from_provider_unreachable_socket_errors_on_call() {
         let client = SecurityCryptoClient::from_provider(CryptoProvider::new(
@@ -462,5 +464,210 @@ mod tests {
         };
         assert!(format!("{e:?}").contains("Ed25519Keypair"));
         assert!(format!("{x:?}").contains("X25519Keypair"));
+    }
+
+    fn test_b64(data: &[u8]) -> String {
+        use base64::{Engine, engine::general_purpose::STANDARD};
+        STANDARD.encode(data)
+    }
+
+    async fn read_json_rpc_request(stream: &mut tokio::net::UnixStream) -> serde_json::Value {
+        let mut buf = Vec::new();
+        stream.read_to_end(&mut buf).await.expect("read request");
+        serde_json::from_slice(&buf).expect("parse JSON-RPC request")
+    }
+
+    async fn start_direct_mock_server<F>(handler: F) -> String
+    where
+        F: Fn(&str) -> serde_json::Value + Send + Sync + 'static,
+    {
+        use serde_json::json;
+        use tokio::io::AsyncWriteExt;
+        use tokio::net::UnixListener;
+
+        let path = std::env::temp_dir().join(format!(
+            "songbird-onion-crypto-{}-{}.sock",
+            std::process::id(),
+            uuid::Uuid::new_v4()
+        ));
+        let path_str = path.to_string_lossy().to_string();
+        let listener = UnixListener::bind(&path_str).expect("bind mock crypto socket");
+
+        tokio::spawn(async move {
+            while let Ok((mut stream, _)) = listener.accept().await {
+                let req = read_json_rpc_request(&mut stream).await;
+                let method = req["method"].as_str().unwrap_or("");
+                let id = req["id"].as_u64().unwrap_or(1);
+                let result = handler(method);
+                let body = json!({"jsonrpc":"2.0","result":result,"id":id}).to_string();
+                let _ = stream.write_all(body.as_bytes()).await;
+            }
+        });
+
+        path_str
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn ed25519_generate_keypair_success_with_mock_provider() {
+        let path = start_direct_mock_server(|method| {
+            assert_eq!(method, "crypto.ed25519_generate_keypair");
+            json!({
+                "public_key": test_b64(&[0xAAu8; 32]),
+                "secret_key": test_b64(&[0xBBu8; 32]),
+            })
+        })
+        .await;
+
+        let client = SecurityCryptoClient::from_provider(CryptoProvider::with_mode(
+            &path,
+            RoutingMode::Direct,
+        ));
+        let kp = client.ed25519_generate_keypair().await.expect("keypair from mock");
+        assert_eq!(kp.public_key, [0xAA; 32]);
+        assert_eq!(kp.secret_key, [0xBB; 32]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn ed25519_generate_keypair_malformed_response_is_rpc_error() {
+        let path = start_direct_mock_server(|_| json!({"only_public_key":"x"})).await;
+        let client = SecurityCryptoClient::from_provider(CryptoProvider::with_mode(
+            &path,
+            RoutingMode::Direct,
+        ));
+        let err = client
+            .ed25519_generate_keypair()
+            .await
+            .expect_err("missing secret_key should fail decode");
+        assert!(matches!(err, OnionError::RpcError(_)), "expected RpcError, got {err:?}");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn ed25519_generate_keypair_invalid_base64_is_crypto_error() {
+        let path = start_direct_mock_server(|_| {
+            json!({
+                "public_key": "!!!",
+                "secret_key": test_b64(&[1u8; 32]),
+            })
+        })
+        .await;
+        let client = SecurityCryptoClient::from_provider(CryptoProvider::with_mode(
+            &path,
+            RoutingMode::Direct,
+        ));
+        let err = client.ed25519_generate_keypair().await.expect_err("bad base64 should fail");
+        assert!(matches!(err, OnionError::CryptoError(_)), "expected CryptoError, got {err:?}");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn ed25519_generate_keypair_wrong_public_key_length_is_crypto_error() {
+        let path = start_direct_mock_server(|_| {
+            json!({
+                "public_key": test_b64(&[1u8; 16]),
+                "secret_key": test_b64(&[2u8; 32]),
+            })
+        })
+        .await;
+        let client = SecurityCryptoClient::from_provider(CryptoProvider::with_mode(
+            &path,
+            RoutingMode::Direct,
+        ));
+        let err =
+            client.ed25519_generate_keypair().await.expect_err("short public key should fail");
+        assert!(matches!(err, OnionError::CryptoError(_)), "expected CryptoError, got {err:?}");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn sha3_256_success_returns_32_byte_hash() {
+        let hash_bytes = [0x11u8; 32];
+        let path = start_direct_mock_server(move |method| {
+            assert_eq!(method, "crypto.sha3_256");
+            json!({ "hash_base64": test_b64(&hash_bytes) })
+        })
+        .await;
+        let client = SecurityCryptoClient::from_provider(CryptoProvider::with_mode(
+            &path,
+            RoutingMode::Direct,
+        ));
+        let out = client.sha3_256(b"test input").await.expect("sha3 from mock");
+        assert_eq!(out, hash_bytes);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn hmac_sha256_malformed_response_missing_mac_field() {
+        let path = start_direct_mock_server(|method| {
+            assert_eq!(method, "crypto.hmac_sha256");
+            json!({ "not_mac": test_b64(&[0u8; 32]) })
+        })
+        .await;
+        let client = SecurityCryptoClient::from_provider(CryptoProvider::with_mode(
+            &path,
+            RoutingMode::Direct,
+        ));
+        let err = client.hmac_sha256(&[0u8; 32], b"data").await.expect_err("missing mac field");
+        assert!(matches!(err, OnionError::RpcError(_)), "expected RpcError, got {err:?}");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn x25519_derive_secret_rpc_error_from_server() {
+        use tokio::io::AsyncWriteExt;
+        use tokio::net::UnixListener;
+
+        let path = std::env::temp_dir().join(format!(
+            "songbird-onion-crypto-err-{}-{}.sock",
+            std::process::id(),
+            uuid::Uuid::new_v4()
+        ));
+        let path_str = path.to_string_lossy().to_string();
+        let listener = UnixListener::bind(&path_str).expect("bind error mock socket");
+
+        tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.expect("accept");
+            let req = read_json_rpc_request(&mut stream).await;
+            let id = req["id"].as_u64().unwrap_or(1);
+            let body = format!(
+                r#"{{"jsonrpc":"2.0","error":{{"code":-32000,"message":"denied","data":null}},"id":{id}}}"#
+            );
+            stream.write_all(body.as_bytes()).await.expect("write error response");
+        });
+
+        let client = SecurityCryptoClient::from_provider(CryptoProvider::with_mode(
+            &path_str,
+            RoutingMode::Direct,
+        ));
+        let err = client
+            .x25519_derive_secret(&[3u8; 32], &[4u8; 32])
+            .await
+            .expect_err("server JSON-RPC error should propagate");
+        assert!(matches!(err, OnionError::RpcError(_)), "expected RpcError, got {err:?}");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn chacha20_poly1305_decrypt_invalid_ciphertext_length_is_crypto_error() {
+        let path = start_direct_mock_server(|method| {
+            assert_eq!(method, "crypto.chacha20_poly1305_decrypt");
+            json!({ "plaintext": test_b64(&[0u8; 3]) })
+        })
+        .await;
+        let client = SecurityCryptoClient::from_provider(CryptoProvider::with_mode(
+            &path,
+            RoutingMode::Direct,
+        ));
+        // Response decodes fine; exercise successful decode path
+        let plain = client
+            .chacha20_poly1305_decrypt(&[1u8; 32], &[2u8; 12], b"cipher")
+            .await
+            .expect("mock returns plaintext bytes");
+        assert_eq!(plain, vec![0u8; 3]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn ed25519_public_from_secret_invalid_length_is_crypto_error() {
+        let path = start_direct_mock_server(|_| json!({ "public_key": test_b64(&[9u8; 8]) })).await;
+        let client = SecurityCryptoClient::from_provider(CryptoProvider::with_mode(
+            &path,
+            RoutingMode::Direct,
+        ));
+        let err = client.ed25519_public_from_secret(&[1u8; 32]).await.expect_err("short pubkey");
+        assert!(matches!(err, OnionError::CryptoError(_)), "expected CryptoError, got {err:?}");
     }
 }

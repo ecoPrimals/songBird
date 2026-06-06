@@ -396,4 +396,115 @@ mod tests {
             "explicit endpoint client should construct under paused runtime"
         );
     }
+
+    #[test]
+    fn deterministic_fingerprint_long_node_id_stays_sha256_hex() {
+        let fp = SecurityCapabilityClient::generate_deterministic_fingerprint(&"n".repeat(10_000));
+        assert_eq!(fp.len(), 64);
+        assert!(fp.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn deterministic_fingerprint_whitespace_node_is_distinct() {
+        let space = SecurityCapabilityClient::generate_deterministic_fingerprint(" ");
+        let empty = SecurityCapabilityClient::generate_deterministic_fingerprint("");
+        assert_ne!(space, empty);
+    }
+
+    #[tokio::test]
+    async fn sign_data_fails_against_unreachable_endpoint() {
+        let client =
+            SecurityCapabilityClient::with_endpoint("http://127.0.0.1:9").await.expect("client");
+        let err = client
+            .sign_data("node-a", b"payload")
+            .await
+            .expect_err("sign should fail without IPC backend");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("sign") || msg.contains("Failed") || msg.contains("security provider"),
+            "unexpected error message: {msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn verify_signature_fails_against_unreachable_endpoint() {
+        let client =
+            SecurityCapabilityClient::with_endpoint("http://127.0.0.1:9").await.expect("client");
+        let err = client
+            .verify_signature("node-a", b"payload", b"sig-bytes")
+            .await
+            .expect_err("verify should fail without IPC backend");
+        assert!(!err.to_string().is_empty());
+    }
+
+    #[tokio::test]
+    async fn create_lineage_fails_against_unreachable_endpoint() {
+        let client =
+            SecurityCapabilityClient::with_endpoint("http://127.0.0.1:9").await.expect("client");
+        let err = client
+            .create_lineage("songbird", "parent", "child")
+            .await
+            .expect_err("create_lineage should fail without IPC backend");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("lineage") || msg.contains("Failed") || msg.contains("security provider"),
+            "unexpected error message: {msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn get_public_key_fingerprint_errors_on_network_failure() {
+        let client =
+            SecurityCapabilityClient::with_endpoint("http://127.0.0.1:9").await.expect("client");
+        let err = client
+            .get_public_key_fingerprint("node-z")
+            .await
+            .expect_err("network failure should not silently fallback");
+        assert!(!err.to_string().is_empty());
+    }
+
+    #[tokio::test]
+    async fn sign_data_empty_payload_still_builds_rpc() {
+        let client =
+            SecurityCapabilityClient::with_endpoint("http://127.0.0.1:9").await.expect("client");
+        assert!(
+            client.sign_data("empty-node", &[]).await.is_err(),
+            "empty payload should still attempt POST and fail at transport"
+        );
+    }
+
+    #[tokio::test]
+    async fn with_endpoint_trailing_slash_preserved() {
+        let client = SecurityCapabilityClient::with_endpoint("http://localhost:8200/")
+            .await
+            .expect("client");
+        assert_eq!(client.base_url, "http://localhost:8200/");
+    }
+
+    #[tokio::test]
+    async fn client_clone_preserves_endpoint() {
+        let client = SecurityCapabilityClient::with_endpoint("http://clone-test.local:8200")
+            .await
+            .expect("client");
+        let cloned = client.clone();
+        assert_eq!(cloned.base_url, client.base_url);
+    }
+
+    #[tokio::test]
+    async fn new_uses_security_endpoint_env_when_set() {
+        songbird_process_env::set_var("SECURITY_ENDPOINT", "http://env-test.local:9200");
+        let client = SecurityCapabilityClient::new().await.expect("new with SECURITY_ENDPOINT");
+        assert_eq!(client.base_url, "http://env-test.local:9200");
+        songbird_process_env::remove_var("SECURITY_ENDPOINT");
+    }
+
+    #[tokio::test]
+    async fn new_prefers_security_endpoint_over_legacy_beardog() {
+        songbird_process_env::set_var("SECURITY_ENDPOINT", "http://preferred/");
+        songbird_process_env::set_var("BEARDOG_ENDPOINT", "http://legacy/");
+        let client = SecurityCapabilityClient::new().await.expect("new with env precedence");
+        assert_eq!(client.base_url, "http://preferred/");
+        songbird_process_env::remove_var("SECURITY_ENDPOINT");
+        songbird_process_env::remove_var("BEARDOG_ENDPOINT");
+    }
 }

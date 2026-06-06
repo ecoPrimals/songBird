@@ -441,4 +441,101 @@ mod security_provider_path_tests {
             "expected UnsupportedVersion(2), got {r:?}"
         );
     }
+
+    #[tokio::test(start_paused = true)]
+    async fn derive_onion_address_via_security_provider_success_with_mock() {
+        use base64::{Engine, engine::general_purpose::STANDARD};
+        use serde_json::json;
+        use songbird_crypto_provider::{CryptoProvider, RoutingMode};
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::UnixListener;
+
+        let path = std::env::temp_dir().join(format!(
+            "songbird-onion-addr-{}-{}.sock",
+            std::process::id(),
+            uuid::Uuid::new_v4()
+        ));
+        let path_str = path.to_string_lossy().to_string();
+        let listener = UnixListener::bind(&path_str).expect("bind mock socket");
+
+        tokio::spawn(async move {
+            while let Ok((mut stream, _)) = listener.accept().await {
+                let mut buf = Vec::new();
+                stream.read_to_end(&mut buf).await.expect("read");
+                let req: serde_json::Value = serde_json::from_slice(&buf).expect("parse");
+                let id = req["id"].as_u64().unwrap_or(1);
+                let hash = STANDARD.encode([0xABu8; 32]);
+                let body =
+                    json!({"jsonrpc":"2.0","result":{"hash_base64":hash},"id":id}).to_string();
+                stream.write_all(body.as_bytes()).await.expect("write");
+            }
+        });
+
+        let client = SecurityCryptoClient::from_provider(CryptoProvider::with_mode(
+            &path_str,
+            RoutingMode::Direct,
+        ));
+        let pk = [0x55u8; 32];
+        let onion =
+            derive_onion_address_via_security_provider(&client, &pk).await.expect("derive address");
+        assert!(onion.ends_with(".onion"));
+        assert_eq!(onion.len(), 62);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn validate_onion_address_roundtrip_with_mock_sha3() {
+        use base64::{Engine, engine::general_purpose::STANDARD};
+        use serde_json::json;
+        use songbird_crypto_provider::{CryptoProvider, RoutingMode};
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::UnixListener;
+
+        let pubkey = [0x77u8; 32];
+        let mut checksum_hash = [0x12u8; 32];
+        checksum_hash[1] = 0x34;
+        let mut raw = [0u8; 35];
+        raw[..32].copy_from_slice(&pubkey);
+        raw[32..34].copy_from_slice(&checksum_hash[..2]);
+        raw[34] = 0x03;
+        let encoded = base32::encode(
+            base32::Alphabet::Rfc4648Lower {
+                padding: false,
+            },
+            &raw,
+        );
+        let onion = format!("{encoded}.onion");
+
+        let path = std::env::temp_dir().join(format!(
+            "songbird-onion-validate-{}-{}.sock",
+            std::process::id(),
+            uuid::Uuid::new_v4()
+        ));
+        let path_str = path.to_string_lossy().to_string();
+        let listener = UnixListener::bind(&path_str).expect("bind mock socket");
+
+        tokio::spawn(async move {
+            while let Ok((mut stream, _)) = listener.accept().await {
+                let mut buf = Vec::new();
+                stream.read_to_end(&mut buf).await.expect("read");
+                let req: serde_json::Value = serde_json::from_slice(&buf).expect("parse");
+                let id = req["id"].as_u64().unwrap_or(1);
+                let body = json!({
+                    "jsonrpc":"2.0",
+                    "result":{"hash_base64":STANDARD.encode(checksum_hash)},
+                    "id":id
+                })
+                .to_string();
+                stream.write_all(body.as_bytes()).await.expect("write");
+            }
+        });
+
+        let client = SecurityCryptoClient::from_provider(CryptoProvider::with_mode(
+            &path_str,
+            RoutingMode::Direct,
+        ));
+        let recovered = validate_onion_address_via_security_provider(&client, &onion)
+            .await
+            .expect("valid checksum via mock sha3");
+        assert_eq!(recovered, pubkey);
+    }
 }

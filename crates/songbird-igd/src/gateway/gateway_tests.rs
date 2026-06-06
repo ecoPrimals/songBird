@@ -306,3 +306,36 @@ fn extract_control_url_relative_without_leading_slash() {
         .expect("relative path without leading slash should resolve");
     assert_eq!(url, "http://192.168.1.2:8080/ctl/IPConn");
 }
+
+#[test]
+fn extract_control_url_https_absolute_passthrough() {
+    let xml = r"
+        <service>
+            <serviceType>urn:schemas-upnp-org:service:WANIPConnection:1</serviceType>
+            <controlURL>https://192.168.1.254:8443/ctl/IPConn</controlURL>
+        </service>";
+    let url = upnp_device_description::extract_control_url(xml, "http://192.168.1.254/root.xml")
+        .expect("https absolute controlURL");
+    assert_eq!(url, "https://192.168.1.254:8443/ctl/IPConn");
+}
+
+#[test]
+fn extract_xml_value_trims_inner_whitespace() {
+    let xml = "<friendlyName>  My Router  </friendlyName>";
+    assert_eq!(
+        upnp_device_description::extract_xml_value(xml, "friendlyName"),
+        Some("My Router".to_string())
+    );
+}
+
+#[tokio::test]
+async fn fetch_device_description_unreachable_host_returns_error() {
+    let err =
+        upnp_device_description::fetch_device_description("http://203.0.113.9:49000/desc.xml")
+            .await
+            .expect_err("unreachable TEST-NET-3 host");
+    assert!(
+        matches!(err, IgdError::Timeout | IgdError::SoapError(_)),
+        "expected timeout or connection error, got {err:?}"
+    );
+}

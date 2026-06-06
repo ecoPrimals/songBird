@@ -4,9 +4,11 @@
 
 [meta]
 primal = "songbird"
-version = "0.2.9"
+version = "0.2.11"
 wire_standard = "L3"
 owner = "ecoPrimals"
+gate = "southGate"
+domain = "network-orchestration"
 
 [capabilities.discovery]
 owner = "songbird"

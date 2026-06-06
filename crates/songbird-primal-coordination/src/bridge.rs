@@ -563,4 +563,160 @@ mod tests {
         let m = conn.metadata.read().await;
         assert!(m.is_empty());
     }
+
+    #[tokio::test(start_paused = true)]
+    async fn primal_bridge_mock_connect_urls_include_capability() {
+        let bridge = PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock);
+        let conn = bridge.connect(&CapabilityType::Security).expect("mock connect should succeed");
+        assert!(
+            conn.endpoint.contains("security"),
+            "mock URL should embed capability slug: {}",
+            conn.endpoint
+        );
+    }
+
+    #[test]
+    fn primal_bridge_failing_connect_returns_connection_failed() {
+        let bridge = PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Failing);
+        let err = bridge
+            .connect(&CapabilityType::Security)
+            .expect_err("failing bridge should not connect");
+        assert!(matches!(err, PrimalCoordinationError::ConnectionFailed(_)));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn primal_bridge_counting_connect_uses_stable_connection_id() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let counter = Arc::new(AtomicUsize::new(0));
+        let bridge =
+            PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Counting(Arc::clone(&counter)));
+        let c1 = bridge.connect(&CapabilityType::Security).expect("first");
+        let c2 = bridge.connect(&CapabilityType::Security).expect("second");
+        assert_eq!(c1.connection_id, "counting-id");
+        assert_eq!(c2.connection_id, "counting-id");
+        assert_eq!(counter.load(Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn primal_bridge_discover_capabilities_mock_returns_security() {
+        let bridge = PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock);
+        let conn = bridge.connect(&CapabilityType::Security).expect("connect");
+        let caps = bridge.discover_capabilities(&conn).await.expect("mock discover");
+        assert!(caps.supports_capability(&CapabilityType::Security));
+    }
+
+    #[test]
+    fn primal_discovery_static_returns_configured_snapshot() {
+        let caps = PrimalCapabilities {
+            services: vec!["compute".into()],
+            resources: std::collections::HashMap::new(),
+            metadata: std::collections::HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let discovery = PrimalDiscovery::Static(StaticPrimalDiscovery {
+            endpoint: "http://static-primal/".into(),
+            capabilities: caps.clone(),
+        });
+        let found = discovery
+            .discover_by_capability(&CapabilityType::Ai)
+            .expect("static discovery ignores filter");
+        assert_eq!(found.endpoint, "http://static-primal/");
+        assert_eq!(found.capabilities.services, caps.services);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn send_request_sign_lineage_errors_without_ipc() {
+        let caps = PrimalCapabilities {
+            services: vec!["security".into()],
+            resources: std::collections::HashMap::new(),
+            metadata: std::collections::HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let conn = PrimalConnection::new("sl".into(), "http://127.0.0.1:9/", caps);
+        let req = PrimalRequest::SignLineage {
+            keys: crate::types::GeneratedKeys {
+                public_key: vec![1],
+                private_key_handle: "h".into(),
+            },
+            proof: crate::types::WitnessProof {
+                data: b"proof".to_vec(),
+            },
+            node_id: crate::types::NodeId("n".into()),
+        };
+        let err = conn.send_request(req).await.expect_err("IPC unavailable");
+        assert!(matches!(err, PrimalCoordinationError::Internal(_)));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn send_request_custom_errors_without_ipc() {
+        let caps = PrimalCapabilities {
+            services: vec!["security".into()],
+            resources: std::collections::HashMap::new(),
+            metadata: std::collections::HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let conn = PrimalConnection::new("cust".into(), "http://127.0.0.1:9/", caps);
+        let err = conn
+            .send_request(PrimalRequest::Custom {
+                operation: "ping".into(),
+                params: serde_json::json!({"x": 1}),
+            })
+            .await
+            .expect_err("IPC unavailable");
+        assert!(matches!(err, PrimalCoordinationError::Internal(_)));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn send_request_discover_capabilities_errors_without_ipc() {
+        let caps = PrimalCapabilities {
+            services: vec!["security".into()],
+            resources: std::collections::HashMap::new(),
+            metadata: std::collections::HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let conn = PrimalConnection::new("disc".into(), "http://127.0.0.1:9/", caps);
+        let err = conn
+            .send_request(PrimalRequest::DiscoverCapabilities)
+            .await
+            .expect_err("IPC unavailable");
+        assert!(matches!(err, PrimalCoordinationError::Internal(_)));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn primal_connection_clone_shares_capability_state() {
+        let caps = PrimalCapabilities {
+            services: vec!["security".into()],
+            resources: std::collections::HashMap::new(),
+            metadata: std::collections::HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        let conn1 = PrimalConnection::new("shared".into(), "http://127.0.0.1/", caps);
+        let conn2 = conn1.clone();
+        let updated = PrimalCapabilities {
+            services: vec!["security".into(), "compute".into()],
+            resources: std::collections::HashMap::new(),
+            metadata: std::collections::HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        conn1.update_capabilities(updated).await;
+        assert!(conn2.supports_capability(&CapabilityType::Compute).await);
+    }
+
+    #[test]
+    fn coordinator_test_bridge_supported_capabilities_by_variant() {
+        use std::sync::atomic::AtomicUsize;
+
+        let mock = CoordinatorTestBridge::Mock;
+        let failing = CoordinatorTestBridge::Failing;
+        let counting = CoordinatorTestBridge::Counting(Arc::new(AtomicUsize::new(0)));
+        let mock_caps = PrimalBridge::CoordinatorTest(mock).supported_capabilities();
+        assert!(mock_caps.contains(&CapabilityType::Security));
+        assert!(mock_caps.contains(&CapabilityType::Compute));
+        assert!(PrimalBridge::CoordinatorTest(failing).supported_capabilities().is_empty());
+        assert_eq!(
+            PrimalBridge::CoordinatorTest(counting).supported_capabilities(),
+            vec![CapabilityType::Security]
+        );
+    }
 }

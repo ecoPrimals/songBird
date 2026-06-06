@@ -300,4 +300,17 @@ mod tests {
         let lifetime: u32 = 86400;
         assert_eq!(lifetime.to_be_bytes(), [0x00, 0x01, 0x51, 0x80]);
     }
+
+    #[tokio::test(start_paused = true)]
+    async fn get_external_ip_unreachable_gateway_times_out() {
+        let client = NatPmpClient::with_timeout(
+            IpAddr::V4(Ipv4Addr::new(203, 0, 113, 10)),
+            Duration::from_millis(50),
+        );
+        let err = client.get_external_ip().await.expect_err("TEST-NET-3 should not respond");
+        assert!(
+            matches!(err, IgdError::Timeout),
+            "expected Timeout waiting for NAT-PMP, got {err:?}"
+        );
+    }
 }
