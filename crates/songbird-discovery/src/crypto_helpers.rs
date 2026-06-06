@@ -63,3 +63,67 @@ pub fn sha256_hash_sync(crypto: Option<&CryptoProvider>, data: &[u8]) -> Vec<u8>
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+
+    const EMPTY_SHA256: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    const HELLO_SHA256: &str = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+
+    fn to_hex(bytes: &[u8]) -> String {
+        hex::encode(bytes)
+    }
+
+    #[tokio::test]
+    async fn sha256_hash_empty_input() {
+        let hash = sha256_hash(None, b"").await;
+        assert_eq!(hash.len(), 32);
+        assert_eq!(to_hex(&hash), EMPTY_SHA256);
+    }
+
+    #[tokio::test]
+    async fn sha256_hash_hello_known_vector() {
+        let hash = sha256_hash(None, b"hello").await;
+        assert_eq!(to_hex(&hash), HELLO_SHA256);
+    }
+
+    #[tokio::test]
+    async fn sha256_hash_is_deterministic() {
+        let data = b"deterministic payload";
+        let first = sha256_hash(None, data).await;
+        let second = sha256_hash(None, data).await;
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn sha256_hash_sync_empty_input() {
+        let hash = sha256_hash_sync(None, b"");
+        assert_eq!(hash.len(), 32);
+        assert_eq!(to_hex(&hash), EMPTY_SHA256);
+    }
+
+    #[tokio::test]
+    async fn sha256_hash_sync_matches_async_without_provider() {
+        let data = b"sync vs async parity";
+        let async_hash = sha256_hash(None, data).await;
+        let sync_hash = sha256_hash_sync(None, data);
+        assert_eq!(async_hash, sync_hash);
+    }
+
+    #[test]
+    fn sha256_hash_sync_produces_32_byte_digest() {
+        let hash = sha256_hash_sync(None, b"payload");
+        assert_eq!(hash.len(), 32);
+        assert_ne!(to_hex(&hash), EMPTY_SHA256);
+    }
+
+    #[tokio::test]
+    async fn sha256_hash_different_inputs_produce_different_hashes() {
+        let a = sha256_hash(None, b"alpha").await;
+        let b = sha256_hash(None, b"beta").await;
+        assert_ne!(a, b);
+    }
+}

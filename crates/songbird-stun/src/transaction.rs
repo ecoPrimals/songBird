@@ -140,4 +140,76 @@ mod tests {
             "unexpected: {err}"
         );
     }
+
+    #[test]
+    fn with_credentials_produces_mi_and_fp() {
+        let creds = crate::types::StunCredentials {
+            username: "beacon-user".to_string(),
+            key: b"beacon-stun-key".to_vec(),
+        };
+        let txn = BindingTransaction::with_credentials(&creds);
+        let wire = txn.encode_request();
+
+        let decoded = StunMessage::decode(&wire).expect("decode authenticated request");
+        assert_eq!(decoded.message_type, MessageType::BindingRequest);
+
+        let has_username = decoded
+            .attributes
+            .iter()
+            .any(|a| matches!(a, StunAttribute::Username(u) if u == "beacon-user"));
+        let has_mi =
+            decoded.attributes.iter().any(|a| matches!(a, StunAttribute::MessageIntegrity(_)));
+        let has_fp = decoded.attributes.iter().any(|a| matches!(a, StunAttribute::Fingerprint(_)));
+
+        assert!(has_username, "USERNAME attribute required");
+        assert!(has_mi, "MESSAGE-INTEGRITY required for authenticated request");
+        assert!(has_fp, "FINGERPRINT required for authenticated request");
+    }
+
+    #[test]
+    fn with_credentials_empty_key_omits_integrity() {
+        let creds = crate::types::StunCredentials {
+            username: "user-no-key".to_string(),
+            key: vec![],
+        };
+        let txn = BindingTransaction::with_credentials(&creds);
+        let wire = txn.encode_request();
+
+        let decoded = StunMessage::decode(&wire).expect("decode request");
+        let has_mi =
+            decoded.attributes.iter().any(|a| matches!(a, StunAttribute::MessageIntegrity(_)));
+        let has_fp = decoded.attributes.iter().any(|a| matches!(a, StunAttribute::Fingerprint(_)));
+
+        assert!(!has_mi, "empty key must not add MESSAGE-INTEGRITY");
+        assert!(!has_fp, "empty key must not add FINGERPRINT");
+    }
+
+    #[test]
+    fn with_credentials_username_in_request() {
+        let creds = crate::types::StunCredentials {
+            username: "txn-user".to_string(),
+            key: b"secret-key".to_vec(),
+        };
+        let txn = BindingTransaction::with_credentials(&creds);
+        let decoded = StunMessage::decode(&txn.encode_request()).expect("decode");
+        let username = decoded.attributes.iter().find_map(|a| {
+            if let StunAttribute::Username(u) = a {
+                Some(u.clone())
+            } else {
+                None
+            }
+        });
+        assert_eq!(username.as_deref(), Some("txn-user"));
+    }
+
+    #[test]
+    fn encode_request_unauthenticated_has_no_mi_or_fp() {
+        let txn = BindingTransaction::new();
+        let decoded = StunMessage::decode(&txn.encode_request()).expect("decode");
+        let has_mi =
+            decoded.attributes.iter().any(|a| matches!(a, StunAttribute::MessageIntegrity(_)));
+        let has_fp = decoded.attributes.iter().any(|a| matches!(a, StunAttribute::Fingerprint(_)));
+        assert!(!has_mi);
+        assert!(!has_fp);
+    }
 }

@@ -477,4 +477,122 @@ mod tests {
         };
         assert!(!format!("{alloc:?}").is_empty());
     }
+
+    async fn start_test_turn_server() -> (tokio::task::JoinHandle<()>, SocketAddr) {
+        use crate::turn_server::{StaticCredentialStore, TurnRelayServer};
+        use std::sync::Arc;
+
+        let mut store = StaticCredentialStore::new();
+        store.insert("turnuser".to_string(), b"turnkey456".to_vec());
+        let server = TurnRelayServer::new("127.0.0.1:0".parse().unwrap(), Arc::new(store));
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let handle = tokio::spawn(async move {
+            let _ = server.run_with_ready(tx).await;
+        });
+        let addr = rx.await.expect("server ready");
+        (handle, addr)
+    }
+
+    fn turn_test_creds() -> StunCredentials {
+        StunCredentials {
+            username: "turnuser".to_string(),
+            key: b"turnkey456".to_vec(),
+        }
+    }
+
+    #[tokio::test]
+    async fn turn_client_create_permission_success() {
+        let (handle, server_addr) = start_test_turn_server().await;
+        let client = TurnClient::new(server_addr, turn_test_creds());
+        let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+
+        client.allocate(&socket).await.expect("allocate");
+        let peer: SocketAddr = "127.0.0.1:7777".parse().unwrap();
+        client.create_permission(&socket, peer).await.expect("create_permission");
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn turn_client_channel_bind_success() {
+        let (handle, server_addr) = start_test_turn_server().await;
+        let client = TurnClient::new(server_addr, turn_test_creds());
+        let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+
+        client.allocate(&socket).await.expect("allocate");
+        let peer: SocketAddr = "127.0.0.1:6666".parse().unwrap();
+        client.create_permission(&socket, peer).await.expect("permission");
+        client.channel_bind(&socket, 0x4001, peer).await.expect("channel_bind");
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn turn_client_allocate_error_on_rejection() {
+        let (handle, server_addr) = start_test_turn_server().await;
+        let bad_creds = StunCredentials {
+            username: "wrong".to_string(),
+            key: b"bad".to_vec(),
+        };
+        let client = TurnClient::new(server_addr, bad_creds);
+        let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+
+        let err = client.allocate(&socket).await.expect_err("allocate rejected");
+        assert!(err.to_string().contains("rejected"), "unexpected error: {err}");
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn turn_client_refresh_release_with_zero_lifetime() {
+        let (handle, server_addr) = start_test_turn_server().await;
+        let client = TurnClient::new(server_addr, turn_test_creds());
+        let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+
+        client.allocate(&socket).await.expect("allocate");
+        let lifetime = client.refresh(&socket, 0).await.expect("refresh release");
+        assert_eq!(lifetime, 0);
+
+        // After release, a new allocation from the same socket should succeed.
+        let alloc = client.allocate(&socket).await.expect("re-allocate after release");
+        assert!(alloc.lifetime_secs > 0);
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn turn_client_refresh_without_prior_allocate() {
+        let (handle, server_addr) = start_test_turn_server().await;
+        let client = TurnClient::new(server_addr, turn_test_creds());
+        let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+
+        // Server accepts refresh even without an active allocation.
+        let lifetime = client.refresh(&socket, 300).await.expect("refresh");
+        assert_eq!(lifetime, 300);
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn turn_client_server_addr_accessor() {
+        let addr: SocketAddr = "203.0.113.1:3478".parse().unwrap();
+        let client = TurnClient::new(addr, turn_test_creds());
+        assert_eq!(client.server_addr(), addr);
+    }
+
+    #[tokio::test]
+    async fn turn_client_full_permission_and_channel_flow() {
+        let (handle, server_addr) = start_test_turn_server().await;
+        let client = TurnClient::new(server_addr, turn_test_creds());
+        let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+
+        let alloc = client.allocate(&socket).await.expect("allocate");
+        assert!(alloc.relay_addr.port() > 0);
+
+        let peer: SocketAddr = "127.0.0.1:4444".parse().unwrap();
+        client.create_permission(&socket, peer).await.expect("permission");
+        client.channel_bind(&socket, 0x4002, peer).await.expect("bind");
+
+        handle.abort();
+    }
 }

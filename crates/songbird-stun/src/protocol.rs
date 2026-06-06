@@ -87,7 +87,7 @@ mod tests {
     use super::*;
     use crate::message::StunMessage;
     use crate::message::{MAGIC_COOKIE, MessageType, StunAttribute};
-    use std::net::{IpAddr, Ipv4Addr};
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
     #[test]
     fn binding_request_encode_decode_roundtrip() {
@@ -180,5 +180,39 @@ mod tests {
             matches!(p, PortPattern::Random { .. }),
             "expected Random when deltas disagree, got {p:?}"
         );
+    }
+
+    #[tokio::test]
+    async fn resolve_stun_server_ipv4_literal() {
+        let addr = resolve_stun_server("127.0.0.1:3478").await.expect("resolve ipv4 literal");
+        assert!(addr.is_ipv4());
+        assert_eq!(addr.ip().to_string(), "127.0.0.1");
+        assert_eq!(addr.port(), 3478);
+    }
+
+    #[tokio::test]
+    async fn resolve_stun_server_ipv6_literal() {
+        let addr = resolve_stun_server("[::1]:3478").await.expect("resolve ipv6 literal");
+        assert!(addr.is_ipv6());
+        assert_eq!(addr.port(), 3478);
+    }
+
+    #[test]
+    fn local_bind_addr_for_peer_ipv4() {
+        let server: SocketAddr = "192.0.2.1:3478".parse().unwrap();
+        assert_eq!(local_bind_addr_for_peer(server), "0.0.0.0:0");
+    }
+
+    #[test]
+    fn local_bind_addr_for_peer_ipv6() {
+        let server: SocketAddr = "[2001:db8::1]:3478".parse().unwrap();
+        assert_eq!(local_bind_addr_for_peer(server), "[::]:0");
+    }
+
+    #[tokio::test]
+    async fn resolve_stun_server_prefers_ipv4_when_both_available() {
+        // localhost resolves to both families on most systems
+        let addr = resolve_stun_server("localhost:3478").await.expect("resolve localhost");
+        assert!(addr.is_ipv4(), "expected IPv4 preference, got {addr}");
     }
 }

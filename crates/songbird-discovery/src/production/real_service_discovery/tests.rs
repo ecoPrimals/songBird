@@ -410,3 +410,75 @@ async fn list_all_includes_all_health_states() {
     assert_eq!(all.len(), 1);
     assert_eq!(all[0].service_id, "u");
 }
+
+#[tokio::test]
+async fn perform_health_check_unreachable_endpoint_is_unhealthy() {
+    use std::time::Duration;
+
+    let service = ServiceInstance {
+        id: "hc-unreachable".into(),
+        name: "Unreachable".into(),
+        endpoint: "http://127.0.0.1:1".into(),
+        capabilities: vec![],
+        health_status: "unknown".into(),
+        metadata: HashMap::new(),
+    };
+
+    let result = super::health::perform_health_check(&service, Duration::from_millis(200)).await;
+    assert_eq!(result.status, ServiceHealthStatus::Unhealthy);
+    assert!(result.error_message.is_some());
+}
+
+#[tokio::test]
+async fn perform_health_check_trailing_slash_endpoint() {
+    use std::time::Duration;
+
+    let service = ServiceInstance {
+        id: "hc-slash".into(),
+        name: "Slash".into(),
+        endpoint: "http://127.0.0.1:1/".into(),
+        capabilities: vec![],
+        health_status: "unknown".into(),
+        metadata: HashMap::new(),
+    };
+
+    let result = super::health::perform_health_check(&service, Duration::from_millis(200)).await;
+    assert_eq!(result.status, ServiceHealthStatus::Unhealthy);
+    assert!(result.error_message.is_some());
+}
+
+#[tokio::test]
+async fn perform_health_check_no_trailing_slash_endpoint() {
+    use std::time::Duration;
+
+    let service = ServiceInstance {
+        id: "hc-no-slash".into(),
+        name: "NoSlash".into(),
+        endpoint: "http://127.0.0.1:1".into(),
+        capabilities: vec![],
+        health_status: "unknown".into(),
+        metadata: HashMap::new(),
+    };
+
+    let result = super::health::perform_health_check(&service, Duration::from_millis(200)).await;
+    assert_eq!(result.status, ServiceHealthStatus::Unhealthy);
+    assert!(result.response_time_ms <= 5_000);
+}
+
+#[tokio::test]
+async fn perform_health_check_records_response_time() {
+    use std::time::Duration;
+
+    let service = ServiceInstance {
+        id: "hc-timing".into(),
+        name: "Timing".into(),
+        endpoint: "http://127.0.0.1:1".into(),
+        capabilities: vec![],
+        health_status: "unknown".into(),
+        metadata: HashMap::new(),
+    };
+
+    let result = super::health::perform_health_check(&service, Duration::from_millis(200)).await;
+    assert_eq!(result.status, ServiceHealthStatus::Unhealthy);
+    assert!(result.response_time_ms < 10_000);
+}

@@ -3,14 +3,64 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
 use super::*;
-use crate::message::StunMessage;
+use crate::message::{MessageType, StunAttribute, StunMessage};
 use crate::turn::TurnClient;
 use crate::types::StunCredentials;
+use bytes::{BufMut, BytesMut};
+use std::net::SocketAddr;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::net::UdpSocket;
 
 fn test_credentials() -> Arc<dyn CredentialStore> {
     let mut store = StaticCredentialStore::new();
     store.insert("testuser".to_string(), b"testkey123".to_vec());
     Arc::new(store)
+}
+
+fn client_creds() -> StunCredentials {
+    StunCredentials {
+        username: "testuser".to_string(),
+        key: b"testkey123".to_vec(),
+    }
+}
+
+async fn start_turn_relay() -> (tokio::task::JoinHandle<()>, SocketAddr, Arc<TurnRelayServer>) {
+    let server = Arc::new(TurnRelayServer::new(
+        "127.0.0.1:0".parse().expect("parse bind addr"),
+        test_credentials(),
+    ));
+    let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+    let server_task = Arc::clone(&server);
+    let handle = tokio::spawn(async move {
+        let _ = server_task.run_with_ready(ready_tx).await;
+    });
+    let addr = ready_rx.await.expect("server ready");
+    (handle, addr, server)
+}
+
+fn parse_stun_error_code(msg: &StunMessage) -> Option<(u16, String)> {
+    const ERROR_CODE: u16 = 0x0009;
+    msg.attributes.iter().find_map(|attr| {
+        if let StunAttribute::Unknown(ERROR_CODE, data) = attr {
+            (data.len() >= 4).then(|| {
+                let code = u16::from(data[2]) * 100 + u16::from(data[3]);
+                let reason = String::from_utf8_lossy(&data[4..]).into_owned();
+                (code, reason)
+            })
+        } else {
+            None
+        }
+    })
+}
+
+async fn recv_stun_response(socket: &UdpSocket) -> StunMessage {
+    let mut buf = [0u8; 2048];
+    let (len, _) = tokio::time::timeout(Duration::from_secs(2), socket.recv_from(&mut buf))
+        .await
+        .expect("recv timeout")
+        .expect("recv failed");
+    StunMessage::decode(&buf[..len]).expect("decode response")
 }
 
 #[tokio::test]
@@ -123,4 +173,224 @@ async fn turn_relay_stats_initial() {
     assert_eq!(stats.bytes_relayed, 0);
     assert_eq!(stats.auth_failures, 0);
     assert!(stats.start_time.is_none());
+}
+
+#[tokio::test]
+async fn turn_server_create_permission_success() {
+    let (handle, server_addr, _server) = start_turn_relay().await;
+    let client = TurnClient::new(server_addr, client_creds());
+    let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+
+    client.allocate(&socket).await.expect("allocate");
+    let peer_addr: SocketAddr = "127.0.0.1:9999".parse().unwrap();
+    client.create_permission(&socket, peer_addr).await.expect("create_permission should succeed");
+
+    handle.abort();
+}
+
+#[tokio::test]
+async fn turn_server_channel_bind_after_permission() {
+    let (handle, server_addr, _server) = start_turn_relay().await;
+    let client = TurnClient::new(server_addr, client_creds());
+    let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+
+    client.allocate(&socket).await.expect("allocate");
+    let peer_addr: SocketAddr = "127.0.0.1:8888".parse().unwrap();
+    client.create_permission(&socket, peer_addr).await.expect("create_permission");
+    client.channel_bind(&socket, 0x4000, peer_addr).await.expect("channel_bind should succeed");
+
+    handle.abort();
+}
+
+#[tokio::test]
+async fn turn_server_refresh_lifetime_zero_releases_allocation() {
+    let (handle, server_addr, server) = start_turn_relay().await;
+    let client = TurnClient::new(server_addr, client_creds());
+    let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+
+    client.allocate(&socket).await.expect("allocate");
+    let stats = server.stats().await;
+    assert_eq!(stats.active_allocations, 1);
+
+    let lifetime = client.refresh(&socket, 0).await.expect("refresh release");
+    assert_eq!(lifetime, 0);
+
+    let stats = server.stats().await;
+    assert_eq!(stats.active_allocations, 0);
+
+    handle.abort();
+}
+
+#[tokio::test]
+async fn turn_server_duplicate_allocate_returns_error_437() {
+    let (handle, server_addr, _server) = start_turn_relay().await;
+    let client = TurnClient::new(server_addr, client_creds());
+    let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+
+    client.allocate(&socket).await.expect("first allocate");
+
+    let result = client.allocate(&socket).await;
+    assert!(result.is_err(), "duplicate allocate should fail");
+    assert!(
+        result.unwrap_err().to_string().contains("rejected"),
+        "expected Allocate rejection error"
+    );
+
+    handle.abort();
+}
+
+#[tokio::test]
+async fn turn_server_duplicate_allocate_error_code_437_on_wire() {
+    let (handle, server_addr, _server) = start_turn_relay().await;
+    let creds = client_creds();
+    let client = TurnClient::new(server_addr, creds.clone());
+    let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+
+    client.allocate(&socket).await.expect("first allocate");
+
+    let request = {
+        let mut msg = StunMessage::new_binding_request();
+        msg.message_type = MessageType::Allocate;
+        msg.attributes.push(StunAttribute::Username("testuser".to_string()));
+        let mut transport_attr = BytesMut::with_capacity(4);
+        transport_attr.put_u8(17);
+        transport_attr.put_u8(0);
+        transport_attr.put_u8(0);
+        transport_attr.put_u8(0);
+        msg.attributes.push(StunAttribute::Unknown(0x0019, transport_attr.freeze()));
+        msg
+    };
+    let wire = request.encode_authenticated(&creds.key);
+    socket.send_to(&wire, server_addr).await.unwrap();
+
+    let response = recv_stun_response(&socket).await;
+    assert_eq!(response.message_type, MessageType::AllocateError);
+    let (code, reason) = parse_stun_error_code(&response).expect("ERROR-CODE attribute");
+    assert_eq!(code, 437);
+    assert!(reason.contains("Allocation mismatch"));
+
+    handle.abort();
+}
+
+#[tokio::test]
+async fn turn_server_allocate_missing_username_returns_401() {
+    let (handle, server_addr, _server) = start_turn_relay().await;
+    let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+
+    let mut msg = StunMessage::new_binding_request();
+    msg.message_type = MessageType::Allocate;
+    let mut transport_attr = BytesMut::with_capacity(4);
+    transport_attr.put_u8(17);
+    transport_attr.put_u8(0);
+    transport_attr.put_u8(0);
+    transport_attr.put_u8(0);
+    msg.attributes.push(StunAttribute::Unknown(0x0019, transport_attr.freeze()));
+    let wire = msg.encode();
+    socket.send_to(&wire, server_addr).await.unwrap();
+
+    let response = recv_stun_response(&socket).await;
+    assert_eq!(response.message_type, MessageType::AllocateError);
+    let (code, reason) = parse_stun_error_code(&response).expect("ERROR-CODE attribute");
+    assert_eq!(code, 401);
+    assert_eq!(reason, "Unauthorized");
+
+    handle.abort();
+}
+
+#[tokio::test]
+async fn turn_server_error_response_format_unauthorized() {
+    let (handle, server_addr, _server) = start_turn_relay().await;
+    let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+
+    let mut msg = StunMessage::new_binding_request();
+    msg.message_type = MessageType::Allocate;
+    msg.attributes.push(StunAttribute::Username("nobody".to_string()));
+    let wire = msg.encode();
+    socket.send_to(&wire, server_addr).await.unwrap();
+
+    let response = recv_stun_response(&socket).await;
+    assert_eq!(response.message_type, MessageType::AllocateError);
+    assert_eq!(response.transaction_id, msg.transaction_id);
+
+    let (code, reason) = parse_stun_error_code(&response).expect("ERROR-CODE");
+    assert_eq!(code, 401);
+    assert_eq!(reason, "Unauthorized");
+
+    if let StunAttribute::Unknown(0x0009, data) = &response.attributes[0] {
+        assert_eq!(data[0], 0);
+        assert_eq!(data[1], 0);
+        assert_eq!(data[2], 4);
+        assert_eq!(data[3], 1);
+        assert_eq!(&data[4..], b"Unauthorized");
+    } else {
+        panic!("expected ERROR-CODE attribute");
+    }
+
+    handle.abort();
+}
+
+#[tokio::test]
+async fn turn_server_stats_update_after_allocate() {
+    let (handle, server_addr, server) = start_turn_relay().await;
+    let before = server.stats().await;
+    assert_eq!(before.allocations_created, 0);
+    assert_eq!(before.active_allocations, 0);
+
+    let client = TurnClient::new(server_addr, client_creds());
+    let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+    client.allocate(&socket).await.expect("allocate");
+
+    let after = server.stats().await;
+    assert_eq!(after.allocations_created, 1);
+    assert_eq!(after.active_allocations, 1);
+    assert!(after.uptime_seconds <= 5);
+
+    handle.abort();
+}
+
+#[tokio::test]
+async fn turn_server_refresh_unauthorized_returns_401() {
+    let (handle, server_addr, _server) = start_turn_relay().await;
+    let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+
+    let mut msg = StunMessage::new_binding_request();
+    msg.message_type = MessageType::Refresh;
+    let wire = msg.encode();
+    socket.send_to(&wire, server_addr).await.unwrap();
+
+    let response = recv_stun_response(&socket).await;
+    assert_eq!(response.message_type, MessageType::RefreshError);
+    let (code, reason) = parse_stun_error_code(&response).expect("ERROR-CODE");
+    assert_eq!(code, 401);
+    assert_eq!(reason, "Unauthorized");
+
+    handle.abort();
+}
+
+#[tokio::test]
+async fn turn_server_auth_failure_increments_stats() {
+    let (handle, server_addr, server) = start_turn_relay().await;
+    let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+
+    let mut msg = StunMessage::new_binding_request();
+    msg.message_type = MessageType::Allocate;
+    msg.attributes.push(StunAttribute::Username("baduser".to_string()));
+    let wire = msg.encode();
+    socket.send_to(&wire, server_addr).await.unwrap();
+    let _ = recv_stun_response(&socket).await;
+
+    let stats = server.stats().await;
+    assert_eq!(stats.auth_failures, 1);
+
+    handle.abort();
+}
+
+#[tokio::test]
+async fn static_credential_store_len_and_is_empty() {
+    let mut store = StaticCredentialStore::new();
+    assert!(store.is_empty());
+    assert_eq!(store.len(), 0);
+    store.insert("a".to_string(), b"k".to_vec());
+    assert!(!store.is_empty());
+    assert_eq!(store.len(), 1);
 }

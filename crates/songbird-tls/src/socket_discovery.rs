@@ -585,4 +585,115 @@ mod tests {
             MockEnv::new().set("AI_PROVIDER_SOCKET", "/a.sock").set("NEURAL_API_SOCKET", "/n.sock");
         assert_eq!(discover_neural_api_socket_with_env(None, &env), "/a.sock");
     }
+
+    #[test]
+    fn xdg_prefers_crypto_sock_when_both_exist() {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static COUNTER: AtomicU32 = AtomicU32::new(0);
+        let test_id = COUNTER.fetch_add(1, Ordering::SeqCst);
+        let test_dir = format!("/tmp/test_xdg_both_sockets_{test_id}");
+        let env = MockEnv::new().set("XDG_RUNTIME_DIR", &test_dir);
+
+        let crypto_path = PathBuf::from(format!("{test_dir}/biomeos/crypto.sock"));
+        let security_path = PathBuf::from(format!("{test_dir}/biomeos/security.sock"));
+        create_dummy_socket(&crypto_path);
+        create_dummy_socket(&security_path);
+
+        let discovered = discover_security_socket_with_env(None, &env);
+        assert_eq!(discovered, crypto_path.to_string_lossy().into_owned());
+
+        fs::remove_file(&crypto_path).unwrap();
+        fs::remove_file(&security_path).unwrap();
+        fs::remove_dir_all(format!("{test_dir}/biomeos")).unwrap();
+        fs::remove_dir_all(&test_dir).unwrap();
+    }
+
+    #[test]
+    fn xdg_falls_back_to_security_sock_when_crypto_missing() {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static COUNTER: AtomicU32 = AtomicU32::new(0);
+        let test_id = COUNTER.fetch_add(1, Ordering::SeqCst);
+        let test_dir = format!("/tmp/test_xdg_security_only_{test_id}");
+        let env = MockEnv::new().set("XDG_RUNTIME_DIR", &test_dir);
+
+        let security_path = PathBuf::from(format!("{test_dir}/biomeos/security.sock"));
+        create_dummy_socket(&security_path);
+
+        let discovered = discover_security_socket_with_env(None, &env);
+        assert_eq!(discovered, security_path.to_string_lossy().into_owned());
+
+        fs::remove_file(&security_path).unwrap();
+        fs::remove_dir_all(format!("{test_dir}/biomeos")).unwrap();
+        fs::remove_dir_all(&test_dir).unwrap();
+    }
+
+    #[test]
+    fn xdg_runtime_dir_set_without_sockets_falls_through_to_default() {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static COUNTER: AtomicU32 = AtomicU32::new(0);
+        let test_id = COUNTER.fetch_add(1, Ordering::SeqCst);
+        let test_dir = format!("/tmp/test_xdg_empty_biomeos_{test_id}");
+        fs::create_dir_all(format!("{test_dir}/biomeos")).unwrap();
+        let env = MockEnv::new().set("XDG_RUNTIME_DIR", &test_dir);
+
+        let discovered = discover_security_socket_with_env(None, &env);
+        assert_eq!(discovered, "/tmp/biomeos/security.sock");
+
+        fs::remove_dir_all(format!("{test_dir}/biomeos")).unwrap();
+        fs::remove_dir_all(&test_dir).unwrap();
+    }
+
+    #[test]
+    fn neural_xdg_prefers_ai_sock_when_both_exist() {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static COUNTER: AtomicU32 = AtomicU32::new(0);
+        let test_id = COUNTER.fetch_add(1, Ordering::SeqCst);
+        let test_dir = format!("/tmp/test_xdg_neural_both_{test_id}");
+        let env = MockEnv::new().set("XDG_RUNTIME_DIR", &test_dir);
+
+        let ai_path = PathBuf::from(format!("{test_dir}/biomeos/ai.sock"));
+        let neural_api_path = PathBuf::from(format!("{test_dir}/biomeos/neural-api.sock"));
+        create_dummy_socket(&ai_path);
+        create_dummy_socket(&neural_api_path);
+
+        let discovered = discover_neural_api_socket_with_env(None, &env);
+        assert_eq!(discovered, ai_path.to_string_lossy().into_owned());
+
+        fs::remove_file(&ai_path).unwrap();
+        fs::remove_file(&neural_api_path).unwrap();
+        fs::remove_dir_all(format!("{test_dir}/biomeos")).unwrap();
+        fs::remove_dir_all(&test_dir).unwrap();
+    }
+
+    #[test]
+    fn legacy_family_id_xdg_socket_discovered_when_present() {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static COUNTER: AtomicU32 = AtomicU32::new(0);
+        let test_id = COUNTER.fetch_add(1, Ordering::SeqCst);
+        let test_dir = format!("/tmp/test_xdg_family_id_{test_id}");
+        let env = MockEnv::new().set("XDG_RUNTIME_DIR", &test_dir);
+
+        let legacy_path = PathBuf::from(format!("{test_dir}/biomeos/crypto-testfamily.sock"));
+        create_dummy_socket(&legacy_path);
+
+        let discovered = discover_xdg_socket_with_env("crypto", "testfamily", &env);
+        assert_eq!(discovered, Some(legacy_path.to_string_lossy().into_owned()));
+
+        fs::remove_file(&legacy_path).unwrap();
+        fs::remove_dir_all(format!("{test_dir}/biomeos")).unwrap();
+        fs::remove_dir_all(&test_dir).unwrap();
+    }
+
+    #[test]
+    fn legacy_family_id_xdg_returns_none_when_socket_missing() {
+        let env = MockEnv::new().set("XDG_RUNTIME_DIR", "/tmp/nonexistent-xdg-runtime-xyz");
+        assert!(discover_xdg_socket_with_env("crypto", "missing", &env).is_none());
+    }
+
+    #[test]
+    fn security_socket_env_var_respected() {
+        let env = MockEnv::new().set("SECURITY_SOCKET", "/run/custom/security.sock");
+        let discovered = discover_security_socket_with_env(None, &env);
+        assert_eq!(discovered, "/run/custom/security.sock");
+    }
 }

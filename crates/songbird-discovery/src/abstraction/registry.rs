@@ -316,6 +316,7 @@ pub struct RegistryStatistics {
 mod tests {
     use super::*;
     use crate::abstraction::capabilities::CapabilityMatcher;
+    use crate::abstraction::providers::ProviderConfig;
 
     #[tokio::test]
     async fn test_provider_registry() {
@@ -340,5 +341,148 @@ mod tests {
         assert_eq!(stats.total_providers, 0);
         assert_eq!(stats.healthy_providers, 0);
         assert_eq!(stats.total_factories, 0);
+    }
+
+    #[tokio::test]
+    async fn register_factory_and_create_provider() {
+        use crate::abstraction::adapters::{
+            ProviderFactory, ProviderFactoryImpl, StaticProviderFactory,
+        };
+
+        let registry = ProviderRegistry::new();
+        registry
+            .register_factory(ProviderFactoryImpl::Static(StaticProviderFactory))
+            .await
+            .unwrap();
+
+        let factory = StaticProviderFactory;
+        let config = factory.default_config("static-1".into(), "Static One".into());
+        registry.create_provider("static", config).await.unwrap();
+
+        let providers = registry.list_providers().await;
+        assert_eq!(providers.len(), 1);
+        assert_eq!(providers[0].id, "static-1");
+    }
+
+    #[tokio::test]
+    async fn register_factory_duplicate_fails() {
+        use crate::abstraction::adapters::{ProviderFactoryImpl, StaticProviderFactory};
+
+        let registry = ProviderRegistry::new();
+        registry
+            .register_factory(ProviderFactoryImpl::Static(StaticProviderFactory))
+            .await
+            .unwrap();
+        let err =
+            registry.register_factory(ProviderFactoryImpl::Static(StaticProviderFactory)).await;
+        assert!(err.is_err());
+    }
+
+    #[tokio::test]
+    async fn create_provider_unknown_factory_fails() {
+        let registry = ProviderRegistry::new();
+        let config = ProviderConfig {
+            id: "missing".into(),
+            name: "Missing".into(),
+            parameters: HashMap::new(),
+            environment: HashMap::new(),
+            timeout_ms: None,
+            retry_config: None,
+        };
+        let err = registry.create_provider("nonexistent", config).await;
+        assert!(err.is_err());
+    }
+
+    #[tokio::test]
+    async fn find_providers_returns_matching_ids() {
+        use crate::abstraction::adapters::{
+            ProviderFactory, ProviderFactoryImpl, StaticProviderFactory,
+        };
+
+        let registry = ProviderRegistry::new();
+        registry
+            .register_factory(ProviderFactoryImpl::Static(StaticProviderFactory))
+            .await
+            .unwrap();
+        let config = StaticProviderFactory.default_config("find-me".into(), "Find Me".into());
+        registry.create_provider("static", config).await.unwrap();
+
+        let query = CapabilityQuery::new(
+            CapabilityMatcher::new().require(DiscoveryCapability::ServiceDiscovery),
+        );
+        let ids = registry.find_providers(&query).await.unwrap();
+        assert!(ids.contains(&"find-me".to_string()));
+    }
+
+    #[tokio::test]
+    async fn get_best_provider_returns_top_match() {
+        use crate::abstraction::adapters::{
+            ProviderFactory, ProviderFactoryImpl, StaticProviderFactory,
+        };
+
+        let registry = ProviderRegistry::new();
+        registry
+            .register_factory(ProviderFactoryImpl::Static(StaticProviderFactory))
+            .await
+            .unwrap();
+        let config = StaticProviderFactory.default_config("best-one".into(), "Best One".into());
+        registry.create_provider("static", config).await.unwrap();
+
+        let query = CapabilityQuery::new(
+            CapabilityMatcher::new().require(DiscoveryCapability::ServiceListing),
+        );
+        let best = registry.get_best_provider(&query).await.unwrap();
+        assert_eq!(best, "best-one");
+    }
+
+    #[tokio::test]
+    async fn provider_lifecycle_register_find_unregister() {
+        use crate::abstraction::adapters::{
+            ProviderFactory, ProviderFactoryImpl, StaticProviderFactory,
+        };
+
+        let registry = ProviderRegistry::new();
+        registry
+            .register_factory(ProviderFactoryImpl::Static(StaticProviderFactory))
+            .await
+            .unwrap();
+        let config = StaticProviderFactory.default_config("lifecycle".into(), "Lifecycle".into());
+        registry.create_provider("static", config).await.unwrap();
+
+        let meta = registry.get_provider_metadata("lifecycle").await.unwrap();
+        assert_eq!(meta.id, "lifecycle");
+
+        registry.unregister_provider("lifecycle").await.unwrap();
+        assert!(registry.list_providers().await.is_empty());
+        assert!(registry.get_provider_metadata("lifecycle").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn unregister_unknown_provider_fails() {
+        let registry = ProviderRegistry::new();
+        let err = registry.unregister_provider("does-not-exist").await;
+        assert!(err.is_err());
+    }
+
+    #[tokio::test]
+    async fn register_provider_duplicate_fails() {
+        use crate::abstraction::adapters::{
+            ProviderFactory, ProviderFactoryImpl, StaticProviderFactory,
+        };
+
+        let registry = ProviderRegistry::new();
+        registry
+            .register_factory(ProviderFactoryImpl::Static(StaticProviderFactory))
+            .await
+            .unwrap();
+        let config = StaticProviderFactory.default_config("dup".into(), "Dup".into());
+        registry.create_provider("static", config).await.unwrap();
+
+        let duplicate = StaticProviderFactory
+            .create_provider(StaticProviderFactory.default_config("dup".into(), "Dup Again".into()))
+            .await
+            .unwrap();
+        let err = registry.register_provider(duplicate).await;
+        assert!(err.is_err());
     }
 }

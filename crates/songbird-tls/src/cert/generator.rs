@@ -319,4 +319,115 @@ mod tests {
         assert_eq!(CertGenerationMode::Standalone, CertGenerationMode::Standalone);
         assert_ne!(CertGenerationMode::Standalone, CertGenerationMode::Auto);
     }
+
+    /// Parse placeholder DER validity timestamps written by [`create_simple_cert_der`].
+    fn parse_placeholder_validity(der: &[u8]) -> (i64, i64) {
+        assert!(der.len() >= 16, "DER too short for validity timestamps");
+        let not_before = i64::from_le_bytes(der[der.len() - 16..der.len() - 8].try_into().unwrap());
+        let not_after = i64::from_le_bytes(der[der.len() - 8..].try_into().unwrap());
+        (not_before, not_after)
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_validity_period_bounds_in_der() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let validity_days = 45;
+        let before = Utc::now();
+        let (cert, _) = generator.generate_self_signed("bounds.local", validity_days).unwrap();
+        let after = Utc::now();
+        let der = &cert.certificate_list[0].cert_data;
+        let (not_before, not_after) = parse_placeholder_validity(der);
+        let expected_span = i64::from(validity_days) * 86_400;
+        assert!(
+            (not_after - not_before) - expected_span <= 1,
+            "validity span should match requested days"
+        );
+        assert!(not_before >= before.timestamp() - 2);
+        assert!(not_before <= after.timestamp() + 2);
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_zero_and_long_validity_differ_in_der() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let (cert_zero, _) = generator.generate_self_signed("z.local", 0).unwrap();
+        let (cert_year, _) = generator.generate_self_signed("y.local", 365).unwrap();
+        let (zero_before, zero_after) =
+            parse_placeholder_validity(&cert_zero.certificate_list[0].cert_data);
+        let (year_before, year_after) =
+            parse_placeholder_validity(&cert_year.certificate_list[0].cert_data);
+        assert_eq!(zero_after - zero_before, 0);
+        assert_eq!(year_after - year_before, 365 * 86_400);
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_cert_data_unique_per_generation() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let domain = "serial-check.local";
+        let (cert_a, _) = generator.generate_self_signed(domain, 30).unwrap();
+        let (cert_b, _) = generator.generate_self_signed(domain, 30).unwrap();
+        assert_ne!(
+            cert_a.certificate_list[0].cert_data, cert_b.certificate_list[0].cert_data,
+            "each generation should produce distinct certificate bytes"
+        );
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_empty_domain_generates_non_empty_cert() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let (cert, key) = generator.generate_self_signed("", 7).unwrap();
+        assert!(!cert.certificate_list[0].cert_data.is_empty());
+        assert_eq!(key.verifying_key().as_bytes().len(), 32);
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_long_domain_embedded_in_der() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let domain = "a".repeat(512);
+        let (cert, _) = generator.generate_self_signed(&domain, 14).unwrap();
+        let der = &cert.certificate_list[0].cert_data;
+        assert!(
+            der.windows(domain.len()).any(|w| w == domain.as_bytes()),
+            "long domain should be embedded verbatim in placeholder DER"
+        );
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_special_characters_in_domain() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let domains = [
+            "*.wildcard.example.com",
+            "host/with/slashes",
+            "quote\"d&<>chars",
+            "unicode-🔐-host.local",
+        ];
+        for domain in domains {
+            let (cert, _) = generator.generate_self_signed(domain, 10).unwrap();
+            let der = &cert.certificate_list[0].cert_data;
+            assert!(
+                der.windows(domain.len()).any(|w| w == domain.as_bytes()),
+                "domain {domain:?} should appear in DER"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_certificate_entry_has_no_extensions() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let (cert, _) = generator.generate_self_signed("no-ext.local", 90).unwrap();
+        let entry = &cert.certificate_list[0];
+        assert!(entry.extensions.is_empty());
+        assert!(cert.certificate_request_context.is_empty());
+    }
+
+    #[test]
+    fn cert_generation_mode_default_is_auto() {
+        assert_eq!(CertGenerationMode::default(), CertGenerationMode::Auto);
+    }
 }
