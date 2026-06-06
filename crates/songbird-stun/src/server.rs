@@ -416,7 +416,10 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
+    use crate::client::StunClient;
     use crate::message::StunMessage;
+    use std::sync::Arc;
+    use std::time::Duration;
     use std::time::Instant;
 
     #[test]
@@ -546,5 +549,109 @@ mod tests {
             stats.seconds_since_last_request().is_some(),
             "elapsed since last request should be defined once last_request is set"
         );
+    }
+
+    async fn start_server_for_test() -> (tokio::task::JoinHandle<()>, SocketAddr, Arc<StunServer>) {
+        let bind_addr: SocketAddr = "127.0.0.1:0".parse().expect("parse bind addr");
+        let server = Arc::new(StunServer::new(bind_addr));
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+        let server_for_task = Arc::clone(&server);
+        let handle = tokio::spawn(async move {
+            let _ = server_for_task.run_with_ready(ready_tx).await;
+        });
+        let addr = ready_rx.await.expect("server should signal readiness");
+        (handle, addr, server)
+    }
+
+    #[tokio::test]
+    async fn run_loop_sets_start_time_when_started() {
+        let (handle, _addr, server) = start_server_for_test().await;
+        let stats = server.stats().await;
+        assert!(
+            stats.start_time.is_some(),
+            "run loop should record start_time once socket is bound"
+        );
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn run_loop_increments_requests_handled_on_binding_request() {
+        let (handle, addr, server) = start_server_for_test().await;
+
+        let client = StunClient::with_timeout(Duration::from_secs(2));
+        client
+            .discover_public_address(&addr.to_string())
+            .await
+            .expect("binding request should succeed");
+
+        let stats = server.stats().await;
+        assert_eq!(stats.requests_handled, 1, "one valid binding request handled");
+        assert!(
+            stats.last_request.is_some(),
+            "last_request should be updated after handling a binding request"
+        );
+        assert_eq!(stats.errors, 0, "valid request should not increment errors");
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn run_loop_increments_errors_on_malformed_packet() {
+        let (handle, addr, server) = start_server_for_test().await;
+
+        let socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.expect("bind client");
+        socket.send_to(&[0u8; 32], addr).await.expect("send malformed packet");
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        let stats = server.stats().await;
+        assert!(
+            stats.errors >= 1,
+            "malformed STUN packet should increment error counter, got errors={}",
+            stats.errors
+        );
+        assert_eq!(
+            stats.requests_handled, 0,
+            "malformed packet should not count as handled request"
+        );
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn run_loop_increments_errors_on_non_binding_request() {
+        let (handle, addr, server) = start_server_for_test().await;
+
+        let socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.expect("bind client");
+        let mut msg = StunMessage::new_binding_request();
+        msg.message_type = MessageType::BindingResponse;
+        socket.send_to(&msg.encode(), addr).await.expect("send non-request");
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        let stats = server.stats().await;
+        assert!(stats.errors >= 1, "non-binding STUN message should increment error counter");
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn run_loop_multiple_requests_accumulate_stats() {
+        let (handle, addr, server) = start_server_for_test().await;
+        let client = StunClient::with_timeout(Duration::from_secs(2));
+        let addr_str = addr.to_string();
+
+        for _ in 0..3 {
+            client
+                .discover_public_address(&addr_str)
+                .await
+                .expect("each binding request should succeed");
+        }
+
+        let stats = server.stats().await;
+        assert_eq!(stats.requests_handled, 3, "stats should accumulate across requests");
+        assert!(stats.uptime_seconds() <= 5, "uptime should be computed from start_time");
+
+        handle.abort();
     }
 }

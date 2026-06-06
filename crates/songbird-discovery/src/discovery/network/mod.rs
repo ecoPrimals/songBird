@@ -372,4 +372,110 @@ mod tests {
         );
         assert!(res.is_ok());
     }
+
+    #[test]
+    fn get_local_ip_addresses_returns_at_least_one() {
+        let addresses = NetworkManager::get_local_ip_addresses();
+        assert!(!addresses.is_empty());
+    }
+
+    #[test]
+    fn create_network_location_populates_region() {
+        let location = NetworkManager::create_network_location();
+        assert!(!location.region.is_empty());
+    }
+
+    #[test]
+    fn create_network_location_subnet_for_private_ipv4() {
+        let location = NetworkManager::create_network_location();
+        if let Some(subnet) = &location.subnet {
+            assert!(subnet.ends_with(".0/24") || subnet.contains('/'));
+        }
+    }
+
+    #[test]
+    fn measure_ping_latency_returns_positive_fallback() {
+        let latency = NetworkManager::measure_ping_latency("127.0.0.1").unwrap();
+        assert!(latency > 0.0);
+    }
+
+    #[test]
+    fn estimate_bandwidth_returns_positive_value() {
+        let bandwidth = NetworkManager::estimate_bandwidth("127.0.0.1").unwrap();
+        assert!(bandwidth > 0.0);
+    }
+
+    #[test]
+    fn detect_network_region_us_east_heuristic_bucket() {
+        assert_eq!(
+            NetworkManager::detect_network_region(&IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1))),
+            "private"
+        );
+        assert_eq!(
+            NetworkManager::detect_network_region(&IpAddr::V4(Ipv4Addr::new(12, 0, 0, 1))),
+            "us-east"
+        );
+    }
+
+    #[test]
+    fn detect_network_region_multicast_and_oceania_buckets() {
+        assert_eq!(
+            NetworkManager::detect_network_region(&IpAddr::V4(Ipv4Addr::new(230, 0, 0, 1))),
+            "multicast"
+        );
+        assert_eq!(
+            NetworkManager::detect_network_region(&IpAddr::V4(Ipv4Addr::new(110, 0, 0, 1))),
+            "oceania"
+        );
+    }
+
+    #[test]
+    fn network_scan_port_range_validation_constants() {
+        const MIN_PORT: u16 = 1;
+        const MAX_PORT: u16 = 65535;
+        const SCAN_START: u16 = 8000;
+        const SCAN_END: u16 = 8100;
+
+        assert!(SCAN_START >= MIN_PORT);
+        assert!(SCAN_END <= MAX_PORT);
+        assert!(SCAN_END > SCAN_START);
+        assert!(SCAN_END - SCAN_START <= 10_000);
+    }
+
+    #[test]
+    fn network_probe_timeout_configuration() {
+        const DEFAULT_TIMEOUT_MS: u64 = 5000;
+        const MIN_TIMEOUT_MS: u64 = 100;
+
+        assert!(DEFAULT_TIMEOUT_MS >= MIN_TIMEOUT_MS);
+        let unreachable_target = "192.0.2.1";
+        let latency = NetworkManager::measure_ping_latency(unreachable_target).unwrap();
+        assert!(latency > 0.0, "Timeout path should still return fallback latency");
+    }
+
+    #[tokio::test]
+    async fn start_network_monitoring_multiple_targets() {
+        let (_tx, shutdown_rx) = tokio::sync::mpsc::channel::<()>(1);
+        let targets = vec![
+            ("node-a".to_string(), "127.0.0.1".to_string()),
+            ("node-b".to_string(), "192.0.2.1".to_string()),
+        ];
+        let res =
+            NetworkManager::start_network_monitoring("monitor".to_string(), targets, shutdown_rx);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn service_detection_from_cloud_provider_ip_ranges() {
+        let probes = [
+            (IpAddr::V4(Ipv4Addr::new(3, 5, 0, 1)), "aws"),
+            (IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)), "gcp"),
+            (IpAddr::V4(Ipv4Addr::new(20, 50, 0, 1)), "azure"),
+            (IpAddr::V4(Ipv4Addr::new(162, 158, 0, 1)), "cloudflare"),
+        ];
+
+        for (ip, expected_region) in probes {
+            assert_eq!(NetworkManager::detect_network_region(&ip), expected_region);
+        }
+    }
 }

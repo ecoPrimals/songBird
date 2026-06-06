@@ -6,7 +6,8 @@
 use crate::StunServer;
 use crate::client::StunClient;
 use crate::error::StunError;
-use crate::types::NatType;
+use crate::message::{StunAttribute, StunMessage};
+use crate::types::{NatType, PortPattern, StunCredentials};
 use songbird_config::timeouts::TimeoutConfig;
 use songbird_types::constants::DEFAULT_STUN_SERVER_1;
 use std::net::SocketAddr;
@@ -284,4 +285,133 @@ async fn discover_public_endpoint_multi_two_servers_classifies_cone() {
         NatType::PortRestrictedCone,
         "loopback has no NAT, so both servers reflect the same port → cone classification"
     );
+}
+
+#[tokio::test]
+async fn probe_port_pattern_local_server_detects_pattern() {
+    let (server_handle, actual_addr) = start_local_stun_server().await;
+    let client = StunClient::with_timeout(Duration::from_secs(2));
+    let pattern =
+        timeout(Duration::from_secs(5), client.probe_port_pattern(&actual_addr.to_string(), 5))
+            .await
+            .expect("probe should finish within timeout")
+            .expect("probe should succeed against local STUN server");
+    server_handle.abort();
+
+    match pattern {
+        PortPattern::Sequential {
+            step,
+            confidence,
+            ..
+        } => {
+            assert!(
+                confidence > 0.0,
+                "sequential pattern should have positive confidence, got {confidence}"
+            );
+            assert!(
+                step.abs() <= 100,
+                "sequential step should be within detection bounds, got {step}"
+            );
+        }
+        PortPattern::Random {
+            observed,
+        } => {
+            assert!(observed.len() >= 2, "random pattern should list at least two observed ports");
+        }
+        PortPattern::Unknown => {
+            panic!(
+                "local loopback server should yield enough successful probes for pattern detection"
+            );
+        }
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn probe_port_pattern_unreachable_server_returns_unknown() {
+    let client = StunClient::with_timeout(Duration::from_millis(50));
+    let pattern = client
+        .probe_port_pattern("127.0.0.1:59999", 4)
+        .await
+        .expect("probe should not error when probes fail individually");
+    assert_eq!(
+        pattern,
+        PortPattern::Unknown,
+        "insufficient successful probes should yield Unknown"
+    );
+}
+
+#[tokio::test]
+async fn probe_port_pattern_clamps_probes_to_minimum_two() {
+    let (server_handle, actual_addr) = start_local_stun_server().await;
+    let client = StunClient::with_timeout(Duration::from_secs(2));
+    let pattern =
+        timeout(Duration::from_secs(5), client.probe_port_pattern(&actual_addr.to_string(), 1))
+            .await
+            .expect("probe timeout")
+            .expect("probe should succeed with clamped minimum");
+    server_handle.abort();
+
+    assert!(
+        !matches!(pattern, PortPattern::Unknown),
+        "clamped to 2 probes against live server should detect a pattern, got {pattern:?}"
+    );
+}
+
+#[tokio::test]
+async fn with_credentials_discover_public_address_succeeds() {
+    let creds = StunCredentials {
+        username: "beacon-user".to_string(),
+        key: b"beacon-secret-key".to_vec(),
+    };
+    let client = StunClient::with_timeout(Duration::from_secs(2)).with_credentials(creds.clone());
+    let (server_handle, actual_addr) = start_local_stun_server().await;
+
+    let addr =
+        timeout(Duration::from_secs(3), client.discover_public_address(&actual_addr.to_string()))
+            .await
+            .expect("timeout")
+            .expect("authenticated client should discover via local server");
+    server_handle.abort();
+
+    assert!(addr.ip().is_loopback(), "expected loopback mapped address, got {addr}");
+}
+
+#[test]
+fn with_credentials_binding_request_includes_message_integrity() {
+    let creds = StunCredentials {
+        username: "beacon-user".to_string(),
+        key: b"beacon-secret-key".to_vec(),
+    };
+    let mut msg = StunMessage::new_binding_request();
+    msg.attributes.push(StunAttribute::Username(creds.username.clone()));
+    let wire = msg.encode_authenticated(&creds.key);
+
+    assert!(
+        wire.len() > 20,
+        "authenticated binding request should include integrity + fingerprint attributes"
+    );
+    let decoded = StunMessage::decode(&wire).expect("wire should decode");
+    assert!(
+        decoded
+            .attributes
+            .iter()
+            .any(|a| matches!(a, StunAttribute::Username(u) if u == "beacon-user")),
+        "USERNAME attribute should be present in authenticated request"
+    );
+}
+
+#[tokio::test]
+async fn discover_public_address_racing_all_servers_fail() {
+    let client = StunClient::with_timeout(Duration::from_millis(100));
+    let err = client
+        .discover_public_address_racing(&["127.0.0.1:59998", "127.0.0.1:59997"])
+        .await
+        .expect_err("all unreachable servers should fail");
+    assert!(
+        matches!(err, StunError::AllServersFailed(_)),
+        "expected AllServersFailed, got {err:?}"
+    );
+    if let StunError::AllServersFailed(msg) = err {
+        assert!(msg.contains("2"), "error message should mention server count: {msg}");
+    }
 }

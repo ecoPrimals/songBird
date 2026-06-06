@@ -307,6 +307,9 @@ impl DiscoveryProvider for StaticProviderAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::abstraction::providers::DiscoveryProvider;
+    use crate::traits::ServiceInfo;
+    use crate::traits::service::ServiceStatus;
     use songbird_config;
     use songbird_types::unified_constants::*;
 
@@ -332,5 +335,184 @@ mod tests {
             adapter.metadata().capabilities.contains(&DiscoveryCapability::ServiceRegistration)
         );
         assert!(adapter.health_check().await.expect("health check"));
+    }
+
+    fn sample_service(id: &str, name: &str, service_type: &str, port: u16) -> ServiceInfo {
+        use chrono::Utc;
+        use std::collections::HashMap;
+
+        ServiceInfo {
+            service_id: id.to_string(),
+            name: name.to_string(),
+            version: "1.0.0".to_string(),
+            service_type: service_type.to_string(),
+            description: None,
+            endpoints: vec![],
+            health_check_endpoint: Some(format!("http://localhost:{port}/health")),
+            metadata: HashMap::new(),
+            tags: vec![],
+            dependencies: vec![],
+            status: ServiceStatus::Running,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            instance_id: format!("{id}-instance"),
+            host: "localhost".to_string(),
+            port,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_register_unregister_and_exists_lifecycle() {
+        let adapter = StaticProviderAdapter::new_native("lifecycle".to_string(), vec![]);
+        let service = sample_service("svc-1", "API", "api", 8080);
+
+        adapter.register(service.clone()).await.unwrap();
+        assert!(adapter.exists("svc-1").await.unwrap());
+
+        adapter.unregister("svc-1").await.unwrap();
+        assert!(!adapter.exists("svc-1").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_discover_filter_by_name_and_type() {
+        use crate::traits::ServiceQuery;
+
+        let adapter = StaticProviderAdapter::new_native(
+            "filters".to_string(),
+            vec![
+                sample_service("api-1", "User API", "api", 8080),
+                sample_service("db-1", "Database", "storage", 5432),
+            ],
+        );
+
+        let mut by_name = ServiceQuery::new();
+        by_name.name = Some("User API".to_string());
+        let name_matches = adapter.discover(by_name).await.unwrap();
+        assert_eq!(name_matches.len(), 1);
+        assert_eq!(name_matches[0].service_id, "api-1");
+
+        let mut by_type = ServiceQuery::new();
+        by_type.service_type = Some("storage".to_string());
+        let type_matches = adapter.discover(by_type).await.unwrap();
+        assert_eq!(type_matches.len(), 1);
+        assert_eq!(type_matches[0].service_id, "db-1");
+    }
+
+    #[tokio::test]
+    async fn test_discover_no_match_returns_empty() {
+        use crate::traits::ServiceQuery;
+
+        let adapter = StaticProviderAdapter::new_native(
+            "empty".to_string(),
+            vec![sample_service("svc-1", "API", "api", 8080)],
+        );
+
+        let mut query = ServiceQuery::new();
+        query.name = Some("Nonexistent".to_string());
+        assert!(adapter.discover(query).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_list_all_and_metadata_update() {
+        use std::collections::HashMap;
+
+        let adapter = StaticProviderAdapter::new_native(
+            "list".to_string(),
+            vec![sample_service("svc-1", "API", "api", 8080)],
+        );
+
+        let all = adapter.list_all().await.unwrap();
+        assert_eq!(all.len(), 1);
+
+        let mut meta = HashMap::new();
+        meta.insert("env".to_string(), "test".to_string());
+        adapter.update_metadata("svc-1", meta).await.unwrap();
+
+        let updated = adapter.list_all().await.unwrap();
+        assert_eq!(
+            updated[0].metadata.get("env"),
+            Some(&serde_json::Value::String("test".to_string()))
+        );
+    }
+
+    #[tokio::test]
+    async fn test_health_status_and_metrics_reporting() {
+        use crate::traits::discovery::ServiceHealthStatus;
+
+        let adapter = StaticProviderAdapter::new_native(
+            "health".to_string(),
+            vec![sample_service("svc-1", "API", "api", 8080)],
+        );
+
+        assert!(adapter.health_check().await.unwrap());
+        adapter.update_health("svc-1", ServiceHealthStatus::Healthy).await.unwrap();
+
+        let metrics = adapter.get_service_metrics("svc-1").await.unwrap();
+        assert_eq!(metrics.service_id, "svc-1");
+        assert!(metrics.average_response_time_ms > 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_load_balancing_hints_for_service_name() {
+        let adapter = StaticProviderAdapter::new_native(
+            "lb".to_string(),
+            vec![
+                sample_service("api-1", "User API", "api", 8080),
+                sample_service("api-2", "User API", "api", 8081),
+            ],
+        );
+
+        let hints = adapter.get_load_balancing_hints("User API").await.unwrap();
+        assert_eq!(hints.preferred_instances.len(), 2);
+        assert_eq!(hints.weights.get("api-1"), Some(&1.0));
+    }
+
+    #[tokio::test]
+    async fn test_initialize_and_shutdown_lifecycle() {
+        let mut adapter = StaticProviderAdapter::new_native("lifecycle-ops".to_string(), vec![]);
+        let config = ProviderConfig {
+            id: "lifecycle-ops".to_string(),
+            name: "Lifecycle".to_string(),
+            parameters: HashMap::new(),
+            environment: HashMap::new(),
+            timeout_ms: Some(1000),
+            retry_config: None,
+        };
+
+        adapter.initialize(config).await.unwrap();
+        adapter.shutdown().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_factory_creates_provider_with_configured_services() {
+        let factory = StaticProviderFactory;
+        let mut config = factory.default_config("configured".to_string(), "Configured".to_string());
+        config.parameters.insert(
+            "services".to_string(),
+            serde_json::json!([{
+                "service_id": "custom-svc",
+                "name": "Custom",
+                "version": "2.0.0",
+                "service_type": "worker",
+                "endpoints": [],
+                "metadata": {},
+                "tags": [],
+                "dependencies": [],
+                "status": "Running",
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-01T00:00:00Z",
+                "instance_id": "custom-svc-1",
+                "host": "localhost",
+                "port": 9000
+            }]),
+        );
+
+        let provider = factory.create_provider(config).await.unwrap();
+        match provider {
+            DiscoveryProviderImpl::Static(adapter) => {
+                assert!(adapter.exists("custom-svc").await.unwrap());
+            }
+            _ => panic!("Expected static provider"),
+        }
     }
 }

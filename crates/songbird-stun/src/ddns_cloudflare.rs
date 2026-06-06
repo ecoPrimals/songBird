@@ -379,4 +379,105 @@ mod tests {
         };
         assert!(!format!("{req:?}").is_empty());
     }
+
+    #[tokio::test]
+    async fn cf_api_success_false_returns_provider_error() {
+        let error_body = r#"{"success":false,"errors":[{"code":1001,"message":"Invalid token"}]}"#;
+        let http = mock_http_ok(error_body);
+        let provider = CloudflareDdnsProvider::new("tok".into(), "zone1".into(), http);
+        let config = DdnsConfig {
+            enabled: true,
+            provider: "cloudflare".into(),
+            hostname: Some("node.example.com".into()),
+            ttl: 60,
+            zone: None,
+            server: None,
+            key_name: None,
+        };
+        let err = provider
+            .update(&config, IpAddr::V4(Ipv4Addr::new(203, 0, 113, 1)))
+            .await
+            .expect_err("CF API success=false should fail");
+        assert!(
+            matches!(err, DdnsError::ProviderError(_)),
+            "expected ProviderError for non-success API body, got {err:?}"
+        );
+        if let DdnsError::ProviderError(msg) = err {
+            assert!(msg.contains("CF API error"), "error should reference CF API failure: {msg}");
+        }
+    }
+
+    #[tokio::test]
+    async fn http_executor_receives_correct_bearer_token() {
+        let list_resp = r#"{"success":true,"result":[]}"#;
+        let create_resp = r#"{"success":true,"result":{"id":"new"}}"#;
+        let captured = Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+        let captured_clone = Arc::clone(&captured);
+        let expected_token = "cf-bearer-token-abc123";
+
+        let http: HttpExecutor = Arc::new(move |req| {
+            captured_clone.lock().expect("lock captured tokens").push(req.bearer_token.clone());
+            let body = if req.method == "GET" {
+                list_resp.to_string()
+            } else {
+                create_resp.to_string()
+            };
+            Box::pin(async move { Ok(body) })
+        });
+
+        let provider =
+            CloudflareDdnsProvider::new(expected_token.to_string(), "zone1".into(), http);
+        let config = DdnsConfig {
+            enabled: true,
+            provider: "cloudflare".into(),
+            hostname: Some("node.example.com".into()),
+            ttl: 60,
+            zone: None,
+            server: None,
+            key_name: None,
+        };
+        provider
+            .update(&config, IpAddr::V4(Ipv4Addr::new(198, 51, 100, 7)))
+            .await
+            .expect("update should succeed");
+
+        let tokens = captured.lock().expect("lock captured tokens");
+        assert_eq!(tokens.len(), 2, "list + upsert should each invoke HTTP executor");
+        for token in tokens.iter() {
+            assert_eq!(
+                token.as_str(),
+                expected_token,
+                "executor should receive Bearer token from provider configuration"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn update_fails_when_executor_returns_http_error() {
+        let http = mock_http_err("HTTP 403 Forbidden");
+        let provider = CloudflareDdnsProvider::new("tok".into(), "zone1".into(), http);
+        let config = DdnsConfig {
+            enabled: true,
+            provider: "cloudflare".into(),
+            hostname: Some("node.example.com".into()),
+            ttl: 60,
+            zone: None,
+            server: None,
+            key_name: None,
+        };
+        let err = provider
+            .update(&config, IpAddr::V4(Ipv4Addr::new(203, 0, 113, 55)))
+            .await
+            .expect_err("non-2xx surfaced by executor should fail");
+        assert!(
+            matches!(err, DdnsError::NetworkError(_)),
+            "expected NetworkError for HTTP failure, got {err:?}"
+        );
+        if let DdnsError::NetworkError(msg) = err {
+            assert!(
+                msg.contains("403"),
+                "network error should preserve HTTP status context: {msg}"
+            );
+        }
+    }
 }

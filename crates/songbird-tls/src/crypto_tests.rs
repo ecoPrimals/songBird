@@ -7,9 +7,18 @@ use super::*;
 use base64::Engine;
 use base64::engine::general_purpose;
 use serde_json::json;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
+
+static ENV_OVERLAY_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+fn with_isolated_env_overlay<F: FnOnce()>(f: F) {
+    let _guard = ENV_OVERLAY_TEST_LOCK.lock().expect("env test lock");
+    reset_overlay_for_test();
+    f();
+}
 
 async fn spawn_one_shot_jsonrpc_server(response_body: String) -> String {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
@@ -498,4 +507,190 @@ fn capability_call_params_json_includes_derive_secret_shape() {
     });
     assert!(params["our_secret"].as_str().is_some());
     assert_eq!(params["our_secret"], "YQ==");
+}
+
+#[cfg(unix)]
+mod discover_socket_unix_tests {
+    use super::*;
+    use songbird_process_env::ScopedEnv;
+    use songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR;
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    static DISCOVER_TEST_COUNTER: AtomicU32 = AtomicU32::new(0);
+
+    fn next_temp_path(suffix: &str) -> String {
+        let id = DISCOVER_TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
+        format!("/tmp/songbird-tls-discover-{}-{}-{suffix}", std::process::id(), id)
+    }
+
+    fn create_socket_file(path: &str) -> String {
+        if let Some(parent) = std::path::Path::new(path).parent() {
+            std::fs::create_dir_all(parent).expect("mkdir");
+        }
+        std::fs::File::create(path).expect("create socket file");
+        path.to_string()
+    }
+
+    fn ghost_socket_path() -> String {
+        next_temp_path("ghost.sock")
+    }
+
+    #[test]
+    fn discover_socket_unix_returns_tcp_from_crypto_provider_socket_env() {
+        with_isolated_env_overlay(|| {
+            let tcp = "tcp:127.0.0.1:19901".to_string();
+            let _tcp = ScopedEnv::new("CRYPTO_PROVIDER_SOCKET", &tcp);
+            let found = SecurityTlsCryptoClient::discover_socket_unix().expect("discover tcp");
+            assert_eq!(found, tcp);
+        });
+    }
+
+    #[test]
+    fn discover_socket_unix_falls_back_to_security_provider_socket_file() {
+        with_isolated_env_overlay(|| {
+            let ghost = ghost_socket_path();
+            let sock = create_socket_file(&next_temp_path("security.sock"));
+            let _crypto = ScopedEnv::new("CRYPTO_PROVIDER_SOCKET", &ghost);
+            let _neural = ScopedEnv::new("NEURAL_API_SOCKET", &ghost);
+            let _sec = ScopedEnv::new("SECURITY_PROVIDER_SOCKET", &sock);
+            let found = SecurityTlsCryptoClient::discover_socket_unix().expect("discover file");
+            assert_eq!(found, sock);
+            std::fs::remove_file(sock).ok();
+        });
+    }
+
+    #[test]
+    fn discover_socket_unix_uses_xdg_biomeos_security_sock() {
+        with_isolated_env_overlay(|| {
+            let ghost = ghost_socket_path();
+            let test_root = next_temp_path("xdg");
+            let xdg = format!("{test_root}/runtime");
+            let biome_dir = format!("{xdg}/{BIOMEOS_RUNTIME_SUBDIR}");
+            let sec_sock = format!("{biome_dir}/security.sock");
+            create_socket_file(&sec_sock);
+
+            let _crypto = ScopedEnv::new("CRYPTO_PROVIDER_SOCKET", &ghost);
+            let _neural = ScopedEnv::new("NEURAL_API_SOCKET", &ghost);
+            let _sec_env = ScopedEnv::new("SECURITY_PROVIDER_SOCKET", &ghost);
+            let _xdg = ScopedEnv::new("XDG_RUNTIME_DIR", &xdg);
+
+            let found = SecurityTlsCryptoClient::discover_socket_unix().expect("xdg discover");
+            assert_eq!(found, sec_sock);
+
+            let _ = std::fs::remove_dir_all(test_root);
+        });
+    }
+
+    #[test]
+    fn discover_socket_unix_errors_when_no_socket_candidates_exist() {
+        with_isolated_env_overlay(|| {
+            let ghost = ghost_socket_path();
+            let _crypto = ScopedEnv::new("CRYPTO_PROVIDER_SOCKET", &ghost);
+            let _neural = ScopedEnv::new("NEURAL_API_SOCKET", &ghost);
+            let _sec = ScopedEnv::new("SECURITY_PROVIDER_SOCKET", &ghost);
+            let _biome = ScopedEnv::new("BIOMEOS_SOCKET", &ghost);
+            let _xdg = ScopedEnv::new("XDG_RUNTIME_DIR", &next_temp_path("empty-xdg"));
+
+            let err = SecurityTlsCryptoClient::discover_socket_unix().unwrap_err();
+            assert!(
+                matches!(err, TlsError::CryptoError(msg) if msg.contains("Could not discover"))
+            );
+        });
+    }
+}
+
+async fn spawn_unix_jsonrpc_echo(expected_method: &str, response_body: &str) -> String {
+    let dir = std::env::temp_dir().join(format!(
+        "songbird-tls-env-{}-{}",
+        std::process::id(),
+        TEST_COUNTER.fetch_add(1, Ordering::SeqCst)
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("mkdir");
+    let sock_path = dir.join("provider.sock");
+    let sock_str = sock_path.to_string_lossy().into_owned();
+    let expected = expected_method.to_string();
+    let body = response_body.to_string();
+
+    let listener = tokio::net::UnixListener::bind(&sock_path).expect("unix bind");
+    tokio::spawn(async move {
+        let (mut stream, _) = listener.accept().await.expect("accept");
+        let mut buf = vec![0u8; 16_384];
+        let n = stream.read(&mut buf).await.expect("read");
+        let req: serde_json::Value = serde_json::from_slice(&buf[..n]).expect("parse");
+        assert_eq!(req["method"], expected);
+        stream.write_all(body.as_bytes()).await.expect("write");
+        let _ = stream.shutdown().await;
+        let _ = std::fs::remove_dir_all(dir);
+    });
+    tokio::task::yield_now().await;
+    sock_str
+}
+
+#[tokio::test]
+async fn new_parses_security_provider_mode_direct() {
+    let _guard = ENV_OVERLAY_TEST_LOCK.lock().expect("env test lock");
+    reset_overlay_for_test();
+    let sock = spawn_unix_jsonrpc_echo(
+        "crypto.x25519_generate_ephemeral",
+        r#"{"jsonrpc":"2.0","result":{"public_key":"AQID","secret_key":"AQID"},"id":1}"#,
+    )
+    .await;
+    let _mode = songbird_process_env::ScopedEnv::new("SECURITY_PROVIDER_MODE", "direct");
+    let _sock = songbird_process_env::ScopedEnv::new("CRYPTO_PROVIDER_SOCKET", &sock);
+    let client = SecurityTlsCryptoClient::new().expect("new direct client");
+    let _ = client.x25519_generate_ephemeral().await.expect("direct rpc");
+}
+
+#[tokio::test]
+async fn new_parses_beardog_mode_direct_case_insensitive() {
+    let _guard = ENV_OVERLAY_TEST_LOCK.lock().expect("env test lock");
+    reset_overlay_for_test();
+    let sock = spawn_unix_jsonrpc_echo(
+        "crypto.sign_ed25519",
+        r#"{"jsonrpc":"2.0","result":{"signature":"AQID"},"id":1}"#,
+    )
+    .await;
+    let _mode = songbird_process_env::ScopedEnv::new("BEARDOG_MODE", "DiReCt");
+    let _sock = songbird_process_env::ScopedEnv::new("CRYPTO_PROVIDER_SOCKET", &sock);
+    let client = SecurityTlsCryptoClient::new().expect("new beardog direct client");
+    let _ = client.ed25519_sign(b"msg", "kid").await.expect("beardog direct rpc");
+}
+
+#[tokio::test]
+async fn new_defaults_to_neural_mode_when_env_unset() {
+    let _guard = ENV_OVERLAY_TEST_LOCK.lock().expect("env test lock");
+    reset_overlay_for_test();
+    let sock = spawn_unix_jsonrpc_echo(
+        "capability.call",
+        r#"{"jsonrpc":"2.0","result":{"mac":"AQID"},"id":1}"#,
+    )
+    .await;
+    let _sock = songbird_process_env::ScopedEnv::new("CRYPTO_PROVIDER_SOCKET", &sock);
+    let client = SecurityTlsCryptoClient::new().expect("new default client");
+    let _ = client.hmac_sha256(b"a", b"b").await.expect("default neural rpc");
+}
+
+#[tokio::test]
+async fn send_request_rejects_json_array_response() {
+    let body = "[1,2,3]".to_string();
+    let path = spawn_one_shot_jsonrpc_server(body).await;
+    let client = SecurityTlsCryptoClient::with_socket_path(path);
+    let err = client.call_capability("crypto", "op", json!({})).await.expect_err("array json");
+    assert!(matches!(err, TlsError::CryptoError(msg) if msg.contains("Failed to parse response")));
+}
+
+#[tokio::test]
+async fn send_request_rejects_truncated_json_object() {
+    let body = r#"{"jsonrpc":"2.0","result":{"ok":"#.to_string();
+    let path = spawn_one_shot_jsonrpc_server(body).await;
+    let client = SecurityTlsCryptoClient::with_socket_path(path);
+    let err = client.call_capability("crypto", "op", json!({})).await.expect_err("truncated");
+    assert!(matches!(err, TlsError::CryptoError(msg) if msg.contains("Failed to parse response")));
+}
+
+fn reset_overlay_for_test() {
+    songbird_process_env::reset_overlay();
+    songbird_process_env::remove_var("SECURITY_PROVIDER_MODE");
+    songbird_process_env::remove_var("BEARDOG_MODE");
 }

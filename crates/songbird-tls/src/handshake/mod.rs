@@ -749,6 +749,111 @@ mod tests {
         assert_eq!(hsm.state(), HandshakeState::ReceivedClientHello);
     }
 
+    #[test]
+    fn process_client_hello_rejects_oversized_session_id() {
+        let mut hsm = HandshakeStateMachine::new();
+        let mut hello = create_test_client_hello();
+        hello.legacy_session_id = vec![0u8; 33];
+        let err = hsm.process_client_hello(hello).unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+        assert_eq!(hsm.state(), HandshakeState::Start);
+    }
+
+    #[test]
+    fn process_client_hello_rejects_missing_supported_versions() {
+        let mut hsm = HandshakeStateMachine::new();
+        let hello = ClientHello::new(
+            [11u8; 32],
+            vec![0x1303],
+            vec![crate::messages::Extension::KeyShare(vec![1, 2, 3, 4])],
+        );
+        let err = hsm.process_client_hello(hello).unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+    }
+
+    #[test]
+    fn process_client_hello_accepts_supported_groups_extension() {
+        let mut hsm = HandshakeStateMachine::new();
+        let hello = ClientHello::new(
+            [12u8; 32],
+            vec![0x1303],
+            vec![
+                crate::messages::Extension::SupportedVersions(vec![0x0304]),
+                crate::messages::Extension::KeyShare(vec![1, 2, 3, 4]),
+                crate::messages::Extension::SupportedGroups(vec![0x001d]),
+            ],
+        );
+        hsm.process_client_hello(hello).unwrap();
+        assert_eq!(hsm.state(), HandshakeState::ReceivedClientHello);
+    }
+
+    #[test]
+    fn process_client_hello_rejects_unsupported_cipher_suite_list() {
+        let mut hsm = HandshakeStateMachine::new();
+        let hello = ClientHello::new(
+            [13u8; 32],
+            vec![],
+            vec![
+                crate::messages::Extension::SupportedVersions(vec![0x0304]),
+                crate::messages::Extension::KeyShare(vec![1, 2, 3, 4]),
+            ],
+        );
+        let err = hsm.process_client_hello(hello).unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+    }
+
+    #[test]
+    fn handshake_state_does_not_regress_from_connected() {
+        let mut hsm = HandshakeStateMachine::new();
+        hsm.state = HandshakeState::Connected;
+        assert!(hsm.is_connected());
+
+        let err = hsm.process_client_hello(create_test_client_hello()).unwrap_err();
+        assert!(matches!(err, TlsError::UnexpectedMessage { .. }));
+        assert_eq!(hsm.state(), HandshakeState::Connected);
+
+        let err = hsm.complete_handshake().unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+        assert!(hsm.is_connected());
+    }
+
+    #[tokio::test]
+    async fn generate_server_hello_rejects_connected_state() {
+        let mut hsm = HandshakeStateMachine::new();
+        hsm.state = HandshakeState::Connected;
+        let err = hsm.generate_server_hello().await.unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+    }
+
+    #[tokio::test]
+    async fn generate_server_hello_rejects_error_state() {
+        let mut hsm = HandshakeStateMachine::new();
+        hsm.state = HandshakeState::Error;
+        let err = hsm.generate_server_hello().await.unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+    }
+
+    #[test]
+    fn handshake_forward_only_state_ordering() {
+        let order = [
+            HandshakeState::Start,
+            HandshakeState::ReceivedClientHello,
+            HandshakeState::SentServerHello,
+            HandshakeState::Connected,
+        ];
+        let mut hsm = HandshakeStateMachine::new();
+        assert_eq!(hsm.state(), order[0]);
+
+        hsm.process_client_hello(create_test_client_hello()).unwrap();
+        assert_eq!(hsm.state(), order[1]);
+
+        hsm.state = HandshakeState::SentServerHello;
+        assert_eq!(hsm.state(), order[2]);
+
+        hsm.complete_handshake().unwrap();
+        assert_eq!(hsm.state(), order[3]);
+    }
+
     // Helper function for creating test ClientHello
     fn create_test_client_hello() -> ClientHello {
         let random = [42u8; 32];
