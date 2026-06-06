@@ -461,4 +461,171 @@ mod tests {
         );
         assert!(adapter.metadata().capabilities.contains(&DiscoveryCapability::HealthChecking));
     }
+
+    async fn test_adapter() -> ConsulProviderAdapter {
+        use songbird_config::canonical::constants;
+
+        ConsulProviderAdapter::new_native(
+            "parse-test".into(),
+            format!("http://{}:8500", constants::network::DEFAULT_HOST),
+        )
+        .await
+        .expect("create adapter")
+    }
+
+    fn sample_service_info(id: &str, host: &str, port: u16) -> ServiceInfo {
+        use crate::traits::service::ServiceStatus;
+        use chrono::Utc;
+
+        ServiceInfo {
+            service_id: id.into(),
+            name: format!("{id}-name"),
+            version: "2.0.0".into(),
+            service_type: "consul".into(),
+            description: None,
+            endpoints: vec![],
+            health_check_endpoint: None,
+            metadata: HashMap::new(),
+            tags: vec![],
+            dependencies: vec![],
+            status: ServiceStatus::Running,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            instance_id: id.into(),
+            host: host.into(),
+            port,
+        }
+    }
+
+    #[tokio::test]
+    async fn parse_consul_response_array_format() {
+        let adapter = test_adapter().await;
+        let response = serde_json::json!([
+            {"ID": "svc-1", "Service": "api", "Address": "10.0.0.1", "Port": 8080},
+            {"ID": "svc-2", "Service": "web", "Address": "10.0.0.2", "Port": 443}
+        ]);
+
+        let services = adapter.parse_consul_response(&response);
+        assert_eq!(services.len(), 2);
+        assert_eq!(services[0].service_id, "svc-1");
+        assert_eq!(services[0].host, "10.0.0.1");
+        assert_eq!(services[1].port, 443);
+    }
+
+    #[tokio::test]
+    async fn parse_consul_response_object_map_format() {
+        let adapter = test_adapter().await;
+        let response = serde_json::json!({
+            "api-1": {"ID": "api-1", "Service": "api", "Address": "192.168.1.10", "Port": 3000}
+        });
+
+        let services = adapter.parse_consul_response(&response);
+        assert_eq!(services.len(), 1);
+        assert_eq!(services[0].name, "api");
+    }
+
+    #[tokio::test]
+    async fn parse_consul_response_skips_malformed_entries() {
+        let adapter = test_adapter().await;
+        let response = serde_json::json!([
+            {"Service": "no-id", "Address": "10.0.0.1", "Port": 80},
+            {"ID": "ok", "Address": "10.0.0.2", "Port": 90}
+        ]);
+
+        let services = adapter.parse_consul_response(&response);
+        assert_eq!(services.len(), 1);
+        assert_eq!(services[0].service_id, "ok");
+    }
+
+    #[tokio::test]
+    async fn parse_consul_service_skips_empty_address() {
+        let adapter = test_adapter().await;
+        let entry =
+            serde_json::json!({"ID": "bad-addr", "Service": "api", "Address": "", "Port": 8080});
+
+        assert!(adapter.parse_consul_service(&entry).is_none());
+    }
+
+    #[tokio::test]
+    async fn parse_consul_service_skips_missing_port() {
+        let adapter = test_adapter().await;
+        let entry = serde_json::json!({"ID": "no-port", "Service": "api", "Address": "10.0.0.5"});
+
+        assert!(adapter.parse_consul_service(&entry).is_none());
+    }
+
+    #[tokio::test]
+    async fn parse_consul_service_uses_id_when_service_name_missing() {
+        let adapter = test_adapter().await;
+        let entry = serde_json::json!({"ID": "fallback-id", "Address": "10.0.0.6", "Port": 9090});
+
+        let info = adapter.parse_consul_service(&entry).expect("parsed");
+        assert_eq!(info.name, "fallback-id");
+        assert_eq!(info.health_check_endpoint.as_deref(), Some("http://10.0.0.6:9090/health"));
+    }
+
+    #[tokio::test]
+    async fn parse_consul_service_reads_version_field() {
+        let adapter = test_adapter().await;
+        let entry = serde_json::json!({
+            "ID": "v1", "Service": "api", "Address": "10.0.0.7", "Port": 8080, "Version": "3.1.4"
+        });
+
+        let info = adapter.parse_consul_service(&entry).expect("parsed");
+        assert_eq!(info.version, "3.1.4");
+    }
+
+    #[tokio::test]
+    async fn to_service_instance_maps_valid_host_and_health_status() {
+        let adapter = test_adapter().await;
+        let service = sample_service_info("inst-1", "127.0.0.1", 8500);
+
+        let instance = adapter.to_service_instance(&service).expect("convert");
+        assert_eq!(instance.id, "inst-1");
+        assert_eq!(instance.endpoint, "http://127.0.0.1:8500");
+        assert_eq!(instance.health_status, "unknown");
+    }
+
+    #[tokio::test]
+    async fn to_service_instance_rejects_unparseable_host() {
+        let adapter = test_adapter().await;
+        let service = sample_service_info("bad-host", "not-an-ip-or-hostname!!!", 8080);
+
+        let err = adapter.to_service_instance(&service).unwrap_err();
+        assert!(err.to_string().contains("unparseable host"));
+    }
+
+    #[test]
+    fn consul_factory_rejects_non_http_url_scheme() {
+        let factory = ConsulProviderFactory;
+        let mut config = factory.default_config("bad-url".into(), "Bad".into());
+        config.parameters.insert("url".into(), serde_json::Value::String("ftp://consul".into()));
+
+        assert!(factory.validate_config(&config).is_err());
+    }
+
+    #[test]
+    fn consul_factory_accepts_consul_url_alias_parameter() {
+        let factory = ConsulProviderFactory;
+        let mut parameters = HashMap::new();
+        parameters
+            .insert("consul_url".into(), serde_json::Value::String("http://127.0.0.1:8500".into()));
+        let config = ProviderConfig {
+            id: "alias".into(),
+            name: "Alias".into(),
+            parameters,
+            environment: HashMap::new(),
+            timeout_ms: None,
+            retry_config: None,
+        };
+
+        assert!(factory.validate_config(&config).is_ok());
+    }
+
+    #[tokio::test]
+    async fn parse_consul_response_empty_array_returns_empty() {
+        let adapter = test_adapter().await;
+        let services = adapter.parse_consul_response(&serde_json::json!([]));
+        assert!(services.is_empty());
+    }
 }

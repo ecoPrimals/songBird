@@ -408,4 +408,100 @@ mod tests {
         assert_eq!(read_u32(&buf, &mut off).unwrap(), 0x1234_5678);
         assert_eq!(off, 4);
     }
+
+    #[test]
+    fn write_read_vec8_empty_payload() {
+        let mut buf = Vec::new();
+        write_vec8(&mut buf, &[]).unwrap();
+        assert_eq!(buf, vec![0]);
+        let mut off = 0;
+        assert!(read_vec8(&buf, &mut off).unwrap().is_empty());
+        assert_eq!(off, 1);
+    }
+
+    #[test]
+    fn write_read_vec16_empty_payload() {
+        let mut buf = Vec::new();
+        write_vec16(&mut buf, &[]).unwrap();
+        assert_eq!(buf, vec![0, 0]);
+        let mut off = 0;
+        assert!(read_vec16(&buf, &mut off).unwrap().is_empty());
+        assert_eq!(off, 2);
+    }
+
+    #[test]
+    fn write_read_vec24_empty_payload() {
+        let mut buf = Vec::new();
+        write_vec24(&mut buf, &[]).unwrap();
+        assert_eq!(buf, vec![0, 0, 0]);
+        let mut off = 0;
+        assert!(read_vec24(&buf, &mut off).unwrap().is_empty());
+        assert_eq!(off, 3);
+    }
+
+    #[test]
+    fn write_read_vec8_max_length_255() {
+        let data = vec![0xAB; 255];
+        let mut buf = Vec::new();
+        write_vec8(&mut buf, &data).unwrap();
+        let mut off = 0;
+        assert_eq!(read_vec8(&buf, &mut off).unwrap(), data);
+        assert_eq!(off, 256);
+    }
+
+    #[test]
+    fn write_u24_zero_encodes_three_zero_bytes() {
+        let mut buf = Vec::new();
+        write_u24(&mut buf, 0);
+        assert_eq!(buf, vec![0, 0, 0]);
+        let mut off = 0;
+        assert_eq!(read_u24(&buf, &mut off).unwrap(), 0);
+    }
+
+    #[test]
+    fn read_u24_underflow_with_one_and_two_bytes() {
+        let mut off = 0;
+        assert!(read_u24(&[0x01], &mut off).is_err());
+        off = 0;
+        assert!(read_u24(&[0x01, 0x02], &mut off).is_err());
+    }
+
+    #[test]
+    fn read_u32_underflow_partial_buffer() {
+        let mut off = 0;
+        assert!(read_u32(&[0x01, 0x02, 0x03], &mut off).is_err());
+    }
+
+    #[test]
+    fn read_vec16_underflow_length_prefix_only() {
+        let buf = [0x00, 0x04];
+        let mut off = 0;
+        assert!(read_vec16(&buf, &mut off).is_err());
+    }
+
+    #[test]
+    fn write_read_u24_roundtrip_mid_range() {
+        let value = 0x00AB_CDEF_u32;
+        let mut buf = Vec::new();
+        write_u24(&mut buf, value);
+        assert_eq!(buf, vec![0xAB, 0xCD, 0xEF]);
+        let mut off = 0;
+        assert_eq!(read_u24(&buf, &mut off).unwrap(), value);
+    }
+
+    #[test]
+    fn sequential_primitive_reads_advance_offset() {
+        let mut buf = Vec::new();
+        write_u8(&mut buf, 0x01);
+        write_u16(&mut buf, 0x0203);
+        write_u24(&mut buf, 0x040506);
+        write_u32(&mut buf, 0x0708_090A);
+
+        let mut off = 0;
+        assert_eq!(read_u8(&buf, &mut off).unwrap(), 0x01);
+        assert_eq!(read_u16(&buf, &mut off).unwrap(), 0x0203);
+        assert_eq!(read_u24(&buf, &mut off).unwrap(), 0x040506);
+        assert_eq!(read_u32(&buf, &mut off).unwrap(), 0x0708_090A);
+        assert_eq!(off, buf.len());
+    }
 }

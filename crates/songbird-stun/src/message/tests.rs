@@ -4,8 +4,67 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
 use super::{AttributeType, MAGIC_COOKIE, MessageType, StunAttribute, StunMessage};
-use bytes::Bytes;
+use bytes::{BufMut, Bytes, BytesMut};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+
+const ERROR_CODE_ATTR: u16 = 0x0009;
+
+fn build_error_code_attribute(code: u16, reason: &str) -> StunAttribute {
+    #[allow(clippy::cast_possible_truncation, reason = "RFC error codes are 3-digit")]
+    let class = (code / 100) as u8;
+    #[allow(clippy::cast_possible_truncation, reason = "modulo 100 fits u8")]
+    let number = (code % 100) as u8;
+    let mut buf = BytesMut::with_capacity(4 + reason.len());
+    buf.put_u16(0);
+    buf.put_u8(class);
+    buf.put_u8(number);
+    buf.put_slice(reason.as_bytes());
+    StunAttribute::Unknown(ERROR_CODE_ATTR, buf.freeze())
+}
+
+fn parse_error_code_attribute(msg: &StunMessage) -> Option<(u16, String)> {
+    msg.attributes.iter().find_map(|attr| {
+        if let StunAttribute::Unknown(ERROR_CODE_ATTR, data) = attr {
+            (data.len() >= 4).then(|| {
+                let code = u16::from(data[2]) * 100 + u16::from(data[3]);
+                let reason = String::from_utf8_lossy(&data[4..]).into_owned();
+                (code, reason)
+            })
+        } else {
+            None
+        }
+    })
+}
+
+fn build_realm_attribute(realm: &str) -> StunAttribute {
+    StunAttribute::Unknown(AttributeType::Realm.to_u16(), Bytes::copy_from_slice(realm.as_bytes()))
+}
+
+fn parse_realm_attribute(msg: &StunMessage) -> Option<String> {
+    msg.attributes.iter().find_map(|attr| {
+        if let StunAttribute::Unknown(attr_type, data) = attr {
+            (*attr_type == AttributeType::Realm.to_u16())
+                .then(|| String::from_utf8_lossy(data).into_owned())
+        } else {
+            None
+        }
+    })
+}
+
+fn build_nonce_attribute(nonce: &str) -> StunAttribute {
+    StunAttribute::Unknown(AttributeType::Nonce.to_u16(), Bytes::copy_from_slice(nonce.as_bytes()))
+}
+
+fn parse_nonce_attribute(msg: &StunMessage) -> Option<String> {
+    msg.attributes.iter().find_map(|attr| {
+        if let StunAttribute::Unknown(attr_type, data) = attr {
+            (*attr_type == AttributeType::Nonce.to_u16())
+                .then(|| String::from_utf8_lossy(data).into_owned())
+        } else {
+            None
+        }
+    })
+}
 
 #[test]
 fn test_message_type_conversion() {
@@ -374,4 +433,185 @@ mod fuzz_style_stun_decode_tests {
         let decoded = StunMessage::decode(&encoded).expect("roundtrip");
         assert_eq!(decoded.transaction_id, msg.transaction_id);
     }
+}
+
+#[test]
+fn message_type_turn_allocate_variants_roundtrip() {
+    for (wire, variant) in [
+        (0x0003, MessageType::Allocate),
+        (0x0103, MessageType::AllocateSuccess),
+        (0x0113, MessageType::AllocateError),
+    ] {
+        assert_eq!(MessageType::from_u16(wire).unwrap(), variant);
+        assert_eq!(variant.to_u16(), wire);
+    }
+}
+
+#[test]
+fn message_type_turn_refresh_variants_roundtrip() {
+    for (wire, variant) in [
+        (0x0004, MessageType::Refresh),
+        (0x0104, MessageType::RefreshSuccess),
+        (0x0114, MessageType::RefreshError),
+    ] {
+        assert_eq!(MessageType::from_u16(wire).unwrap(), variant);
+        assert_eq!(variant.to_u16(), wire);
+    }
+}
+
+#[test]
+fn message_type_turn_create_permission_variants_roundtrip() {
+    for (wire, variant) in [
+        (0x0008, MessageType::CreatePermission),
+        (0x0108, MessageType::CreatePermissionSuccess),
+        (0x0118, MessageType::CreatePermissionError),
+    ] {
+        assert_eq!(MessageType::from_u16(wire).unwrap(), variant);
+        assert_eq!(variant.to_u16(), wire);
+    }
+}
+
+#[test]
+fn message_type_turn_channel_bind_variants_roundtrip() {
+    for (wire, variant) in [
+        (0x0009, MessageType::ChannelBind),
+        (0x0109, MessageType::ChannelBindSuccess),
+        (0x0119, MessageType::ChannelBindError),
+    ] {
+        assert_eq!(MessageType::from_u16(wire).unwrap(), variant);
+        assert_eq!(variant.to_u16(), wire);
+    }
+}
+
+#[test]
+fn message_type_turn_indication_variants_roundtrip() {
+    for (wire, variant) in
+        [(0x0016, MessageType::SendIndication), (0x0017, MessageType::DataIndication)]
+    {
+        assert_eq!(MessageType::from_u16(wire).unwrap(), variant);
+        assert_eq!(variant.to_u16(), wire);
+    }
+}
+
+#[test]
+fn message_type_from_u16_unknown_includes_hex_in_error() {
+    let err = MessageType::from_u16(0x00ab).expect_err("unknown method");
+    assert!(err.to_string().contains("0x00ab") || err.to_string().contains("Unknown"));
+}
+
+#[test]
+fn attribute_type_all_known_variants_roundtrip() {
+    let known = [
+        (AttributeType::MappedAddress, 0x0001),
+        (AttributeType::Username, 0x0006),
+        (AttributeType::MessageIntegrity, 0x0008),
+        (AttributeType::Realm, 0x0014),
+        (AttributeType::Nonce, 0x0015),
+        (AttributeType::XorMappedAddress, 0x0020),
+        (AttributeType::Fingerprint, 0x8028),
+        (AttributeType::OtherAddress, 0x802C),
+    ];
+    for (variant, wire) in known {
+        assert_eq!(variant.to_u16(), wire);
+        assert_eq!(AttributeType::from_u16(wire), variant);
+    }
+}
+
+#[test]
+fn attribute_type_unknown_roundtrip_preserves_arbitrary_code() {
+    for wire in [0x0000, 0x000C, 0x0012, 0x9999, 0xFFFF] {
+        let attr = AttributeType::Unknown(wire);
+        assert_eq!(attr.to_u16(), wire);
+        assert_eq!(AttributeType::from_u16(wire), AttributeType::Unknown(wire));
+    }
+}
+
+#[test]
+fn realm_attribute_message_roundtrip() {
+    let realm = "stun.example.org";
+    let mut msg = StunMessage::new_binding_request();
+    msg.message_type = MessageType::BindingError;
+    msg.attributes.push(build_realm_attribute(realm));
+    let wire = msg.encode();
+    let decoded = StunMessage::decode(&wire).unwrap();
+    assert_eq!(parse_realm_attribute(&decoded).as_deref(), Some(realm));
+}
+
+#[test]
+fn nonce_attribute_message_roundtrip() {
+    let nonce = "dGVzdC1ub25jZS12YWx1ZQ==";
+    let mut msg = StunMessage::new_binding_request();
+    msg.message_type = MessageType::BindingError;
+    msg.attributes.push(build_nonce_attribute(nonce));
+    let wire = msg.encode();
+    let decoded = StunMessage::decode(&wire).unwrap();
+    assert_eq!(parse_nonce_attribute(&decoded).as_deref(), Some(nonce));
+}
+
+#[test]
+fn username_attribute_message_roundtrip() {
+    let name = "beacon-user";
+    let mut msg = StunMessage::new_binding_request();
+    msg.attributes.push(StunAttribute::Username(name.to_string()));
+    let wire = msg.encode();
+    let decoded = StunMessage::decode(&wire).unwrap();
+    let parsed = decoded.attributes.iter().find_map(|a| {
+        if let StunAttribute::Username(u) = a {
+            Some(u.as_str())
+        } else {
+            None
+        }
+    });
+    assert_eq!(parsed, Some(name));
+}
+
+#[test]
+fn error_code_attribute_various_codes_roundtrip() {
+    for (code, reason) in [
+        (400, "Bad Request"),
+        (401, "Unauthorized"),
+        (403, "Forbidden"),
+        (437, "Allocation Mismatch"),
+        (486, "Allocation Expired"),
+        (508, "Insufficient Capacity"),
+    ] {
+        let mut msg = StunMessage::new_binding_request();
+        msg.message_type = MessageType::BindingError;
+        msg.attributes.push(build_error_code_attribute(code, reason));
+        let wire = msg.encode();
+        let decoded = StunMessage::decode(&wire).unwrap();
+        let (parsed_code, parsed_reason) = parse_error_code_attribute(&decoded).unwrap();
+        assert_eq!(parsed_code, code);
+        assert_eq!(parsed_reason, reason);
+    }
+}
+
+#[test]
+fn parse_error_code_attribute_short_buffer_returns_none() {
+    let mut msg = StunMessage::new_binding_request();
+    msg.attributes.push(StunAttribute::Unknown(ERROR_CODE_ATTR, Bytes::from_static(&[0, 0, 4])));
+    assert!(parse_error_code_attribute(&msg).is_none());
+}
+
+#[test]
+fn parse_error_code_attribute_missing_reason_parses_code_only() {
+    let mut msg = StunMessage::new_binding_request();
+    msg.attributes.push(StunAttribute::Unknown(ERROR_CODE_ATTR, Bytes::from_static(&[0, 0, 4, 1])));
+    let (code, reason) = parse_error_code_attribute(&msg).unwrap();
+    assert_eq!(code, 401);
+    assert!(reason.is_empty());
+}
+
+#[test]
+fn message_integrity_wrong_length_rejected_on_decode() {
+    let mut buf: &[u8] = &[0x00, 0x08, 0x00, 0x04, 0x01, 0x02, 0x03, 0x04];
+    let err = StunAttribute::decode(&mut buf).expect_err("MI must be 20 bytes");
+    assert!(err.to_string().contains("20"));
+}
+
+#[test]
+fn fingerprint_wrong_length_rejected_on_decode() {
+    let mut buf: &[u8] = &[0x80, 0x28, 0x00, 0x02, 0x01, 0x02];
+    let err = StunAttribute::decode(&mut buf).expect_err("FP must be 4 bytes");
+    assert!(err.to_string().contains("4"));
 }

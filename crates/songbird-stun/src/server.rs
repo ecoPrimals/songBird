@@ -654,4 +654,87 @@ mod tests {
 
         handle.abort();
     }
+
+    #[test]
+    fn test_server_new_ipv4_wildcard_bind_addr() {
+        let bind_addr: SocketAddr = "0.0.0.0:3478".parse().unwrap();
+        let server = StunServer::new(bind_addr);
+        assert_eq!(server.bind_addr(), bind_addr);
+        assert_eq!(server.alternate_addr(), None);
+    }
+
+    #[test]
+    fn test_server_new_ipv6_bind_addr() {
+        let bind_addr: SocketAddr = "[::]:3478".parse().unwrap();
+        let server = StunServer::new(bind_addr);
+        assert_eq!(server.bind_addr(), bind_addr);
+        assert_eq!(server.alternate_addr(), None);
+    }
+
+    #[test]
+    fn test_server_with_alternate_ipv6_addresses() {
+        let bind_addr: SocketAddr = "[::1]:3478".parse().unwrap();
+        let alternate_addr: SocketAddr = "[::1]:3479".parse().unwrap();
+        let server = StunServer::with_alternate(bind_addr, alternate_addr);
+        assert_eq!(server.bind_addr(), bind_addr);
+        assert_eq!(server.alternate_addr(), Some(alternate_addr));
+    }
+
+    #[test]
+    fn test_create_binding_response_without_alternate_omits_other_address() {
+        let server = StunServer::new("127.0.0.1:3478".parse().unwrap());
+        let request = StunMessage::new_binding_request();
+        let client_addr: SocketAddr = "192.168.1.100:54321".parse().unwrap();
+        let response = server.create_binding_response(&request, client_addr);
+
+        let has_other =
+            response.attributes.iter().any(|attr| matches!(attr, StunAttribute::OtherAddress(_)));
+        assert!(!has_other, "OTHER-ADDRESS must be absent when alternate_addr is None");
+    }
+
+    #[test]
+    fn test_alternate_addr_included_in_binding_response_value() {
+        let alternate: SocketAddr = "198.51.100.2:3479".parse().unwrap();
+        let server = StunServer::with_alternate("127.0.0.1:3478".parse().unwrap(), alternate);
+        let request = StunMessage::new_binding_request();
+        let client_addr: SocketAddr = "10.0.0.1:4000".parse().unwrap();
+        let response = server.create_binding_response(&request, client_addr);
+
+        let other = response.attributes.iter().find_map(|attr| {
+            if let StunAttribute::OtherAddress(addr) = attr {
+                Some(*addr)
+            } else {
+                None
+            }
+        });
+        assert_eq!(other, Some(alternate));
+    }
+
+    #[tokio::test]
+    async fn run_loop_mixed_success_and_error_stats() {
+        let (handle, addr, server) = start_server_for_test().await;
+        let client = StunClient::with_timeout(Duration::from_secs(2));
+        let addr_str = addr.to_string();
+
+        client.discover_public_address(&addr_str).await.expect("valid binding request");
+
+        let socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.expect("bind client");
+        socket.send_to(&[0u8; 16], addr).await.expect("malformed packet");
+
+        let mut bad_msg = StunMessage::new_binding_request();
+        bad_msg.message_type = MessageType::Allocate;
+        socket.send_to(&bad_msg.encode(), addr).await.expect("non-binding request");
+
+        tokio::time::sleep(Duration::from_millis(150)).await;
+
+        let stats = server.stats().await;
+        assert_eq!(stats.requests_handled, 1, "only valid binding requests count as handled");
+        assert!(
+            stats.errors >= 2,
+            "malformed and non-binding packets should increment errors, got {}",
+            stats.errors
+        );
+
+        handle.abort();
+    }
 }

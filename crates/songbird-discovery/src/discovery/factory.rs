@@ -494,4 +494,155 @@ mod tests {
             _ => panic!("expected Songbird"),
         }
     }
+
+    use super::{UniversalDiscoveryFactory, UniversalServiceDiscoveryAdapter};
+    use crate::traits::discovery::ServiceDiscovery;
+
+    #[tokio::test]
+    async fn detect_kubernetes_environment_returns_bool() {
+        let detected = UniversalDiscoveryFactory::detect_kubernetes_environment().await;
+        let from_path =
+            std::path::Path::new("/var/run/secrets/kubernetes.io/serviceaccount").exists();
+        let from_env = songbird_process_env::var("KUBERNETES_SERVICE_HOST").is_ok();
+        assert_eq!(detected, from_path || from_env);
+    }
+
+    #[tokio::test]
+    async fn detect_consul_environment_returns_bool() {
+        let detected = UniversalDiscoveryFactory::detect_consul_environment().await;
+        let from_env = songbird_process_env::var("CONSUL_HTTP_ADDR").is_ok()
+            || songbird_process_env::var("CONSUL_ADDR").is_ok();
+        let from_path = std::path::Path::new("/etc/consul").exists();
+        assert_eq!(detected, from_env || from_path);
+    }
+
+    #[tokio::test]
+    async fn detect_container_environment_returns_bool() {
+        let detected = UniversalDiscoveryFactory::detect_container_environment().await;
+        let from_dockerenv = std::path::Path::new("/.dockerenv").exists();
+        let from_env = songbird_process_env::var("DOCKER_HOST").is_ok()
+            || songbird_process_env::var("CONTAINER_ID").is_ok();
+        assert_eq!(detected, from_dockerenv || from_env);
+    }
+
+    #[tokio::test]
+    async fn create_from_environment_succeeds() {
+        let adapter = UniversalDiscoveryFactory::create_from_environment().await;
+        assert!(adapter.is_ok(), "environment-based factory should succeed");
+    }
+
+    #[tokio::test]
+    async fn create_auto_detect_returns_adapter() {
+        let adapter = UniversalDiscoveryFactory::create_auto_detect().await;
+        assert!(adapter.is_ok());
+    }
+
+    #[tokio::test]
+    async fn create_for_config_kubernetes_backend() {
+        let config = DiscoveryConfig {
+            backend: DiscoveryBackend::Kubernetes {
+                namespace: Some("test-ns".into()),
+                in_cluster: false,
+                kubeconfig_path: None,
+            },
+            ..DiscoveryConfig::default()
+        };
+        let adapter = UniversalDiscoveryFactory::create_for_config(&config).await;
+        assert!(adapter.is_ok());
+    }
+
+    #[tokio::test]
+    async fn create_for_config_etcd_backend() {
+        let config = DiscoveryConfig {
+            backend: DiscoveryBackend::Etcd {
+                endpoints: vec!["http://127.0.0.1:2379".into()],
+                username: None,
+                password: None,
+            },
+            ..DiscoveryConfig::default()
+        };
+        let adapter = UniversalDiscoveryFactory::create_for_config(&config).await;
+        assert!(adapter.is_ok());
+    }
+
+    #[tokio::test]
+    async fn create_kubernetes_universal_enables_discovery() {
+        let adapter = UniversalDiscoveryFactory::create_kubernetes_universal().await;
+        assert!(adapter.is_ok());
+    }
+
+    #[tokio::test]
+    async fn create_consul_universal_enables_discovery() {
+        let adapter = UniversalDiscoveryFactory::create_consul_universal().await;
+        assert!(adapter.is_ok());
+    }
+
+    #[tokio::test]
+    async fn create_container_universal_enables_discovery() {
+        let adapter = UniversalDiscoveryFactory::create_container_universal().await;
+        assert!(adapter.is_ok());
+    }
+
+    #[tokio::test]
+    async fn adapter_register_unregister_and_exists() {
+        use crate::traits::service::ServiceStatus;
+        use chrono::Utc;
+        use std::collections::HashMap;
+
+        let adapter = UniversalServiceDiscoveryAdapter::new().await.expect("new adapter");
+        let service = crate::traits::ServiceInfo {
+            service_id: "uni-svc".into(),
+            name: "Universal".into(),
+            version: "1.0".into(),
+            service_type: "test".into(),
+            description: None,
+            endpoints: vec![],
+            health_check_endpoint: None,
+            metadata: HashMap::new(),
+            tags: vec![],
+            dependencies: vec![],
+            status: ServiceStatus::Running,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            instance_id: "uni-svc-1".into(),
+            host: "127.0.0.1".into(),
+            port: 9000,
+        };
+
+        adapter.register(service).await.expect("register");
+        adapter.unregister("uni-svc").await.expect("unregister");
+        assert!(!adapter.exists("uni-svc").await.expect("exists check"));
+    }
+
+    #[tokio::test]
+    async fn adapter_watch_returns_empty_stream() {
+        use crate::traits::ServiceQuery;
+        use futures_util::StreamExt;
+
+        let adapter = UniversalServiceDiscoveryAdapter::new().await.expect("new adapter");
+        let mut stream = adapter.watch(ServiceQuery::new()).await.expect("watch");
+        assert!(stream.next().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn adapter_update_health_and_metadata_succeed() {
+        use crate::traits::discovery::ServiceHealthStatus;
+        use std::collections::HashMap;
+
+        let adapter = UniversalServiceDiscoveryAdapter::new().await.expect("new adapter");
+        adapter.update_health("svc", ServiceHealthStatus::Healthy).await.expect("update health");
+        adapter
+            .update_metadata("svc", HashMap::from([("key".into(), "val".into())]))
+            .await
+            .expect("update metadata");
+    }
+
+    #[tokio::test]
+    async fn adapter_enable_all_discovery_modes() {
+        let mut adapter = UniversalServiceDiscoveryAdapter::new().await.expect("new adapter");
+        adapter.enable_kubernetes_discovery().await.expect("k8s");
+        adapter.enable_consul_discovery().await.expect("consul");
+        adapter.enable_container_discovery().await.expect("container");
+        let _ = adapter.discover(crate::traits::ServiceQuery::new()).await;
+    }
 }

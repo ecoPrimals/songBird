@@ -189,4 +189,98 @@ mod tests {
         let hello = ClientHello::new(random, cipher_suites, extensions);
         assert_eq!(hello.get_key_share(), Some(key_share_data.as_slice()));
     }
+
+    #[test]
+    fn test_various_cipher_suite_combinations_validate() {
+        let extensions =
+            vec![Extension::SupportedVersions(vec![0x0304]), Extension::KeyShare(vec![0xAB; 32])];
+        for suites in [
+            vec![0x1301],                 // AES-128-GCM
+            vec![0x1302],                 // AES-256-GCM
+            vec![0x1303],                 // ChaCha20-Poly1305
+            vec![0x1301, 0x1302, 0x1303], // full preference list
+            vec![0x1303, 0x1301],         // reordered
+        ] {
+            let hello = ClientHello::new([1u8; 32], suites.clone(), extensions.clone());
+            assert!(hello.validate().is_ok());
+            assert_eq!(hello.cipher_suites, suites);
+        }
+    }
+
+    #[test]
+    fn test_empty_session_id_is_default_and_valid() {
+        let hello = ClientHello::new(
+            [2u8; 32],
+            vec![0x1303],
+            vec![Extension::SupportedVersions(vec![0x0304]), Extension::KeyShare(vec![1, 2, 3, 4])],
+        );
+        assert!(hello.legacy_session_id.is_empty());
+        assert!(hello.validate().is_ok());
+    }
+
+    #[test]
+    fn test_max_length_session_id_validates() {
+        let mut hello = ClientHello::new(
+            [3u8; 32],
+            vec![0x1303],
+            vec![Extension::SupportedVersions(vec![0x0304]), Extension::KeyShare(vec![1, 2, 3, 4])],
+        );
+        hello.legacy_session_id = vec![0xAA; 32];
+        assert_eq!(hello.legacy_session_id.len(), 32);
+        assert!(hello.validate().is_ok());
+    }
+
+    #[test]
+    fn test_session_id_over_32_bytes_rejected() {
+        let mut hello = ClientHello::new(
+            [4u8; 32],
+            vec![0x1303],
+            vec![Extension::SupportedVersions(vec![0x0304]), Extension::KeyShare(vec![1, 2, 3, 4])],
+        );
+        hello.legacy_session_id = vec![0xBB; 33];
+        let err = hello.validate().unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+        assert!(err.to_string().contains("Legacy session ID"));
+    }
+
+    #[test]
+    fn test_legacy_fields_defaults() {
+        let hello = ClientHello::new(
+            [5u8; 32],
+            vec![0x1303],
+            vec![Extension::SupportedVersions(vec![0x0304]), Extension::KeyShare(vec![1])],
+        );
+        assert_eq!(hello.legacy_version, 0x0303);
+        assert_eq!(hello.legacy_compression_methods, vec![0]);
+    }
+
+    #[test]
+    fn test_client_hello_with_all_extension_variants() {
+        use crate::messages::extensions::{GROUP_X25519, SIG_ED25519};
+
+        let extensions = vec![
+            Extension::SupportedVersions(vec![0x0303, 0x0304]),
+            Extension::KeyShare(vec![0xCD; 32]),
+            Extension::ServerName("songbird.test".to_string()),
+            Extension::SignatureAlgorithms(vec![SIG_ED25519]),
+            Extension::SupportedGroups(vec![GROUP_X25519]),
+            Extension::Unknown {
+                extension_type: 0xBEEF,
+                data: vec![1, 2, 3],
+            },
+        ];
+        let hello = ClientHello::new([6u8; 32], vec![0x1303], extensions);
+        assert!(hello.validate().is_ok());
+        assert_eq!(hello.extensions.len(), 6);
+        assert_eq!(hello.get_supported_version(), Some(0x0303));
+    }
+
+    #[test]
+    fn test_validation_missing_supported_versions_extension() {
+        let hello =
+            ClientHello::new([7u8; 32], vec![0x1303], vec![Extension::KeyShare(vec![1, 2, 3, 4])]);
+        let err = hello.validate().unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+        assert!(err.to_string().contains("supported_versions"));
+    }
 }
