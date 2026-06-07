@@ -81,33 +81,9 @@ pub struct RegisterResult {
 
 /// Structured transport endpoint — Phase 2 transport-qualified resolution.
 ///
-/// Consumers use this to determine how to connect without parsing URI strings.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(tag = "transport")]
-pub enum TransportEndpoint {
-    /// Unix Domain Socket — local primal on same host.
-    #[serde(rename = "uds")]
-    Uds {
-        /// Filesystem path to the socket.
-        path: String,
-    },
-    /// Mesh relay — primal reachable via Songbird's mesh network.
-    #[serde(rename = "mesh_relay")]
-    MeshRelay {
-        /// Mesh peer identifier (e.g. `"strand-gate"`).
-        peer_id: String,
-        /// Capability being resolved on the remote peer.
-        capability: String,
-    },
-    /// TCP — direct network connection.
-    #[serde(rename = "tcp")]
-    Tcp {
-        /// Host address (IP or hostname).
-        host: String,
-        /// TCP port.
-        port: u16,
-    },
-}
+/// Re-exported from [`songbird_types::TransportEndpoint`] — the canonical
+/// ecosystem definition lives in `songbird-types` for lightweight consumer adoption.
+pub use songbird_types::TransportEndpoint;
 
 /// IPC service response for resolution
 #[derive(Debug, Clone, Serialize)]
