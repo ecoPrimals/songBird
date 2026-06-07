@@ -43,7 +43,16 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         songbird_process_env::set_var("SONGBIRD_PID_DIR", pid_dir);
     }
 
-    let actual_port = args.federation_port.unwrap_or(args.port);
+    let actual_port = args.federation_port.unwrap_or_else(|| {
+        songbird_process_env::var("SONGBIRD_FEDERATION_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(args.port)
+    });
+
+    let effective_bind = songbird_process_env::var("SONGBIRD_FEDERATION_BIND")
+        .or_else(|_| songbird_process_env::var("SONGBIRD_PRODUCTION_BIND_ADDRESS"))
+        .unwrap_or_else(|_| args.bind.clone());
 
     tracing::info!("🚀 Songbird v{} - Server Mode", env!("CARGO_PKG_VERSION"));
     tracing::info!(
@@ -54,7 +63,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
             "(foreground)"
         }
     );
-    tracing::info!("   HTTP Bind: {}:{}", args.bind, actual_port);
+    tracing::info!("   Federation Bind: {}:{}", effective_bind, actual_port);
     if args.dark_forest {
         tracing::info!("   Dark Forest: ✅ Enabled (encrypted beacons only)");
     }
@@ -96,7 +105,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     }
     let mut config = CanonicalSongbirdConfig::from_env()?;
 
-    let (bind_host, bind_port_override) = parse_bind_flag(&args.bind);
+    let (bind_host, bind_port_override) = parse_bind_flag(&effective_bind);
     config.network.bind_host = bind_host.to_string();
     if let Some(bp) = bind_port_override {
         config.network.base_port = bp;

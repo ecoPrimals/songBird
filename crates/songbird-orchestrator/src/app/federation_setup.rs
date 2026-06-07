@@ -161,11 +161,15 @@ pub async fn setup_federation(
     options: FederationOptions,
 ) -> Result<FederationSetup> {
     // Resolve federation enabled: options → SONGBIRD_FEDERATION_ENABLED → FEDERATION_ENABLED (legacy alias)
+    // Auto-enable when SONGBIRD_PEERS or SONGBIRD_FEDERATION_PORT is set (implicit federation intent)
     let enabled = options.enabled.unwrap_or_else(|| {
         if songbird_process_env::var("SONGBIRD_FEDERATION_ENABLED").is_ok() {
             SafeEnv::get_bool("SONGBIRD_FEDERATION_ENABLED", false)
-        } else {
+        } else if songbird_process_env::var("FEDERATION_ENABLED").is_ok() {
             SafeEnv::get_bool("FEDERATION_ENABLED", false)
+        } else {
+            songbird_process_env::var("SONGBIRD_PEERS").is_ok()
+                || songbird_process_env::var("SONGBIRD_FEDERATION_PORT").is_ok()
         }
     });
 
@@ -257,6 +261,57 @@ fn detect_memory_gb() -> usize {
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use songbird_process_env::ScopedEnv;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: std::sync::OnceLock<Mutex<()>> = std::sync::OnceLock::new();
+    fn env_mutex() -> &'static Mutex<()> {
+        ENV_LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    #[tokio::test]
+    async fn federation_auto_enables_when_peers_env_set() {
+        let _guard = env_mutex().lock().unwrap();
+        let _peers = ScopedEnv::new("SONGBIRD_PEERS", "strand.primals.eco:7700");
+
+        let options = FederationOptions::from_env();
+        let node_identity = NodeIdentity::new_or_load(None).expect("identity");
+        let federation_state = Arc::new(FederationState::new("test".to_string()));
+
+        let setup = setup_federation(&node_identity, federation_state, options).await.unwrap();
+        assert!(
+            setup.coordinator.is_some(),
+            "Federation should auto-enable when SONGBIRD_PEERS is set"
+        );
+    }
+
+    #[tokio::test]
+    async fn federation_auto_enables_when_federation_port_env_set() {
+        let _guard = env_mutex().lock().unwrap();
+        let _port = ScopedEnv::new("SONGBIRD_FEDERATION_PORT", "7700");
+
+        let options = FederationOptions::from_env();
+        let node_identity = NodeIdentity::new_or_load(None).expect("identity");
+        let federation_state = Arc::new(FederationState::new("test".to_string()));
+
+        let setup = setup_federation(&node_identity, federation_state, options).await.unwrap();
+        assert!(
+            setup.coordinator.is_some(),
+            "Federation should auto-enable when SONGBIRD_FEDERATION_PORT is set"
+        );
+    }
+
+    #[tokio::test]
+    async fn federation_disabled_when_no_env_signals() {
+        let _guard = env_mutex().lock().unwrap();
+
+        let options = FederationOptions::from_env();
+        let node_identity = NodeIdentity::new_or_load(None).expect("identity");
+        let federation_state = Arc::new(FederationState::new("test".to_string()));
+
+        let setup = setup_federation(&node_identity, federation_state, options).await.unwrap();
+        assert!(setup.coordinator.is_none(), "Federation should be disabled without env signals");
+    }
 
     #[test]
     fn test_detect_memory_gb_returns_reasonable_value() {
