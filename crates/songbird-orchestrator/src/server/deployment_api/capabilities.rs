@@ -130,7 +130,7 @@ fn tun_interface_exists() -> bool {
 fn is_internet_facing() -> bool {
     let bind_addr = songbird_process_env::var("SONGBIRD_PRODUCTION_BIND_ADDRESS")
         .unwrap_or_default();
-    if bind_addr == "0.0.0.0" {
+    if bind_addr == songbird_types::constants::PRODUCTION_BIND_ADDRESS {
         return true;
     }
 

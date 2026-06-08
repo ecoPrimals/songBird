@@ -71,5 +71,7 @@ pub const DEFAULT_FEDERATION_COORDINATION_PORT: u16 = 8082;
 pub const DEFAULT_TARPC_RPC_PORT: u16 = 8091;
 /// StarCraft IPX / gaming base port (env: `SONGBIRD_GAMING_PORT`)
 pub const DEFAULT_GAMING_BASE_PORT: u16 = 6112;
+/// Default mesh peer federation port for cross-gate communication (env: `SONGBIRD_FEDERATION_PORT`)
+pub const DEFAULT_MESH_PEER_PORT: u16 = 7700;
 /// Ephemeral bind address for port-0 allocation
 pub const EPHEMERAL_BIND_ADDR: &str = "127.0.0.1:0";

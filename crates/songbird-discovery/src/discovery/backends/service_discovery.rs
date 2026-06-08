@@ -561,8 +561,8 @@ impl UniversalServiceDiscovery {
                 created_at: Utc::now(),
                 updated_at: Utc::now(),
                 instance_id: format!("{}-instance", e.name),
-                host: e.host.unwrap_or_else(|| "127.0.0.1".to_string()),
-                port: e.port.unwrap_or(8080),
+                host: e.host.unwrap_or_else(|| songbird_types::constants::LOCALHOST.to_string()),
+                port: e.port.unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT),
             })
             .collect();
 
@@ -582,7 +582,13 @@ impl UniversalServiceDiscovery {
         use chrono::Utc;
         use std::net::SocketAddr;
 
-        let probe_ports: &[u16] = &[8080, 7700, 3000, 9090];
+        use songbird_types::defaults::ports;
+        let probe_ports: &[u16] = &[
+            ports::DEFAULT_HTTP_PORT,
+            ports::DEFAULT_MESH_PEER_PORT,
+            ports::DEFAULT_DASHBOARD_UI_PORT,
+            ports::DEFAULT_OBSERVABILITY_PORT,
+        ];
         let timeout = std::time::Duration::from_millis(500);
         let mut services = Vec::new();
 

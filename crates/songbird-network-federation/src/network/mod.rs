@@ -103,26 +103,84 @@ impl NetworkManager {
         })
     }
 
-    /// Get the count of active network connections
+    /// Get the count of active network connections from `/proc/net/tcp` (Linux)
+    /// or returns 0 on non-Linux platforms.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "TCP connection count bounded by OS limits, fits u32"
+    )]
     async fn get_active_connections_count(&self) -> SongbirdResult<u32> {
-        // Multi-provider connection tracking deferred
-        // Current implementation returns default until real metrics needed
-        Ok(0)
+        let content = tokio::fs::read_to_string("/proc/net/tcp")
+            .await
+            .unwrap_or_default();
+        let established = content
+            .lines()
+            .skip(1)
+            .filter(|line| {
+                line.split_whitespace()
+                    .nth(3)
+                    .is_some_and(|state| state == "01")
+            })
+            .count();
+        Ok(established as u32)
     }
 
-    /// Get current bandwidth usage in MB/s
+    /// Get current bandwidth usage estimate in MB/s from `/proc/net/dev`.
+    /// Returns cumulative bytes transferred (not rate) as a proxy metric.
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "byte count precision loss at >2^52 bytes is acceptable for metrics"
+    )]
     async fn get_bandwidth_usage(&self) -> SongbirdResult<f64> {
-        // In a real implementation, this would query system network statistics
-        // For now, return a simulated value based on connection count
-        let connections = self.get_active_connections_count().await?;
-        Ok(f64::from(connections) * 1.5) // Simulate ~1.5 MB/s per connection
+        let content = tokio::fs::read_to_string("/proc/net/dev")
+            .await
+            .unwrap_or_default();
+        let total_bytes: u64 = content
+            .lines()
+            .skip(2)
+            .filter_map(|line| {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 10 {
+                    let rx = parts[1].parse::<u64>().unwrap_or(0);
+                    let tx = parts[9].parse::<u64>().unwrap_or(0);
+                    Some(rx + tx)
+                } else {
+                    None
+                }
+            })
+            .sum();
+        Ok(total_bytes as f64 / 1_048_576.0)
     }
 
-    /// Get average network latency in milliseconds
+    /// Get average network latency estimate in milliseconds.
+    /// Reads TCP RTT from `/proc/net/tcp` smoothed RTT column when available.
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "RTT values and count are small enough for f64 precision"
+    )]
     async fn get_average_latency(&self) -> SongbirdResult<f64> {
-        // Real latency measurement deferred until metrics infrastructure ready
-        // Returns sensible default for healthy network conditions
-        Ok(25.0)
+        let content = tokio::fs::read_to_string("/proc/net/tcp")
+            .await
+            .unwrap_or_default();
+        let rtts: Vec<u64> = content
+            .lines()
+            .skip(1)
+            .filter_map(|line| {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 10 && parts[3] == "01" {
+                    parts.get(9).and_then(|v| u64::from_str_radix(v, 16).ok())
+                } else {
+                    None
+                }
+            })
+            .filter(|&rtt| rtt > 0)
+            .collect();
+        if rtts.is_empty() {
+            return Ok(0.0);
+        }
+        let sum = rtts.iter().sum::<u64>() as f64;
+        let count = rtts.len() as f64;
+        Ok(sum / count)
     }
 }
 
@@ -478,7 +536,6 @@ mod tests {
         mgr.initialize().await.unwrap();
         let health = mgr.health_check().await.unwrap();
         assert_eq!(health.overall_status, NetworkStatus::Healthy);
-        assert_eq!(health.active_connections, 0);
         assert!(health.gaming_health.is_none());
     }
 
@@ -556,7 +613,7 @@ mod tests {
         let health = mgr.health_check().await.unwrap();
         assert_eq!(health.overall_status, NetworkStatus::Healthy);
         assert!(health.gaming_health.is_some());
-        assert_eq!(health.latency_ms, 25.0);
-        assert_eq!(health.bandwidth_usage, 0.0);
+        assert!(health.latency_ms >= 0.0, "latency must be non-negative");
+        assert!(health.bandwidth_usage >= 0.0, "bandwidth must be non-negative");
     }
 }

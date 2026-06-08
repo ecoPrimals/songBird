@@ -16,11 +16,11 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 pub struct RelayArgs {
     /// Bind address for the relay UDP listener.
-    #[arg(long, default_value = "0.0.0.0", env = "SONGBIRD_RELAY_BIND")]
+    #[arg(long, default_value = songbird_types::constants::PRODUCTION_BIND_ADDRESS, env = "SONGBIRD_RELAY_BIND")]
     pub bind: String,
 
     /// UDP port for the relay listener.
-    #[arg(long, default_value_t = 3478, env = "SONGBIRD_RELAY_PORT")]
+    #[arg(long, default_value_t = songbird_types::defaults::ports::DEFAULT_STUN_PORT, env = "SONGBIRD_RELAY_PORT")]
     pub port: u16,
 
     /// Path to credentials file (one `username:hex_key` per line).

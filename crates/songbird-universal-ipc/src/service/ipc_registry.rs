@@ -87,7 +87,7 @@ impl IpcServiceHandler {
                 path: format!("@{name}"),
             }),
             NativeEndpoint::TcpLocal(port) => Some(TransportEndpoint::Tcp {
-                host: "127.0.0.1".to_string(),
+                host: songbird_types::constants::LOCALHOST.to_string(),
                 port: *port,
             }),
             _ => None,
