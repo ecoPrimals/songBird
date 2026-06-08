@@ -215,7 +215,8 @@ impl FederationState {
 
         // Try to get preferred endpoint
         if let Some(endpoint) = node.preferred_endpoint() {
-            return Some(format!("http://{}", endpoint.address));
+            let scheme = songbird_types::constants::http_scheme();
+            return Some(format!("{scheme}://{}", endpoint.address));
         }
 
         // Fall back to primary address

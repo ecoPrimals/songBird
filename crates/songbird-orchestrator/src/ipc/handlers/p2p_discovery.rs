@@ -42,7 +42,11 @@ fn discovered_node_from_peer(
         port,
         ..
     } = peer;
-    let https_endpoint = format!("http://{}:{}", address.ip(), port);
+    let https_endpoint = songbird_types::constants::endpoint_url(
+        &address.ip().to_string(),
+        port,
+        "",
+    );
     DiscoveredNode {
         node_id: node_id.unwrap_or(session_id),
         node_name,

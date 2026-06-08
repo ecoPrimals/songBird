@@ -124,7 +124,11 @@ async fn exchange_trust_with_peer(
     local_node_id: &str,
     local_family_id: &str,
 ) -> Result<RemoteKeyMaterial, String> {
-    let endpoint = format!("http://{}:{}/jsonrpc", peer_addr.ip(), peer_addr.port());
+    let endpoint = songbird_types::constants::endpoint_url(
+        &peer_addr.ip().to_string(),
+        peer_addr.port(),
+        "/jsonrpc",
+    );
 
     let request = json!({
         "jsonrpc": "2.0",

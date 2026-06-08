@@ -316,7 +316,8 @@ impl EnhancedCapabilityRouter {
             if let Some(endpoint) = node.preferred_endpoint() {
                 info!("Routing to peer Songbird: {} at {}", node.node_name, endpoint.address);
                 let node_id = node.node_id.clone();
-                let endpoint_url = format!("http://{}", endpoint.address);
+                let scheme = songbird_types::constants::http_scheme();
+                let endpoint_url = format!("{scheme}://{}", endpoint.address);
                 return Ok(RoutingDecision::RouteToSongbird {
                     node_id,
                     endpoint: endpoint_url,

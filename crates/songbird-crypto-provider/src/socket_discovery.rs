@@ -149,9 +149,10 @@ where
     }
 
     // VPS fallback (DH-1 compliant — no /tmp writes)
-    let fallback = Path::new("/var/run/biomeos/neural-api.sock");
-    if path_exists(fallback) {
-        let path = fallback.to_string_lossy().to_string();
+    let vps_neural = Path::new(songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR)
+        .join("neural-api.sock");
+    if path_exists(&vps_neural) {
+        let path = vps_neural.to_string_lossy().to_string();
         warn!("⚠️  Using VPS fallback Neural API socket: {}", path);
         return path;
     }
@@ -170,9 +171,10 @@ where
     warn!(
         "   Set $SECURITY_PROVIDER_SOCKET, $BEARDOG_SOCKET, or place socket at $XDG_RUNTIME_DIR/biomeos/neural-api.sock"
     );
-    // Return the canonical path even though it doesn't exist — callers handle connect errors
-    // gracefully. This ensures the path logged in diagnostics is actionable.
-    "/var/run/biomeos/neural-api.sock".to_string()
+    Path::new(songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR)
+        .join("neural-api.sock")
+        .to_string_lossy()
+        .to_string()
 }
 
 /// Discover the security provider socket via capability-based discovery.
@@ -269,9 +271,10 @@ where
     }
 
     // VPS fallback (DH-1 compliant — no /tmp writes)
-    let fallback = Path::new("/var/run/biomeos/security.sock");
-    if path_exists(fallback) {
-        let path = fallback.to_string_lossy().to_string();
+    let vps_security = Path::new(songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR)
+        .join("security.sock");
+    if path_exists(&vps_security) {
+        let path = vps_security.to_string_lossy().to_string();
         warn!("⚠️  Using VPS fallback for security provider: {}", path);
         return path;
     }
@@ -280,7 +283,10 @@ where
     warn!(
         "   Set $SECURITY_PROVIDER_SOCKET or place socket at $XDG_RUNTIME_DIR/biomeos/security.sock"
     );
-    "/var/run/biomeos/security.sock".to_string()
+    Path::new(songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR)
+        .join("security.sock")
+        .to_string_lossy()
+        .to_string()
 }
 
 /// Deprecated alias for [`discover_security_socket`].

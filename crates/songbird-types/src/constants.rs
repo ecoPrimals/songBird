@@ -55,6 +55,27 @@ pub fn dev_localhost_url(port: u16) -> String {
     format!("http://{LOCALHOST}:{port}")
 }
 
+/// Returns the appropriate HTTP scheme based on `SONGBIRD_TLS_ENABLED`.
+///
+/// Defaults to `"http"` for LAN mesh communication where TLS is handled
+/// at a lower layer (BTSP).
+#[must_use]
+pub fn http_scheme() -> &'static str {
+    if crate::error_helpers::SafeEnv::get_bool("SONGBIRD_TLS_ENABLED", false) {
+        "https"
+    } else {
+        "http"
+    }
+}
+
+/// Builds a transport-aware URL from host, port, and optional path.
+/// Scheme is selected via `http_scheme()` (environment-driven).
+#[must_use]
+pub fn endpoint_url(host: &str, port: u16, path: &str) -> String {
+    let scheme = http_scheme();
+    format!("{scheme}://{host}:{port}{path}")
+}
+
 /// Production bind address (all interfaces, IPv4)
 pub const PRODUCTION_BIND_ADDRESS: &str = "0.0.0.0";
 
