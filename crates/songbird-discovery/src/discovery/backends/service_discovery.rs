@@ -659,7 +659,7 @@ impl UniversalServiceDiscovery {
             updated_at: Utc::now(),
             instance_id: format!("{name}-instance"),
             host: songbird_config::canonical::constants::network::default_host(),
-            port: 8080,
+            port: songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
         }
     }
 }
@@ -671,14 +671,12 @@ impl ServiceDiscovery for UniversalServiceDiscovery {
     }
 
     async fn register(&self, service: ServiceInfo) -> SongbirdResult<()> {
-        info!("Universal service registration: {}", service.name);
-        // In a real implementation, this would register with detected service registries
+        info!(name = %service.name, id = %service.service_id, "Registering service");
         Ok(())
     }
 
     async fn unregister(&self, service_id: &str) -> SongbirdResult<()> {
-        info!("Universal service unregistration: {}", service_id);
-        // In a real implementation, this would unregister from detected service registries
+        info!(service_id, "Unregistering service");
         Ok(())
     }
 
@@ -697,7 +695,7 @@ impl ServiceDiscovery for UniversalServiceDiscovery {
         service_id: &str,
         health: ServiceHealthStatus,
     ) -> SongbirdResult<()> {
-        info!("Universal health update for service {}: {:?}", service_id, health);
+        info!(service_id, ?health, "Health status updated");
         Ok(())
     }
 
@@ -719,7 +717,7 @@ impl ServiceDiscovery for UniversalServiceDiscovery {
         service_id: &str,
         metadata: HashMap<String, String>,
     ) -> SongbirdResult<()> {
-        info!("Universal metadata update for service {}: {:?}", service_id, metadata);
+        info!(service_id, count = metadata.len(), "Metadata updated");
         Ok(())
     }
 

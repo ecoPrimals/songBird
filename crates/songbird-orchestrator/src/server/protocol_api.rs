@@ -509,8 +509,7 @@ mod tests {
         assert!(protocols.tarpc.is_some());
         assert!(protocols.json_rpc.is_some());
 
-        // WebSocket not yet implemented
-        assert!(protocols.websocket.is_none());
+        assert!(protocols.websocket.is_some());
     }
 
     #[test]
