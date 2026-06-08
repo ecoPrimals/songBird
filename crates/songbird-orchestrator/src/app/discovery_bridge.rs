@@ -218,12 +218,9 @@ impl SongbirdOrchestrator {
                                 let connectivity_check = tokio::time::timeout(
                                 songbird_types::defaults::timeouts::DEFAULT_CONNECTIVITY_CHECK_TIMEOUT,
                                 async {
-                                    // ✅ TOWER ATOMIC: Pure Rust HTTP with security provider crypto
+                                    // For plain HTTP health checks, crypto provider is optional
                                     let crypto_socket = crate::primal_discovery::discover_crypto_provider().await
-                                        .map_err(|e| {
-                                            warn!("Failed to discover crypto provider for connectivity check: {}", e);
-                                            anyhow::anyhow!("Crypto discovery failed: {e}")
-                                        })?;
+                                        .unwrap_or_default();
 
                                     let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
 

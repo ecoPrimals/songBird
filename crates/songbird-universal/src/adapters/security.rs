@@ -374,6 +374,32 @@ impl SecurityAdapter {
         &self.endpoint
     }
 
+    /// Send a GET request via the transport layer (JSON-RPC path mapping for UDS).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the transport call fails.
+    pub async fn transport_get(&self, path: &str) -> SongbirdResult<serde_json::Value> {
+        tokio::time::timeout(self.timeout, self.transport.get(path))
+            .await
+            .map_err(|_| SongbirdError::network(format!("Timeout on GET {path}")))?
+    }
+
+    /// Send a POST request via the transport layer (JSON-RPC method mapping for UDS).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the transport call fails.
+    pub async fn transport_post(
+        &self,
+        path: &str,
+        body: serde_json::Value,
+    ) -> SongbirdResult<serde_json::Value> {
+        tokio::time::timeout(self.timeout, self.transport.post(path, body))
+            .await
+            .map_err(|_| SongbirdError::network(format!("Timeout on POST {path}")))?
+    }
+
     /// Generic method for calling security provider endpoints (v3.16.0)
     ///
     /// **Modern Idiomatic Rust**: Protocol-agnostic, zero hardcoding

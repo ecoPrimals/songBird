@@ -130,6 +130,7 @@ impl MeshHandler {
 
         let bootstrap_peers: Vec<(String, std::net::SocketAddr)> = params
             .get("bootstrap_peers")
+            .or_else(|| params.get("peers"))
             .and_then(|v| v.as_array())
             .map(|arr| {
                 arr.iter()
