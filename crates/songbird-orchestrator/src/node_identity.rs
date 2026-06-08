@@ -433,12 +433,11 @@ mod tests {
 
     #[test]
     fn test_stable_id_generation() {
-        // Pin NODE_ID env to a known value to prevent race with concurrent tests
+        let _env_lock = crate::test_sync_env::env_lock();
         let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_NODE_ID", "test-stable");
         let id1 = NodeIdentity::generate_stable_id().unwrap();
         let id2 = NodeIdentity::generate_stable_id().unwrap();
 
-        // Should generate same ID on same machine with same env
         assert_eq!(id1, id2, "Stable ID should be consistent");
     }
 
@@ -589,9 +588,9 @@ mod tests {
 
     #[test]
     fn new_or_load_uses_custom_data_dir_and_is_stable() {
+        let _env_lock = crate::test_sync_env::env_lock();
         let dir = tempfile::tempdir().expect("tempdir");
 
-        // Pin env vars for the duration of this test to avoid races
         let _data_guard = songbird_process_env::ScopedEnv::new(
             "SONGBIRD_DATA_DIR",
             dir.path().to_str().expect("utf8 temp path"),

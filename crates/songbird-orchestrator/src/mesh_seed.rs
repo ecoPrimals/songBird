@@ -203,17 +203,17 @@ mod tests {
         let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(2);
         loop {
             let guard = mesh_handler.mesh().await;
-            if guard.is_some() {
-                let mesh = guard.as_ref().unwrap();
+            if let Some(mesh) = guard.as_ref() {
                 let reachable = mesh.get_reachable_nodes().await;
                 if reachable.len() >= 2 {
                     break;
                 }
             }
             drop(guard);
-            if tokio::time::Instant::now() >= deadline {
-                panic!("mesh not populated within 2s");
-            }
+            assert!(
+                tokio::time::Instant::now() < deadline,
+                "mesh not populated within 2s"
+            );
             tokio::task::yield_now().await;
         }
 

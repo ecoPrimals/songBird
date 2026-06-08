@@ -578,6 +578,7 @@ mod tests {
 
     #[tokio::test]
     async fn service_monitor_report_all_healthy() {
+        let _env_lock = crate::test_sync_env::env_lock();
         let monitor = ServiceMonitor::new(Duration::from_secs(5));
         let report = monitor.get_monitoring_report().await.unwrap();
         assert_eq!(report.services_monitored, 4);
@@ -588,6 +589,7 @@ mod tests {
 
     #[tokio::test]
     async fn service_monitor_env_disables_service() {
+        let _env_lock = crate::test_sync_env::env_lock();
         let _guard =
             songbird_process_env::ScopedEnv::new("SONGBIRD_SERVICE_REGISTRY_ENABLED", "false");
         let monitor = ServiceMonitor::new(Duration::from_secs(5));
@@ -598,6 +600,7 @@ mod tests {
 
     #[tokio::test]
     async fn service_monitor_gaming_disabled() {
+        let _env_lock = crate::test_sync_env::env_lock();
         let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_GAMING_ENABLED", "false");
         let monitor = ServiceMonitor::new(Duration::from_secs(5));
         let report = monitor.get_monitoring_report().await.unwrap();
@@ -606,6 +609,7 @@ mod tests {
 
     #[tokio::test]
     async fn service_monitor_federation_disabled() {
+        let _env_lock = crate::test_sync_env::env_lock();
         let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_FEDERATION_ENABLED", "false");
         let monitor = ServiceMonitor::new(Duration::from_secs(5));
         let report = monitor.get_monitoring_report().await.unwrap();
@@ -614,6 +618,7 @@ mod tests {
 
     #[tokio::test]
     async fn service_monitor_security_disabled() {
+        let _env_lock = crate::test_sync_env::env_lock();
         let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_SECURITY_ENABLED", "false");
         let monitor = ServiceMonitor::new(Duration::from_secs(5));
         let report = monitor.get_monitoring_report().await.unwrap();

@@ -262,16 +262,14 @@ fn detect_memory_gb() -> usize {
 mod tests {
     use super::*;
     use songbird_process_env::ScopedEnv;
-    use std::sync::Mutex;
 
-    static ENV_LOCK: std::sync::OnceLock<Mutex<()>> = std::sync::OnceLock::new();
-    fn env_mutex() -> &'static Mutex<()> {
-        ENV_LOCK.get_or_init(|| Mutex::new(()))
+    fn env_mutex() -> std::sync::MutexGuard<'static, ()> {
+        crate::test_sync_env::env_lock()
     }
 
     #[tokio::test]
     async fn federation_auto_enables_when_peers_env_set() {
-        let _guard = env_mutex().lock().unwrap();
+        let _guard = env_mutex();
         let _peers = ScopedEnv::new("SONGBIRD_PEERS", "strand.primals.eco:7700");
 
         let options = FederationOptions::from_env();
@@ -287,7 +285,7 @@ mod tests {
 
     #[tokio::test]
     async fn federation_auto_enables_when_federation_port_env_set() {
-        let _guard = env_mutex().lock().unwrap();
+        let _guard = env_mutex();
         let _port = ScopedEnv::new("SONGBIRD_FEDERATION_PORT", "7700");
 
         let options = FederationOptions::from_env();
@@ -303,7 +301,7 @@ mod tests {
 
     #[tokio::test]
     async fn federation_disabled_when_no_env_signals() {
-        let _guard = env_mutex().lock().unwrap();
+        let _guard = env_mutex();
 
         let options = FederationOptions::from_env();
         let node_identity = NodeIdentity::new_or_load(None).expect("identity");
