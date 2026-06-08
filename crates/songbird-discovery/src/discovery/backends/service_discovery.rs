@@ -492,26 +492,145 @@ impl UniversalServiceDiscovery {
         Ok(services)
     }
 
-    /// Discover services from file-based configuration
+    /// Discover services from file-based registry (YAML or JSON).
+    ///
+    /// Reads service definitions from the given path. Supports:
+    /// - `.yaml` / `.yml` files parsed via `serde_yaml`
+    /// - `.json` files parsed via `serde_json`
+    ///
+    /// Expected file format: array of objects with `name`, `host`, `port`, and
+    /// optional `version`, `tags`, `metadata` fields.
     async fn discover_from_file(
         &self,
-        _path: &str,
-        _query: &ServiceQuery,
+        path: &str,
+        query: &ServiceQuery,
     ) -> SongbirdResult<Vec<ServiceInfo>> {
-        // Implementation would read YAML/JSON service definitions
-        debug!("File-based discovery not yet implemented");
-        Ok(Vec::new())
+        use chrono::Utc;
+        use songbird_types::errors::SongbirdError;
+
+        let content =
+            tokio::fs::read_to_string(path).await.map_err(|e| SongbirdError::Configuration {
+                message: format!("Failed to read service registry file: {e}"),
+                field: Some(path.to_string()),
+                suggestion: None,
+            })?;
+
+        #[derive(serde::Deserialize)]
+        struct FileServiceEntry {
+            name: String,
+            host: Option<String>,
+            port: Option<u16>,
+            version: Option<String>,
+            tags: Option<Vec<String>>,
+            #[serde(default)]
+            metadata: HashMap<String, serde_json::Value>,
+        }
+
+        let is_yaml = std::path::Path::new(path)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml"));
+        let entries: Vec<FileServiceEntry> = if is_yaml {
+            serde_yaml::from_str(&content).map_err(|e| SongbirdError::Configuration {
+                message: format!("Invalid YAML in service registry: {e}"),
+                field: Some(path.to_string()),
+                suggestion: None,
+            })?
+        } else {
+            serde_json::from_str(&content).map_err(|e| SongbirdError::Configuration {
+                message: format!("Invalid JSON in service registry: {e}"),
+                field: Some(path.to_string()),
+                suggestion: None,
+            })?
+        };
+
+        let services: Vec<ServiceInfo> = entries
+            .into_iter()
+            .filter(|e| query.name.as_ref().is_none_or(|q| e.name.contains(q.as_str())))
+            .map(|e| ServiceInfo {
+                service_id: format!("{}-file-{}", e.name, uuid::Uuid::new_v4()),
+                name: e.name.clone(),
+                version: e.version.unwrap_or_else(|| "0.0.0".to_string()),
+                service_type: "file-registry".to_string(),
+                description: Some(format!("Discovered from {path}")),
+                endpoints: Vec::new(),
+                health_check_endpoint: None,
+                metadata: e.metadata,
+                tags: e.tags.unwrap_or_default(),
+                dependencies: Vec::new(),
+                status: ServiceStatus::Running,
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+                instance_id: format!("{}-instance", e.name),
+                host: e.host.unwrap_or_else(|| "127.0.0.1".to_string()),
+                port: e.port.unwrap_or(8080),
+            })
+            .collect();
+
+        debug!(path, count = services.len(), "File-based discovery loaded services");
+        Ok(services)
     }
 
-    /// Discover services from network scanning
+    /// Discover services from network scanning (TCP connect probe on common ports).
+    ///
+    /// Scans the given subnet for active services by probing well-known ports.
+    /// Returns services that respond to TCP connect within a timeout.
     async fn discover_from_network_scan(
         &self,
-        _subnet: &str,
+        subnet: &str,
         _query: &ServiceQuery,
     ) -> SongbirdResult<Vec<ServiceInfo>> {
-        // Implementation would scan network for services
-        debug!("Network scanning discovery not yet implemented");
-        Ok(Vec::new())
+        use chrono::Utc;
+        use std::net::SocketAddr;
+
+        let probe_ports: &[u16] = &[8080, 7700, 3000, 9090];
+        let timeout = std::time::Duration::from_millis(500);
+        let mut services = Vec::new();
+
+        let base_ip = subnet.split('/').next().unwrap_or(subnet);
+        let octets: Vec<&str> = base_ip.split('.').collect();
+        if octets.len() != 4 {
+            debug!(subnet, "Invalid subnet format for network scan");
+            return Ok(Vec::new());
+        }
+
+        let prefix: String = format!("{}.{}.{}.", octets[0], octets[1], octets[2]);
+
+        for host_octet in 1..=254u8 {
+            let ip = format!("{prefix}{host_octet}");
+            for &port in probe_ports {
+                let addr: SocketAddr = match format!("{ip}:{port}").parse() {
+                    Ok(a) => a,
+                    Err(_) => continue,
+                };
+
+                if tokio::time::timeout(timeout, tokio::net::TcpStream::connect(addr))
+                    .await
+                    .is_ok_and(|r| r.is_ok())
+                {
+                    services.push(ServiceInfo {
+                        service_id: format!("net-{ip}-{port}-{}", uuid::Uuid::new_v4()),
+                        name: format!("service-{ip}:{port}"),
+                        version: "unknown".to_string(),
+                        service_type: "network-scan".to_string(),
+                        description: Some(format!("TCP-reachable at {ip}:{port}")),
+                        endpoints: Vec::new(),
+                        health_check_endpoint: None,
+                        metadata: HashMap::new(),
+                        tags: vec!["network-discovered".to_string()],
+                        dependencies: Vec::new(),
+                        status: ServiceStatus::Running,
+                        created_at: Utc::now(),
+                        updated_at: Utc::now(),
+                        instance_id: format!("{ip}-{port}"),
+                        host: ip.clone(),
+                        port,
+                    });
+                }
+            }
+        }
+
+        debug!(subnet, count = services.len(), "Network scan discovery completed");
+        Ok(services)
     }
 
     /// Create a `ServiceInfo` from discovered service data

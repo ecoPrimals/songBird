@@ -9,9 +9,9 @@
 //!
 //! ## Flow
 //!
-//! 1. Get local gate's Ed25519 public key from local bearDog
+//! 1. Get local gate's Ed25519 public key from local security provider
 //! 2. For each reachable peer: POST `auth.exchange_trust` via Songbird HTTP JSON-RPC
-//! 3. Register returned remote key on local bearDog
+//! 3. Register returned remote key on local security provider
 //!
 //! All steps are async and best-effort — mesh connectivity is not gated on trust
 //! exchange success. Failures are logged and retried on the next health cycle.
@@ -50,7 +50,7 @@ pub fn spawn_trust_exchange(peers: Vec<(String, SocketAddr)>) {
         let local_key = match get_local_public_key().await {
             Ok(key) => key,
             Err(e) => {
-                warn!(error = %e, "Cannot perform trust exchange: local bearDog key unavailable");
+                warn!(error = %e, "Cannot perform trust exchange: local security provider key unavailable");
                 return;
             }
         };
@@ -93,7 +93,7 @@ struct RemoteKeyMaterial {
     gate_id: String,
 }
 
-/// Get our local Ed25519 public key from bearDog.
+/// Get our local Ed25519 public key from the security provider.
 async fn get_local_public_key() -> Result<String, String> {
     let socket_path = discover_beardog_socket()?;
 
@@ -113,7 +113,7 @@ async fn get_local_public_key() -> Result<String, String> {
         .get("local_public_key")
         .and_then(Value::as_str)
         .map(String::from)
-        .ok_or_else(|| "bearDog did not return local_public_key".to_string())
+        .ok_or_else(|| "security provider did not return local_public_key".to_string())
 }
 
 /// Call `auth.exchange_trust` on a remote peer's Songbird HTTP endpoint.
@@ -173,7 +173,7 @@ async fn exchange_trust_with_peer(
     })
 }
 
-/// Register a remote gate's key on our local bearDog.
+/// Register a remote gate's key on our local security provider.
 async fn register_remote_key(remote: &RemoteKeyMaterial) -> Result<(), String> {
     let socket_path = discover_beardog_socket()?;
 
@@ -196,7 +196,7 @@ async fn register_remote_key(remote: &RemoteKeyMaterial) -> Result<(), String> {
             .and_then(Value::as_str)
             .or_else(|| response.get("error").and_then(Value::as_str))
             .unwrap_or("unknown");
-        return Err(format!("Local bearDog registration failed: {msg}"));
+        return Err(format!("Local security provider registration failed: {msg}"));
     }
 
     let registered = response.get("registered").and_then(Value::as_bool).unwrap_or(false);
@@ -204,7 +204,7 @@ async fn register_remote_key(remote: &RemoteKeyMaterial) -> Result<(), String> {
         info!(
             remote_gate = %remote.gate_id,
             remote_did = %remote.did,
-            "Registered remote trust issuer on local bearDog"
+            "Registered remote trust issuer on local security provider"
         );
     } else {
         debug!(

@@ -408,7 +408,7 @@ pub fn discover_security_socket() -> String {
             if legacy_beardog.exists() {
                 let path = legacy_beardog.to_string_lossy().to_string();
                 warn!(
-                    "Security provider via legacy beardog socket: {path} — migrate to security-{{family}}.sock"
+                    "Security provider via legacy on-disk socket: {path} — migrate to security-{{family}}.sock"
                 );
                 return path;
             }
