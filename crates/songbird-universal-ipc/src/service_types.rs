@@ -23,11 +23,19 @@ pub use bytes::Bytes;
 /// Reference-counted IPC byte buffer (see [`crate::service_types`] module docs).
 pub use songbird_types::SharedBytes;
 
-/// IPC service request parameters for registration
+/// IPC service request parameters for registration.
+///
+/// Accepts multiple field name variants for compatibility with different launchers:
+/// - `primal_id` or `name` for the primal identifier
+/// - `endpoint`, `socket`, or `socket_path` for the connection endpoint
+/// - `capabilities` (optional, defaults to empty)
 #[derive(Debug, Clone, Deserialize)]
 pub struct RegisterParams {
+    #[serde(alias = "name")]
     pub primal_id: String,
+    #[serde(default)]
     pub capabilities: Vec<String>,
+    #[serde(alias = "socket", alias = "socket_path")]
     pub endpoint: String,
 }
 

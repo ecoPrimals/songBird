@@ -149,10 +149,30 @@ where
     }
 
     // VPS fallback (DH-1 compliant — no /tmp writes)
-    let fallback = "/var/run/biomeos/neural-api.sock".to_string();
-    warn!("⚠️  Using VPS fallback Neural API socket: {}", fallback);
-    warn!("   Consider setting $NEURAL_API_SOCKET, $BEARDOG_SOCKET, or XDG_RUNTIME_DIR");
-    fallback
+    let fallback = Path::new("/var/run/biomeos/neural-api.sock");
+    if path_exists(fallback) {
+        let path = fallback.to_string_lossy().to_string();
+        warn!("⚠️  Using VPS fallback Neural API socket: {}", path);
+        return path;
+    }
+
+    // XDG plain (no family scoping) as last-resort probe
+    if let Some(xdg_dir) = get_var("XDG_RUNTIME_DIR") {
+        let plain = Path::new(&xdg_dir).join(BIOMEOS_RUNTIME_SUBDIR).join("neural-api.sock");
+        if path_exists(&plain) {
+            let path = plain.to_string_lossy().to_string();
+            warn!("⚠️  Using XDG plain Neural API socket: {}", path);
+            return path;
+        }
+    }
+
+    warn!("⚠️  No Neural API socket found — crypto operations will fail until provider discovered");
+    warn!(
+        "   Set $SECURITY_PROVIDER_SOCKET, $BEARDOG_SOCKET, or place socket at $XDG_RUNTIME_DIR/biomeos/neural-api.sock"
+    );
+    // Return the canonical path even though it doesn't exist — callers handle connect errors
+    // gracefully. This ensures the path logged in diagnostics is actionable.
+    "/var/run/biomeos/neural-api.sock".to_string()
 }
 
 /// Discover the security provider socket via capability-based discovery.
@@ -249,10 +269,18 @@ where
     }
 
     // VPS fallback (DH-1 compliant — no /tmp writes)
-    let fallback = "/var/run/biomeos/security.sock";
-    warn!("⚠️  Using VPS fallback for security provider: {}", fallback);
-    warn!("   Consider setting $SECURITY_PROVIDER_SOCKET, $BEARDOG_SOCKET, or XDG_RUNTIME_DIR");
-    fallback.to_string()
+    let fallback = Path::new("/var/run/biomeos/security.sock");
+    if path_exists(fallback) {
+        let path = fallback.to_string_lossy().to_string();
+        warn!("⚠️  Using VPS fallback for security provider: {}", path);
+        return path;
+    }
+
+    warn!("⚠️  No security provider socket found — crypto operations will degrade");
+    warn!(
+        "   Set $SECURITY_PROVIDER_SOCKET or place socket at $XDG_RUNTIME_DIR/biomeos/security.sock"
+    );
+    "/var/run/biomeos/security.sock".to_string()
 }
 
 /// Deprecated alias for [`discover_security_socket`].

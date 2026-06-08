@@ -152,12 +152,21 @@ impl SongbirdOrchestrator {
         let federation_coordinator = federation_setup.coordinator;
         let federation_config = federation_setup.config;
 
-        // ✅ SMART REFACTORING (v3.10.3 - Jan 6, 2026): Setup security via capability discovery
-        // Extracted to security_setup module demonstrating ZERO HARDCODING philosophy.
-        // This is the CORRECT way: runtime discovery, ANY provider, no hardcoded endpoints.
-        // Songbird knows about "security" capability, NOT about specific providers like security provider.
-        // This reduces core.rs by ~56 lines while showcasing modern capability-based architecture.
-        let _security_integration = super::security_setup::setup_security().await?;
+        // Security provider setup: capability-based runtime discovery.
+        // Non-fatal — songbird degrades to unsigned/non-TLS operation when no
+        // security provider is available (SB-STARTUP-01 fix).
+        let _security_integration = match super::security_setup::setup_security().await {
+            Ok(integration) => Some(integration),
+            Err(e) => {
+                tracing::warn!(
+                    "⚠️  Security provider not available — operating in degraded mode: {e}"
+                );
+                tracing::warn!(
+                    "   Set SONGBIRD_SECURITY_PROVIDER or SECURITY_ENDPOINT to enable TLS/signing"
+                );
+                None
+            }
+        };
 
         // Initialize discovery status manager for observability (Jan 5, 2026)
         let discovery_status_manager = Arc::new(songbird_discovery::DiscoveryStatusManager::new(
