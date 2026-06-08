@@ -717,7 +717,7 @@ fn transport_endpoint_from_native(ep: &NativeEndpoint) -> TransportEndpoint {
             path: format!("@{name}"),
         },
         NativeEndpoint::TcpLocal(port) => TransportEndpoint::Tcp {
-            host: "127.0.0.1".to_string(),
+            host: songbird_types::constants::LOCALHOST.to_string(),
             port: *port,
         },
         NativeEndpoint::NamedPipe(name) => TransportEndpoint::Uds {
@@ -727,7 +727,7 @@ fn transport_endpoint_from_native(ep: &NativeEndpoint) -> TransportEndpoint {
             path: service.clone(),
         },
         NativeEndpoint::InProcess(id) => TransportEndpoint::Tcp {
-            host: "127.0.0.1".to_string(),
+            host: songbird_types::constants::LOCALHOST.to_string(),
             port: *id,
         },
         NativeEndpoint::SharedMemory(region) => TransportEndpoint::Uds {

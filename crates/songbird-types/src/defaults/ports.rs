@@ -75,3 +75,14 @@ pub const DEFAULT_GAMING_BASE_PORT: u16 = 6112;
 pub const DEFAULT_MESH_PEER_PORT: u16 = 7700;
 /// Ephemeral bind address for port-0 allocation
 pub const EPHEMERAL_BIND_ADDR: &str = "127.0.0.1:0";
+
+// --- Third-party service discovery defaults ---
+// These are well-known ports for external registries. Used as fallbacks when
+// discovery endpoints are not explicitly configured via environment variables.
+
+/// Consul agent HTTP API default port
+pub const CONSUL_DEFAULT_PORT: u16 = 8500;
+/// Eureka server default port
+pub const EUREKA_DEFAULT_PORT: u16 = 8761;
+/// Broadcast/mDNS discovery port (env: `SONGBIRD_BROADCAST_DISCOVERY_PORT`)
+pub const DEFAULT_BROADCAST_DISCOVERY_PORT: u16 = 2300;

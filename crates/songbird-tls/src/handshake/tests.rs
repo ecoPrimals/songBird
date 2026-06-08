@@ -194,9 +194,8 @@ fn test_handshake_key_schedule_initialization() {
 fn test_set_crypto_client() {
     let mut hsm = HandshakeStateMachine::new();
 
-    let crypto_client = SecurityTlsCryptoClient::with_socket_path(
-        "/tmp/test-security-provider.sock".to_string(),
-    );
+    let crypto_client =
+        SecurityTlsCryptoClient::with_socket_path("/tmp/test-security-provider.sock".to_string());
     hsm.set_crypto_client(crypto_client);
 
     assert!(hsm.crypto_client.is_some());
@@ -404,8 +403,8 @@ async fn generate_server_hello_missing_stored_client_hello() {
 
 #[tokio::test]
 async fn generate_server_hello_success_with_mock_crypto() {
-    use base64::engine::general_purpose;
     use base64::Engine;
+    use base64::engine::general_purpose;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
 
@@ -444,8 +443,8 @@ async fn generate_server_hello_success_with_mock_crypto() {
 
 #[tokio::test]
 async fn full_handshake_state_machine_with_mock_crypto() {
-    use base64::engine::general_purpose;
     use base64::Engine;
+    use base64::engine::general_purpose;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
 

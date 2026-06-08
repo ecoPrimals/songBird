@@ -5,8 +5,8 @@ use super::*;
 use crate::codec::Encode;
 use crate::error::TlsError;
 use crate::messages::{ClientHello, ContentType, Extension};
-use base64::engine::general_purpose;
 use base64::Engine;
+use base64::engine::general_purpose;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 

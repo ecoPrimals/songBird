@@ -583,3 +583,186 @@ async fn discovery_peers_returns_mesh_bootstrap_peers() {
     assert_eq!(iron["address"].as_str().unwrap(), "192.168.1.238:7700");
     assert_eq!(iron["tcp_port"].as_u64().unwrap(), 7700);
 }
+
+/// Validates the full `ipc.resolve` → `TransportEndpoint` wire format
+/// that sourDough's `IpcClient` consumes. This is the Phase 2 M1 gate test.
+///
+/// Wire contract:
+/// - `endpoint.transport` discriminant tag (internally tagged enum via `#[serde(tag = "transport")]`)
+/// - UDS variant: `{ "transport": "uds", "path": "..." }`
+/// - TCP variant: `{ "transport": "tcp", "host": "...", "port": N }`
+/// - MeshRelay variant: `{ "transport": "mesh_relay", "peer_id": "...", "capability": "..." }`
+///
+/// sourDough callers use `"native": true` to force the direct endpoint (no relay).
+/// Default mode (`"virtual": true`) returns `mesh_relay` when relay is available.
+#[tokio::test]
+async fn ipc_resolve_returns_transport_endpoint_json_sourdough_wire_compat() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new(registry.clone());
+
+    // Register a UDS-based primal
+    handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "beardog",
+                "capabilities": ["crypto.sign", "crypto.verify", "security"],
+                "endpoint": "/run/user/1000/biomeos/beardog.sock"
+            }),
+        )
+        .await
+        .unwrap();
+
+    // Register a TCP-based primal
+    handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "skunkbat",
+                "capabilities": ["observability", "metrics"],
+                "endpoint": "tcp://127.0.0.1:9090"
+            }),
+        )
+        .await
+        .unwrap();
+
+    // --- Resolve UDS primal by capability with native=true (bypass relay) ---
+    let uds_result = handler
+        .handle("ipc.resolve", json!({ "capability": "crypto.sign", "native": true }))
+        .await
+        .expect("resolve UDS primal by capability (native)");
+
+    let ep = &uds_result["endpoint"];
+    assert_eq!(ep["transport"], "uds", "UDS endpoint must have transport='uds'");
+    assert_eq!(
+        ep["path"], "/run/user/1000/biomeos/beardog.sock",
+        "UDS path must match registered socket"
+    );
+    assert!(ep.get("host").is_none(), "UDS variant must not have 'host'");
+    assert!(ep.get("port").is_none(), "UDS variant must not have 'port'");
+
+    // Validate envelope fields that sourDough also reads
+    assert_eq!(uds_result["relay"], false);
+    assert!(uds_result["capabilities"].as_array().unwrap().iter().any(|c| c == "crypto.sign"));
+    assert!(uds_result["native_endpoint"].as_str().unwrap().contains("beardog.sock"));
+
+    // --- Resolve TCP primal by primal_id with native=true ---
+    let tcp_result = handler
+        .handle("ipc.resolve", json!({ "primal_id": "skunkbat", "native": true }))
+        .await
+        .expect("resolve TCP primal by primal_id (native)");
+
+    let ep = &tcp_result["endpoint"];
+    assert_eq!(ep["transport"], "tcp", "TCP endpoint must have transport='tcp'");
+    assert_eq!(ep["host"], "127.0.0.1");
+    assert_eq!(ep["port"], 9090);
+    assert!(ep.get("path").is_none(), "TCP variant must not have 'path'");
+    assert!(ep.get("peer_id").is_none(), "TCP variant must not have 'peer_id'");
+
+    // --- Resolve with default virtual mode (relay) ---
+    let relay_result = handler
+        .handle("ipc.resolve", json!({ "capability": "crypto.sign" }))
+        .await
+        .expect("resolve with relay (default virtual mode)");
+
+    let ep = &relay_result["endpoint"];
+    // When relay is available, endpoint becomes mesh_relay
+    assert_eq!(
+        ep["transport"], "mesh_relay",
+        "Virtual mode should return mesh_relay when relay is active"
+    );
+    assert_eq!(ep["peer_id"], "beardog");
+    assert_eq!(ep["capability"], "crypto.sign");
+    assert_eq!(relay_result["relay"], true);
+    // native_endpoint is always present regardless of relay
+    assert!(relay_result["native_endpoint"].as_str().unwrap().contains("beardog.sock"));
+
+    // --- Resolve by `name` alias with native ---
+    let name_result = handler
+        .handle("ipc.resolve", json!({ "name": "beardog", "native": true }))
+        .await
+        .expect("resolve by name alias");
+    assert_eq!(name_result["endpoint"]["transport"], "uds");
+    assert_eq!(name_result["endpoint"]["path"], "/run/user/1000/biomeos/beardog.sock");
+
+    // --- Verify `ipc.resolve_by_name` method alias ---
+    let alias_result = handler
+        .handle("ipc.resolve_by_name", json!({ "name": "skunkbat", "native": true }))
+        .await
+        .expect("ipc.resolve_by_name method alias");
+    assert_eq!(alias_result["endpoint"]["transport"], "tcp");
+    assert_eq!(alias_result["endpoint"]["port"], 9090);
+}
+
+/// Validates `capability.resolve` also returns `TransportEndpoint` JSON.
+/// sourDough's `IpcClient` can use either `ipc.resolve` or `capability.resolve`.
+#[tokio::test]
+async fn capability_resolve_returns_transport_endpoint_json() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new(registry.clone());
+
+    handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "beardog",
+                "capabilities": ["crypto.sign"],
+                "endpoint": "/run/user/1000/biomeos/beardog.sock"
+            }),
+        )
+        .await
+        .unwrap();
+
+    let result = handler
+        .handle("capability.resolve", json!({ "capability": "crypto.sign" }))
+        .await
+        .expect("capability.resolve");
+
+    let ep = &result["endpoint"];
+    assert_eq!(ep["transport"], "uds");
+    assert_eq!(ep["path"], "/run/user/1000/biomeos/beardog.sock");
+    assert_eq!(result["primal_id"], "beardog");
+}
+
+/// Validates that `ipc.register` returns `TransportEndpoint` in its response
+/// so primals get immediate confirmation of their registered transport.
+#[tokio::test]
+async fn ipc_register_returns_transport_endpoint_in_response() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new(registry.clone());
+
+    // UDS registration
+    let uds_reg = handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "beardog",
+                "capabilities": ["crypto"],
+                "endpoint": "/run/user/1000/biomeos/beardog.sock"
+            }),
+        )
+        .await
+        .unwrap();
+
+    let t = &uds_reg["transport"];
+    assert_eq!(t["transport"], "uds");
+    assert_eq!(t["path"], "/run/user/1000/biomeos/beardog.sock");
+
+    // TCP registration
+    let tcp_reg = handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "skunkbat",
+                "capabilities": ["observability"],
+                "endpoint": "tcp://127.0.0.1:9090"
+            }),
+        )
+        .await
+        .unwrap();
+
+    let t = &tcp_reg["transport"];
+    assert_eq!(t["transport"], "tcp");
+    assert_eq!(t["host"], "127.0.0.1");
+    assert_eq!(t["port"], 9090);
+}

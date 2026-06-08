@@ -166,10 +166,7 @@ pub fn total_disk_gb() -> Option<usize> {
 /// Read 1-minute load average from `/proc/loadavg` (Linux only).
 /// Returns load as a percentage relative to CPU count.
 #[cfg(target_os = "linux")]
-#[expect(
-    clippy::cast_precision_loss,
-    reason = "core count clamped to 1024 — fits f32 exactly"
-)]
+#[expect(clippy::cast_precision_loss, reason = "core count clamped to 1024 — fits f32 exactly")]
 pub fn load_percent() -> f32 {
     let cores = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
     let cores_f = cores.min(1024) as f32;

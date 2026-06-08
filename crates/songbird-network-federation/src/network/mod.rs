@@ -110,17 +110,11 @@ impl NetworkManager {
         reason = "TCP connection count bounded by OS limits, fits u32"
     )]
     async fn get_active_connections_count(&self) -> SongbirdResult<u32> {
-        let content = tokio::fs::read_to_string("/proc/net/tcp")
-            .await
-            .unwrap_or_default();
+        let content = tokio::fs::read_to_string("/proc/net/tcp").await.unwrap_or_default();
         let established = content
             .lines()
             .skip(1)
-            .filter(|line| {
-                line.split_whitespace()
-                    .nth(3)
-                    .is_some_and(|state| state == "01")
-            })
+            .filter(|line| line.split_whitespace().nth(3).is_some_and(|state| state == "01"))
             .count();
         Ok(established as u32)
     }
@@ -132,9 +126,7 @@ impl NetworkManager {
         reason = "byte count precision loss at >2^52 bytes is acceptable for metrics"
     )]
     async fn get_bandwidth_usage(&self) -> SongbirdResult<f64> {
-        let content = tokio::fs::read_to_string("/proc/net/dev")
-            .await
-            .unwrap_or_default();
+        let content = tokio::fs::read_to_string("/proc/net/dev").await.unwrap_or_default();
         let total_bytes: u64 = content
             .lines()
             .skip(2)
@@ -159,9 +151,7 @@ impl NetworkManager {
         reason = "RTT values and count are small enough for f64 precision"
     )]
     async fn get_average_latency(&self) -> SongbirdResult<f64> {
-        let content = tokio::fs::read_to_string("/proc/net/tcp")
-            .await
-            .unwrap_or_default();
+        let content = tokio::fs::read_to_string("/proc/net/tcp").await.unwrap_or_default();
         let rtts: Vec<u64> = content
             .lines()
             .skip(1)

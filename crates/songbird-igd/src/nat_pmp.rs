@@ -68,7 +68,7 @@ impl NatPmpClient {
     pub async fn get_external_ip(&self) -> Result<NatPmpExternalIp> {
         debug!("NAT-PMP: Requesting external IP from {}", self.gateway);
 
-        let socket = UdpSocket::bind("0.0.0.0:0").await?;
+        let socket = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR).await?;
 
         // Request: version=0, opcode=0 (2 bytes)
         let request = [0x00u8, 0x00];
@@ -139,7 +139,7 @@ impl NatPmpClient {
             lifetime
         );
 
-        let socket = UdpSocket::bind("0.0.0.0:0").await?;
+        let socket = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR).await?;
 
         let opcode: u8 = match protocol {
             Protocol::Udp => 0x01,

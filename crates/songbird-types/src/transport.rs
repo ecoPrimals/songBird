@@ -108,7 +108,7 @@ impl TransportEndpoint {
             Self::Tcp {
                 host,
                 ..
-            } => host == "127.0.0.1" || host == "::1" || host == "localhost",
+            } => crate::constants::is_loopback_host(host),
             Self::MeshRelay {
                 ..
             } => false,

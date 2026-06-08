@@ -74,7 +74,7 @@ pub async fn resolve_stun_server(stun_server: &str) -> StunResult<SocketAddr> {
 #[must_use]
 pub fn local_bind_addr_for_peer(server_addr: SocketAddr) -> &'static str {
     if server_addr.is_ipv4() {
-        "0.0.0.0:0"
+        songbird_types::constants::EPHEMERAL_BIND_ADDR
     } else {
         "[::]:0"
     }

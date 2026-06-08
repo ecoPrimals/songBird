@@ -212,4 +212,3 @@ impl Default for HandshakeStateMachine {
 
 #[cfg(test)]
 mod tests;
-

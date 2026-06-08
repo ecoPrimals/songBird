@@ -154,7 +154,7 @@ async fn query_mdns_services(
         Ipv4Addr::new(224, 0, 0, 251),
         songbird_types::constants::MDNS_PORT,
     ));
-    let socket = UdpSocket::bind("0.0.0.0:0")
+    let socket = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR)
         .await
         .map_err(|e| DiscoveryError::NetworkError(format!("mDNS bind failed: {e}")))?;
     socket

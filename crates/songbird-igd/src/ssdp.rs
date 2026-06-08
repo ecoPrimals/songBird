@@ -65,8 +65,7 @@ impl SsdpClient {
     pub async fn discover_gateways(&self) -> Result<Vec<SsdpResponse>> {
         debug!("Starting SSDP discovery for UPnP IGD devices");
 
-        // Bind to any available port
-        let socket = UdpSocket::bind("0.0.0.0:0").await?;
+        let socket = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR).await?;
 
         // Enable broadcast (required for multicast)
         socket.set_broadcast(true)?;

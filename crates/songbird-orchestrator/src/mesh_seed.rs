@@ -210,10 +210,7 @@ mod tests {
                 }
             }
             drop(guard);
-            assert!(
-                tokio::time::Instant::now() < deadline,
-                "mesh not populated within 2s"
-            );
+            assert!(tokio::time::Instant::now() < deadline, "mesh not populated within 2s");
             tokio::task::yield_now().await;
         }
 

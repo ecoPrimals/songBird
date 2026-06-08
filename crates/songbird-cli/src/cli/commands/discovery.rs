@@ -6,8 +6,8 @@
 #![allow(missing_docs, reason = "thin command wrapper; behavior described in module docs")]
 
 use crate::errors::SongbirdResult;
-use songbird_discovery::traits::ServiceQuery;
 use songbird_discovery::UniversalDiscoveryFactory;
+use songbird_discovery::traits::ServiceQuery;
 
 pub async fn execute_discovery(
     timeout: u64,

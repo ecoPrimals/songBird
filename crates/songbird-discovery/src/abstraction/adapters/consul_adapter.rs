@@ -85,7 +85,7 @@ impl ProviderFactory for ConsulProviderFactory {
         let consul_port = songbird_process_env::var("CONSUL_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
-            .unwrap_or(8500); // Standard Consul port
+            .unwrap_or(songbird_types::defaults::ports::CONSUL_DEFAULT_PORT);
         let consul_datacenter =
             songbird_process_env::var("CONSUL_DATACENTER").unwrap_or_else(|_| "dc1".to_string());
         let consul_protocol =

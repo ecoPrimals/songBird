@@ -149,8 +149,8 @@ where
     }
 
     // VPS fallback (DH-1 compliant — no /tmp writes)
-    let vps_neural = Path::new(songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR)
-        .join("neural-api.sock");
+    let vps_neural =
+        Path::new(songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR).join("neural-api.sock");
     if path_exists(&vps_neural) {
         let path = vps_neural.to_string_lossy().to_string();
         warn!("⚠️  Using VPS fallback Neural API socket: {}", path);
@@ -271,8 +271,8 @@ where
     }
 
     // VPS fallback (DH-1 compliant — no /tmp writes)
-    let vps_security = Path::new(songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR)
-        .join("security.sock");
+    let vps_security =
+        Path::new(songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR).join("security.sock");
     if path_exists(&vps_security) {
         let path = vps_security.to_string_lossy().to_string();
         warn!("⚠️  Using VPS fallback for security provider: {}", path);
