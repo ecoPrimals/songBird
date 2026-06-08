@@ -3,22 +3,23 @@
 
 //! Relay Security — Phase 3.5 Ed25519 signature verification via `CryptoProvider`.
 //!
-//! Provides `CryptoProviderVerifier` which calls bearDog's `crypto.verify.ed25519`
-//! via UDS JSON-RPC. Used by the virtual relay when BTSP tokens contain signed payloads.
+//! Provides `CryptoProviderVerifier` which calls the security provider's
+//! `crypto.verify.ed25519` via UDS JSON-RPC. Used by the virtual relay when
+//! BTSP tokens contain signed payloads.
 
 use super::virtual_relay::BtspSignatureVerifier;
 
-/// Phase 3.5 verifier: calls bearDog's `crypto.verify.ed25519` via UDS JSON-RPC.
+/// Phase 3.5 verifier: calls the security provider's `crypto.verify.ed25519` via UDS JSON-RPC.
 ///
-/// The relay passes `node_id` alongside the message/signature. bearDog resolves
-/// the peer's Ed25519 public key from its `TrustedIssuerRegistry` and performs
-/// the verification. If bearDog is offline, returns `Err` (caller degrades gracefully).
+/// The relay passes `node_id` alongside the message/signature. The security provider
+/// resolves the peer's Ed25519 public key from its `TrustedIssuerRegistry` and performs
+/// the verification. If the provider is offline, returns `Err` (caller rejects the request).
 pub struct CryptoProviderVerifier {
     socket_path: String,
 }
 
 impl CryptoProviderVerifier {
-    /// Create a verifier targeting a bearDog signing socket.
+    /// Create a verifier targeting a security provider crypto socket.
     #[must_use]
     pub fn new(socket_path: String) -> Self {
         Self {
@@ -63,7 +64,7 @@ impl BtspSignatureVerifier for CryptoProviderVerifier {
     }
 }
 
-/// Low-level UDS JSON-RPC call to the crypto provider (bearDog signing socket).
+/// Low-level UDS JSON-RPC call to the crypto provider.
 async fn call_crypto_rpc(
     socket_path: &str,
     request: &serde_json::Value,
@@ -72,7 +73,7 @@ async fn call_crypto_rpc(
 
     let stream = tokio::net::UnixStream::connect(socket_path)
         .await
-        .map_err(|e| format!("bearDog connect ({socket_path}): {e}"))?;
+        .map_err(|e| format!("crypto provider connect ({socket_path}): {e}"))?;
 
     let (reader, mut writer) = stream.into_split();
     let mut buf_reader = BufReader::new(reader);
@@ -80,7 +81,7 @@ async fn call_crypto_rpc(
     let mut req_bytes = serde_json::to_vec(request).map_err(|e| format!("Serialize: {e}"))?;
     req_bytes.push(b'\n');
 
-    writer.write_all(&req_bytes).await.map_err(|e| format!("bearDog write: {e}"))?;
+    writer.write_all(&req_bytes).await.map_err(|e| format!("crypto provider write: {e}"))?;
 
     let mut response_line = String::new();
     let read_result = tokio::time::timeout(
@@ -88,23 +89,26 @@ async fn call_crypto_rpc(
         buf_reader.read_line(&mut response_line),
     )
     .await
-    .map_err(|_| "bearDog verify timeout (5s)".to_string())?
-    .map_err(|e| format!("bearDog read: {e}"))?;
+    .map_err(|_| "crypto provider verify timeout (5s)".to_string())?
+    .map_err(|e| format!("crypto provider read: {e}"))?;
 
     if read_result == 0 {
-        return Err("bearDog closed connection".to_string());
+        return Err("crypto provider closed connection".to_string());
     }
 
     let parsed: serde_json::Value = serde_json::from_str(response_line.trim())
-        .map_err(|e| format!("bearDog response parse: {e}"))?;
+        .map_err(|e| format!("crypto provider response parse: {e}"))?;
 
     if let Some(error) = parsed.get("error") {
         let msg =
             error.get("message").and_then(serde_json::Value::as_str).unwrap_or("unknown error");
-        return Err(format!("bearDog RPC error: {msg}"));
+        return Err(format!("crypto provider RPC error: {msg}"));
     }
 
-    parsed.get("result").cloned().ok_or_else(|| "Missing 'result' in bearDog response".to_string())
+    parsed
+        .get("result")
+        .cloned()
+        .ok_or_else(|| "Missing 'result' in crypto provider response".to_string())
 }
 
 /// Phase 3.5 signature verification for a relay request.
@@ -161,9 +165,17 @@ pub async fn verify_relay_signature(
                 target: "relay_audit",
                 peer,
                 error = %e,
-                "Relay: signature verifier unavailable, accepting on trust"
+                "Relay: signature verifier unavailable — rejecting signed request"
             );
-            None
+            let id = serde_json::from_str::<serde_json::Value>(raw_request)
+                .ok()
+                .and_then(|v| v.get("id").cloned())
+                .unwrap_or(serde_json::Value::Null);
+            Some(serde_json::json!({
+                "jsonrpc": "2.0",
+                "error": {"code": -32603, "message": "Signature verifier unavailable"},
+                "id": id
+            }))
         }
     }
 }
@@ -174,10 +186,10 @@ mod tests {
 
     #[tokio::test]
     async fn crypto_provider_verifier_fails_gracefully_on_missing_socket() {
-        let verifier = CryptoProviderVerifier::new("/run/nonexistent/beardog.sock".to_string());
+        let verifier = CryptoProviderVerifier::new("/run/nonexistent/security.sock".to_string());
         let result = verifier.verify("test-node", b"msg", b"sig").await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("bearDog connect"));
+        assert!(result.unwrap_err().contains("crypto provider connect"));
     }
 
     /// Mock verifier that always rejects.
@@ -194,9 +206,9 @@ mod tests {
         }
     }
 
-    /// Mock verifier that simulates bearDog offline.
-    struct UnavailableVerifier;
-    impl BtspSignatureVerifier for UnavailableVerifier {
+    /// Mock verifier that simulates crypto provider offline.
+    struct UnavailableTestVerifier;
+    impl BtspSignatureVerifier for UnavailableTestVerifier {
         fn verify(
             &self,
             _: &str,
@@ -204,7 +216,7 @@ mod tests {
             _: &[u8],
         ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool, String>> + Send + '_>>
         {
-            Box::pin(async { Err("bearDog offline".to_string()) })
+            Box::pin(async { Err("crypto provider offline".to_string()) })
         }
     }
 
@@ -242,8 +254,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn verify_degrades_when_verifier_unavailable() {
-        let verifier = UnavailableVerifier;
+    async fn verify_rejects_when_verifier_unavailable() {
+        let verifier = UnavailableTestVerifier;
         let result = verify_relay_signature(
             &verifier,
             Some("gate"),
@@ -253,6 +265,9 @@ mod tests {
             "/tmp/x.sock",
         )
         .await;
-        assert!(result.is_none());
+        assert!(result.is_some());
+        let rej = result.unwrap();
+        assert_eq!(rej["error"]["code"], -32603);
+        assert!(rej["error"]["message"].as_str().unwrap().contains("unavailable"));
     }
 }

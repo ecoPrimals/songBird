@@ -255,13 +255,13 @@ pub fn title(message: &str) -> ColoredString {
 /// Get terminal width safely
 #[must_use]
 pub fn terminal_width() -> usize {
-    term_size::dimensions().map_or(80, |(w, _)| w)
+    terminal_size::terminal_size().map_or(80, |(w, _)| w.0 as usize)
 }
 
 /// Get terminal height safely
 #[must_use]
 pub fn terminal_height() -> usize {
-    term_size::dimensions().map_or(24, |(_, h)| h)
+    terminal_size::terminal_size().map_or(24, |(_, h)| h.0 as usize)
 }
 
 /// Create a table-like output with enhanced formatting

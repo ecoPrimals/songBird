@@ -45,6 +45,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+mod btsp_validation;
 mod construction;
 mod dispatch;
 mod http;
