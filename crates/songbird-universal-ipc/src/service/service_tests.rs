@@ -249,6 +249,7 @@ fn register_and_resolve_result_serialization() {
     let reg = RegisterResult {
         virtual_endpoint: "/primal/x".into(),
         registered_at: "t0".into(),
+        transport: None,
         signature: None,
         signed_payload: None,
     };

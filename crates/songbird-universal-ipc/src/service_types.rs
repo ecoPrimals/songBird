@@ -78,6 +78,11 @@ pub struct DiscoverParams {
 pub struct RegisterResult {
     pub virtual_endpoint: String,
     pub registered_at: String,
+    /// Structured transport endpoint reflecting how the registered endpoint was
+    /// parsed. Consumers can use this to confirm their `TRANSPORT_ENDPOINT` was
+    /// correctly interpreted by Songbird.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transport: Option<TransportEndpoint>,
     /// Ed25519 signature over `signed_payload` (base64, via `BearDog` delegation).
     /// `None` in standalone mode (no `FAMILY_ID` / no crypto provider).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -326,6 +331,7 @@ mod tests {
         let result = RegisterResult {
             virtual_endpoint: "/primal/security".to_string(),
             registered_at: "2026-03-27T12:00:00Z".to_string(),
+            transport: None,
             signature: None,
             signed_payload: None,
         };
@@ -464,6 +470,9 @@ mod tests {
         let result = RegisterResult {
             virtual_endpoint: "/primal/nestgate".to_string(),
             registered_at: "2026-04-28T14:00:00Z".to_string(),
+            transport: Some(TransportEndpoint::Uds {
+                path: "/tmp/ng.sock".to_string(),
+            }),
             signature: Some("c2lnbmF0dXJl".to_string()),
             signed_payload: Some(
                 r#"{"c":["storage"],"e":"/tmp/ng.sock","p":"nestgate","t":"2026-04-28T14:00:00Z"}"#
@@ -473,6 +482,39 @@ mod tests {
         let json = serde_json::to_value(&result).unwrap();
         assert_eq!(json["signature"], "c2lnbmF0dXJl");
         assert!(json["signed_payload"].as_str().unwrap().contains("nestgate"));
+    }
+
+    #[test]
+    fn register_result_transport_wire_format_sourdough_compat() {
+        let uds_result = RegisterResult {
+            virtual_endpoint: "/primal/test".to_string(),
+            registered_at: "2026-06-08T00:00:00Z".to_string(),
+            transport: Some(TransportEndpoint::Uds {
+                path: "/run/user/1000/biomeos/test.sock".to_string(),
+            }),
+            signature: None,
+            signed_payload: None,
+        };
+        let json = serde_json::to_value(&uds_result).unwrap();
+        let t = &json["transport"];
+        assert_eq!(t["transport"], "uds");
+        assert_eq!(t["path"], "/run/user/1000/biomeos/test.sock");
+
+        let tcp_result = RegisterResult {
+            virtual_endpoint: "/primal/test-tcp".to_string(),
+            registered_at: "2026-06-08T00:00:00Z".to_string(),
+            transport: Some(TransportEndpoint::Tcp {
+                host: "127.0.0.1".to_string(),
+                port: 9876,
+            }),
+            signature: None,
+            signed_payload: None,
+        };
+        let json = serde_json::to_value(&tcp_result).unwrap();
+        let t = &json["transport"];
+        assert_eq!(t["transport"], "tcp");
+        assert_eq!(t["host"], "127.0.0.1");
+        assert_eq!(t["port"], 9876);
     }
 
     #[test]

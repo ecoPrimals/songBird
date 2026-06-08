@@ -78,6 +78,21 @@ impl IpcServiceHandler {
         // Sign via BearDog if crypto provider is available
         let (signature, signed_payload) = self.sign_payload(&canonical).await;
 
+        // Build structured transport before register() consumes native_endpoint
+        let transport = match &native_endpoint {
+            NativeEndpoint::UnixSocket(path) => Some(TransportEndpoint::Uds {
+                path: path.to_string_lossy().to_string(),
+            }),
+            NativeEndpoint::AbstractSocket(name) => Some(TransportEndpoint::Uds {
+                path: format!("@{name}"),
+            }),
+            NativeEndpoint::TcpLocal(port) => Some(TransportEndpoint::Tcp {
+                host: "127.0.0.1".to_string(),
+                port: *port,
+            }),
+            _ => None,
+        };
+
         // Register in registry (`register` takes `&self` and uses its own inner lock)
         let native_socket = native_endpoint.socket_path();
         let has_capabilities = !params.capabilities.is_empty();
@@ -118,6 +133,7 @@ impl IpcServiceHandler {
         let result = RegisterResult {
             virtual_endpoint: virtual_endpoint.path,
             registered_at,
+            transport,
             signature,
             signed_payload,
         };
