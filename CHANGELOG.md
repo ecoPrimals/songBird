@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.14-wave98] - 2026-06-08 - Phase 2 M1 Gate: TransportEndpoint JSON
+
+### Added
+- **`ipc.resolve` returns structured `TransportEndpoint` JSON** — Phase 2 M1 gate shipped. All 14 primals can now adopt transport injection via sourDough's `IpcClient`.
+- **Wire-format compatibility tests** — comprehensive tests validate UDS, TCP, and MeshRelay variants match sourDough's internally-tagged serde format.
+- **`capability.resolve` also returns `TransportEndpoint`** — both resolution paths emit structured endpoints.
+- **Port constants**: `CONSUL_DEFAULT_PORT` (8500), `EUREKA_DEFAULT_PORT` (8761), `DEFAULT_BROADCAST_DISCOVERY_PORT` (2300).
+- **NUCLEUS tower validated** — `health.liveness` on UDS socket at `/run/user/1000/biomeos/songbird.sock`.
+
+### Changed
+- `transport_endpoint_from_native()` uses `LOCALHOST` constant instead of hardcoded `"127.0.0.1"`.
+- `TransportEndpoint::is_local()` deduplicated via `is_loopback_host()` helper.
+- 5× `"0.0.0.0:0"` → `EPHEMERAL_BIND_ADDR` constant (songbird-igd, songbird-stun, songbird-universal).
+- Consul/Eureka port fallbacks wired to typed constants.
+- Broadcast discovery port in connectivity hints uses named constant.
+
+### Refactored
+- `service_discovery.rs` (1025L → 731L) — tests extracted to `service_discovery_tests.rs`.
+- `resilience.rs` (941L → 516L) — tests extracted to `resilience_tests.rs`.
+
+### Fixed
+- Flaky tests from Wave 97 fix verified stable (env-mutation synchronization via crate-wide mutex).
+
+---
+
 ## [v0.2.13-wave96] - 2026-06-08 - Mesh Blockers Resolved & Deep Debt Evolution
 
 ### Fixed
