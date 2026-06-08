@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.13-wave96] - 2026-06-08 - Mesh Blockers Resolved & Deep Debt Evolution
+
+### Fixed
+- **SB-TLS-LAN-01** (P1 BLOCKER): Plain HTTP peer probes — all LAN federation peer
+  communication evolved from hardcoded `https://` to `http://` across 6 files
+  (startup_orchestration, federation state, discovery peer, discovery bridge,
+  p2p_discovery handler, enhanced router). Peers on `:7700` no longer receive
+  TLS ClientHello.
+- **SB-STARTUP-01** (P1 BLOCKER): Security provider env propagation — `setup_security()`
+  failure no longer crashes orchestrator. Degrades gracefully (unsigned ops, plain HTTP
+  federation, secure-random JWT) when no security provider configured.
+- **NoopSignatureVerifier** (CRITICAL): Removed from production — was accepting ALL BTSP
+  signatures. Replaced with `UnavailableVerifier` that rejects signed requests when no
+  crypto provider available. `NoopSignatureVerifier` now `#[cfg(test)]` only.
+- **Trust-on-failure**: `relay_security.rs` verifier errors now reject signed requests
+  instead of silently accepting (was returning `None`, now returns rejection JSON-RPC error).
+- **VPS socket fallbacks**: `discover_neural_api_socket_with` and `discover_security_socket_with`
+  now verify file existence before claiming VPS path as active socket.
+
+### Changed
+- `term_size` crate (unmaintained) replaced with `terminal_size` 0.4 (maintained, pure Rust).
+- `virtual_relay.rs` smart refactored: BTSP validation extracted to `btsp_validation.rs`
+  (126L domain module); production code reduced from 951L to ~670L.
+- `relay_security.rs` agnostic naming: all "bearDog" string literals evolved to
+  "crypto provider" / "security provider" in error messages and docs.
+- `mesh_trust_exchange.rs` and `socket_discovery.rs` log messages evolved from legacy
+  primal name to capability-based references.
+- TLS cert generator: placeholder DER encoding evolved to valid minimal X.509v3 structure
+  (proper ASN.1 SEQUENCE, Ed25519 OID, UTCTime validity, CN/SPKI encoding).
+- `ipc.register` params: added `serde` aliases (`name` for `primal_id`, `socket`/`socket_path`
+  for `endpoint`); `capabilities` field now optional (defaults to `[]`).
+- `service_discovery.rs` stubs evolved to real implementations:
+  - `discover_from_file`: reads YAML/JSON registries with query filtering
+  - `discover_from_network_scan`: TCP connect probe across /24 subnet
+
+### Added
+- `TransportEndpoint` canonicalized in `songbird-types` crate for ecosystem adoption
+  (sourdough standard). Wire format: `{"transport": "Uds"|"Tcp"|"MeshRelay", ...}`.
+- `specs/TRANSPORT_ENDPOINT_STANDARD.md` specification document.
+- `config/capability_registry.toml` updated to v0.2.11 with gate/domain metadata.
+
+### Security
+- Production relay now rejects ALL signed requests when crypto provider is unavailable
+  (secure-by-default). Unsigned Phase 2 tokens still pass through (no signature to verify).
+- VPS fallback paths verified for existence before use — no more phantom socket connections.
+
+---
+
 ## [v0.2.12-wave82c] - 2026-06-06 - Coverage Sprint & Registry Sync
 
 ### Added

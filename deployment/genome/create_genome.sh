@@ -54,12 +54,15 @@ check_binary() {
 echo -e "${BLUE}📦 Collecting binaries...${NC}"
 declare -A BINARIES
 
-# Priority targets from genomeBin Week 1
+# Priority targets — universal multi-arch (projectNUCLEUS seeding)
 TARGETS=(
     "x86_64-unknown-linux-musl:songbird"
     "aarch64-unknown-linux-musl:songbird"
+    "riscv64gc-unknown-linux-musl:songbird"
     "aarch64-linux-android:songbird"
     "x86_64-pc-windows-gnu:songbird.exe"
+    "aarch64-apple-darwin:songbird"
+    "x86_64-apple-darwin:songbird"
 )
 
 FOUND_COUNT=0
@@ -104,11 +107,20 @@ for target in "${!BINARIES[@]}"; do
         aarch64-unknown-linux-musl)
             dst="${STAGING_DIR}/bin/songbird-aarch64-linux-musl"
             ;;
+        riscv64gc-unknown-linux-musl)
+            dst="${STAGING_DIR}/bin/songbird-riscv64-linux-musl"
+            ;;
         aarch64-linux-android)
             dst="${STAGING_DIR}/bin/songbird-aarch64-linux-android"
             ;;
         x86_64-pc-windows-gnu)
             dst="${STAGING_DIR}/bin/songbird-x86_64-windows.exe"
+            ;;
+        aarch64-apple-darwin)
+            dst="${STAGING_DIR}/bin/songbird-aarch64-darwin"
+            ;;
+        x86_64-apple-darwin)
+            dst="${STAGING_DIR}/bin/songbird-x86_64-darwin"
             ;;
         *)
             echo -e "${YELLOW}⚠${NC}  Unknown target: ${target}, skipping"

@@ -318,18 +318,12 @@ fn resolve_node_id() -> String {
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use crate::test_sync_env::env_lock;
     use std::net::{IpAddr, Ipv4Addr};
-    use std::sync::Mutex;
-
-    static ENV_LOCK: std::sync::OnceLock<Mutex<()>> = std::sync::OnceLock::new();
-
-    fn env_mutex() -> &'static Mutex<()> {
-        ENV_LOCK.get_or_init(|| Mutex::new(()))
-    }
 
     #[test]
     fn discover_beardog_socket_returns_err_when_no_env() {
-        let _guard = env_mutex().lock().unwrap();
+        let _guard = env_lock();
         songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
         songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
         songbird_process_env::remove_var("SECURITY_SOCKET");
@@ -342,7 +336,7 @@ mod tests {
 
     #[test]
     fn discover_beardog_socket_uses_security_provider_socket() {
-        let _guard = env_mutex().lock().unwrap();
+        let _guard = env_lock();
         let path = format!("/tmp/songbird-test-trust-exchange-{}.sock", std::process::id());
         std::fs::File::create(&path).ok();
         songbird_process_env::set_var("SECURITY_PROVIDER_SOCKET", &path);
@@ -361,7 +355,7 @@ mod tests {
 
     #[test]
     fn resolve_node_id_falls_back_to_hostname() {
-        let _guard = env_mutex().lock().unwrap();
+        let _guard = env_lock();
         songbird_process_env::remove_var("SONGBIRD_NODE_ID");
         songbird_process_env::remove_var("NODE_ID");
         songbird_process_env::remove_var("HOSTNAME");
@@ -372,7 +366,7 @@ mod tests {
 
     #[test]
     fn resolve_node_id_prefers_songbird_node_id() {
-        let _guard = env_mutex().lock().unwrap();
+        let _guard = env_lock();
         songbird_process_env::set_var("SONGBIRD_NODE_ID", "test-gate-trust");
         let id = resolve_node_id();
         assert_eq!(id, "test-gate-trust");

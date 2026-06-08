@@ -190,6 +190,7 @@ mod tests {
 
     #[tokio::test]
     async fn spawn_mesh_seed_populates_mesh() {
+        let _guard = crate::test_sync_env::env_lock();
         songbird_process_env::set_var("SONGBIRD_NODE_ID", "test-gate-seed");
         songbird_process_env::set_var(
             "SONGBIRD_PEERS",
@@ -199,7 +200,6 @@ mod tests {
         let mesh_handler = Arc::new(MeshHandler::new());
         spawn_mesh_seed(Arc::clone(&mesh_handler));
 
-        // Poll until mesh is populated (max 2s) instead of sleeping fixed duration
         let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(2);
         loop {
             let guard = mesh_handler.mesh().await;

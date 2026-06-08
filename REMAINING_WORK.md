@@ -1,10 +1,10 @@
 # Songbird Remaining Work
 
-**Date**: June 6, 2026  
-**Version**: v0.2.12-wave82c  
-**Last Deep Debt Audit**: Wave 82c (June 6, 2026) — **Coverage sprint +124 tests** across songbird-network-federation (+41), songbird-genesis (+27), songbird-primal-coordination (+18), songbird-sovereign-onion (+21), songbird-igd (+17). Rendezvous client env race fixed (OnceLock<Mutex<()>> guards). `capability_registry.toml` synced to v0.2.11 with gate/domain metadata. Previous: Wave 81 (June 5, 2026) — **Deep debt cleanup & evolution**: (1) Production stubs hardened: NFC `x25519_dh` returns Err in production (cfg(test) fallback only); lineage `verify_signatures` returns Err when security provider absent (no more silent Ok(true)); TLS `extract_public_key` properly rejects non-X.509 data; `test_utils` module gated behind `#[cfg(test)]`. (2) Hardcoding eliminated: 8 inline port literals replaced with `songbird_types::defaults::ports::*` constants across 5 crates; `config/network/core.rs` port fallbacks wired to named constants; mDNS `224.0.0.251:5353` in `songbird-universal` uses `MDNS_PORT` constant. (3) Capability-based discovery: removed hardcoded `"beardog"` path segment from `mesh_trust_exchange.rs` and `construction.rs` — now iterates `["security.sock", "crypto.sock", "signing.sock"]` via generic discovery. (4) Dependency evolution: `dirs 5.0` → `dirs 6.0`. (5) Coverage: TURN client tests expanded 7→26 (+19); total workspace tests 14,004+. Previous: Wave 80 — P0 mesh trust exchange (auth.exchange_trust). Wave 79 — SB-TLS-01 P0 FIX (direct-mode crypto routing). Wave 78 — Phase 3.5 COMPLETE (Ed25519 signature verification wired into virtual relay). Wave 77 — Retry hardening. Wave 76 — Hygiene sweep, retry queue. Wave 75 — P1 capability propagation. Wave 74 — Virtual relay Phase 2. Wave 73 — remote_dispatch HTTP POST, mesh_seed auto-bootstrap. Wave 70 — `mesh.probe_latency`, virtual relay Phase 1. Wave 209 — `songbird-process-env` adoption. Wave 67 — P0 BLOCKER security socket fix; Wave 60 — 3 new mesh methods, DH-1 compliant paths  
+**Date**: June 8, 2026  
+**Version**: v0.2.13-wave96  
+**Last Deep Debt Audit**: Wave 96 (June 8, 2026) — **Security hardening + mesh blockers resolved**: (1) NoopSignatureVerifier eliminated from production (critical security fix — was accepting all BTSP signatures); UnavailableVerifier rejects when crypto provider offline; relay trust-on-failure evolved to reject-on-failure. (2) SB-TLS-LAN-01 fixed: all peer endpoints evolved from https:// to http:// for LAN federation. (3) SB-STARTUP-01 fixed: setup_security() failure no longer crashes orchestrator — graceful degradation. (4) term_size→terminal_size dep evolution. (5) virtual_relay.rs smart refactored (BTSP validation extracted). (6) X.509 DER cert generator evolved from placeholder to valid structure. (7) service_discovery stubs evolved to real implementations. (8) ipc.register params evolved with serde aliases for nucleus_launcher compat. Previous: Wave 82c (June 6, 2026) — **Coverage sprint +124 tests** across songbird-network-federation (+41), songbird-genesis (+27), songbird-primal-coordination (+18), songbird-sovereign-onion (+21), songbird-igd (+17). Rendezvous client env race fixed (OnceLock<Mutex<()>> guards). `capability_registry.toml` synced to v0.2.11 with gate/domain metadata. Previous: Wave 81 (June 5, 2026) — **Deep debt cleanup & evolution**: (1) Production stubs hardened: NFC `x25519_dh` returns Err in production (cfg(test) fallback only); lineage `verify_signatures` returns Err when security provider absent (no more silent Ok(true)); TLS `extract_public_key` properly rejects non-X.509 data; `test_utils` module gated behind `#[cfg(test)]`. (2) Hardcoding eliminated: 8 inline port literals replaced with `songbird_types::defaults::ports::*` constants across 5 crates; `config/network/core.rs` port fallbacks wired to named constants; mDNS `224.0.0.251:5353` in `songbird-universal` uses `MDNS_PORT` constant. (3) Capability-based discovery: removed hardcoded `"beardog"` path segment from `mesh_trust_exchange.rs` and `construction.rs` — now iterates `["security.sock", "crypto.sock", "signing.sock"]` via generic discovery. (4) Dependency evolution: `dirs 5.0` → `dirs 6.0`. (5) Coverage: TURN client tests expanded 7→26 (+19); total workspace tests 14,004+. Previous: Wave 80 — P0 mesh trust exchange (auth.exchange_trust). Wave 79 — SB-TLS-01 P0 FIX (direct-mode crypto routing). Wave 78 — Phase 3.5 COMPLETE (Ed25519 signature verification wired into virtual relay). Wave 77 — Retry hardening. Wave 76 — Hygiene sweep, retry queue. Wave 75 — P1 capability propagation. Wave 74 — Virtual relay Phase 2. Wave 73 — remote_dispatch HTTP POST, mesh_seed auto-bootstrap. Wave 70 — `mesh.probe_latency`, virtual relay Phase 1. Wave 209 — `songbird-process-env` adoption. Wave 67 — P0 BLOCKER security socket fix; Wave 60 — 3 new mesh methods, DH-1 compliant paths  
 **Composition Audit Status**: **CLEAR THROUGH STADIAL GATE** — UB-1 resolved (`songbird-turn-client` crate for lithoSpore). `primal.announce` adopted (biomeOS v3.57). GAP-16 (Tower atomic: mesh.* on canonical UDS) resolved. Songbird is no longer a sentinel blocker. Wave 206: deep debt cleanup — 2 files >800L refactored below threshold, 2 TURN server bugs fixed, `NoopVerifier` gated to test-only, legacy socket names deprecated, 5 dead functions removed.  
-**Current Wave**: 82c — Coverage sprint (+553 cumulative tests since Wave 79b). Previous: 207 — Stadial readiness: `btsp.capabilities` method + `BtspMethod` enum domain, `network.btsp` capability token (15th), `aws-lc-sys` deny.toml ban, `capabilities.list` envelope enrichment (`capabilities` + `count` fields), composition documentation (stability tiers, degradation, downstream pairing). Wave 206 — Deep debt cleanup: `turn_server.rs` (898L → 679L, extracted `turn_attrs.rs`, fixed `RefreshSuccess` error type bug + `send_error` now emits ERROR-CODE, deduplicated XOR encoding, 10 new tests). `bin_interface/server.rs` (878L → 360L, extracted `ipc_session.rs` + `server_tests.rs`, unified dispatch via `dispatch_gated()`). `NoopVerifier` gated `#[cfg(test)]`. Legacy socket constants (`beardog.sock`, `toadstool.sock`, `squirrel.sock`) deprecated with backward-compat annotations. Removed 5 dead functions. Added `MessageType::RefreshError`/`CreatePermissionError`/`ChannelBindError`. Wave 205 — UB-1: `songbird-turn-client` crate (31st workspace member) with `TurnSession` data-plane API for lithoSpore TURN-relayed JSON-RPC. `primal.announce` (biomeOS v3.57) with `signal_tiers: ["tower"]`. `primal.info`/`primal.capabilities` now routed on orchestrator UDS. 3 new socket routing tests. Wave 204 — GAP-16 Tower Atomic: `mesh.*` methods wired into orchestrator UDS (`songbird.sock` / `network.sock`); `IpcHandlers::mesh_dispatch()` adapter; 15 new tests covering the full Tower atomic validation path. Wave 203 — Deep debt: `turn_server.rs` (1027L → 898L via `#[path]` test extraction); audit confirms zero production hardcoding, mocks properly isolated, pure Rust deps. Wave 202 — VPS relay ops deployment: credential loading (file/env), `songbird-relay.service` systemd unit, deployment guide (`deployment/relay/README.md`). Wave 201 — Pass 12/14 sentinel resolution: bidirectional TURN data plane (Send Indication, ChannelData, Data Indication); `songbird relay` CLI subcommand (VPS relay startup path); `capability.resolve` wire-format parity (orchestrator now emits `socket`, `native_endpoint`, `virtual_endpoint` matching universal-ipc). Wave 200 — Deep debt cleanup & evolution: `method_gate.rs` (944L monolith) → directory module (6 files, 45 tests); `BearDogVerifier` stub → live IPC (`SecurityRpcClient::verify_ionic`); 7× hardcoded `"0.0.0.0:0"` → `EPHEMERAL_BIND_ADDR`; dependency audit (hickory-proto RUSTSEC-2026-0119 tracked, ring ban verified, cargo-deny clean); `examples/future/` stale examples removed; docs reconciled (README CI/deny claim, largest-file metric, STUN spec status, specs index date, wateringHole handoff inventory). Wave 199 — Pass 12: `TurnRelayServer` (RFC 5766 sovereign VPS relay) with `CredentialStore` trait, allocation lifecycle, permission-gated data forwarding, and full client↔server integration tests. Pass 14: `capability.resolve` response enriched with `primal_name` field on orchestrator path (parity with universal-ipc `primal_id`). Wave 198: Record clean composition audit. Wave 197: Sovereignty NAT traversal completion (H2-13 through H2-16 Step 3c). STUN wire compliance: MESSAGE-INTEGRITY (HMAC-SHA1), FINGERPRINT (CRC32 XOR 0x5354554E), IPv6 XOR-MAPPED-ADDRESS encoding/decoding (RFC 5389 §15.2 — XOR with magic_cookie||transaction_id); `encode_authenticated()` for credential-bearing requests. RFC 5766 TURN client: `TurnClient` with `allocate()`, `refresh()`, `create_permission()`, `channel_bind()`; `MessageType` extended with TURN method variants; XOR-PEER-ADDRESS encoding. Cloudflare DDNS provider: `CloudflareDdnsProvider` with `HttpExecutor` callback pattern (dep-free); list/upsert via CF API v4; 6 mock-driven tests. Lineage relay injection: `MultiTierCoordinator` now accepts `with_relay_discovery()` + `with_turn_client()`; Tier 3 (lineage relay) calls `RelayDiscovery::request_relay()`; Tier 4 (TURN) calls `TurnClient::allocate()`. `cloudflared` emergency tunnel: Tier 5 probes for `cloudflared` binary availability. Wave 196: H2-13 shared-socket dual-probe NAT type fix, H2-14/15/16 scaffolding. 0 clippy warnings, 3804 tests across 4 affected crates.  
+**Current Wave**: 96 — Security hardening + mesh blocker resolution + deep debt evolution. Previous: 82c — Coverage sprint (+553 cumulative tests since Wave 79b). Previous: 207 — Stadial readiness: `btsp.capabilities` method + `BtspMethod` enum domain, `network.btsp` capability token (15th), `aws-lc-sys` deny.toml ban, `capabilities.list` envelope enrichment (`capabilities` + `count` fields), composition documentation (stability tiers, degradation, downstream pairing). Wave 206 — Deep debt cleanup: `turn_server.rs` (898L → 679L, extracted `turn_attrs.rs`, fixed `RefreshSuccess` error type bug + `send_error` now emits ERROR-CODE, deduplicated XOR encoding, 10 new tests). `bin_interface/server.rs` (878L → 360L, extracted `ipc_session.rs` + `server_tests.rs`, unified dispatch via `dispatch_gated()`). `NoopVerifier` gated `#[cfg(test)]`. Legacy socket constants (`beardog.sock`, `toadstool.sock`, `squirrel.sock`) deprecated with backward-compat annotations. Removed 5 dead functions. Added `MessageType::RefreshError`/`CreatePermissionError`/`ChannelBindError`. Wave 205 — UB-1: `songbird-turn-client` crate (31st workspace member) with `TurnSession` data-plane API for lithoSpore TURN-relayed JSON-RPC. `primal.announce` (biomeOS v3.57) with `signal_tiers: ["tower"]`. `primal.info`/`primal.capabilities` now routed on orchestrator UDS. 3 new socket routing tests. Wave 204 — GAP-16 Tower Atomic: `mesh.*` methods wired into orchestrator UDS (`songbird.sock` / `network.sock`); `IpcHandlers::mesh_dispatch()` adapter; 15 new tests covering the full Tower atomic validation path. Wave 203 — Deep debt: `turn_server.rs` (1027L → 898L via `#[path]` test extraction); audit confirms zero production hardcoding, mocks properly isolated, pure Rust deps. Wave 202 — VPS relay ops deployment: credential loading (file/env), `songbird-relay.service` systemd unit, deployment guide (`deployment/relay/README.md`). Wave 201 — Pass 12/14 sentinel resolution: bidirectional TURN data plane (Send Indication, ChannelData, Data Indication); `songbird relay` CLI subcommand (VPS relay startup path); `capability.resolve` wire-format parity (orchestrator now emits `socket`, `native_endpoint`, `virtual_endpoint` matching universal-ipc). Wave 200 — Deep debt cleanup & evolution: `method_gate.rs` (944L monolith) → directory module (6 files, 45 tests); `BearDogVerifier` stub → live IPC (`SecurityRpcClient::verify_ionic`); 7× hardcoded `"0.0.0.0:0"` → `EPHEMERAL_BIND_ADDR`; dependency audit (hickory-proto RUSTSEC-2026-0119 tracked, ring ban verified, cargo-deny clean); `examples/future/` stale examples removed; docs reconciled (README CI/deny claim, largest-file metric, STUN spec status, specs index date, wateringHole handoff inventory). Wave 199 — Pass 12: `TurnRelayServer` (RFC 5766 sovereign VPS relay) with `CredentialStore` trait, allocation lifecycle, permission-gated data forwarding, and full client↔server integration tests. Pass 14: `capability.resolve` response enriched with `primal_name` field on orchestrator path (parity with universal-ipc `primal_id`). Wave 198: Record clean composition audit. Wave 197: Sovereignty NAT traversal completion (H2-13 through H2-16 Step 3c). STUN wire compliance: MESSAGE-INTEGRITY (HMAC-SHA1), FINGERPRINT (CRC32 XOR 0x5354554E), IPv6 XOR-MAPPED-ADDRESS encoding/decoding (RFC 5389 §15.2 — XOR with magic_cookie||transaction_id); `encode_authenticated()` for credential-bearing requests. RFC 5766 TURN client: `TurnClient` with `allocate()`, `refresh()`, `create_permission()`, `channel_bind()`; `MessageType` extended with TURN method variants; XOR-PEER-ADDRESS encoding. Cloudflare DDNS provider: `CloudflareDdnsProvider` with `HttpExecutor` callback pattern (dep-free); list/upsert via CF API v4; 6 mock-driven tests. Lineage relay injection: `MultiTierCoordinator` now accepts `with_relay_discovery()` + `with_turn_client()`; Tier 3 (lineage relay) calls `RelayDiscovery::request_relay()`; Tier 4 (TURN) calls `TurnClient::allocate()`. `cloudflared` emergency tunnel: Tier 5 probes for `cloudflared` binary availability. Wave 196: H2-13 shared-socket dual-probe NAT type fix, H2-14/15/16 scaffolding. 0 clippy warnings, 3804 tests across 4 affected crates.  
 **Previous Waves** (full detail in `CHANGELOG.md`): 191 (ipc.register identity verification, whitespace-tolerant protocol detection, BufReader safety), 190 (IP literals, parse_endpoint IPv6, redundant clone, test Duration constants), 189 (ipc.resolve `socket` field for primalSpring tier-1 discovery), 188 (15 timeout constants, JSONRPC_VERSION, Box<dyn Error> elimination), 187 (smart refactor connection.rs, primal-name evolution, 4 timeout constants), 186 (BTSP Phase 3 live connection verification — 4 tests), 185 (deep debt: 11 timeout constants, JSON-RPC constructors, primal codename evolution), 184 (BTSP Phase 3 binary-framed dispatch fix), 183 (deep debt: lint evolution, timeout centralization, hardcoded elimination), 182 (BTSP Phase 3 spec alignment), 181 (port canonicalization), 180 (BTSP Phase 3 btsp.negotiate), 175 (PG-51 verified, ENVIRONMENT_VARIABLES.md), 174 (hardcoded IP/port elimination, flaky tests, dep cleanup, +18 tests), 173 (PG-51 socket discovery), 172 (root doc reconciliation), 171 (test coverage expansion 71.28%→73.41%, +271 tests), 170 (CLI flag alignment), 169 (remaining `new()` → `new_direct()` in bin_interface), 168 (BTSP routing + seed encoding), 167 (BTSP error frames, env fallbacks), 166 (root doc reconciliation), 165 (dep cleanup, hardcoded elimination, dead code removal), 162 (stream.shutdown BTSP fix), 161 (port centralization, dep cleanup, error typing), 160 (BTSP NDJSON auto-detect), 158 (BTSP Step 3→4 verification relay), 157 (hardcoded literals, dead deps, doc cleanup, debris removal), 154 (mock isolation, dead deps, lint hygiene), 153 (BTSP NDJSON wire-format alignment), 152 (dead deps, hardcoding, test hygiene), 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
@@ -13,7 +13,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 14,557+ lib passed, 0 failures, 23 ignored |
+| **Tests** | 8,836 lib passed, 0 failures, 23 ignored (Wave 96 verified June 8, 2026) |
 | **Line Coverage** | **73.41%** measured (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 31 crates compile clean (~43s dev) |
@@ -257,11 +257,93 @@ All 49 registered methods are annotated by stability:
 
 ---
 
+## Tracked Partial Solutions as Debt (Wave 96 Audit)
+
+### P0 — Security-Critical Stubs
+
+| Location | Issue | Resolution |
+|----------|-------|------------|
+| `orchestrator/src/access_control/auth.rs:294–366` | PostgreSQL/SQLite/Redis auth accepts any non-empty credential | Wire real DB verification or delegate to security provider |
+| `orchestrator/src/access_control/auth.rs:411–435` | TOTP accepts any 6-digit code when secret set | Wire `totp-rs` or RFC 6238 via security provider |
+| `orchestrator/src/trust/escalation.rs:347–354` | Hardware attestation always returns Err | Wire security provider `verify_attestation` |
+| `tls/src/cert/generator.rs:272–278` | X.509 DER has 64 zero-byte signature placeholder | External signing step or provider-delegated |
+| `tls/src/cert/mod.rs:61–82` | Chain validation is "non-empty DER" only | Full PKIX path validation |
+| Tor onion (8 sites in `songbird-tor-protocol`) | Zero-filled crypto in ESTABLISH_INTRO, descriptors, rendezvous | BLOCKED on security provider Ed25519/X25519 |
+
+### P1 — Core Connectivity Stubs
+
+| Location | Issue | Resolution |
+|----------|-------|------------|
+| `orchestrator/src/connections/*_btsp.rs` | Bidirectional BTSP tunnel RPC returns `not_implemented` | BtspClient data-plane evolution |
+| `orchestrator/src/bin_interface/server.rs:252–255` | Windows: no IPC server spawned | Named pipe or TCP parity |
+| `orchestrator/src/app/core/mod.rs:466–483` | Non-Unix: IPC returns hard error | TCP or named pipe IPC |
+| `orchestrator/src/network/binding.rs:345–347` | Non-Linux: interface detection bails | Platform-specific netdev |
+| `orchestrator/src/server/protocol_api.rs:125–126` | WebSocket capability not advertised despite being functional | Wire into `AvailableProtocols::default()` |
+| `orchestrator/src/http_gateway/universal_proxy.rs:210–247` | Template transformation logs "not yet implemented" | Implement Tera/Handlebars template engine |
+
+### P1 — Discovery & Registration Stubs
+
+| Location | Issue | Resolution |
+|----------|-------|------------|
+| `discovery/src/abstraction/adapters/kubernetes_adapter.rs:184` | `discover` returns `Ok(vec![])` | Wire K8s API query |
+| `discovery/src/abstraction/adapters/consul_adapter.rs:310–387` | Register/unregister/watch/list_all return Err | Complete Consul HTTP API |
+| `config/src/defaults/service_locator.rs:209–272` | `discover_from_registry_with` / `register_with_*` stubs | HTTP registry + DNS-SD registration |
+| `config/src/discoverable_endpoint.rs:318–336` | Consul + DNS-SD discovery → `not_implemented` | Backend wiring |
+| `network-federation/src/network/discovery.rs:37–40` | `discover_nodes` → `not_implemented` | Federation injection |
+
+### P2 — Platform Backends
+
+| Location | Issue | Resolution |
+|----------|-------|------------|
+| `songbird-nfc/src/platform.rs` | All backends return `PlatformUnsupported` | JNI/CoreNFC/libnfc |
+| `universal-ipc/src/platform/ios.rs:106–197` | iOS XPC stub | XPC bridge or TCP fallback |
+| `universal-ipc/src/platform/wasm.rs` | WASM listen returns error | Global in-process registry |
+| `songbird-bluetooth/src/gatt/characteristics.rs:142–169` | GATT discover builds request but doesn't send | L2CAP transport wiring |
+| `genesis/src/physical_channels/bluetooth_pure.rs:138–181` | Returns hardcoded demo credentials | Real BLE credential exchange |
+| `genesis/src/physical_channels/qr_code.rs:37–64` | Feature `qr` but methods return Err | Wire camera/encoder dep |
+| `genesis/src/physical_channels/solokey.rs:47–72` | FIDO2 shell only | CTAP2 implementation |
+
+### P2 — Deployment & NUCLEUS
+
+| Location | Issue | Resolution |
+|----------|-------|------------|
+| `deployment/genome/genome_wrapper_template.sh` | `--mode` parsed but never executes service registration | Wire systemctl/Windows Service |
+| `.cargo/config.toml` | No Android NDK linker, no macOS/RISC-V targets | Add cross-compile entries |
+| `remote-deploy/src/http_deploy/mod.rs:87–92` | Streaming upload not implemented | Chunked streaming path |
+| `remote-deploy/src/http_deploy/chunked.rs` | Sequential chunks, no hash verify, no compression | Parallel + integrity |
+| `orchestrator/src/server/deployment_api/capabilities.rs:94` | Network type always "lan" | Real detection |
+| genomeBin format | `GENOMEBIN_FORMAT=1.0`, single primal only | v3.0 multi-primal NUCLEUS capsule |
+
+---
+
+## projectNUCLEUS Seeding — Roadmap
+
+### Tier 1 — Unblock NUCLEUS on existing targets
+- [ ] Wire genome `--mode systemd` to `systemctl enable --now`
+- [ ] Implement real `detect_network_type()` in deployment capabilities
+- [ ] Parallel chunked upload + chunk SHA-256 verification
+- [ ] RISC-V target (`riscv64gc-unknown-linux-musl`) added to genomeBin
+
+### Tier 2 — Multi-primal NUCLEUS capsule
+- [ ] `GENOMEBIN_FORMAT=3.0` multi-primal genome (beardog + songbird + skunkBat slices)
+- [ ] Signed `GENOME_METADATA` (BearDog-signed manifest)
+- [ ] Per-arch thin downloads vs fat "spore" bundle
+- [ ] Composition env pre-wiring (`FAMILY_ID`, security socket, peers, TURN)
+
+### Tier 3 — Cross-hardware deployment
+- [ ] macOS: `aarch64-apple-darwin` / `x86_64-apple-darwin` targets
+- [ ] Windows: native Service wrapper (Phase 2)
+- [ ] Android NDK linker committed to `.cargo/config.toml`
+- [ ] Adaptive deployment spec completion (parallel chunks, compression, streaming)
+
+---
+
 ## Priority Order
 
 1. **Security provider crypto e2e validation** — Tor/TLS items need live security provider
-2. **Coverage expansion** — Target pure-logic modules first (goal: 90%)
-3. **Deep documentation** — Fill internal modules with full doc coverage
-4. **Real hardware tests** (Tower + Pixel) — Validates cross-network
-5. **Platform backends** — Mobile pairing, iOS, WASM
-6. **Dependency pruning** — Reduce unique deps where possible
+2. **NUCLEUS seeding** — genomeBin v3, multi-arch, multi-primal capsules
+3. **Coverage expansion** — Target pure-logic modules first (goal: 90%)
+4. **Deep documentation** — Fill internal modules with full doc coverage
+5. **Real hardware tests** (Tower + Pixel) — Validates cross-network
+6. **Platform backends** — Mobile pairing, iOS, WASM
+7. **Dependency pruning** — Reduce unique deps where possible

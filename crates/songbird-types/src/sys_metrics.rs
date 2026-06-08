@@ -163,6 +163,27 @@ pub fn total_disk_gb() -> Option<usize> {
     Some((total / BYTES_PER_GB) as usize)
 }
 
+/// Read 1-minute load average from `/proc/loadavg` (Linux only).
+/// Returns load as a percentage relative to CPU count.
+#[cfg(target_os = "linux")]
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "core count clamped to 1024 — fits f32 exactly"
+)]
+pub fn load_percent() -> f32 {
+    let cores = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
+    let cores_f = cores.min(1024) as f32;
+    std::fs::read_to_string("/proc/loadavg")
+        .ok()
+        .and_then(|s| s.split_whitespace().next().and_then(|v| v.parse::<f32>().ok()))
+        .map_or(0.0, |load1| (load1 / cores_f * 100.0).min(100.0))
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn load_percent() -> f32 {
+    0.0
+}
+
 // ---- Internal parsers ----
 
 fn parse_meminfo(contents: &str) -> Option<MemoryInfo> {

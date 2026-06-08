@@ -29,7 +29,7 @@ pub async fn get_capabilities(
     let _total_memory = mem.total_gb();
     let available_memory = mem.available / (1024 * 1024 * 1024);
     let cpu_cores = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
-    let cpu_load = 0.0_f32;
+    let cpu_load = sys_metrics::load_percent();
 
     let available_storage = sys_metrics::total_disk_gb().unwrap_or(0) as u64;
 
@@ -76,8 +76,8 @@ pub async fn get_capabilities(
         },
         preferences: DeploymentPreferences {
             preferred_compression: "gzip".to_string(),
-            preferred_method: "single".to_string(),
-            encryption_required: false,
+            preferred_method: select_preferred_method(&network_type),
+            encryption_required: network_type == "internet",
         },
     };
 
@@ -91,9 +91,51 @@ pub async fn get_capabilities(
     Json(capabilities)
 }
 
-/// Detect network type (LAN, VPN, or Internet)
+/// Detect network type (LAN, VPN, or Internet) based on environment and interface heuristics.
 pub fn detect_network_type() -> String {
+    if songbird_process_env::var("SONGBIRD_NETWORK_TYPE").is_ok_and(|v| !v.is_empty()) {
+        return songbird_process_env::var("SONGBIRD_NETWORK_TYPE")
+            .unwrap_or_else(|_| "lan".to_string());
+    }
+
+    if is_vpn_likely() {
+        return "vpn".to_string();
+    }
+
+    if is_internet_facing() {
+        return "internet".to_string();
+    }
+
     "lan".to_string()
+}
+
+fn is_vpn_likely() -> bool {
+    songbird_process_env::var("SONGBIRD_VPN_ACTIVE")
+        .is_ok_and(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        || tun_interface_exists()
+}
+
+fn tun_interface_exists() -> bool {
+    std::fs::read_dir("/sys/class/net")
+        .map(|entries| {
+            entries.filter_map(Result::ok).any(|e| {
+                let name = e.file_name();
+                let n = name.to_string_lossy();
+                n.starts_with("tun") || n.starts_with("wg") || n.starts_with("tailscale")
+            })
+        })
+        .unwrap_or(false)
+}
+
+fn is_internet_facing() -> bool {
+    let bind_addr = songbird_process_env::var("SONGBIRD_PRODUCTION_BIND_ADDRESS")
+        .unwrap_or_default();
+    if bind_addr == "0.0.0.0" {
+        return true;
+    }
+
+    songbird_process_env::var("SONGBIRD_FEDERATION_MODE")
+        .is_ok_and(|v| v.eq_ignore_ascii_case("internet") || v.eq_ignore_ascii_case("wan"))
 }
 
 /// Estimate bandwidth based on network type
@@ -117,6 +159,16 @@ pub fn estimate_bandwidth(network_type: &str) -> BandwidthEstimate {
             latency_ms: 50,
             confidence: "low".to_string(),
         },
+    }
+}
+
+/// Select preferred deployment method based on network conditions.
+fn select_preferred_method(network_type: &str) -> String {
+    match network_type {
+        "lan" => "single".to_string(),
+        "vpn" => "chunked".to_string(),
+        "internet" => "chunked".to_string(),
+        _ => "single".to_string(),
     }
 }
 
