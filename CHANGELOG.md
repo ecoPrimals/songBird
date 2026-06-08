@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.16-wave100] - 2026-06-08 - Final-Mile Integration Gaps for 3-Gate Mesh
+
+### Fixed
+- **Gap 1: security_client UDS routing** — `evaluate_trust_universal()`, `get_current_lineage()`, `verify_lineage()`, and `same_family()` now route through adapter transport layer when endpoint is UDS-based, instead of constructing invalid HTTP URLs by appending REST paths to socket paths
+- **Gap 2: TLS retry abort on HTTP detection** — `attempt_handshake_with_fallback()` in songbird-http-client now immediately returns when the remote peer responds with HTTP instead of TLS (`Error::is_http_not_tls()`), preventing 3 wasted retry attempts
+- **Discovery bridge resilience** — crypto provider unavailability no longer blocks plain HTTP connectivity checks (graceful degradation via `unwrap_or_default()`)
+- **mesh.init parameter compatibility** — accepts both `"bootstrap_peers"` and `"peers"` parameter keys for backward compatibility with socat test commands
+
+### Added
+- `SecurityAdapter::transport_get()` / `transport_post()` — public accessors for direct transport-layer dispatch
+- `Error::is_http_not_tls()` — detects when TLS handshake received HTTP response (peer doesn't support TLS)
+- Lineage method mappings in `JsonRpcTransport` and `TarpcTransport` (`lineage.current`, `lineage.verify`, `lineage.same_family`)
+- Fallback path mapping in `get()` for both transports: unknown REST paths map to dotted JSON-RPC method names
+
+### Changed
+- `SecurityCapabilityClient` internal routing: `adapter_get()`/`adapter_post()` helpers dispatch UDS endpoints through adapter transport, HTTP endpoints through http_client
+- `parse_response_body` and `ApiResponseWrapper` gated to `#[cfg(test)]` (no longer used in production paths)
+
+---
+
 ## [v0.2.15-wave99] - 2026-06-08 - P1 Mesh Blockers Resolved
 
 ### Fixed
