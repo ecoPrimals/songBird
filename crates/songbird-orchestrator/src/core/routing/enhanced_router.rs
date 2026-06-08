@@ -316,7 +316,7 @@ impl EnhancedCapabilityRouter {
             if let Some(endpoint) = node.preferred_endpoint() {
                 info!("Routing to peer Songbird: {} at {}", node.node_name, endpoint.address);
                 let node_id = node.node_id.clone();
-                let endpoint_url = format!("https://{}", endpoint.address);
+                let endpoint_url = format!("http://{}", endpoint.address);
                 return Ok(RoutingDecision::RouteToSongbird {
                     node_id,
                     endpoint: endpoint_url,
@@ -524,7 +524,7 @@ mod tests {
                 endpoint,
                 ..
             } => {
-                assert!(endpoint.starts_with("https://"));
+                assert!(endpoint.starts_with("http://"));
             }
             other => panic!("unexpected decision: {other:?}"),
         }

@@ -157,8 +157,8 @@ impl SongbirdOrchestrator {
                         info!("🔍 Processing {} discovered peers", peers.len());
 
                         for mut peer in peers {
-                            // Get HTTPS endpoint
-                            let endpoint = peer.https_endpoint();
+                            // Use plain HTTP for LAN peer probes (federation serves HTTP, not TLS)
+                            let endpoint = peer.http_endpoint();
 
                             // Extract identity based on protocol version
                             let (node_id, node_name) = if peer.version == "3.0" {

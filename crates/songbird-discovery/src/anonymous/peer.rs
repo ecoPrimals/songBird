@@ -74,9 +74,18 @@ impl DiscoveredPeer {
         format!("https://{}:{}", self.address.ip(), self.port)
     }
 
+    /// Get the plain HTTP endpoint for this peer.
+    ///
+    /// Used for LAN federation probes where peers serve plain HTTP.
+    /// Prefer this for health checks before TLS is negotiated.
+    #[must_use]
+    pub fn http_endpoint(&self) -> String {
+        format!("http://{}:{}", self.address.ip(), self.port)
+    }
+
     /// Get the primary endpoint for this peer (v3.0+)
     ///
-    /// Returns the highest-preference endpoint, or falls back to HTTPS endpoint.
+    /// Returns the highest-preference endpoint, or falls back to plain HTTP endpoint.
     #[must_use]
     pub fn primary_endpoint(&self) -> String {
         if let Some(ref endpoints) = self.endpoints
@@ -84,7 +93,7 @@ impl DiscoveredPeer {
         {
             return primary.address.clone();
         }
-        self.https_endpoint()
+        self.http_endpoint()
     }
 
     /// Check if this peer matches another peer (same identity)
@@ -310,5 +319,47 @@ mod tests {
         };
 
         assert_eq!(peer_v2.display_name(), "session-xyz");
+    }
+
+    #[test]
+    fn test_peer_http_endpoint() {
+        let peer = DiscoveredPeer {
+            session_id: "test-session".to_string(),
+            node_id: None,
+            node_name: None,
+            endpoints: None,
+            capabilities: vec!["orchestration".to_string()],
+            tags: None,
+            timestamp: None,
+            identity_attestations: None,
+            protocols: vec!["http".to_string()],
+            port: 7700,
+            address: "192.168.1.65:5353".parse().unwrap(),
+            last_seen: SystemTime::now(),
+            version: "3.0".to_string(),
+        };
+
+        assert_eq!(peer.http_endpoint(), "http://192.168.1.65:7700");
+    }
+
+    #[test]
+    fn test_primary_endpoint_falls_back_to_http() {
+        let peer = DiscoveredPeer {
+            session_id: "test-session".to_string(),
+            node_id: Some("node-1".to_string()),
+            node_name: Some("southgate".to_string()),
+            endpoints: None,
+            capabilities: vec![],
+            tags: None,
+            timestamp: None,
+            identity_attestations: None,
+            protocols: vec![],
+            port: 7700,
+            address: "192.168.1.132:5353".parse().unwrap(),
+            last_seen: SystemTime::now(),
+            version: "3.0".to_string(),
+        };
+
+        assert_eq!(peer.primary_endpoint(), "http://192.168.1.132:7700");
     }
 }

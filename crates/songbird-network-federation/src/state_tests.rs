@@ -193,7 +193,7 @@ async fn get_stats_aggregates_resources() {
 }
 
 #[tokio::test]
-async fn get_best_endpoint_prefers_https_wrapped_preferred() {
+async fn get_best_endpoint_wraps_preferred_in_http_scheme() {
     let state = FederationState::new("test".into());
     let mut r = make_registration("node-x", "https://primary:443");
     r.endpoints = Some(vec![TransportEndpointInfo {
@@ -206,7 +206,7 @@ async fn get_best_endpoint_prefers_https_wrapped_preferred() {
     }]);
     state.register_node(r).await;
     let best = state.get_best_endpoint("node-x").await.unwrap();
-    assert!(best.contains("10.0.0.5:8443"));
+    assert_eq!(best, "http://10.0.0.5:8443");
 }
 
 #[tokio::test]

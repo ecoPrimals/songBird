@@ -42,7 +42,7 @@ fn discovered_node_from_peer(
         port,
         ..
     } = peer;
-    let https_endpoint = format!("https://{}:{}", address.ip(), port);
+    let https_endpoint = format!("http://{}:{}", address.ip(), port);
     DiscoveredNode {
         node_id: node_id.unwrap_or(session_id),
         node_name,
@@ -470,7 +470,7 @@ mod tests {
         assert_eq!(node.node_name, Some("east".into()));
         assert_eq!(node.genetic_families, vec!["tag-a"]);
         assert_eq!(node.capabilities, vec!["compute".to_string()]);
-        assert_eq!(node.https_endpoint, "https://10.0.0.5:8443");
+        assert_eq!(node.https_endpoint, "http://10.0.0.5:8443");
     }
 
     #[test]

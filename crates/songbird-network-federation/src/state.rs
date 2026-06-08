@@ -215,7 +215,7 @@ impl FederationState {
 
         // Try to get preferred endpoint
         if let Some(endpoint) = node.preferred_endpoint() {
-            return Some(format!("https://{}", endpoint.address));
+            return Some(format!("http://{}", endpoint.address));
         }
 
         // Fall back to primary address
