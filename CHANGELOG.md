@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.15-wave99] - 2026-06-08 - P1 Mesh Blockers Resolved
+
+### Fixed
+- **SB-SECURITY-URL-01**: Bare primal names (e.g. `"beardog"`) passed via `CAPABILITY_SECURITY_ENDPOINT` or `SECURITY_ENDPOINT` now resolve to UDS socket paths via XDG runtime dir scanning. Previously produced `Invalid URL: invalid format` when used in HTTP requests.
+- **SB-TLS-LAN-01**: When BTSP tunnel establishment fails (beardog denies `crypto.x25519_generate_ephemeral` without capability token), connection manager now falls back to `HttpRemoteConnection` — plain HTTP JSON-RPC to the peer's network endpoint — instead of attempting non-existent local UDS sockets for remote LAN peers.
+
+### Added
+- `HttpRemoteConnection` in `connections/http_remote.rs` — plain HTTP JSON-RPC transport for LAN mesh peers when BTSP is unavailable. Trust-level-aware with capability enforcement.
+- `resolve_bare_name_to_endpoint()` in `security_setup.rs` — resolves bare primal names to UDS socket paths by scanning `$XDG_RUNTIME_DIR/biomeos/`.
+- `discover_security_socket_from_xdg()` — automatic security provider socket discovery as a priority-4 fallback in endpoint resolution.
+
+### Changed
+- `create_http_connection()` in connection manager trust evaluator now detects remote HTTP endpoints and creates `HttpRemoteConnection` instead of local UDS-based connections.
+- `Connection` enum extended with `HttpRemote` variant.
+
+---
+
 ## [v0.2.14-wave98] - 2026-06-08 - Phase 2 M1 Gate: TransportEndpoint JSON
 
 ### Added
