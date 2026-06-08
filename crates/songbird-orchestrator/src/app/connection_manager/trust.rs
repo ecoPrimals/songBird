@@ -5,7 +5,9 @@
 
 use super::btsp::BtspConnectionFactory;
 use super::peer::PeerRegistry;
-use crate::connections::{Connection, FederatedConnection, FullTrustConnection, LimitedConnection};
+use crate::connections::{
+    Connection, FederatedConnection, FullTrustConnection, HttpRemoteConnection, LimitedConnection,
+};
 use crate::trust::peer_trust::PeerTrustDecision;
 use anyhow::{Result, anyhow};
 use songbird_types::TrustLevel;
@@ -166,7 +168,10 @@ impl TrustEvaluator {
                     conn
                 }
                 Err(e) => {
-                    warn!("⚠️  BTSP connection failed: {} - falling back to HTTPS", e);
+                    warn!(
+                        "⚠️  BTSP connection failed for '{}': {} — falling back to plain HTTP",
+                        peer_id, e
+                    );
                     self.create_http_connection(&peer_id, &endpoint, trust_level)?
                 }
             }
@@ -188,34 +193,53 @@ impl TrustEvaluator {
         Ok(())
     }
 
-    /// Create HTTP-based connection (fallback when BTSP unavailable)
+    /// Create connection to peer (fallback when BTSP unavailable)
     ///
-    /// **Modern pattern**: Type-safe connection creation
+    /// For remote network peers (http:// endpoints), uses HTTP JSON-RPC transport.
+    /// For local peers (UDS-based), uses local socket connections.
     fn create_http_connection(
         &self,
         peer_id: &str,
         endpoint: &str,
         trust_level: TrustLevel,
     ) -> Result<Connection> {
+        if trust_level == TrustLevel::None {
+            return Err(anyhow!("Cannot create connection at trust level None"));
+        }
+
+        let is_remote = endpoint.starts_with("http://") || endpoint.starts_with("https://");
+
+        if is_remote {
+            info!(
+                "🌐 Creating HTTP remote connection to '{}' at {} (trust: {})",
+                peer_id,
+                endpoint,
+                trust_level.name()
+            );
+            let conn =
+                HttpRemoteConnection::new(peer_id.to_string(), endpoint.to_string(), trust_level);
+            return Ok(Connection::HttpRemote(conn));
+        }
+
         match trust_level {
-            TrustLevel::None => Err(anyhow!("Cannot create connection at trust level None")),
+            TrustLevel::None => unreachable!(),
 
             TrustLevel::Limited => {
-                debug!("🎵 Creating Limited HTTPS connection (BirdSong only)");
+                debug!("🎵 Creating Limited local connection (BirdSong only)");
                 let conn =
                     LimitedConnection::with_defaults(peer_id.to_string(), endpoint.to_string())?;
                 Ok(Connection::Limited(conn))
             }
 
             TrustLevel::Elevated => {
-                debug!("✅ Creating Federated HTTPS connection (full federation)");
+                debug!("✅ Creating Federated local connection (full federation)");
                 let conn =
                     FederatedConnection::with_defaults(peer_id.to_string(), endpoint.to_string())?;
                 Ok(Connection::Federated(conn))
             }
 
             TrustLevel::Highest => {
-                debug!("🔓 Creating Full Trust HTTPS connection (all operations)");
+                debug!("🔓 Creating Full Trust local connection (all operations)");
                 let conn = FullTrustConnection::new(peer_id.to_string(), endpoint.to_string())?;
                 Ok(Connection::FullTrust(conn))
             }
