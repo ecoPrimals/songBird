@@ -316,15 +316,9 @@ impl DiscoverableEndpoint {
             }
 
             DiscoveryMethod::ConsulService {
-                service_name: _,
-                consul_addr: _,
-            } => {
-                // For now, return error - full consul integration would go here
-                Err(SongbirdError::not_implemented_with_detail(
-                    "consul_service_discovery",
-                    "Use environment variables or static configuration instead",
-                ))
-            }
+                service_name,
+                consul_addr,
+            } => resolve_consul_service(service_name, consul_addr.as_deref()),
 
             DiscoveryMethod::DnsServiceDiscovery {
                 service_name: _,
@@ -336,6 +330,73 @@ impl DiscoverableEndpoint {
                 ))
             }
         }
+    }
+}
+
+/// Resolve a service via Consul's catalog API using a blocking TCP request.
+fn resolve_consul_service(
+    service_name: &str,
+    consul_addr: Option<&str>,
+) -> SongbirdResult<EndpointSpec> {
+    use std::io::{Read, Write};
+    use std::net::TcpStream;
+
+    let consul_base = consul_addr.unwrap_or("http://127.0.0.1:8500");
+    let url = format!("{consul_base}/v1/catalog/service/{service_name}?passing=true");
+
+    let parsed = url::Url::parse(&url).map_err(|e| SongbirdError::Configuration {
+        message: format!("Invalid consul URL: {e}"),
+        field: Some("consul_addr".to_string()),
+        suggestion: None,
+    })?;
+
+    let host = parsed.host_str().unwrap_or("127.0.0.1");
+    let port = parsed.port().unwrap_or(8500);
+    let path = parsed.path();
+
+    let mut stream = TcpStream::connect(format!("{host}:{port}")).map_err(|e| {
+        SongbirdError::Configuration {
+            message: format!("Cannot connect to Consul at {host}:{port}: {e}"),
+            field: Some("consul_addr".to_string()),
+            suggestion: Some("Ensure Consul agent is running".to_string()),
+        }
+    })?;
+    stream
+        .set_read_timeout(Some(std::time::Duration::from_secs(3)))
+        .ok();
+
+    let req = format!("GET {path}?passing=true HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n");
+    stream.write_all(req.as_bytes()).ok();
+
+    let mut buf = Vec::new();
+    stream.read_to_end(&mut buf).ok();
+    let response = String::from_utf8_lossy(&buf);
+
+    let body_start = response.find("\r\n\r\n").map_or(0, |i| i + 4);
+    let body = &response[body_start..];
+
+    let entries: Vec<serde_json::Value> = serde_json::from_str(body).unwrap_or_default();
+
+    if let Some(entry) = entries.first() {
+        let svc_host = entry["ServiceAddress"]
+            .as_str()
+            .or_else(|| entry["Address"].as_str())
+            .unwrap_or("127.0.0.1");
+        let svc_port = entry["ServicePort"].as_u64().unwrap_or(8080);
+
+        Ok(EndpointSpec {
+            host: svc_host.to_string(),
+            port: u16::try_from(svc_port)
+                .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT),
+            protocol: Some("http".to_string()),
+            path: None,
+        })
+    } else {
+        Err(SongbirdError::Configuration {
+            message: format!("No healthy instances of '{service_name}' found in Consul"),
+            field: Some("service_name".to_string()),
+            suggestion: Some("Register the service or check Consul health checks".to_string()),
+        })
     }
 }
 

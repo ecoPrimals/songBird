@@ -280,26 +280,6 @@ pub mod well_known {
         9090
     }
 
-    /// Default gaming port (backwards compatibility)
-    #[deprecated(since = "0.2.0", note = "Use PortAllocator with capability-based allocation")]
-    #[must_use]
-    pub const fn gaming() -> u16 {
-        7777
-    }
-
-    /// Default websocket port (backwards compatibility)
-    #[deprecated(since = "0.2.0", note = "Use PortAllocator with capability-based allocation")]
-    #[must_use]
-    pub const fn websocket() -> u16 {
-        8082
-    }
-
-    /// Default security port (backwards compatibility)
-    #[deprecated(since = "0.2.0", note = "Use PortAllocator with capability-based allocation")]
-    #[must_use]
-    pub const fn security() -> u16 {
-        8444
-    }
 }
 
 #[cfg(test)]

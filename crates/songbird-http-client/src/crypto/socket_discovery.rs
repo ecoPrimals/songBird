@@ -431,15 +431,6 @@ pub fn discover_security_socket() -> String {
     fallback
 }
 
-/// Deprecated alias for [`discover_security_socket`].
-#[deprecated(
-    since = "0.3.0",
-    note = "Use discover_security_socket; prefer CAPABILITY_* or SECURITY_PROVIDER_* env vars (capability-first)"
-)]
-#[must_use]
-pub fn discover_security_provider_socket() -> String {
-    discover_security_socket()
-}
 
 /// Discover Neural API socket with full fallback chain (DH-1 compliant)
 ///

@@ -296,7 +296,7 @@ mod dispatch_tests {
 
     fn ipc_handler() -> IpcServiceHandler {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        IpcServiceHandler::new(registry)
+        IpcServiceHandler::new_isolated(registry)
     }
 
     fn assert_parse_error(err: &str) {
@@ -462,7 +462,7 @@ mod dispatch_tests {
     #[expect(clippy::too_many_lines, reason = "exhaustive test covering every JSON-RPC arm")]
     async fn dispatch_hits_each_json_rpc_arm() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let h = IpcServiceHandler::new(Arc::clone(&registry));
+        let h = IpcServiceHandler::new_isolated(Arc::clone(&registry));
 
         macro_rules! ok {
             ($method:expr, $params:expr) => {

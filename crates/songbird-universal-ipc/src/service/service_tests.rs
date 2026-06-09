@@ -15,7 +15,7 @@ use tokio::sync::RwLock;
 #[tokio::test]
 async fn test_ipc_service_register() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     let params = json!({
         "primal_id": "security",
@@ -33,7 +33,7 @@ async fn test_ipc_service_register() {
 #[tokio::test]
 async fn test_ipc_service_resolve() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     // Register first
     let register_params = json!({
@@ -59,7 +59,7 @@ async fn test_ipc_service_resolve() {
 #[tokio::test]
 async fn test_ipc_service_discover() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     // Register service with capability
     let register_params = json!({
@@ -86,7 +86,7 @@ async fn test_ipc_service_discover() {
 #[tokio::test]
 async fn test_primal_info_introspection() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     let result = handler.handle("primal.info", json!({})).await;
     assert!(result.is_ok());
@@ -102,7 +102,7 @@ async fn test_primal_info_introspection() {
 #[tokio::test]
 async fn test_primal_capabilities_introspection() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     let result = handler.handle("primal.capabilities", json!({})).await;
     assert!(result.is_ok());
@@ -126,7 +126,7 @@ async fn test_primal_capabilities_introspection() {
 #[tokio::test]
 async fn test_rpc_methods_introspection() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     let result = handler.handle("rpc.methods", json!({})).await;
     assert!(result.is_ok());
@@ -150,7 +150,7 @@ async fn test_rpc_methods_introspection() {
 #[tokio::test]
 async fn test_ipc_service_list() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     // Register multiple services
     for (id, caps) in &[("security", vec!["crypto"]), ("squirrel", vec!["ai"])] {
@@ -174,7 +174,7 @@ async fn test_ipc_service_list() {
 #[tokio::test]
 async fn test_discover_capabilities() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     let result = handler.handle("discover_capabilities", json!({})).await;
     assert!(result.is_ok());
@@ -277,7 +277,7 @@ fn register_and_resolve_result_serialization() {
 #[tokio::test]
 async fn ipc_resolve_errors_when_primal_not_registered() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
     let err = handler
         .handle("ipc.resolve", json!({ "primal_id": "ghost" }))
         .await
@@ -288,7 +288,7 @@ async fn ipc_resolve_errors_when_primal_not_registered() {
 #[tokio::test]
 async fn unknown_rpc_method_returns_error() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
     let err = handler.handle("no.such.method", json!({})).await.expect_err("unknown method");
     assert!(
         err.contains("unknown JSON-RPC method") || err.contains("Unknown method"),
@@ -299,7 +299,7 @@ async fn unknown_rpc_method_returns_error() {
 #[tokio::test]
 async fn health_liveness_returns_healthy_status_only() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
     let v = handler.handle("health.liveness", json!({})).await.expect("liveness");
     assert_eq!(v, json!({ "status": "alive" }));
 }
@@ -307,7 +307,7 @@ async fn health_liveness_returns_healthy_status_only() {
 #[tokio::test]
 async fn capabilities_list_returns_wire_standard_envelope() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
     let v = handler.handle("capabilities.list", json!({})).await.expect("caps");
     assert_eq!(v["primal"].as_str().unwrap(), "songbird");
     assert!(v["version"].as_str().is_some(), "version must be present");
@@ -319,7 +319,7 @@ async fn capabilities_list_returns_wire_standard_envelope() {
 #[tokio::test]
 async fn identity_get_returns_wire_standard_response() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
     let v = handler.handle("identity.get", json!({})).await.expect("identity.get");
     assert_eq!(v["primal"].as_str().unwrap(), "songbird");
     assert_eq!(v["domain"].as_str().unwrap(), "network");
@@ -352,7 +352,7 @@ fn federation_response_types_serialize_expected_shape() {
 #[tokio::test]
 async fn federation_peers_and_status_without_state_match_empty_defaults() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     let p = handler.handle("federation.peers", json!({})).await.expect("peers");
     assert_eq!(p["peers"], json!([]));
@@ -402,7 +402,7 @@ async fn federation_peers_and_status_reflect_federation_state() {
 #[tokio::test]
 async fn ipc_resolve_by_capability_returns_provider() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     handler
         .handle(
@@ -427,7 +427,7 @@ async fn ipc_resolve_by_capability_returns_provider() {
 #[tokio::test]
 async fn ipc_resolve_by_capability_unknown_errors() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
     let err = handler
         .handle("ipc.resolve", json!({ "capability": "no.such.cap" }))
         .await
@@ -438,7 +438,7 @@ async fn ipc_resolve_by_capability_unknown_errors() {
 #[tokio::test]
 async fn ipc_resolve_missing_both_params_errors() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
     let err = handler.handle("ipc.resolve", json!({})).await.expect_err("missing params");
     assert!(err.contains("primal_id") && err.contains("capability"), "unexpected: {err}");
 }
@@ -446,7 +446,7 @@ async fn ipc_resolve_missing_both_params_errors() {
 #[tokio::test]
 async fn ipc_resolve_capability_preferred_over_primal_id() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     handler
         .handle(
@@ -473,7 +473,7 @@ async fn ipc_resolve_capability_preferred_over_primal_id() {
 #[tokio::test]
 async fn ipc_resolve_capability_falls_back_to_primal_name() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     handler
         .handle(
@@ -498,7 +498,7 @@ async fn ipc_resolve_capability_falls_back_to_primal_name() {
 #[tokio::test]
 async fn ipc_resolve_name_alias_for_primal_id() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     handler
         .handle(
@@ -523,7 +523,7 @@ async fn ipc_resolve_name_alias_for_primal_id() {
 #[tokio::test]
 async fn ipc_resolve_by_name_method_alias() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     handler
         .handle(
@@ -548,7 +548,7 @@ async fn ipc_resolve_by_name_method_alias() {
 #[tokio::test]
 async fn discovery_peers_returns_mesh_bootstrap_peers() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry);
+    let handler = IpcServiceHandler::new_isolated(registry);
 
     let init_result = handler
         .handle(
@@ -598,7 +598,7 @@ async fn discovery_peers_returns_mesh_bootstrap_peers() {
 #[tokio::test]
 async fn ipc_resolve_returns_transport_endpoint_json_sourdough_wire_compat() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     // Register a UDS-based primal
     handler
@@ -699,7 +699,7 @@ async fn ipc_resolve_returns_transport_endpoint_json_sourdough_wire_compat() {
 #[tokio::test]
 async fn capability_resolve_returns_transport_endpoint_json() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     handler
         .handle(
@@ -729,7 +729,7 @@ async fn capability_resolve_returns_transport_endpoint_json() {
 #[tokio::test]
 async fn ipc_register_returns_transport_endpoint_in_response() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     // UDS registration
     let uds_reg = handler

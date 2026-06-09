@@ -206,11 +206,59 @@ impl ServiceLocator {
     where
         F: Fn(&str) -> Result<String, std::env::VarError>,
     {
-        let registry_url = env_reader("SONGBIRD_REGISTRY_URL")
-            .map_err(|_| SongbirdError::configuration("SONGBIRD_REGISTRY_URL not set"))?;
-        let query_url = format!("{registry_url}/v1/services?capability={capability}");
-        let _ = query_url;
-        Ok(Vec::new())
+        use std::io::{Read, Write};
+        use std::os::unix::net::UnixStream;
+
+        let socket_path = env_reader("SONGBIRD_IPC_SOCKET").unwrap_or_else(|_| {
+            let runtime_dir = env_reader("XDG_RUNTIME_DIR")
+                .unwrap_or_else(|_| "/run/user/1000".to_string());
+            format!("{runtime_dir}/biomeos/songbird.sock")
+        });
+
+        let mut stream = UnixStream::connect(&socket_path).map_err(|e| {
+            SongbirdError::configuration(format!(
+                "Cannot connect to songbird IPC at {socket_path}: {e}"
+            ))
+        })?;
+
+        stream
+            .set_read_timeout(Some(std::time::Duration::from_secs(2)))
+            .ok();
+
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "ipc.resolve",
+            "params": { "capability": capability, "native": true },
+            "id": 1
+        });
+
+        let payload = format!("{request}\n");
+        stream.write_all(payload.as_bytes()).map_err(|e| {
+            SongbirdError::configuration(format!("IPC write failed: {e}"))
+        })?;
+
+        let mut response_buf = vec![0u8; 4096];
+        let n = stream.read(&mut response_buf).map_err(|e| {
+            SongbirdError::configuration(format!("IPC read failed: {e}"))
+        })?;
+
+        let response: serde_json::Value =
+            serde_json::from_slice(&response_buf[..n]).map_err(|e| {
+                SongbirdError::configuration(format!("IPC response parse failed: {e}"))
+            })?;
+
+        let endpoint = &response["result"]["endpoint"];
+        let addr = match endpoint["transport"].as_str() {
+            Some("tcp") => {
+                let host = endpoint["host"].as_str().unwrap_or("127.0.0.1");
+                let port = u16::try_from(endpoint["port"].as_u64().unwrap_or(0))
+                    .unwrap_or(0);
+                format!("{host}:{port}").parse::<SocketAddr>().ok()
+            }
+            _ => None,
+        };
+
+        Ok(addr.into_iter().collect())
     }
 
     /// Register self with discovery system.
@@ -235,30 +283,67 @@ impl ServiceLocator {
         Ok(())
     }
 
-    /// Register with HTTP-based service registry.
+    /// Register capabilities with songbird via `ipc.register`.
     fn register_with_http_registry(
         capabilities: &[&str],
         advertise_addr: &SocketAddr,
     ) -> SongbirdResult<()> {
-        if songbird_process_env::var("SONGBIRD_REGISTRY_URL").is_err() {
-            return Err(SongbirdError::configuration("SONGBIRD_REGISTRY_URL not set"));
-        }
+        use std::io::{Read, Write};
+        use std::os::unix::net::UnixStream;
 
-        let service_info = serde_json::json!({
-            "service_id": format!("songbird-{}", uuid::Uuid::new_v4()),
-            "name": "songbird",
-            "address": advertise_addr.ip().to_string(),
-            "port": advertise_addr.port(),
-            "capabilities": capabilities,
-            "health_check_url": format!("http://{}/health", advertise_addr),
-            "tags": ["songbird", "primal"],
+        let socket_path = songbird_process_env::var("SONGBIRD_IPC_SOCKET").unwrap_or_else(|_| {
+            let runtime_dir = songbird_process_env::var("XDG_RUNTIME_DIR")
+                .unwrap_or_else(|_| "/run/user/1000".to_string());
+            format!("{runtime_dir}/biomeos/songbird.sock")
         });
 
-        let _ = service_info;
-        Err(SongbirdError::not_implemented_with_detail(
-            "http_service_registry",
-            "Full implementation requires HTTP client integration",
-        ))
+        let mut stream = UnixStream::connect(&socket_path).map_err(|e| {
+            SongbirdError::configuration(format!(
+                "Cannot connect to songbird IPC at {socket_path}: {e}"
+            ))
+        })?;
+
+        stream
+            .set_write_timeout(Some(std::time::Duration::from_secs(2)))
+            .ok();
+
+        let primal_id = songbird_process_env::var("SONGBIRD_PRIMAL_ID")
+            .unwrap_or_else(|_| "songbird".to_string());
+
+        let ip = advertise_addr.ip();
+        let port = advertise_addr.port();
+        let endpoint = format!("tcp://{ip}:{port}");
+
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "ipc.register",
+            "params": {
+                "primal_id": primal_id,
+                "capabilities": capabilities,
+                "endpoint": endpoint,
+            },
+            "id": 1
+        });
+
+        let payload = format!("{request}\n");
+        stream.write_all(payload.as_bytes()).map_err(|e| {
+            SongbirdError::configuration(format!("IPC write failed: {e}"))
+        })?;
+
+        let mut response_buf = vec![0u8; 2048];
+        stream
+            .set_read_timeout(Some(std::time::Duration::from_secs(2)))
+            .ok();
+        let n = stream.read(&mut response_buf).unwrap_or(0);
+
+        if n > 0
+            && let Ok(resp) = serde_json::from_slice::<serde_json::Value>(&response_buf[..n])
+            && resp.get("error").is_some()
+        {
+            tracing::warn!("ipc.register returned error: {}", resp["error"]);
+        }
+
+        Ok(())
     }
 
     /// Register via DNS-SD (RFC 6763).

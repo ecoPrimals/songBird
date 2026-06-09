@@ -326,6 +326,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_token_validation() {
+        let _serial = crate::test_sync_env::env_lock();
+        let _jwt = crate::test_sync_env::VarGuard::set(
+            "SONGBIRD_JWT_SECRET",
+            "test-token-validation-secret",
+        );
+
         let validator = TokenValidator::new();
         let token = AccessToken::student("student-123", "CSE-847");
 

@@ -225,4 +225,29 @@ impl IpcServiceHandler {
     pub fn registry(&self) -> &Arc<RwLock<ServiceRegistry>> {
         &self.registry
     }
+
+    /// Test-only constructor with an isolated temp directory for virtual relays.
+    ///
+    /// Eliminates filesystem collisions when multiple tests run concurrently
+    /// by giving each test instance its own relay socket directory.
+    #[cfg(test)]
+    pub fn new_isolated(registry: Arc<RwLock<ServiceRegistry>>) -> Self {
+        let isolated_dir = std::env::temp_dir()
+            .join("songbird-test-relays")
+            .join(format!("{}", std::process::id()))
+            .join(format!("{:x}", std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .subsec_nanos()));
+
+        let mut h = Self::assemble(
+            registry,
+            Arc::new(HttpHandler::with_default_discovery()),
+            DiscoveryHandler::new(),
+            None,
+        );
+        h.virtual_relay = Arc::new(VirtualRelayManager::new(isolated_dir));
+        h.crypto_provider = None;
+        h
+    }
 }

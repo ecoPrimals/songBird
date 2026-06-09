@@ -240,12 +240,6 @@ pub fn discover_security_socket(explicit_path: Option<&PathBuf>) -> String {
     discover_security_socket_with_env(explicit_path, &SystemEnv)
 }
 
-/// Deprecated alias for [`discover_security_socket`].
-#[deprecated(note = "Use discover_security_socket (capability-based naming)")]
-#[must_use]
-pub fn discover_security_provider_socket(explicit_path: Option<&PathBuf>) -> String {
-    discover_security_socket(explicit_path)
-}
 
 /// Internal: Discover AI/Neural API socket path (capability-first)
 ///

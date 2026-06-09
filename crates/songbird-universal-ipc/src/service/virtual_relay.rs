@@ -59,8 +59,6 @@ impl RelayMetrics {
 
 struct RelayEntry {
     socket_path: PathBuf,
-    #[allow(dead_code)]
-    native_target: String,
     task: JoinHandle<()>,
 }
 
@@ -172,7 +170,6 @@ impl VirtualRelayManager {
             primal_name.to_string(),
             RelayEntry {
                 socket_path: relay_path.clone(),
-                native_target,
                 task,
             },
         );

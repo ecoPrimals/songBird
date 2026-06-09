@@ -157,7 +157,7 @@ mod tests {
     #[tokio::test]
     async fn health_check_includes_uptime_and_registry_service_count() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(Arc::clone(&registry));
+        let handler = IpcServiceHandler::new_isolated(Arc::clone(&registry));
 
         let v = handler.handle("health.check", json!({})).await.expect("health.check");
         assert_eq!(v["status"], "healthy");
@@ -208,7 +208,7 @@ mod tests {
     #[tokio::test]
     async fn birdsong_advertise_errors_when_node_id_missing() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(registry);
+        let handler = IpcServiceHandler::new_isolated(registry);
         let err = handler
             .handle("birdsong.advertise", json!({ "capabilities": [] }))
             .await
@@ -219,7 +219,7 @@ mod tests {
     #[tokio::test]
     async fn birdsong_advertise_errors_when_node_id_not_a_string() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(registry);
+        let handler = IpcServiceHandler::new_isolated(registry);
         let err = handler
             .handle("birdsong.advertise", json!({ "node_id": 12345 }))
             .await
@@ -230,7 +230,7 @@ mod tests {
     #[tokio::test]
     async fn birdsong_advertise_capabilities_non_array_becomes_empty() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(registry);
+        let handler = IpcServiceHandler::new_isolated(registry);
         let params = json!({
             "node_id": "n1",
             "capabilities": "not-an-array",
@@ -250,7 +250,7 @@ mod tests {
     #[tokio::test]
     async fn birdsong_advertise_capabilities_filters_non_string_entries() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(registry);
+        let handler = IpcServiceHandler::new_isolated(registry);
         let params = json!({
             "node_id": "n2",
             "capabilities": ["keep", 99, "also-keep", {"x": 1}]
@@ -268,7 +268,7 @@ mod tests {
     #[tokio::test]
     async fn birdsong_advertise_preserves_endpoint_hints_metadata() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(registry);
+        let handler = IpcServiceHandler::new_isolated(registry);
         let hints = json!({ "lan": "192.168.0.10:0", "note": "port 0 hint" });
         let params = json!({
             "node_id": "n-hints",
@@ -288,7 +288,7 @@ mod tests {
     #[tokio::test]
     async fn birdsong_advertise_onion_not_running_sets_onion_fields() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(registry);
+        let handler = IpcServiceHandler::new_isolated(registry);
         let r = handler
             .handle("birdsong.advertise", json!({ "node_id": "n-onion", "capabilities": [] }))
             .await;
@@ -370,7 +370,7 @@ mod tests {
     #[tokio::test]
     async fn federation_peers_empty_state_serializes_like_meta_defaults() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(registry);
+        let handler = IpcServiceHandler::new_isolated(registry);
 
         let p = handler.handle("songbird.federation.peers", json!({})).await.expect("peers");
         let expected = serde_json::to_value(FederationPeersResponse {
