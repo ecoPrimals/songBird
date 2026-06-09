@@ -74,24 +74,24 @@ mod tests {
 
     #[tokio::test]
     async fn discover_finds_provider_via_environment() {
+        use songbird_process_env::ScopedEnv;
         init_capability_registry();
         let cap = "sbipcdiscserial";
         let key = format!("{}_PROVIDER_SOCKET", cap.to_uppercase());
-        songbird_process_env::set_var(&key, "/tmp/sbipc_disc_test.sock");
+        let _env = ScopedEnv::new(&key, "/tmp/sbipc_disc_test.sock");
         let p = discover(cap).await.expect("discover");
         assert!(!p.id.is_empty());
-        songbird_process_env::remove_var(&key);
     }
 
     #[tokio::test]
     async fn discover_all_returns_vec_from_environment() {
+        use songbird_process_env::ScopedEnv;
         init_capability_registry();
         let cap = "sbipcdiscall";
         let key = format!("{}_PROVIDER_SOCKET", cap.to_uppercase());
-        songbird_process_env::set_var(&key, "/tmp/sbipc_disc_all.sock");
+        let _env = ScopedEnv::new(&key, "/tmp/sbipc_disc_all.sock");
         let v = discover_all(cap).await.expect("discover_all");
         assert_eq!(v.len(), 1);
-        songbird_process_env::remove_var(&key);
     }
 
     #[tokio::test]

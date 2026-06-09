@@ -43,12 +43,16 @@ mod environment_tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
 
     use std::collections::HashMap;
+    use std::sync::Mutex;
 
     use crate::traits::ServiceQuery;
+    use songbird_process_env::ScopedEnv;
 
     use super::types::{
         ContainerRuntimeInfo, OrchestrationMethod, UniversalContainerOrchestration,
     };
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     fn blank_orchestration() -> UniversalContainerOrchestration {
         UniversalContainerOrchestration {
@@ -72,39 +76,40 @@ mod environment_tests {
 
     #[test]
     fn detect_container_environment_kubernetes_service_host() {
-        songbird_process_env::set_var("KUBERNETES_SERVICE_HOST", "10.96.0.1");
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _env = ScopedEnv::new("KUBERNETES_SERVICE_HOST", "10.96.0.1");
         let mut orch = blank_orchestration();
         orch.detect_container_environment();
         assert!(has_container_environment_method(&orch));
         assert_eq!(orch.runtime_info.runtime_type, "kubernetes");
-        songbird_process_env::remove_var("KUBERNETES_SERVICE_HOST");
     }
 
     #[test]
     fn detect_container_environment_docker_host() {
+        let _lock = ENV_LOCK.lock().unwrap();
         songbird_process_env::remove_var("KUBERNETES_SERVICE_HOST");
-        songbird_process_env::set_var("DOCKER_HOST", "unix:///var/run/docker.sock");
+        let _env = ScopedEnv::new("DOCKER_HOST", "unix:///var/run/docker.sock");
         let mut orch = blank_orchestration();
         orch.detect_container_environment();
         assert!(has_container_environment_method(&orch));
         assert_eq!(orch.runtime_info.runtime_type, "docker");
-        songbird_process_env::remove_var("DOCKER_HOST");
     }
 
     #[test]
     fn detect_container_environment_generic_container_var() {
+        let _lock = ENV_LOCK.lock().unwrap();
         songbird_process_env::remove_var("KUBERNETES_SERVICE_HOST");
         songbird_process_env::remove_var("DOCKER_HOST");
-        songbird_process_env::set_var("CONTAINER", "podman");
+        let _env = ScopedEnv::new("CONTAINER", "podman");
         let mut orch = blank_orchestration();
         orch.detect_container_environment();
         assert!(has_container_environment_method(&orch));
         assert_eq!(orch.runtime_info.runtime_type, "generic");
-        songbird_process_env::remove_var("CONTAINER");
     }
 
     #[test]
     fn detect_container_environment_no_env_vars_avoids_kubernetes_and_docker() {
+        let _lock = ENV_LOCK.lock().unwrap();
         songbird_process_env::remove_var("KUBERNETES_SERVICE_HOST");
         songbird_process_env::remove_var("DOCKER_HOST");
         songbird_process_env::remove_var("CONTAINER");
@@ -116,8 +121,9 @@ mod environment_tests {
 
     #[test]
     fn detect_container_environment_does_not_duplicate_method() {
-        songbird_process_env::set_var("KUBERNETES_SERVICE_HOST", "10.96.0.1");
-        songbird_process_env::set_var("DOCKER_HOST", "unix:///var/run/docker.sock");
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _k8s = ScopedEnv::new("KUBERNETES_SERVICE_HOST", "10.96.0.1");
+        let _docker = ScopedEnv::new("DOCKER_HOST", "unix:///var/run/docker.sock");
         let mut orch = blank_orchestration();
         orch.detect_container_environment();
         orch.detect_container_environment();
@@ -127,30 +133,26 @@ mod environment_tests {
             .filter(|m| matches!(m, OrchestrationMethod::ContainerEnvironment))
             .count();
         assert_eq!(count, 1);
-        songbird_process_env::remove_var("KUBERNETES_SERVICE_HOST");
-        songbird_process_env::remove_var("DOCKER_HOST");
     }
 
     #[tokio::test]
     async fn discover_from_container_environment_finds_service_host() {
-        let var = "REDIS_SERVICE_HOST";
-        songbird_process_env::set_var(var, "10.0.0.5");
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _env = ScopedEnv::new("REDIS_SERVICE_HOST", "10.0.0.5");
         let orch = blank_orchestration();
         let services =
             orch.discover_from_container_environment(&ServiceQuery::new()).await.unwrap();
         assert!(services.iter().any(|s| s.name == "redis"));
         assert!(services.iter().any(|s| s.service_type == "container-env"));
-        songbird_process_env::remove_var(var);
     }
 
     #[tokio::test]
     async fn discover_from_container_environment_finds_port_suffix() {
-        let var = "POSTGRES_PORT";
-        songbird_process_env::set_var(var, "5432");
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _env = ScopedEnv::new("POSTGRES_PORT", "5432");
         let orch = blank_orchestration();
         let services =
             orch.discover_from_container_environment(&ServiceQuery::new()).await.unwrap();
         assert!(services.iter().any(|s| s.name == "postgres"));
-        songbird_process_env::remove_var(var);
     }
 }

@@ -78,7 +78,9 @@ mod tests {
 
     #[tokio::test]
     async fn discover_nodes_returns_empty_without_peers_env() {
+        use songbird_process_env::ScopedEnv;
         songbird_process_env::remove_var("SONGBIRD_PEERS");
+        let _guard = ScopedEnv::new("__DISCOVERY_LOCK_PLACEHOLDER", "1");
         let d = NetworkDiscovery::new();
         let result = d.discover_nodes().await.unwrap();
         assert!(result.is_empty());
@@ -86,13 +88,13 @@ mod tests {
 
     #[tokio::test]
     async fn discover_nodes_parses_songbird_peers_env() {
-        songbird_process_env::set_var("SONGBIRD_PEERS", "10.0.0.1:7700,10.0.0.2:7700");
+        use songbird_process_env::ScopedEnv;
+        let _env = ScopedEnv::new("SONGBIRD_PEERS", "10.0.0.1:7700,10.0.0.2:7700");
         let d = NetworkDiscovery::new();
         let result = d.discover_nodes().await.unwrap();
         assert_eq!(result.len(), 2);
         assert_eq!(result[0].address, "10.0.0.1:7700");
         assert_eq!(result[1].address, "10.0.0.2:7700");
-        songbird_process_env::remove_var("SONGBIRD_PEERS");
     }
 
     #[test]
