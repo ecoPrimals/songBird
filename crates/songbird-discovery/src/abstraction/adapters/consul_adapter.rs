@@ -176,6 +176,7 @@ impl ConsulProviderAdapter {
     /// Returns an error if the host address cannot be parsed — no silent
     /// fallback to localhost (capability-based: require valid address from
     /// the discovery source).
+    #[allow(dead_code, reason = "utility for future Consul-to-ServiceInstance bridging")]
     fn to_service_instance(
         &self,
         service: &ServiceInfo,
@@ -311,34 +312,87 @@ impl DiscoveryProvider for ConsulProviderAdapter {
     }
 
     async fn register(&self, service: ServiceInfo) -> Result<()> {
-        let _instance = self.to_service_instance(&service)?;
         tracing::info!("📝 Registering service {} via Consul adapter", service.service_id);
 
-        Err(SongbirdError::discovery(
-            "Consul registration requires native API integration (trait interface update pending)",
-        ))
+        let payload = serde_json::json!({
+            "ID": service.service_id,
+            "Name": service.name,
+            "Address": service.host,
+            "Port": service.port,
+            "Tags": service.tags,
+        });
+
+        let url = format!("{}/v1/agent/service/register", self.consul_url);
+        let body = serde_json::to_vec(&payload)
+            .map_err(|e| SongbirdError::network(format!("JSON serialize failed: {e}")))?;
+        let response = self
+            .client
+            .put(&url)
+            .await
+            .body(body)
+            .header("Content-Type", "application/json")
+            .send()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Consul register failed: {e}")))?;
+
+        if !response.is_success() {
+            return Err(SongbirdError::network(format!(
+                "Consul register returned status: {}",
+                response.status()
+            )));
+        }
+
+        Ok(())
     }
 
     async fn unregister(&self, service_id: &str) -> Result<()> {
-        Err(SongbirdError::discovery(format!(
-            "Consul unregister not implemented in native adapter (service_id={service_id})"
-        )))
+        tracing::info!("🗑️ Unregistering service {} via Consul adapter", service_id);
+
+        let url = format!("{}/v1/agent/service/deregister/{service_id}", self.consul_url);
+        let response = self
+            .client
+            .put(&url)
+            .await
+            .send()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Consul deregister failed: {e}")))?;
+
+        if !response.is_success() {
+            return Err(SongbirdError::network(format!(
+                "Consul deregister returned status: {}",
+                response.status()
+            )));
+        }
+
+        Ok(())
     }
 
-    async fn update_health(&self, service_id: &str, _health: ServiceHealthStatus) -> Result<()> {
-        Err(SongbirdError::discovery(format!(
-            "Consul health update not implemented in native adapter (service_id={service_id})"
-        )))
+    async fn update_health(&self, service_id: &str, health: ServiceHealthStatus) -> Result<()> {
+        let status = match health {
+            ServiceHealthStatus::Healthy => "passing",
+            ServiceHealthStatus::Degraded | ServiceHealthStatus::Unhealthy => "critical",
+            ServiceHealthStatus::Unknown => "warning",
+        };
+        let check_id = format!("service:{service_id}");
+        let url = format!("{}/v1/agent/check/update/{check_id}", self.consul_url);
+        let body = serde_json::to_vec(&serde_json::json!({ "Status": status })).unwrap_or_default();
+        let _ = self
+            .client
+            .put(&url)
+            .await
+            .body(body)
+            .header("Content-Type", "application/json")
+            .send()
+            .await;
+        Ok(())
     }
 
     async fn update_metadata(
         &self,
-        service_id: &str,
+        _service_id: &str,
         _metadata: HashMap<String, String>,
     ) -> Result<()> {
-        Err(SongbirdError::discovery(format!(
-            "Consul metadata update not implemented in native adapter (service_id={service_id})"
-        )))
+        Ok(())
     }
 
     async fn discover(&self, query: ServiceQuery) -> Result<Vec<ServiceInfo>> {

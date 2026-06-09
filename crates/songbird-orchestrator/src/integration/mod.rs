@@ -216,33 +216,71 @@ impl IntegrationManager {
         Ok(core_available && gaming_available && federation_available)
     }
 
-    /// Check core services
-    #[expect(
-        clippy::unused_async,
-        reason = "async signature required by Axum, trait objects, or future I/O"
-    )]
+    /// Check core services by probing for the songbird orchestrator UDS socket.
     async fn check_core_services(&self) -> Result<bool> {
         tracing::debug!("Checking core services availability...");
-        Ok(true)
+
+        let socket_path = songbird_types::defaults::paths::network_socket_candidates()
+            .into_iter()
+            .find(|p| p.exists());
+
+        if let Some(path) = socket_path {
+            match tokio::net::UnixStream::connect(&path).await {
+                Ok(_) => {
+                    tracing::debug!("Core service reachable at {}", path.display());
+                    Ok(true)
+                }
+                Err(e) => {
+                    warn!(
+                        "Core service socket exists but not connectable: {} ({})",
+                        path.display(),
+                        e
+                    );
+                    Ok(false)
+                }
+            }
+        } else {
+            tracing::debug!("No orchestrator socket found — core services not yet started");
+            Ok(false)
+        }
     }
 
-    /// Check gaming services
+    /// Check gaming services — only relevant when gaming port is configured.
     #[expect(
         clippy::unused_async,
-        reason = "async signature required by Axum, trait objects, or future I/O"
+        reason = "async signature: future expansion to probe gaming endpoints"
     )]
     async fn check_gaming_services(&self) -> Result<bool> {
-        tracing::debug!("Gaming services availability check completed");
+        let gaming_configured = songbird_process_env::var("SONGBIRD_GAMING_PORT").is_ok();
+        if !gaming_configured {
+            tracing::debug!("Gaming services not configured — skipping");
+            return Ok(true);
+        }
+        tracing::debug!("Gaming services configured — assuming available (probe deferred)");
         Ok(true)
     }
 
-    /// Check federation services
+    /// Check federation services — verifies federation mode is active and bind address is set.
     #[expect(
         clippy::unused_async,
-        reason = "async signature required by Axum, trait objects, or future I/O"
+        reason = "async signature: future expansion to probe federation peers"
     )]
     async fn check_federation_services(&self) -> Result<bool> {
-        tracing::debug!("Federation services availability check completed");
+        let federation_mode =
+            songbird_process_env::var("SONGBIRD_FEDERATION_MODE").unwrap_or_default();
+        if federation_mode.is_empty() || federation_mode == "disabled" {
+            tracing::debug!("Federation disabled — skipping check");
+            return Ok(true);
+        }
+
+        let bind_addr =
+            songbird_process_env::var("SONGBIRD_PRODUCTION_BIND_ADDRESS").unwrap_or_default();
+        if bind_addr.is_empty() {
+            warn!("Federation enabled but SONGBIRD_PRODUCTION_BIND_ADDRESS not set");
+            return Ok(false);
+        }
+
+        tracing::debug!("Federation services configured (mode={federation_mode})");
         Ok(true)
     }
 }

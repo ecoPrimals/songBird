@@ -24,20 +24,34 @@ impl NetworkDiscovery {
         Self
     }
 
-    /// Discover network nodes via federation state.
+    /// Discover network nodes via environment-configured peer list.
     ///
-    /// Returns an empty list when no federation peers are reachable.
-    /// Real discovery is handled by the orchestrator's federation state
-    /// and injected via `songbird-primal-coordination` at runtime.
-    ///
-    /// # Errors
-    ///
-    /// Returns `SongbirdError::not_implemented` when called without
-    /// a configured federation backend (standalone mode).
+    /// Reads `SONGBIRD_PEERS` (comma-separated `host:port` entries) and returns them
+    /// as discovered nodes. Returns an empty list when no peers are configured
+    /// (standalone mode). Full mesh discovery with health probing is handled at the
+    /// orchestrator level via `mesh.init` and `BeaconMesh`.
+    #[expect(
+        clippy::unused_async,
+        reason = "async for interface consistency with other discovery methods"
+    )]
     pub async fn discover_nodes(&self) -> SongbirdResult<Vec<DiscoveredNode>> {
-        Err(songbird_types::SongbirdError::not_implemented(
-            "NetworkDiscovery requires federation state injection — use orchestrator discovery",
-        ))
+        let peers_env = songbird_process_env::var("SONGBIRD_PEERS").unwrap_or_default();
+        if peers_env.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let nodes: Vec<DiscoveredNode> = peers_env
+            .split(',')
+            .filter(|s| !s.trim().is_empty())
+            .enumerate()
+            .map(|(i, addr)| DiscoveredNode {
+                node_id: format!("peer-{i}"),
+                address: addr.trim().to_string(),
+                capabilities: vec!["network".to_string()],
+            })
+            .collect();
+
+        Ok(nodes)
     }
 }
 
@@ -63,15 +77,22 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn discover_nodes_returns_not_implemented_without_federation() {
+    async fn discover_nodes_returns_empty_without_peers_env() {
+        songbird_process_env::remove_var("SONGBIRD_PEERS");
         let d = NetworkDiscovery::new();
-        let result = d.discover_nodes().await;
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(
-            err.to_string().contains("not implemented") || err.to_string().contains("federation"),
-            "expected not-implemented error, got: {err}"
-        );
+        let result = d.discover_nodes().await.unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[tokio::test]
+    async fn discover_nodes_parses_songbird_peers_env() {
+        songbird_process_env::set_var("SONGBIRD_PEERS", "10.0.0.1:7700,10.0.0.2:7700");
+        let d = NetworkDiscovery::new();
+        let result = d.discover_nodes().await.unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].address, "10.0.0.1:7700");
+        assert_eq!(result[1].address, "10.0.0.2:7700");
+        songbird_process_env::remove_var("SONGBIRD_PEERS");
     }
 
     #[test]

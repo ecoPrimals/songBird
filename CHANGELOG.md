@@ -14,16 +14,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **P0 security: JWT dev secret removed** — `SONGBIRD_JWT_SECRET` now required (no hardcoded fallback); auth rejects all tokens if unset rather than silently using `"songbird-dev-secret-change-in-production"`
 - **Hardcoded socket paths** — VPS fallback paths in http-client and TLS crate now use `songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR` constant instead of string literals
 - **Hardcoded health timeout** — mesh probe timeout now uses `DEFAULT_MESH_PROBE_TIMEOUT` from songbird-types
+- **Always-healthy stubs** — `TarpcServer::health_check` now probes federation/registry stats; `IntegrationManager::check_core_services` probes UDS socket connectivity; `check_federation_services` validates configuration
 
 ### Added
 - `DEFAULT_MESH_PROBE_TIMEOUT` constant (5000ms) in `songbird-types::defaults::timeouts`
 - **Process-based container discovery** — `discover_from_process_based()` now scans `/proc/net/tcp` for listening sockets and correlates via `/proc/<pid>/fd` symlinks to identify co-resident services
-- **Consul adapter completion** — `watch()`, `list_all()`, `exists()`, `health_check()` now use live Consul HTTP API instead of returning stub errors
+- **Consul adapter completion** — `watch()`, `list_all()`, `exists()`, `health_check()`, `register()`, `unregister()`, `update_health()` now use live Consul HTTP API
+- **Kubernetes adapter discovery** — `discover()` queries K8s API (`/api/v1/namespaces/{ns}/services`); `health_check()` probes `/healthz`; service list parsing with clusterIP/port extraction
+- **Federation network discovery** — `NetworkDiscovery::discover_nodes()` reads `SONGBIRD_PEERS` env var (comma-separated host:port) instead of returning `not_implemented`
 
 ### Changed
-- `TokenValidator::new()` returns empty-secret validator when `SONGBIRD_JWT_SECRET` unset (rejects all tokens gracefully)
+- `TokenValidator::new()` returns empty-secret validator when `SONGBIRD_JWT_SECRET` unset (rejects all tokens gracefully); `validate()` rejects tokens when secret is empty
 - `discover_mdns_services()` uses `DEFAULT_MDNS_TIMEOUT` constant instead of inline `Duration::from_secs(5)`
 - Genesis security client: `"🐻"` emoji references removed; `BEARDOG_ENDPOINT` deprecation warning simplified
+- Kubernetes adapter: `register`/`unregister` return informative errors explaining K8s manifest-based model
 
 ---
 

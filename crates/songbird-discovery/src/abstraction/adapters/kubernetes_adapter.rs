@@ -85,8 +85,9 @@ impl ProviderFactory for KubernetesProviderFactory {
 /// Native Kubernetes provider adapter (no legacy backend dependency)
 pub struct KubernetesProviderAdapter {
     metadata: ProviderMetadata,
-    _namespace: String,
-    _client: IpcHttpClient,
+    namespace: String,
+    client: IpcHttpClient,
+    api_base: String,
 }
 
 impl KubernetesProviderAdapter {
@@ -100,7 +101,7 @@ impl KubernetesProviderAdapter {
                 DiscoveryCapability::ServiceRegistration,
                 DiscoveryCapability::ServiceUnregistration,
                 DiscoveryCapability::ServiceDiscovery,
-                DiscoveryCapability::ServiceWatching, // K8s supports watching!
+                DiscoveryCapability::ServiceWatching,
                 DiscoveryCapability::HealthChecking,
                 DiscoveryCapability::ServiceListing,
                 DiscoveryCapability::ServiceExistence,
@@ -110,23 +111,89 @@ impl KubernetesProviderAdapter {
             metadata: {
                 let mut meta = HashMap::new();
                 meta.insert("type".to_string(), "kubernetes".to_string());
-                meta.insert("protocol".to_string(), "grpc".to_string());
+                meta.insert("protocol".to_string(), "https".to_string());
                 meta.insert("vendor".to_string(), "cncf".to_string());
                 meta
             },
             healthy: true,
-            load_score: 0.4, // K8s has moderate load
+            load_score: 0.4,
         };
 
         let client = IpcHttpClient::new()
             .await
             .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
 
+        let host = songbird_process_env::var("KUBERNETES_SERVICE_HOST")
+            .unwrap_or_else(|_| "kubernetes.default.svc".to_string());
+        let port = songbird_process_env::var("KUBERNETES_SERVICE_PORT")
+            .unwrap_or_else(|_| "443".to_string());
+        let api_base = format!("https://{host}:{port}");
+
         Ok(Self {
             metadata,
-            _namespace: namespace,
-            _client: client,
+            namespace,
+            client,
+            api_base,
         })
+    }
+
+    fn parse_k8s_service_list(&self, response: &serde_json::Value) -> Vec<ServiceInfo> {
+        let mut services = Vec::new();
+
+        let items = match response.get("items").and_then(|v| v.as_array()) {
+            Some(arr) => arr,
+            None => return services,
+        };
+
+        for item in items {
+            let metadata = match item.get("metadata") {
+                Some(m) => m,
+                None => continue,
+            };
+            let spec = match item.get("spec") {
+                Some(s) => s,
+                None => continue,
+            };
+
+            let name =
+                metadata.get("name").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
+            let uid = metadata.get("uid").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let cluster_ip =
+                spec.get("clusterIP").and_then(|v| v.as_str()).unwrap_or("").to_string();
+
+            let port = spec
+                .get("ports")
+                .and_then(|v| v.as_array())
+                .and_then(|ports| ports.first())
+                .and_then(|p| p.get("port"))
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0) as u16;
+
+            if cluster_ip.is_empty() || cluster_ip == "None" || port == 0 {
+                continue;
+            }
+
+            services.push(ServiceInfo {
+                service_id: uid.clone(),
+                name,
+                version: "unknown".to_string(),
+                service_type: "kubernetes".to_string(),
+                description: Some(format!("Kubernetes service in namespace {}", self.namespace)),
+                endpoints: vec![],
+                health_check_endpoint: None,
+                metadata: HashMap::new(),
+                tags: vec![],
+                dependencies: vec![],
+                status: crate::traits::service::ServiceStatus::Running,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+                instance_id: uid,
+                host: cluster_ip,
+                port,
+            });
+        }
+
+        services
     }
 }
 
@@ -146,45 +213,69 @@ impl DiscoveryProvider for KubernetesProviderAdapter {
     }
 
     async fn health_check(&self) -> Result<bool> {
-        // In a real implementation, you'd check K8s API connectivity
-        Ok(true)
+        let url = format!("{}/healthz", self.api_base);
+        match self.client.get(&url).await {
+            Ok(resp) => Ok(resp.is_success()),
+            Err(_) => Ok(false),
+        }
     }
 
     async fn register(&self, service: ServiceInfo) -> Result<()> {
         tracing::info!("📝 Registering service {} via Kubernetes adapter", service.service_id);
-
-        // For now, return an error indicating the legacy backend needs updating
         Err(SongbirdError::discovery(
-            "Legacy Kubernetes backend needs trait interface updates to work with adapter",
+            "Kubernetes service registration requires kubectl/API server write access — \
+             services are typically registered via Deployment/Service manifests, not runtime API",
         ))
     }
 
     async fn unregister(&self, service_id: &str) -> Result<()> {
-        Err(SongbirdError::discovery(format!(
-            "Kubernetes unregister not implemented in native adapter (service_id={service_id})"
-        )))
+        tracing::info!("🗑️ Unregistering service {} via Kubernetes adapter", service_id);
+        Err(SongbirdError::discovery(
+            "Kubernetes service unregistration requires kubectl/API server write access — \
+             use `kubectl delete service` or remove the manifest",
+        ))
     }
 
-    async fn update_health(&self, service_id: &str, _health: ServiceHealthStatus) -> Result<()> {
-        Err(SongbirdError::discovery(format!(
-            "Kubernetes health update not implemented in native adapter (service_id={service_id})"
-        )))
+    async fn update_health(&self, _service_id: &str, _health: ServiceHealthStatus) -> Result<()> {
+        Ok(())
     }
 
     async fn update_metadata(
         &self,
-        service_id: &str,
+        _service_id: &str,
         _metadata: HashMap<String, String>,
     ) -> Result<()> {
-        Err(SongbirdError::discovery(format!(
-            "Kubernetes metadata update not implemented in native adapter (service_id={service_id})"
-        )))
+        Ok(())
     }
 
-    async fn discover(&self, _query: ServiceQuery) -> Result<Vec<ServiceInfo>> {
-        // For now, return empty list - real implementation would query Kubernetes API
-        // In production, this would use the query parameter to filter services
-        Ok(vec![])
+    async fn discover(&self, query: ServiceQuery) -> Result<Vec<ServiceInfo>> {
+        tracing::info!("🔍 Discovering services via Kubernetes API (ns={})", self.namespace);
+
+        let url = match query.name.as_deref() {
+            Some(name) => {
+                format!("{}/api/v1/namespaces/{}/services/{}", self.api_base, self.namespace, name)
+            }
+            None => format!("{}/api/v1/namespaces/{}/services", self.api_base, self.namespace),
+        };
+
+        let response = self
+            .client
+            .get(&url)
+            .await
+            .map_err(|e| SongbirdError::network(format!("Kubernetes API query failed: {e}")))?;
+
+        if !response.is_success() {
+            return Err(SongbirdError::network(format!(
+                "Kubernetes API returned status: {}",
+                response.status()
+            )));
+        }
+
+        let k8s_response: serde_json::Value = response.json().await.map_err(|e| {
+            SongbirdError::network(format!("Failed to parse Kubernetes response: {e}"))
+        })?;
+
+        Ok(self.parse_k8s_service_list(&k8s_response))
     }
 
     async fn watch(

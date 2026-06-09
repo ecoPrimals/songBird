@@ -211,9 +211,12 @@ impl AccessToken {
     }
 }
 
-/// Token validator
+/// Token validator — performs post-decode business-rule checks.
+///
+/// Cryptographic signature verification is performed during `AccessToken::decode()`
+/// (HMAC-SHA256 via `pure_rust_jwt::decode`). This validator enforces additional rules:
+/// expiry, secret-configured guard, and future token blacklist.
 pub struct TokenValidator {
-    #[allow(dead_code, reason = "stored for future JWT cryptographic verification in validate()")]
     secret: Vec<u8>,
 }
 
@@ -252,26 +255,29 @@ impl TokenValidator {
         }
     }
 
+    /// Validate a decoded token against business rules.
+    ///
+    /// Signature integrity is already verified by `AccessToken::decode()` (HMAC-SHA256).
+    /// This method enforces:
+    /// 1. Secret must be configured (non-empty) — prevents accepting tokens in misconfigured state
+    /// 2. Token must not be expired
+    ///
     /// # Errors
     ///
-    /// Returns an error if the operation fails.
+    /// Returns error if secret is unconfigured or token is expired.
     #[expect(
         clippy::unused_async,
         reason = "async signature required by Axum, trait objects, or future I/O"
     )]
     pub async fn validate(&self, token: &AccessToken) -> Result<Identity> {
-        // Check expiry
+        if self.secret.is_empty() {
+            return Err(anyhow!("JWT secret not configured — cannot validate tokens"));
+        }
+
         if token.is_expired() {
             return Err(anyhow!("Token expired"));
         }
 
-        // Check blacklist (for revoked tokens)
-        // FUTURE (Phase 2): Token blacklist via Redis or distributed cache
-        // Current: Expiry-based validation is sufficient for most use cases
-        // Future use case: Immediate token revocation (e.g., compromised tokens, user logout)
-        // For now, expiry check provides basic security
-
-        // Return identity
         Ok(Identity {
             id: token.sub.clone(),
             role: token.role.clone(),
