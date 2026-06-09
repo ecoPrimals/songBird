@@ -95,7 +95,7 @@ struct RemoteKeyMaterial {
 
 /// Get our local Ed25519 public key from the security provider.
 async fn get_local_public_key() -> Result<String, String> {
-    let socket_path = discover_beardog_socket()?;
+    let socket_path = discover_security_provider_socket()?;
 
     let request = json!({
         "jsonrpc": "2.0",
@@ -179,7 +179,7 @@ async fn exchange_trust_with_peer(
 
 /// Register a remote gate's key on our local security provider.
 async fn register_remote_key(remote: &RemoteKeyMaterial) -> Result<(), String> {
-    let socket_path = discover_beardog_socket()?;
+    let socket_path = discover_security_provider_socket()?;
 
     let request = json!({
         "jsonrpc": "2.0",
@@ -223,7 +223,7 @@ async fn register_remote_key(remote: &RemoteKeyMaterial) -> Result<(), String> {
 /// Discover the security provider's UDS socket via capability-based discovery.
 ///
 /// Resolution: env vars → XDG runtime (`$XDG_RUNTIME_DIR/biomeos/*.sock`)
-fn discover_beardog_socket() -> Result<String, String> {
+fn discover_security_provider_socket() -> Result<String, String> {
     let path = security_crypto_ipc_socket_from_env(|| {
         if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
             let biomeos_dir = std::path::PathBuf::from(&xdg).join("biomeos");
@@ -326,7 +326,7 @@ mod tests {
     use std::net::{IpAddr, Ipv4Addr};
 
     #[test]
-    fn discover_beardog_socket_returns_err_when_no_env() {
+    fn discover_security_provider_socket_returns_err_when_no_env() {
         let _guard = env_lock();
         songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");
         songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
@@ -334,18 +334,18 @@ mod tests {
         songbird_process_env::remove_var("BEARDOG_SOCKET");
         songbird_process_env::remove_var("XDG_RUNTIME_DIR");
 
-        let result = discover_beardog_socket();
+        let result = discover_security_provider_socket();
         assert!(result.is_err());
     }
 
     #[test]
-    fn discover_beardog_socket_uses_security_provider_socket() {
+    fn discover_security_provider_socket_uses_env() {
         let _guard = env_lock();
         let path = format!("/tmp/songbird-test-trust-exchange-{}.sock", std::process::id());
         std::fs::File::create(&path).ok();
         songbird_process_env::set_var("SECURITY_PROVIDER_SOCKET", &path);
 
-        let result = discover_beardog_socket();
+        let result = discover_security_provider_socket();
         assert_eq!(result.unwrap(), path);
 
         songbird_process_env::remove_var("SECURITY_PROVIDER_SOCKET");

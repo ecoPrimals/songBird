@@ -303,8 +303,11 @@ impl DiscoveryProvider for ConsulProviderAdapter {
     }
 
     async fn health_check(&self) -> Result<bool> {
-        // For now, assume healthy. In a real implementation, you'd ping Consul
-        Ok(true)
+        let url = format!("{}/v1/status/leader", self.consul_url);
+        match self.client.get(&url).await {
+            Ok(resp) => Ok(resp.is_success()),
+            Err(_) => Ok(false),
+        }
     }
 
     async fn register(&self, service: ServiceInfo) -> Result<()> {
@@ -371,29 +374,57 @@ impl DiscoveryProvider for ConsulProviderAdapter {
 
     async fn watch(
         &self,
-        _query: ServiceQuery,
+        query: ServiceQuery,
     ) -> Result<Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>> {
-        // Consul supports watching, but the legacy backend doesn't expose it properly
-        tracing::warn!("🔍 Consul watching not yet implemented in adapter");
-        Ok(Box::pin(stream::empty()))
+        // Consul blocking queries: long-poll /v1/health/service/<name>?index=<X>&wait=30s
+        // We do one initial fetch and return found services as Added events.
+        // Full long-poll streaming would require a background task; for now, emit a snapshot.
+        let services = self.discover(query).await?;
+        let events: Vec<ServiceEvent> = services
+            .into_iter()
+            .map(|svc| ServiceEvent::ServiceRegistered {
+                service: Box::new(svc),
+            })
+            .collect();
+        Ok(Box::pin(stream::iter(events)))
     }
 
     async fn list_all(&self) -> Result<Vec<ServiceInfo>> {
         tracing::info!("📋 Listing all services via Consul adapter");
 
-        // For now, return an error indicating the legacy backend needs updating
-        Err(SongbirdError::discovery(
-            "Legacy Consul backend needs trait interface updates to work with adapter",
-        ))
+        let url = format!("{}/v1/agent/services", self.consul_url);
+        let response = self
+            .client
+            .get(&url)
+            .await
+            .map_err(|e| SongbirdError::network(format!("Consul list_all failed: {e}")))?;
+
+        if !response.is_success() {
+            return Err(SongbirdError::network(format!(
+                "Consul list_all returned status: {}",
+                response.status()
+            )));
+        }
+
+        let consul_response: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Failed to parse Consul response: {e}")))?;
+
+        Ok(self.parse_consul_response(&consul_response))
     }
 
     async fn exists(&self, service_id: &str) -> Result<bool> {
         tracing::debug!("❓ Checking if service {} exists via Consul adapter", service_id);
 
-        // For now, return an error indicating the legacy backend needs updating
-        Err(SongbirdError::discovery(
-            "Legacy Consul backend needs trait interface updates to work with adapter",
-        ))
+        let url = format!("{}/v1/agent/service/{service_id}", self.consul_url);
+        let response = self
+            .client
+            .get(&url)
+            .await
+            .map_err(|e| SongbirdError::network(format!("Consul exists check failed: {e}")))?;
+
+        Ok(response.is_success())
     }
 
     async fn get_service_metrics(&self, service_id: &str) -> Result<ServiceMetrics> {

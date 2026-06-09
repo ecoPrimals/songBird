@@ -71,7 +71,7 @@ impl SecurityCryptoProvider {
                     );
                 })
             })
-            .unwrap_or_else(|_| "neural".to_string());
+            .unwrap_or_else(|_| "api".to_string());
 
         if mode.as_str() == "direct" {
             let socket = socket_discovery::discover_security_socket();

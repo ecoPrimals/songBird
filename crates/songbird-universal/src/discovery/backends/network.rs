@@ -100,8 +100,8 @@ pub async fn discover_from_network_with_timeout(
     reason = "async signature required for consistent discovery backend interface"
 )]
 pub async fn discover_mdns_services() -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
-    use std::time::Duration;
-    discover_mdns_services_with_timeout(Duration::from_secs(5)).await
+    discover_mdns_services_with_timeout(songbird_types::defaults::timeouts::DEFAULT_MDNS_TIMEOUT)
+        .await
 }
 
 /// Like [`discover_mdns_services`] with an explicit listen duration (tests use ~1ms).

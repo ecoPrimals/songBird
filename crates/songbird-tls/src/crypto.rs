@@ -238,15 +238,15 @@ impl SecurityTlsCryptoClient {
             return Ok(p);
         }
 
-        let legacy_paths = [
-            (
-                "/var/run/biomeos/security.sock",
-                "SECURITY_PROVIDER_SOCKET or XDG_RUNTIME_DIR/biomeos/security.sock",
-            ),
-            (
-                "/run/biomeos/security.sock",
-                "SECURITY_PROVIDER_SOCKET or XDG_RUNTIME_DIR/biomeos/security.sock",
-            ),
+        let sys_runtime = songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR;
+        let legacy_security = format!("{sys_runtime}/security.sock");
+        let legacy_run = format!(
+            "/run/{}/security.sock",
+            songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR
+        );
+        let legacy_paths: [(&str, &str); 3] = [
+            (&legacy_security, "SECURITY_PROVIDER_SOCKET or XDG_RUNTIME_DIR/biomeos/security.sock"),
+            (&legacy_run, "SECURITY_PROVIDER_SOCKET or XDG_RUNTIME_DIR/biomeos/security.sock"),
             ("/var/run/neural-api/socket", "BIOMEOS_SOCKET or XDG discovery for neural-api"),
         ];
 

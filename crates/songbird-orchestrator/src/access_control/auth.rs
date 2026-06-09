@@ -37,8 +37,13 @@ where
 
         // Decode and validate JWT using production-ready implementation
         let validator = crate::access_control::tokens::TokenValidator::new();
-        let secret = songbird_process_env::var("SONGBIRD_JWT_SECRET")
-            .unwrap_or_else(|_| "songbird-dev-secret-change-in-production".to_string());
+        let secret = songbird_process_env::var("SONGBIRD_JWT_SECRET").map_err(|_| {
+            tracing::error!(
+                "SONGBIRD_JWT_SECRET not set — JWT authentication disabled; \
+                 configure via environment or delegate to security provider"
+            );
+            AuthError::InvalidToken
+        })?;
 
         let token = AccessToken::decode(token_str, secret.as_bytes())
             .map_err(|_| AuthError::InvalidToken)?;
@@ -140,14 +145,14 @@ pub async fn login(Json(req): Json<LoginRequest>) -> Result<Json<LoginResponse>,
         }
     };
 
-    // Encode token with production secret
-    let secret = songbird_process_env::var("SONGBIRD_JWT_SECRET").unwrap_or_else(|_| {
-        tracing::warn!(
-            "SONGBIRD_JWT_SECRET not set. Using development secret. \
-                 DO NOT USE IN PRODUCTION."
+    // Encode token — requires explicit secret (no dev fallback in production)
+    let secret = songbird_process_env::var("SONGBIRD_JWT_SECRET").map_err(|_| {
+        tracing::error!(
+            "SONGBIRD_JWT_SECRET not set — cannot issue tokens; \
+             configure via environment or delegate to security provider"
         );
-        "songbird-dev-secret-change-in-production".to_string()
-    });
+        AuthError::InvalidToken
+    })?;
 
     let token_str = token.encode(secret.as_bytes()).map_err(|_| AuthError::InvalidToken)?;
 
@@ -526,6 +531,7 @@ mod tests {
     async fn login_dev_mode_accepts_student_without_backend() {
         let _serial = env_lock();
         let _dev = VarGuard::set("SONGBIRD_DEV_MODE", "1");
+        let _jwt = VarGuard::set("SONGBIRD_JWT_SECRET", "test-secret-for-dev-mode");
         let _no_db = VarGuard::remove("SONGBIRD_AUTH_DB");
         let _no_sso = VarGuard::remove("SONGBIRD_SSO_ENDPOINT");
         let req = LoginRequest {
@@ -623,9 +629,12 @@ mod tests {
 
     #[tokio::test]
     async fn authenticated_user_accepts_valid_jwt() {
-        let secret = b"songbird-dev-secret-change-in-production";
+        let _guard = crate::test_sync_env::env_lock();
+        let test_secret = "test-jwt-secret-for-unit-tests";
+        songbird_process_env::set_var("SONGBIRD_JWT_SECRET", test_secret);
+
         let token = super::super::AccessToken::student("s1", "c1");
-        let jwt = token.encode(secret).expect("encode");
+        let jwt = token.encode(test_secret.as_bytes()).expect("encode");
         let req = Request::builder()
             .uri("/x")
             .header(AUTHORIZATION, format!("Bearer {jwt}"))
@@ -636,5 +645,7 @@ mod tests {
             panic!("expected valid jwt");
         };
         assert_eq!(user.token.sub, "s1");
+
+        songbird_process_env::remove_var("SONGBIRD_JWT_SECRET");
     }
 }

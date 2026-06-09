@@ -226,23 +226,22 @@ impl Default for TokenValidator {
 impl TokenValidator {
     /// Create a new token validator
     ///
-    /// Loads JWT secret from (in priority order):
-    /// 1. `SONGBIRD_JWT_SECRET` environment variable
-    /// 2. Default development secret (INSECURE - development only)
-    ///
-    /// **SECURITY**: In production, ALWAYS set `SONGBIRD_JWT_SECRET` to a strong secret
+    /// Loads JWT secret from `SONGBIRD_JWT_SECRET` environment variable.
+    /// Returns a validator with an empty secret if unset (validation will reject all tokens).
     #[must_use]
     pub fn new() -> Self {
-        let secret = songbird_process_env::var("SONGBIRD_JWT_SECRET").unwrap_or_else(|_| {
+        let secret = if let Ok(s) = songbird_process_env::var("SONGBIRD_JWT_SECRET") {
+            s.into_bytes()
+        } else {
             tracing::warn!(
-                "SONGBIRD_JWT_SECRET not set. Using development secret. \
-                     DO NOT USE IN PRODUCTION. Set SONGBIRD_JWT_SECRET environment variable."
+                "SONGBIRD_JWT_SECRET not set — token validation will reject all tokens; \
+                 configure via environment or delegate to security provider"
             );
-            "songbird-dev-secret-change-in-production".to_string()
-        });
+            Vec::new()
+        };
 
         Self {
-            secret: secret.into_bytes(),
+            secret,
         }
     }
 

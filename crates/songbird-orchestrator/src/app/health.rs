@@ -165,7 +165,8 @@ impl SongbirdOrchestrator {
 
                         // Probe mesh peer latency every 4th tick (~2 min at 30s interval)
                         if tick_count.is_multiple_of(4) && let Some(ref mh) = mesh_handler {
-                            let params = serde_json::json!({"timeout_ms": 5000});
+                            let probe_timeout = songbird_types::defaults::timeouts::DEFAULT_MESH_PROBE_TIMEOUT;
+                            let params = serde_json::json!({"timeout_ms": probe_timeout.as_millis() as u64});
                             match mh.handle_probe_latency(params).await {
                                 Ok(result) => {
                                     let probed = result

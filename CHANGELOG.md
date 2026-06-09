@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.17-wave102] - 2026-06-09 - Deep Debt: Naming, Stubs, Security Hardening
+
+### Fixed
+- **Legacy primal naming** — `discover_beardog_socket()` renamed to `discover_security_provider_socket()` in mesh trust exchange; default routing mode string evolved from `"neural"` to `"api"` across crypto-provider, http-client, and security RPC client
+- **P0 security: JWT dev secret removed** — `SONGBIRD_JWT_SECRET` now required (no hardcoded fallback); auth rejects all tokens if unset rather than silently using `"songbird-dev-secret-change-in-production"`
+- **Hardcoded socket paths** — VPS fallback paths in http-client and TLS crate now use `songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR` constant instead of string literals
+- **Hardcoded health timeout** — mesh probe timeout now uses `DEFAULT_MESH_PROBE_TIMEOUT` from songbird-types
+
+### Added
+- `DEFAULT_MESH_PROBE_TIMEOUT` constant (5000ms) in `songbird-types::defaults::timeouts`
+- **Process-based container discovery** — `discover_from_process_based()` now scans `/proc/net/tcp` for listening sockets and correlates via `/proc/<pid>/fd` symlinks to identify co-resident services
+- **Consul adapter completion** — `watch()`, `list_all()`, `exists()`, `health_check()` now use live Consul HTTP API instead of returning stub errors
+
+### Changed
+- `TokenValidator::new()` returns empty-secret validator when `SONGBIRD_JWT_SECRET` unset (rejects all tokens gracefully)
+- `discover_mdns_services()` uses `DEFAULT_MDNS_TIMEOUT` constant instead of inline `Duration::from_secs(5)`
+- Genesis security client: `"🐻"` emoji references removed; `BEARDOG_ENDPOINT` deprecation warning simplified
+
+---
+
 ## [v0.2.16-wave100] - 2026-06-08 - Final-Mile Integration Gaps for 3-Gate Mesh
 
 ### Fixed

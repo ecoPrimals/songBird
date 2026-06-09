@@ -129,15 +129,15 @@ impl SecurityRpcClient {
 
     /// Create from environment variable with isomorphic discovery
     ///
-    /// Checks `SECURITY_PROVIDER_MODE` (preferred) or legacy `BEARDOG_MODE` (prefer `SECURITY_PROVIDER_MODE`) to determine mode:
-    /// - "direct" → Direct mode (discovers `security provider` endpoint) - DEPRECATED for production
-    /// - "neural" or default → Neural API mode (discovers Neural API endpoint) - TRUE PRIMAL pattern
+    /// Checks `SECURITY_PROVIDER_MODE` (preferred) or legacy `BEARDOG_MODE` (deprecated) to determine mode:
+    /// - "direct" → Direct mode (discovers security provider endpoint) - DEPRECATED for production
+    /// - any other value or unset → API mode (discovers Neural API endpoint) - TRUE PRIMAL pattern
     ///
-    /// Discovery chain (neural mode, env-first):
+    /// Discovery chain (API mode, env-first):
     /// 1. `$SECURITY_PROVIDER_ENDPOINT` (set by `--security-socket` CLI flag)
     /// 2. `$NEURAL_API_SOCKET` (explicit override)
     /// 3. `$SECURITY_PROVIDER_SOCKET` (capability-first naming)
-    /// 4. `$BEARDOG_SOCKET` (backward-compatible — southGate standard)
+    /// 4. `$BEARDOG_SOCKET` (legacy, deprecated — emits warning)
     /// 5. XDG runtime socket (`$XDG_RUNTIME_DIR/biomeos/neural-api-{family}.sock`)
     /// 6. TCP discovery file
     /// 7. `/var/run/biomeos/neural-api.sock` (VPS fallback — DH-1 compliant)
@@ -154,13 +154,15 @@ impl SecurityRpcClient {
                     );
                 })
             })
-            .unwrap_or_else(|_| "neural".to_string());
+            .unwrap_or_else(|_| "api".to_string());
 
         if mode.to_lowercase() == "direct" {
+            let vps_fallback =
+                format!("{}/crypto.sock", songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR);
             let endpoint = socket_discovery::discover_ipc_endpoint(
                 "CRYPTO_PROVIDER_SOCKET",
                 "crypto",
-                "/var/run/biomeos/crypto.sock",
+                &vps_fallback,
             );
             info!("🔧 Security provider mode from env: DIRECT → {:?}", endpoint);
             Self::new_direct_with_endpoint(endpoint)
@@ -215,11 +217,9 @@ impl SecurityRpcClient {
         }
 
         // 5-7. XDG + TCP + VPS fallback via standard discovery
-        socket_discovery::discover_ipc_endpoint(
-            "NEURALS_SOCKET",
-            NEURAL_API,
-            "/var/run/biomeos/neural-api.sock",
-        )
+        let vps_fallback =
+            format!("{}/neural-api.sock", songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR);
+        socket_discovery::discover_ipc_endpoint("NEURALS_SOCKET", NEURAL_API, &vps_fallback)
     }
 
     /// Get endpoint based on mode (for diagnostics/debugging)

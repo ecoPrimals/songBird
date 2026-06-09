@@ -24,13 +24,13 @@ use std::sync::atomic::AtomicU64;
 
 pub use rpc::RoutingMode;
 
-/// Interprets `SECURITY_PROVIDER_MODE` / `BEARDOG_MODE` env var.
+/// Interprets `SECURITY_PROVIDER_MODE` env var.
 ///
 /// - Missing or any value other than `"direct"` selects [`RoutingMode::NeuralApi`].
 /// - `"direct"` selects [`RoutingMode::Direct`] (bootstrap / fallback).
 #[must_use]
 pub fn routing_mode_from_env(mode_value: Option<&str>) -> RoutingMode {
-    match mode_value.unwrap_or("neural") {
+    match mode_value.unwrap_or("api") {
         "direct" => RoutingMode::Direct,
         _ => RoutingMode::NeuralApi,
     }

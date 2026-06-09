@@ -252,7 +252,7 @@ impl SecurityCapabilityClient {
         // Strategy 2: SECURITY_PROVIDER_ENDPOINT
         if let Ok(endpoint) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT") {
             tracing::info!(
-                "🐻 Using security provider endpoint from SECURITY_PROVIDER_ENDPOINT: {}",
+                "🔐 Using security provider endpoint from SECURITY_PROVIDER_ENDPOINT: {}",
                 endpoint
             );
             return Ok(endpoint);
@@ -261,11 +261,7 @@ impl SecurityCapabilityClient {
         // Strategy 3: BEARDOG_ENDPOINT (deprecated primal-specific name)
         if let Ok(endpoint) = songbird_process_env::var("BEARDOG_ENDPOINT") {
             tracing::warn!(
-                "Using legacy env var BEARDOG_ENDPOINT — migrate to SECURITY_ENDPOINT or SECURITY_PROVIDER_ENDPOINT"
-            );
-            tracing::info!(
-                "🐻 Using security provider endpoint from BEARDOG_ENDPOINT (legacy): {}",
-                endpoint
+                "BEARDOG_ENDPOINT is deprecated — migrate to SECURITY_ENDPOINT or SECURITY_PROVIDER_ENDPOINT"
             );
             return Ok(endpoint);
         }
@@ -278,7 +274,7 @@ impl SecurityCapabilityClient {
 
             if let Ok(service_endpoint) = discover_primal(CanonicalPrimalType::Security).await {
                 tracing::info!(
-                    "🐻 Discovered security provider via capability discovery: {}",
+                    "🔐 Discovered security provider via capability discovery: {}",
                     service_endpoint.url
                 );
                 return Ok(service_endpoint.url);
@@ -288,9 +284,9 @@ impl SecurityCapabilityClient {
         // Strategy 5: Well-known default (only in development)
         #[cfg(debug_assertions)]
         {
-            let default_endpoint = "http://localhost:8200".to_string();
+            let default_endpoint = format!("http://{}:8200", songbird_types::constants::LOCALHOST);
             tracing::warn!(
-                "🐻 Using default security provider endpoint (development only): {}",
+                "🔓 Using default security provider endpoint (development only): {}",
                 default_endpoint
             );
             Ok(default_endpoint)

@@ -425,12 +425,10 @@ pub fn discover_security_socket() -> String {
     }
 
     // VPS fallback (DH-1 compliant — no /tmp writes)
-    let fallback = "/var/run/biomeos/security.sock";
-    warn!(
-        "VPS fallback: {} — set SECURITY_PROVIDER_SOCKET, BEARDOG_SOCKET, or XDG_RUNTIME_DIR",
-        fallback
-    );
-    fallback.to_string()
+    let fallback =
+        format!("{}/security.sock", songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR);
+    warn!("VPS fallback: {} — set SECURITY_PROVIDER_SOCKET or XDG_RUNTIME_DIR", fallback);
+    fallback
 }
 
 /// Deprecated alias for [`discover_security_socket`].
@@ -494,9 +492,10 @@ pub fn discover_neural_api_socket() -> String {
     }
 
     // VPS fallback (DH-1 compliant — no /tmp writes)
-    let fallback = "/var/run/biomeos/neural-api.sock".to_string();
+    let fallback =
+        format!("{}/neural-api.sock", songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR);
     warn!("⚠️  Using VPS fallback Neural API socket: {}", fallback);
-    warn!("   Consider setting $NEURAL_API_SOCKET, $BEARDOG_SOCKET, or XDG_RUNTIME_DIR");
+    warn!("   Consider setting $NEURAL_API_SOCKET or XDG_RUNTIME_DIR");
     fallback
 }
 

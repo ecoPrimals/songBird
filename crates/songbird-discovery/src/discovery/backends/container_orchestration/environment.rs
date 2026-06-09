@@ -95,14 +95,99 @@ impl UniversalContainerOrchestration {
         Ok(services)
     }
 
-    /// Discover services from process-based detection
+    /// Discover services by scanning /proc for processes with listening TCP sockets.
+    ///
+    /// Reads `/proc/net/tcp` for listening sockets, then correlates with `/proc/<pid>/fd`
+    /// symlinks to identify which processes own them.
     pub(super) async fn discover_from_process_based(
         &self,
-        _query: &ServiceQuery,
+        query: &ServiceQuery,
     ) -> SongbirdResult<Vec<ServiceInfo>> {
-        // In a real implementation, this would scan running processes
-        // and identify services based on common patterns
-        debug!("Process-based service discovery not yet implemented");
-        Ok(Vec::new())
+        let mut services = Vec::new();
+
+        let Ok(tcp_contents) = std::fs::read_to_string("/proc/net/tcp") else {
+            debug!("Cannot read /proc/net/tcp — process-based discovery unavailable");
+            return Ok(services);
+        };
+        let listening_inodes = parse_listening_inodes(&tcp_contents);
+
+        if listening_inodes.is_empty() {
+            return Ok(services);
+        }
+
+        let proc_dir = match std::fs::read_dir("/proc") {
+            Ok(d) => d,
+            Err(_) => return Ok(services),
+        };
+
+        for entry in proc_dir.flatten() {
+            let pid_str = entry.file_name();
+            let pid_str = pid_str.to_string_lossy();
+            if !pid_str.chars().all(|c| c.is_ascii_digit()) {
+                continue;
+            }
+
+            let fd_dir = entry.path().join("fd");
+            let fds = match std::fs::read_dir(&fd_dir) {
+                Ok(d) => d,
+                Err(_) => continue,
+            };
+
+            let mut owns_listener = false;
+            for fd_entry in fds.flatten() {
+                if let Ok(link) = std::fs::read_link(fd_entry.path()) {
+                    let link_str = link.to_string_lossy();
+                    if let Some(inode_str) =
+                        link_str.strip_prefix("socket:[").and_then(|s| s.strip_suffix(']'))
+                    {
+                        if let Ok(inode) = inode_str.parse::<u64>() {
+                            if listening_inodes.contains(&inode) {
+                                owns_listener = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if !owns_listener {
+                continue;
+            }
+
+            let comm_path = entry.path().join("comm");
+            let name = std::fs::read_to_string(&comm_path).unwrap_or_default().trim().to_string();
+
+            if name.is_empty() || name == "songbird" {
+                continue;
+            }
+
+            if let Some(ref name_filter) = query.name {
+                if !name.contains(name_filter.as_str()) {
+                    continue;
+                }
+            }
+
+            services.push(self.create_service_info(&name, "process"));
+        }
+
+        debug!("Process-based discovery found {} services", services.len());
+        Ok(services)
     }
+}
+
+/// Parse /proc/net/tcp for inodes of sockets in LISTEN state (0A).
+fn parse_listening_inodes(contents: &str) -> Vec<u64> {
+    contents
+        .lines()
+        .skip(1)
+        .filter_map(|line| {
+            let fields: Vec<&str> = line.split_whitespace().collect();
+            // field[3] = state (0A = LISTEN), field[9] = inode
+            if fields.len() >= 10 && fields[3] == "0A" {
+                fields[9].parse::<u64>().ok()
+            } else {
+                None
+            }
+        })
+        .collect()
 }
