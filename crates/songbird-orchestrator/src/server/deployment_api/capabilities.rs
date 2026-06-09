@@ -130,12 +130,65 @@ fn tun_interface_exists() -> bool {
 fn is_internet_facing() -> bool {
     let bind_addr =
         songbird_process_env::var("SONGBIRD_PRODUCTION_BIND_ADDRESS").unwrap_or_default();
-    if bind_addr == songbird_types::constants::PRODUCTION_BIND_ADDRESS {
+    if bind_addr == songbird_types::constants::PRODUCTION_BIND_ADDRESS && has_public_ip_interface()
+    {
         return true;
     }
 
     songbird_process_env::var("SONGBIRD_FEDERATION_MODE")
         .is_ok_and(|v| v.eq_ignore_ascii_case("internet") || v.eq_ignore_ascii_case("wan"))
+}
+
+/// Checks if any network interface has a non-private IPv4 address assigned.
+/// Reads local addresses from `/proc/net/fib_trie` LOCAL entries.
+fn has_public_ip_interface() -> bool {
+    let Ok(content) = std::fs::read_to_string("/proc/net/fib_trie") else {
+        return check_default_route_exists();
+    };
+
+    let mut prev_ip: Option<[u8; 4]> = None;
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if let Some(ip_str) = trimmed.strip_prefix("|-- ").or_else(|| trimmed.strip_prefix("+-- "))
+            && let Some(octets) = parse_ipv4_octets(ip_str.trim())
+        {
+            prev_ip = Some(octets);
+        }
+        if trimmed.contains("/32 host LOCAL")
+            && let Some(octets) = prev_ip
+            && !is_private_or_special(octets)
+        {
+            return true;
+        }
+    }
+    false
+}
+
+fn parse_ipv4_octets(s: &str) -> Option<[u8; 4]> {
+    let parts: Vec<&str> = s.split('.').collect();
+    if parts.len() != 4 {
+        return None;
+    }
+    Some([
+        parts[0].parse().ok()?,
+        parts[1].parse().ok()?,
+        parts[2].parse().ok()?,
+        parts[3].parse().ok()?,
+    ])
+}
+
+fn is_private_or_special(ip: [u8; 4]) -> bool {
+    matches!(ip, [10 | 127 | 0, ..] | [172, 16..=31, ..] | [192, 168, ..] | [169, 254, ..])
+}
+
+fn check_default_route_exists() -> bool {
+    let Ok(routes) = std::fs::read_to_string("/proc/net/route") else {
+        return false;
+    };
+    routes.lines().skip(1).any(|line| {
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        fields.len() >= 3 && fields[1] == "00000000"
+    })
 }
 
 /// Estimate bandwidth based on network type
