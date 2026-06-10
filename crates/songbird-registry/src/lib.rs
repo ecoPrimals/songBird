@@ -95,6 +95,8 @@
 pub mod federation;
 /// Disk-backed and in-memory persistence for registry state.
 pub mod persistence;
+/// Dynamic plugin composition and runtime discovery.
+pub mod plugin;
 /// Core registry implementation and query API.
 pub mod registry;
 /// Shared registry value types (plugins, events, health).

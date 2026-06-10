@@ -687,3 +687,154 @@ pub mod replace {
         get_config().timeouts.clone()
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use std::env::VarError;
+
+    fn mock_env<'a>(
+        vars: &'a [(&'a str, &'a str)],
+    ) -> impl Fn(&str) -> Result<String, VarError> + 'a {
+        move |key: &str| {
+            for (k, v) in vars {
+                if *k == key {
+                    return Ok((*v).to_string());
+                }
+            }
+            Err(VarError::NotPresent)
+        }
+    }
+
+    #[test]
+    fn capability_first_returns_first_match() {
+        let env = mock_env(&[("SECURITY_ENDPOINT", "https://sec:443")]);
+        let result = env_capability_first_then_legacy_warn_with(
+            &["SECURITY_ENDPOINT"],
+            "OLD_SEC",
+            "SECURITY_ENDPOINT",
+            "default",
+            env,
+        );
+        assert_eq!(result, "https://sec:443");
+    }
+
+    #[test]
+    fn capability_first_falls_through_to_legacy() {
+        let env = mock_env(&[("OLD_SEC", "https://legacy:443")]);
+        let result = env_capability_first_then_legacy_warn_with(
+            &["SECURITY_ENDPOINT"],
+            "OLD_SEC",
+            "SECURITY_ENDPOINT",
+            "default",
+            env,
+        );
+        assert_eq!(result, "https://legacy:443");
+    }
+
+    #[test]
+    fn capability_first_returns_default_when_nothing_set() {
+        let env = mock_env(&[]);
+        let result = env_capability_first_then_legacy_warn_with(
+            &["MISSING_A", "MISSING_B"],
+            "ALSO_MISSING",
+            "MISSING_A",
+            "https://fallback:8080",
+            env,
+        );
+        assert_eq!(result, "https://fallback:8080");
+    }
+
+    #[test]
+    fn capability_first_skips_empty_values() {
+        let env = mock_env(&[("CAP_A", ""), ("CAP_B", "real")]);
+        let result = env_capability_first_then_legacy_warn_with(
+            &["CAP_A", "CAP_B"],
+            "LEGACY",
+            "CAP_A",
+            "default",
+            env,
+        );
+        assert_eq!(result, "real");
+    }
+
+    #[test]
+    fn resolve_storage_uses_capability_key() {
+        let env = mock_env(&[("SONGBIRD_STORAGE_PROVIDER_ENDPOINT", "http://store:9000")]);
+        let result = resolve_storage_provider_endpoint_with("127.0.0.1", 8080, env);
+        assert_eq!(result, "http://store:9000");
+    }
+
+    #[test]
+    fn resolve_storage_uses_legacy_nestgate_key() {
+        let env = mock_env(&[("SONGBIRD_NESTGATE_ENDPOINT", "http://nest:9001")]);
+        let result = resolve_storage_provider_endpoint_with("127.0.0.1", 8080, env);
+        assert_eq!(result, "http://nest:9001");
+    }
+
+    #[test]
+    fn resolve_storage_falls_back_to_constructed_url() {
+        let env = mock_env(&[]);
+        let result = resolve_storage_provider_endpoint_with("10.0.0.1", 9200, env);
+        assert_eq!(result, "http://10.0.0.1:9200/storage");
+    }
+
+    #[test]
+    fn tls_cert_path_from_explicit_env() {
+        let env = mock_env(&[("SONGBIRD_TLS_CERT", "/opt/certs/custom.crt")]);
+        let result = default_tls_cert_path_with(env);
+        assert_eq!(result, "/opt/certs/custom.crt");
+    }
+
+    #[test]
+    fn tls_cert_path_from_ssl_cert_file() {
+        let env = mock_env(&[("SSL_CERT_FILE", "/etc/ssl/songbird.crt")]);
+        let result = default_tls_cert_path_with(env);
+        assert_eq!(result, "/etc/ssl/songbird.crt");
+    }
+
+    #[test]
+    fn tls_cert_path_from_home() {
+        let env = mock_env(&[("HOME", "/home/testuser")]);
+        let result = default_tls_cert_path_with(env);
+        assert_eq!(result, "/home/testuser/.songbird/certs/songbird.crt");
+    }
+
+    #[test]
+    fn tls_cert_path_fallback_to_temp() {
+        let env = mock_env(&[]);
+        let result = default_tls_cert_path_with(env);
+        assert!(
+            result.contains("songbird") && result.contains("certs") && result.ends_with("songbird.crt"),
+            "unexpected fallback path: {result}"
+        );
+    }
+
+    #[test]
+    fn format_service_endpoint_joins_correctly() {
+        use super::replace::format_service_endpoint;
+        songbird_process_env::set_var("TESTCAP_ENDPOINT", "http://test:9000");
+        let result = format_service_endpoint("testcap", "/api/v1/health", None);
+        songbird_process_env::remove_var("TESTCAP_ENDPOINT");
+        assert_eq!(result, "http://test:9000/api/v1/health");
+    }
+
+    #[test]
+    fn format_service_endpoint_trims_slashes() {
+        use super::replace::format_service_endpoint;
+        songbird_process_env::set_var("TRIMTEST_ENDPOINT", "http://host:8080/");
+        let result = format_service_endpoint("trimtest", "/path", None);
+        songbird_process_env::remove_var("TRIMTEST_ENDPOINT");
+        assert_eq!(result, "http://host:8080/path");
+    }
+
+    #[test]
+    fn format_endpoint_with_env_override() {
+        use super::replace::format_endpoint;
+        songbird_process_env::set_var("OVERRIDDEN_ENDPOINT", "https://custom:443");
+        let result = format_endpoint("overridden", Some(9999));
+        songbird_process_env::remove_var("OVERRIDDEN_ENDPOINT");
+        assert_eq!(&*result, "https://custom:443");
+    }
+}
