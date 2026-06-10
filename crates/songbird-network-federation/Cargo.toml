@@ -46,6 +46,9 @@ hmac = "0.12"
 hex = "0.4"
 base64 = "0.22"
 
+# Serialization (peers.toml persistence loading)
+toml = { workspace = true }
+
 # Internal dependencies
 songbird-process-env.workspace = true
 songbird-types = { path = "../songbird-types" }

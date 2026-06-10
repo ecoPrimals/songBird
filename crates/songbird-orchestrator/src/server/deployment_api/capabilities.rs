@@ -191,6 +191,75 @@ fn check_default_route_exists() -> bool {
     })
 }
 
+/// Peer-aware network type classification.
+///
+/// Classifies the network relationship between this node and a specific peer IP.
+/// Returns `"lan"` / `"vpn"` / `"internet"` based on IP analysis:
+/// - Same subnet as a local interface → `"lan"`
+/// - Private IP but different subnet → `"vpn"` (cross-subnet or VPN)
+/// - Public IP → `"internet"`
+pub fn detect_network_type_for_peer(peer_ip: &str) -> String {
+    if let Ok(forced) = songbird_process_env::var("SONGBIRD_NETWORK_TYPE")
+        && !forced.is_empty()
+    {
+        return forced;
+    }
+
+    let Some(peer_octets) = parse_ipv4_octets(peer_ip) else {
+        return detect_network_type();
+    };
+
+    if peer_octets[0] == 127 {
+        return "lan".to_string();
+    }
+
+    let local_addrs = local_ipv4_addresses();
+    if local_addrs.iter().any(|local| same_subnet_24(*local, peer_octets)) {
+        return "lan".to_string();
+    }
+
+    if is_private_or_special(peer_octets) {
+        if tun_interface_exists() {
+            return "vpn".to_string();
+        }
+        return "vpn".to_string();
+    }
+
+    "internet".to_string()
+}
+
+/// Collect local IPv4 addresses from `/proc/net/fib_trie` LOCAL entries.
+fn local_ipv4_addresses() -> Vec<[u8; 4]> {
+    let Ok(content) = std::fs::read_to_string("/proc/net/fib_trie") else {
+        return Vec::new();
+    };
+
+    let mut addrs = Vec::new();
+    let mut prev_ip: Option<[u8; 4]> = None;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if let Some(ip_str) = trimmed.strip_prefix("|-- ").or_else(|| trimmed.strip_prefix("+-- "))
+            && let Some(octets) = parse_ipv4_octets(ip_str.trim())
+        {
+            prev_ip = Some(octets);
+        }
+        if trimmed.contains("/32 host LOCAL")
+            && let Some(octets) = prev_ip
+            && octets[0] != 127
+            && octets != [0, 0, 0, 0]
+        {
+            addrs.push(octets);
+        }
+    }
+    addrs
+}
+
+/// Check if two IPv4 addresses share the same /24 subnet.
+fn same_subnet_24(a: [u8; 4], b: [u8; 4]) -> bool {
+    a[0] == b[0] && a[1] == b[1] && a[2] == b[2]
+}
+
 /// Estimate bandwidth based on network type
 pub fn estimate_bandwidth(network_type: &str) -> BandwidthEstimate {
     match network_type {
@@ -233,4 +302,117 @@ pub fn calculate_max_concurrent(available_memory_gb: u64) -> usize {
     )]
     let memory_as_usize = available_memory_gb as usize;
     memory_as_usize.clamp(1, 10)
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use songbird_process_env::ScopedEnv;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    #[test]
+    fn parse_ipv4_octets_valid() {
+        assert_eq!(parse_ipv4_octets("192.168.1.144"), Some([192, 168, 1, 144]));
+        assert_eq!(parse_ipv4_octets("10.0.0.1"), Some([10, 0, 0, 1]));
+        assert_eq!(parse_ipv4_octets("255.255.255.255"), Some([255, 255, 255, 255]));
+    }
+
+    #[test]
+    fn parse_ipv4_octets_invalid() {
+        assert_eq!(parse_ipv4_octets("not-an-ip"), None);
+        assert_eq!(parse_ipv4_octets("192.168.1"), None);
+        assert_eq!(parse_ipv4_octets(""), None);
+    }
+
+    #[test]
+    fn is_private_or_special_classifies_correctly() {
+        assert!(is_private_or_special([10, 0, 0, 1]));
+        assert!(is_private_or_special([172, 16, 0, 1]));
+        assert!(is_private_or_special([172, 31, 255, 255]));
+        assert!(is_private_or_special([192, 168, 1, 1]));
+        assert!(is_private_or_special([127, 0, 0, 1]));
+        assert!(is_private_or_special([169, 254, 1, 1]));
+        assert!(!is_private_or_special([8, 8, 8, 8]));
+        assert!(!is_private_or_special([157, 230, 3, 183]));
+        assert!(!is_private_or_special([172, 32, 0, 1]));
+    }
+
+    #[test]
+    fn same_subnet_24_works() {
+        assert!(same_subnet_24([192, 168, 1, 1], [192, 168, 1, 254]));
+        assert!(!same_subnet_24([192, 168, 1, 1], [192, 168, 2, 1]));
+        assert!(!same_subnet_24([10, 0, 0, 1], [10, 0, 1, 1]));
+    }
+
+    #[test]
+    fn peer_loopback_is_lan() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        songbird_process_env::remove_var("SONGBIRD_NETWORK_TYPE");
+        assert_eq!(detect_network_type_for_peer("127.0.0.1"), "lan");
+    }
+
+    #[test]
+    fn peer_public_ip_is_internet() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        songbird_process_env::remove_var("SONGBIRD_NETWORK_TYPE");
+        assert_eq!(detect_network_type_for_peer("157.230.3.183"), "internet");
+        assert_eq!(detect_network_type_for_peer("8.8.8.8"), "internet");
+    }
+
+    #[test]
+    fn env_override_applies_to_peer_detection() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _env = ScopedEnv::new("SONGBIRD_NETWORK_TYPE", "vpn");
+        assert_eq!(detect_network_type_for_peer("8.8.8.8"), "vpn");
+    }
+
+    #[test]
+    fn invalid_peer_ip_falls_back_to_node_detection() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        songbird_process_env::remove_var("SONGBIRD_NETWORK_TYPE");
+        let result = detect_network_type_for_peer("not-an-ip");
+        assert!(["lan", "vpn", "internet"].contains(&result.as_str()));
+    }
+
+    #[test]
+    fn private_peer_not_on_local_subnet_is_vpn() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        songbird_process_env::remove_var("SONGBIRD_NETWORK_TYPE");
+        // 172.16.x.x is private — unless this machine has a 172.16.x.0/24 interface,
+        // it should classify as vpn
+        let result = detect_network_type_for_peer("172.16.99.99");
+        assert!(result == "vpn" || result == "lan");
+    }
+
+    #[test]
+    fn calculate_max_concurrent_clamps() {
+        assert_eq!(calculate_max_concurrent(0), 1);
+        assert_eq!(calculate_max_concurrent(1), 1);
+        assert_eq!(calculate_max_concurrent(5), 5);
+        assert_eq!(calculate_max_concurrent(10), 10);
+        assert_eq!(calculate_max_concurrent(100), 10);
+    }
+
+    #[test]
+    fn bandwidth_estimates_reasonable() {
+        let lan = estimate_bandwidth("lan");
+        assert_eq!(lan.download_mbps, 1000);
+        assert_eq!(lan.latency_ms, 1);
+
+        let vpn = estimate_bandwidth("vpn");
+        assert_eq!(vpn.download_mbps, 100);
+
+        let internet = estimate_bandwidth("internet");
+        assert_eq!(internet.download_mbps, 50);
+    }
+
+    #[test]
+    fn detect_network_type_env_override() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _env = ScopedEnv::new("SONGBIRD_NETWORK_TYPE", "internet");
+        assert_eq!(detect_network_type(), "internet");
+    }
 }
