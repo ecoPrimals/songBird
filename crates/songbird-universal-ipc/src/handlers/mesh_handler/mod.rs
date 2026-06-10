@@ -22,6 +22,7 @@
 
 mod capability_propagation;
 mod json;
+pub mod persistence;
 mod udp_discovery;
 
 #[cfg(test)]
@@ -180,6 +181,14 @@ impl MeshHandler {
 
         *self.mesh.write().await = Some(mesh);
         *self.node_id.write().await = node_id.clone();
+
+        if !bootstrap_peers.is_empty() {
+            let node_id_owned = node_id.as_ref().to_string();
+            let peers_owned = bootstrap_peers.clone();
+            tokio::task::spawn_blocking(move || {
+                persistence::save_peers(&node_id_owned, &peers_owned);
+            });
+        }
 
         Ok(json!({
             "initialized": true,

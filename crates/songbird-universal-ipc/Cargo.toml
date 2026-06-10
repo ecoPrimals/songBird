@@ -74,6 +74,9 @@ songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 
 songbird-process-env.workspace = true
 
+# TOML serialization (mesh peer persistence)
+toml = { workspace = true }
+
 # HTTP client for cross-gate dispatch (remote peers run axum HTTP servers)
 hyper = { workspace = true }
 hyper-util = { version = "0.1", features = ["tokio", "client-legacy", "http1"] }

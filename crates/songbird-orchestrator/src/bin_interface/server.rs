@@ -52,7 +52,17 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
 
     let effective_bind = songbird_process_env::var("SONGBIRD_FEDERATION_BIND")
         .or_else(|_| songbird_process_env::var("SONGBIRD_PRODUCTION_BIND_ADDRESS"))
-        .unwrap_or_else(|_| args.bind.clone());
+        .unwrap_or_else(|_| {
+            // When federation port is explicitly set (env or CLI), cross-gate intent is
+            // clear — default to all-interfaces so remote peers can connect.
+            if args.federation_port.is_some()
+                || songbird_process_env::var("SONGBIRD_FEDERATION_PORT").is_ok()
+            {
+                songbird_types::constants::PRODUCTION_BIND_ADDRESS.to_string()
+            } else {
+                args.bind.clone()
+            }
+        });
 
     tracing::info!("🚀 Songbird v{} - Server Mode", env!("CARGO_PKG_VERSION"));
     tracing::info!(

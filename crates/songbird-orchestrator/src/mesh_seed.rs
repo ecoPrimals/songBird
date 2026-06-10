@@ -74,22 +74,42 @@ fn resolve_node_id() -> String {
         .unwrap_or_else(|_| gethostname::gethostname().to_string_lossy().to_string())
 }
 
-/// Spawn automatic mesh initialization from `SONGBIRD_PEERS` env var.
+/// Spawn automatic mesh initialization from `SONGBIRD_PEERS` env var or persisted state.
 ///
-/// Called after socket bind. If `SONGBIRD_PEERS` is set, initializes the mesh
-/// with the specified peers so `discovery.peers` is immediately populated.
+/// Called after socket bind. Priority:
+/// 1. `SONGBIRD_PEERS` env var (explicit operator intent)
+/// 2. Persisted peers from `~/.local/share/songbird/peers.toml` (autonomous recovery)
+///
+/// If neither is available, mesh requires explicit `mesh.init`.
 pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
     let peers = parse_peers_env();
-    if peers.is_empty() {
-        debug!("SONGBIRD_PEERS not set or empty — mesh requires explicit mesh.init");
-        return;
-    }
+    let (peers, source) = if peers.is_empty() {
+        if let Some((_, persisted)) =
+            songbird_universal_ipc::handlers::mesh_handler::persistence::load_persisted_peers()
+        {
+            let converted: Vec<(String, String)> = persisted
+                .iter()
+                .map(|(nid, addr)| (nid.clone(), addr.to_string()))
+                .collect();
+            info!(
+                peer_count = converted.len(),
+                "Restoring mesh from persisted peers (autonomous recovery)"
+            );
+            (converted, "persisted")
+        } else {
+            debug!("No SONGBIRD_PEERS and no persisted peers — mesh requires explicit mesh.init");
+            return;
+        }
+    } else {
+        (peers, "SONGBIRD_PEERS")
+    };
 
     let node_id = resolve_node_id();
     info!(
         node_id = %node_id,
         peer_count = peers.len(),
-        "Auto-seeding mesh from SONGBIRD_PEERS"
+        source = source,
+        "Auto-seeding mesh"
     );
 
     let peers_for_trust = peers.clone();
