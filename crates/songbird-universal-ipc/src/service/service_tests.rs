@@ -766,3 +766,167 @@ async fn ipc_register_returns_transport_endpoint_in_response() {
     assert_eq!(t["host"], "127.0.0.1");
     assert_eq!(t["port"], 9090);
 }
+
+/// When a capability isn't registered locally but a mesh peer advertises it,
+/// `ipc.resolve` should return a `MeshRelay` transport endpoint pointing to
+/// the remote peer — enabling transparent cross-gate routing (Wave 107 M1).
+#[tokio::test]
+async fn ipc_resolve_falls_back_to_mesh_peer_when_local_absent() {
+    use crate::handlers::mesh_handler::capability_propagation::PeerCapabilityEntry;
+    use std::time::Instant;
+
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
+
+    // Inject a remote peer's capabilities into the mesh handler
+    {
+        let mesh_handler = handler.mesh_handler();
+        let mut caps = mesh_handler.peer_capabilities.write().await;
+        caps.insert(
+            "iron-gate".to_string(),
+            PeerCapabilityEntry {
+                capabilities: vec![
+                    "linalg".to_string(),
+                    "linalg.svd".to_string(),
+                    "compute".to_string(),
+                ],
+                last_seen: Instant::now(),
+            },
+        );
+    }
+
+    // Resolve a capability that only exists on the remote peer
+    let result = handler
+        .handle("ipc.resolve", json!({ "capability": "linalg.svd" }))
+        .await
+        .expect("should resolve via mesh fallback");
+
+    let ep = &result["endpoint"];
+    assert_eq!(ep["transport"], "mesh_relay", "must return mesh_relay transport");
+    assert_eq!(ep["peer_id"], "iron-gate", "must point to the peer with the capability");
+    assert_eq!(ep["capability"], "linalg.svd");
+    assert_eq!(result["relay"], true, "relay flag must be true for mesh resolution");
+    assert_eq!(result["native_endpoint"], "mesh://iron-gate");
+    assert!(
+        result["capabilities"].as_array().unwrap().iter().any(|c| c == "linalg.svd"),
+        "capabilities must include the resolved capability"
+    );
+}
+
+/// `capability.resolve` also falls back to mesh peers when no local provider exists.
+#[tokio::test]
+async fn capability_resolve_falls_back_to_mesh_peer() {
+    use crate::handlers::mesh_handler::capability_propagation::PeerCapabilityEntry;
+    use std::time::Instant;
+
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
+
+    {
+        let mesh_handler = handler.mesh_handler();
+        let mut caps = mesh_handler.peer_capabilities.write().await;
+        caps.insert(
+            "south-gate".to_string(),
+            PeerCapabilityEntry {
+                capabilities: vec!["crypto.sign".to_string(), "security".to_string()],
+                last_seen: Instant::now(),
+            },
+        );
+    }
+
+    let result = handler
+        .handle("capability.resolve", json!({ "capability": "crypto.sign" }))
+        .await
+        .expect("should resolve via mesh fallback");
+
+    let ep = &result["endpoint"];
+    assert_eq!(ep["transport"], "mesh_relay");
+    assert_eq!(ep["peer_id"], "south-gate");
+    assert_eq!(ep["capability"], "crypto.sign");
+    assert_eq!(result["primal_id"], "remote:south-gate");
+}
+
+/// When a capability exists locally, mesh fallback is NOT used (local always wins).
+#[tokio::test]
+async fn ipc_resolve_prefers_local_over_mesh_peer() {
+    use crate::handlers::mesh_handler::capability_propagation::PeerCapabilityEntry;
+    use std::time::Instant;
+
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
+
+    // Register locally with a path that won't collide with any running process
+    let test_sock = format!("/tmp/songbird-test-{}/local-primal.sock", std::process::id());
+    handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "local-primal",
+                "capabilities": ["security"],
+                "endpoint": test_sock
+            }),
+        )
+        .await
+        .unwrap();
+
+    // Also inject the same capability as available on a remote peer
+    {
+        let mesh_handler = handler.mesh_handler();
+        let mut caps = mesh_handler.peer_capabilities.write().await;
+        caps.insert(
+            "remote-gate".to_string(),
+            PeerCapabilityEntry {
+                capabilities: vec!["security".to_string()],
+                last_seen: Instant::now(),
+            },
+        );
+    }
+
+    let result = handler
+        .handle("ipc.resolve", json!({ "capability": "security", "native": true }))
+        .await
+        .expect("should resolve locally");
+
+    let ep = &result["endpoint"];
+    assert_eq!(ep["transport"], "uds", "local provider must win over mesh peer");
+    assert!(
+        ep["path"].as_str().unwrap().contains("local-primal.sock"),
+        "must point to local socket"
+    );
+}
+
+/// `find_peer_with_capability` ignores expired entries.
+#[tokio::test]
+async fn find_peer_with_capability_ignores_expired() {
+    use crate::handlers::mesh_handler::MeshHandler;
+    use crate::handlers::mesh_handler::capability_propagation::PeerCapabilityEntry;
+    use std::time::{Duration, Instant};
+
+    let handler = MeshHandler::new();
+
+    {
+        let mut caps = handler.peer_capabilities.write().await;
+        caps.insert(
+            "stale-gate".to_string(),
+            PeerCapabilityEntry {
+                capabilities: vec!["stale-cap".to_string()],
+                last_seen: Instant::now() - Duration::from_secs(700),
+            },
+        );
+        caps.insert(
+            "fresh-gate".to_string(),
+            PeerCapabilityEntry {
+                capabilities: vec!["fresh-cap".to_string()],
+                last_seen: Instant::now(),
+            },
+        );
+    }
+
+    assert!(handler.find_peer_with_capability("stale-cap").await.is_none());
+
+    let found = handler.find_peer_with_capability("fresh-cap").await;
+    assert!(found.is_some());
+    let (peer, caps) = found.unwrap();
+    assert_eq!(peer, "fresh-gate");
+    assert!(caps.contains(&"fresh-cap".to_string()));
+}

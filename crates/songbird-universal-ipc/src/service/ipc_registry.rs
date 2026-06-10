@@ -312,6 +312,34 @@ impl IpcServiceHandler {
                 );
                 (capability.clone(), entry)
             } else {
+                drop(registry);
+                // Mesh fallback: check if a remote peer advertises this capability
+                if let Some((peer_id, peer_caps)) =
+                    self.mesh_handler.find_peer_with_capability(capability).await
+                {
+                    debug!(
+                        capability = %capability,
+                        peer = %peer_id,
+                        "Resolved capability via mesh peer (topology-aware routing)"
+                    );
+                    let native_endpoint = format!("mesh://{peer_id}");
+                    let result = ResolveResult {
+                        socket: None,
+                        virtual_endpoint: String::new(),
+                        native_endpoint,
+                        endpoint: TransportEndpoint::MeshRelay {
+                            peer_id,
+                            capability: capability.clone(),
+                        },
+                        capabilities: peer_caps,
+                        relay: true,
+                        relay_socket: None,
+                        signature: None,
+                        signed_payload: None,
+                    };
+                    return serde_json::to_value(result)
+                        .map_err(|e| format!("Serialization error: {e}"));
+                }
                 return Err(format!("No provider found for capability: {capability}"));
             }
         } else if let Some(ref primal_id) = params.primal_id {
@@ -508,6 +536,9 @@ impl IpcServiceHandler {
     /// recently seen wins). This is the IPC equivalent of DNS resolution:
     /// springs call `capability.resolve("crypto.sign")` and get back a single
     /// socket/endpoint instead of iterating a list.
+    ///
+    /// Falls back to mesh peers when no local provider exists (topology-aware
+    /// cross-gate routing — Wave 107 M1).
     pub(super) async fn handle_capability_resolve(&self, params: Value) -> Result<Value, String> {
         let params: CapabilityResolveParams =
             serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
@@ -515,24 +546,52 @@ impl IpcServiceHandler {
         debug!("Resolving best provider for capability: {}", params.capability);
 
         let registry = self.registry.read().await;
-        let (name, entry) = registry
-            .resolve_by_capability(&params.capability)
-            .await
-            .ok_or_else(|| format!("No provider found for capability: {}", params.capability))?;
+        if let Some((name, entry)) = registry.resolve_by_capability(&params.capability).await {
+            let endpoint = transport_endpoint_from_native(&entry.native_endpoint);
+            let result = CapabilityResolveResult {
+                primal_id: name,
+                socket: entry.native_endpoint.socket_path(),
+                virtual_endpoint: entry.virtual_endpoint.path,
+                native_endpoint: entry.native_endpoint.display(),
+                endpoint,
+                capabilities: entry.capabilities,
+                signature: entry.signature,
+                signed_payload: entry.signed_payload,
+            };
+            return serde_json::to_value(result)
+                .map_err(|e| format!("Serialization error: {e}"));
+        }
+        drop(registry);
 
-        let endpoint = transport_endpoint_from_native(&entry.native_endpoint);
-        let result = CapabilityResolveResult {
-            primal_id: name,
-            socket: entry.native_endpoint.socket_path(),
-            virtual_endpoint: entry.virtual_endpoint.path,
-            native_endpoint: entry.native_endpoint.display(),
-            endpoint,
-            capabilities: entry.capabilities,
-            signature: entry.signature,
-            signed_payload: entry.signed_payload,
-        };
+        // Mesh fallback: check if a remote peer advertises this capability
+        if let Some((peer_id, peer_caps)) =
+            self.mesh_handler.find_peer_with_capability(&params.capability).await
+        {
+            debug!(
+                capability = %params.capability,
+                peer = %peer_id,
+                "capability.resolve: resolved via mesh peer (cross-gate routing)"
+            );
+            let native_endpoint = format!("mesh://{peer_id}");
+            let primal_id = format!("remote:{peer_id}");
+            let result = CapabilityResolveResult {
+                primal_id,
+                socket: None,
+                virtual_endpoint: String::new(),
+                native_endpoint,
+                endpoint: TransportEndpoint::MeshRelay {
+                    peer_id,
+                    capability: params.capability.clone(),
+                },
+                capabilities: peer_caps,
+                signature: None,
+                signed_payload: None,
+            };
+            return serde_json::to_value(result)
+                .map_err(|e| format!("Serialization error: {e}"));
+        }
 
-        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+        Err(format!("No provider found for capability: {}", params.capability))
     }
 
     /// Handle `capability.call` — cross-gate capability dispatch.

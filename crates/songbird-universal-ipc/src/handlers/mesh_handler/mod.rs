@@ -20,7 +20,7 @@
 //! This handler delegates to `songbird-onion-relay::BeaconMesh` for
 //! mesh state management while exposing capability via JSON-RPC.
 
-mod capability_propagation;
+pub(crate) mod capability_propagation;
 mod json;
 pub mod persistence;
 mod udp_discovery;
@@ -59,7 +59,7 @@ pub struct MeshHandler {
     node_id: Arc<RwLock<Arc<str>>>,
     /// Remote peer capabilities received via `mesh.capabilities_announce`.
     /// Key: `node_id`, Value: capabilities + last-seen timestamp.
-    peer_capabilities: Arc<RwLock<HashMap<String, PeerCapabilityEntry>>>,
+    pub(crate) peer_capabilities: Arc<RwLock<HashMap<String, PeerCapabilityEntry>>>,
     /// Peers that failed to receive announcements (retried on next health cycle).
     pending_announces: Arc<RwLock<Vec<PendingAnnounce>>>,
 }

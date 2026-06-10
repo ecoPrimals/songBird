@@ -65,6 +65,23 @@ impl MeshHandler {
         }
     }
 
+    /// Find the first reachable peer that advertises the given capability.
+    ///
+    /// Searches the `peer_capabilities` map for a non-expired entry containing
+    /// the capability string. Returns `Some((node_id, capabilities))` for the
+    /// first match, or `None` if no peer provides it.
+    pub async fn find_peer_with_capability(&self, capability: &str) -> Option<(String, Vec<String>)> {
+        let guard = self.peer_capabilities.read().await;
+        for (node_id, entry) in guard.iter() {
+            if entry.last_seen.elapsed() < CAPABILITY_TTL
+                && entry.capabilities.iter().any(|c| c == capability)
+            {
+                return Some((node_id.clone(), entry.capabilities.clone()));
+            }
+        }
+        None
+    }
+
     /// Handle `mesh.capabilities_announce` — receive remote peer capabilities.
     ///
     /// Called by remote gates when their primals register capabilities.
