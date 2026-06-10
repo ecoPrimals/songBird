@@ -1,7 +1,7 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 13,960+ tests, 31 crates, 58+ JSON-RPC methods, BTSP P3.5 scaffold (Ed25519 verifier trait), 5-tier NAT traversal, cross-gate capability.call (HTTP POST), capability propagation (push model + retry queue), HTTP/UDS unified state, virtual relay Phase 2 (default mode), DH-1 compliant, zero clippy workspace-wide"
-date = 2026-06-03
+description = "Sovereign networking primal — 14,645+ tests, 31 crates, 58+ JSON-RPC methods, topology-aware cross-gate routing (ipc.resolve mesh fallback), mesh persistence + autonomous reconnect, BTSP P3.5 scaffold (Ed25519 verifier trait), 5-tier NAT traversal, cross-gate capability.call (HTTP POST + TURN relay), capability propagation (push model + retry queue + TTL expiry), peer-aware network detection, HTTP/UDS unified state, virtual relay Phase 2 (default mode), DH-1 compliant, zero clippy workspace-wide"
+date = 2026-06-10
 
 [taxonomies]
 primals = ["songbird"]
