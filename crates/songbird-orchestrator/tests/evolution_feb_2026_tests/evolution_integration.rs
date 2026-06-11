@@ -8,12 +8,13 @@ use serde_json::Value;
 #[tokio::test]
 async fn test_integration_jsonrpc_health_endpoint_schema() {
     // Verify health endpoint returns expected schema
-    let expected_fields = vec!["status", "version", "uptime_seconds"];
+    let expected_fields = vec!["status", "primal", "version", "uptime_s"];
 
     let health_response = serde_json::json!({
         "status": "healthy",
+        "primal": "songbird",
         "version": env!("CARGO_PKG_VERSION"),
-        "uptime_seconds": 0
+        "uptime_s": 0
     });
 
     for field in expected_fields {

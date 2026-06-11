@@ -39,13 +39,15 @@ impl JsonRpcHandler for IpcServiceHandler {
             }
 
             // ── biomeOS / ecosystem standard ─────────────────────────
+            JsonRpcMethod::BiomeOsHealth | JsonRpcMethod::Health(HealthMethod::Check) => {
+                self.handle_health().await
+            }
             JsonRpcMethod::Health(HealthMethod::Liveness) => {
                 Ok(crate::introspection::health_liveness())
             }
             JsonRpcMethod::Health(HealthMethod::Readiness) => {
                 Ok(crate::introspection::health_readiness())
             }
-            JsonRpcMethod::Health(HealthMethod::Check) => self.handle_health().await,
             JsonRpcMethod::Capabilities(CapabilitiesMethod::List) => {
                 Ok(crate::introspection::capabilities_list())
             }

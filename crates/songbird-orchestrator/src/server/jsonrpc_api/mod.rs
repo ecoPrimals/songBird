@@ -210,7 +210,9 @@ async fn handle_jsonrpc_request(
         Ok(JsonRpcMethod::Health(HealthMethod::Readiness)) => {
             Ok(songbird_universal_ipc::introspection::health_readiness())
         }
-        Ok(JsonRpcMethod::Health(HealthMethod::Check)) => handle_health_standard(&state).await,
+        Ok(JsonRpcMethod::BiomeOsHealth | JsonRpcMethod::Health(HealthMethod::Check)) => {
+            handle_health_standard(&state).await
+        }
         Ok(JsonRpcMethod::Capabilities(CapabilitiesMethod::List)) => {
             Ok(songbird_universal_ipc::introspection::capabilities_list())
         }

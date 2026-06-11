@@ -78,7 +78,7 @@ async fn test_unit_health_method() {
     assert_eq!(response["status"], "healthy");
     assert_eq!(response["primal"], "songbird");
     assert!(response["version"].is_string());
-    assert!(response["uptime_seconds"].is_number());
+    assert!(response["uptime_s"].is_number());
     assert_eq!(response["services"], 0); // No services registered
 }
 
@@ -158,14 +158,14 @@ async fn test_unit_uptime_tracking() {
 
     // First call
     let result1 = handler.handle("health", json!({})).await.unwrap();
-    let uptime1 = result1["uptime_seconds"].as_u64().unwrap();
+    let uptime1 = result1["uptime_s"].as_u64().unwrap();
 
     // Advance virtual time (start_paused = true)
     tokio::time::advance(tokio::time::Duration::from_millis(100)).await;
 
     // Second call
     let result2 = handler.handle("health", json!({})).await.unwrap();
-    let uptime2 = result2["uptime_seconds"].as_u64().unwrap();
+    let uptime2 = result2["uptime_s"].as_u64().unwrap();
 
     assert!(uptime2 >= uptime1, "Uptime should increase or stay same");
 }
@@ -191,7 +191,7 @@ async fn test_e2e_health_via_handler() {
     assert!(response.get("status").is_some());
     assert!(response.get("primal").is_some());
     assert!(response.get("version").is_some());
-    assert!(response.get("uptime_seconds").is_some());
+    assert!(response.get("uptime_s").is_some());
 }
 
 #[tokio::test]

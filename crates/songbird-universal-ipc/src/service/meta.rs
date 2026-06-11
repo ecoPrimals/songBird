@@ -96,19 +96,20 @@ impl IpcServiceHandler {
         let mut peers: Vec<String> =
             state.active_nodes().await.into_iter().map(|n| n.node_id).collect();
         peers.sort();
-        let federation_stats = state.get_stats().await;
         let total_count = peers.len();
-        let federation_enabled = federation_stats.total_nodes > 0;
 
         serde_json::to_value(FederationPeersResponse {
             peers,
             total_count,
-            federation_enabled,
+            federation_enabled: true,
         })
         .map_err(|e| format!("Serialization error: {e}"))
     }
 
     /// `songbird.federation.status` / `federation.status`
+    ///
+    /// `enabled` reflects whether federation was configured at startup (state injected),
+    /// NOT whether remote peers are connected. Use `active_connections` for connectivity.
     pub(super) async fn handle_federation_status_rpc(&self) -> Result<Value, String> {
         let Some(ref state) = self.federation_state else {
             return serde_json::to_value(FederationStatusResponse {
@@ -120,7 +121,7 @@ impl IpcServiceHandler {
 
         let fed_stats = state.get_stats().await;
         serde_json::to_value(FederationStatusResponse {
-            enabled: fed_stats.total_nodes > 0,
+            enabled: true,
             active_connections: fed_stats.active_nodes,
         })
         .map_err(|e| format!("Serialization error: {e}"))
@@ -161,7 +162,7 @@ mod tests {
 
         let v = handler.handle("health.check", json!({})).await.expect("health.check");
         assert_eq!(v["status"], "healthy");
-        assert!(v["uptime_seconds"].as_u64().is_some());
+        assert!(v["uptime_s"].as_u64().is_some());
         assert_eq!(v["services"], json!(0));
 
         handler
@@ -178,7 +179,7 @@ mod tests {
 
         let v2 = handler.handle("health.check", json!({})).await.expect("health.check 2");
         assert_eq!(v2["services"], json!(1));
-        assert!(v2["uptime_seconds"].as_u64().unwrap() >= v["uptime_seconds"].as_u64().unwrap());
+        assert!(v2["uptime_s"].as_u64().unwrap() >= v["uptime_s"].as_u64().unwrap());
     }
 
     #[tokio::test]
