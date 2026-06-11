@@ -310,7 +310,7 @@ USB_DATA="/custom/path/songbird-data"
 - [systemd Deployment](../systemd/README.md)
 - [Windows Service](../windows-service/README.md)
 - [genomeBin Evolution](../../GENOMEBIN_EVOLUTION_ANALYSIS_JAN_31_2026.md)
-- [Cross-Compilation Progress](../../CROSS_COMPILATION_PROGRESS_JAN_31_2026.md)
+- [CHANGELOG](../../CHANGELOG.md) (cross-compilation history)
 
 ---
 

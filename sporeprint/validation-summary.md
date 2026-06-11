@@ -1,7 +1,7 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 14,645+ tests, 31 crates, 58+ JSON-RPC methods, topology-aware cross-gate routing (ipc.resolve mesh fallback), mesh persistence + autonomous reconnect, BTSP P3.5 scaffold (Ed25519 verifier trait), 5-tier NAT traversal, cross-gate capability.call (HTTP POST + TURN relay), capability propagation (push model + retry queue + TTL expiry), peer-aware network detection, HTTP/UDS unified state, virtual relay Phase 2 (default mode), DH-1 compliant, zero clippy workspace-wide"
-date = 2026-06-10
+description = "Sovereign networking primal — 14,645+ tests, 31 crates, 58+ JSON-RPC methods, HEALTH-01 compliant (13/13 ecosystem contract), topology-aware cross-gate routing (ipc.resolve mesh fallback), mesh persistence + autonomous reconnect, federation status reporting fixed (WAN gates), BTSP P3.5 scaffold (Ed25519 verifier trait), 5-tier NAT traversal, cross-gate capability.call (HTTP POST + TURN relay), capability propagation (push model + retry queue + TTL expiry), peer-aware network detection, HTTP/UDS unified state, virtual relay Phase 2 (default mode), DH-1 compliant, zero clippy workspace-wide"
+date = 2026-06-11
 
 [taxonomies]
 primals = ["songbird"]
@@ -10,7 +10,7 @@ springs = ["primalspring"]
 
 ## Status
 
-- **13,971+ lib tests** passed, 0 failures, 23 ignored
+- **14,645+ workspace tests** passed, 0 failures, 0 flaky (Wave 110 verified June 11, 2026)
 - **31 workspace crates**, ~422,000 lines of Rust (Edition 2024)
 - **58 JSON-RPC methods** across 15 capability domains (network, mesh, stun, relay, http, tor, onion, punch, discovery, birdsong, capability, ipc, primal, lifecycle, federation)
 - **BTSP Phase 3 FULL** — ChaCha20-Poly1305 AEAD, HKDF-SHA256 session keys, bond type enforcement

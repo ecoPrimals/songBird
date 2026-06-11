@@ -205,7 +205,7 @@ When Phase 2 is released:
 - [systemd Deployment](../systemd/README.md) (Linux)
 - [USB Live Spore](../usb-live-spore/README.md) (Portable)
 - [genomeBin Evolution](../../GENOMEBIN_EVOLUTION_ANALYSIS_JAN_31_2026.md)
-- [Windows Build Success](../../GENOMEBIN_WEEK1_VICTORY_JAN_31_2026.md)
+- [CHANGELOG](../../CHANGELOG.md) (genomeBin + Windows build history)
 
 ---
 

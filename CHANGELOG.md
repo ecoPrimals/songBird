@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.19-wave110] - 2026-06-11 - HEALTH-SB-01 + Federation Status Fix
+
+### Fixed
+- **Federation `enabled` reporting** — `federation.status` and `federation.peers` now report `enabled: true` when federation is configured (state injected at startup), regardless of active peer count. Previously used `total_nodes > 0` which conflated configuration with connectivity, causing WAN gates to misreport as disabled even when federation was running. Root cause for flockGate WAN issue documented and fixed.
+
+### Changed
+- **HEALTH-01 contract compliance** — bare `{"method":"health"}` now returns `{status, primal, version, uptime_s}` per ecosystem 13/13 health contract
+- `uptime_seconds` → `uptime_s` across all health JSON-RPC wire responses (IPC `health()` + HTTP `handle_health_standard()`)
+- `primal` field added to orchestrator `handle_health()` and `handle_health_standard()`
+- `BiomeOsHealth` enum variant wired in IPC dispatch table (was previously falling to "Unknown method" — normalization already routed bare "health" to "health.check" but direct `from_wire_str` path was unhandled)
+
+---
+
 ## [v0.2.17-wave102] - 2026-06-09 - Deep Debt: Naming, Stubs, Security Hardening
 
 ### Fixed

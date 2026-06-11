@@ -308,7 +308,7 @@ All 49 registered methods are annotated by stability:
 | Location | Issue | Resolution |
 |----------|-------|------------|
 | `deployment/genome/genome_wrapper_template.sh` | `--mode` parsed but never executes service registration | Wire systemctl/Windows Service |
-| `.cargo/config.toml` | No Android NDK linker, no macOS/RISC-V targets | Add cross-compile entries |
+| `.cargo/config.toml` | ~~No Android NDK linker~~ DONE; no macOS/RISC-V targets | Add remaining cross-compile entries |
 | `remote-deploy/src/http_deploy/mod.rs:87–92` | Streaming upload not implemented | Chunked streaming path |
 | `remote-deploy/src/http_deploy/chunked.rs` | Sequential chunks, no hash verify, no compression | Parallel + integrity |
 | ~~`orchestrator/src/server/deployment_api/capabilities.rs:94`~~ | ~~Network type always "lan"~~ | **RESOLVED** Wave 106: env/VPN/public-IP heuristics + peer-aware subnet analysis |
@@ -333,7 +333,7 @@ All 49 registered methods are annotated by stability:
 ### Tier 3 — Cross-hardware deployment
 - [ ] macOS: `aarch64-apple-darwin` / `x86_64-apple-darwin` targets
 - [ ] Windows: native Service wrapper (Phase 2)
-- [ ] Android NDK linker committed to `.cargo/config.toml`
+- [x] Android NDK linker committed to `.cargo/config.toml` (aarch64-linux-android21-clang)
 - [ ] Adaptive deployment spec completion (parallel chunks, compression, streaming)
 
 ---
