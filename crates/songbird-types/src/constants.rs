@@ -186,6 +186,12 @@ pub const DISCOVERY_MULTICAST_PORT: u16 = 4242;
 /// Default mDNS multicast address (RFC 6762)
 pub const MDNS_MULTICAST_GROUP: &str = "224.0.0.251";
 
+/// Default Consul HTTP API port
+pub const CONSUL_DEFAULT_PORT: u16 = 8500;
+
+/// Default Consul HTTP API base URL (local agent)
+pub const CONSUL_DEFAULT_URL: &str = "http://127.0.0.1:8500";
+
 /// Default mDNS port (IANA)
 pub const MDNS_PORT: u16 = 5353;
 

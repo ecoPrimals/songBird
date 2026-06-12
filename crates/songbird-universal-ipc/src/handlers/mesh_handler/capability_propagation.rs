@@ -25,7 +25,7 @@ use super::MeshHandler;
 
 /// Remote peer capabilities with freshness tracking.
 #[derive(Clone)]
-#[allow(clippy::redundant_pub_crate)]
+#[expect(clippy::redundant_pub_crate, reason = "pub(crate) explicit for cross-module clarity")]
 pub(crate) struct PeerCapabilityEntry {
     pub capabilities: Vec<String>,
     pub last_seen: Instant,
@@ -33,7 +33,7 @@ pub(crate) struct PeerCapabilityEntry {
 
 /// Metadata tracked per mesh peer (version, cross-gate reachability).
 #[derive(Clone)]
-#[allow(clippy::redundant_pub_crate)]
+#[expect(clippy::redundant_pub_crate, reason = "pub(crate) explicit for cross-module clarity")]
 pub(crate) struct PeerMetadata {
     /// Peer's reported version (from `health.ping` or `capabilities_announce`).
     pub version: Option<String>,

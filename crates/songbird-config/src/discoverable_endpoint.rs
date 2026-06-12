@@ -341,7 +341,7 @@ fn resolve_consul_service(
     use std::io::{Read, Write};
     use std::net::TcpStream;
 
-    let consul_base = consul_addr.unwrap_or("http://127.0.0.1:8500");
+    let consul_base = consul_addr.unwrap_or(songbird_types::constants::CONSUL_DEFAULT_URL);
     let url = format!("{consul_base}/v1/catalog/service/{service_name}?passing=true");
 
     let parsed = url::Url::parse(&url).map_err(|e| SongbirdError::Configuration {
@@ -350,8 +350,8 @@ fn resolve_consul_service(
         suggestion: None,
     })?;
 
-    let host = parsed.host_str().unwrap_or("127.0.0.1");
-    let port = parsed.port().unwrap_or(8500);
+    let host = parsed.host_str().unwrap_or(songbird_types::constants::LOCALHOST);
+    let port = parsed.port().unwrap_or(songbird_types::constants::CONSUL_DEFAULT_PORT);
     let path = parsed.path();
 
     let mut stream =
@@ -379,7 +379,7 @@ fn resolve_consul_service(
         let svc_host = entry["ServiceAddress"]
             .as_str()
             .or_else(|| entry["Address"].as_str())
-            .unwrap_or("127.0.0.1");
+            .unwrap_or(songbird_types::constants::LOCALHOST);
         let svc_port = entry["ServicePort"].as_u64().unwrap_or(8080);
 
         Ok(EndpointSpec {
@@ -451,15 +451,12 @@ fn parse_endpoint(value: &str, parser: &EndpointParser) -> SongbirdResult<Endpoi
             })
         }
 
-        EndpointParser::Hostname => {
-            // Just hostname, use default port
-            Ok(EndpointSpec {
-                host: value.to_string(),
-                port: 8080,
-                protocol: Some("http".to_string()),
-                path: None,
-            })
-        }
+        EndpointParser::Hostname => Ok(EndpointSpec {
+            host: value.to_string(),
+            port: songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
+            protocol: Some("http".to_string()),
+            path: None,
+        }),
 
         EndpointParser::Pattern(_pattern) => {
             // Custom pattern parsing would go here
