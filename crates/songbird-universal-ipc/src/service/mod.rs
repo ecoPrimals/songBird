@@ -46,6 +46,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 mod btsp_validation;
+mod capability_dispatch;
 mod construction;
 mod dispatch;
 mod http;

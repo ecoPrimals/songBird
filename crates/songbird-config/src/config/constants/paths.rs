@@ -3,6 +3,7 @@
 
 //! Platform-appropriate log, cache, data, config, and temp directories.
 
+use songbird_types::constants::HOME_FALLBACK_DIR;
 use songbird_types::error_helpers::SafeEnv;
 
 /// Get log directory from environment or calculate default
@@ -18,7 +19,7 @@ pub fn get_log_dir() -> String {
         } else {
             format!(
                 "{}/.local/share/songbird/logs",
-                SafeEnv::get_or_default("HOME", "/tmp".to_string()),
+                SafeEnv::get_or_default("HOME", HOME_FALLBACK_DIR.to_string()),
             )
         }
     })
@@ -35,7 +36,10 @@ pub fn get_cache_dir() -> String {
                 SafeEnv::get_or_default("USERPROFILE", "C:\\Users\\Default".to_string()),
             )
         } else {
-            format!("{}/.cache/songbird", SafeEnv::get_or_default("HOME", "/tmp".to_string()),)
+            format!(
+                "{}/.cache/songbird",
+                SafeEnv::get_or_default("HOME", HOME_FALLBACK_DIR.to_string()),
+            )
         }
     })
 }
@@ -51,7 +55,10 @@ pub fn get_data_dir() -> String {
                 SafeEnv::get_or_default("USERPROFILE", "C:\\Users\\Default".to_string()),
             )
         } else {
-            format!("{}/.local/share/songbird", SafeEnv::get_or_default("HOME", "/tmp".to_string()),)
+            format!(
+                "{}/.local/share/songbird",
+                SafeEnv::get_or_default("HOME", HOME_FALLBACK_DIR.to_string()),
+            )
         }
     })
 }
@@ -67,7 +74,10 @@ pub fn get_config_dir() -> String {
                 SafeEnv::get_or_default("USERPROFILE", "C:\\Users\\Default".to_string()),
             )
         } else {
-            format!("{}/.config/songbird", SafeEnv::get_or_default("HOME", "/tmp".to_string()),)
+            format!(
+                "{}/.config/songbird",
+                SafeEnv::get_or_default("HOME", HOME_FALLBACK_DIR.to_string()),
+            )
         }
     })
 }

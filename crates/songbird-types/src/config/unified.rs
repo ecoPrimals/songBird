@@ -18,6 +18,7 @@ use super::{
     security::CanonicalSecurityConfig, system::CanonicalSystemConfig,
 };
 use crate::SafeEnv;
+use crate::constants::HOME_FALLBACK_DIR;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -101,7 +102,7 @@ impl UnifiedSongbirdConfig {
             if self.is_production() {
                 "/var/lib/songbird".to_string()
             } else {
-                let home = env.get("HOME").map_or("/tmp", String::as_str);
+                let home = env.get("HOME").map_or(HOME_FALLBACK_DIR, String::as_str);
                 format!("{home}/.local/share/songbird")
             }
         })
@@ -116,7 +117,7 @@ impl UnifiedSongbirdConfig {
             } else {
                 format!(
                     "{home}/.local/share/songbird",
-                    home = SafeEnv::get_or_default("HOME", "/tmp")
+                    home = SafeEnv::get_or_default("HOME", HOME_FALLBACK_DIR)
                 )
             }
         })
@@ -132,7 +133,7 @@ impl UnifiedSongbirdConfig {
             if self.is_production() {
                 "/etc/songbird".to_string()
             } else {
-                let home = env.get("HOME").map_or("/tmp", String::as_str);
+                let home = env.get("HOME").map_or(HOME_FALLBACK_DIR, String::as_str);
                 format!("{home}/.config/songbird")
             }
         })
@@ -145,7 +146,10 @@ impl UnifiedSongbirdConfig {
             if self.is_production() {
                 "/etc/songbird".to_string()
             } else {
-                format!("{home}/.config/songbird", home = SafeEnv::get_or_default("HOME", "/tmp"))
+                format!(
+                    "{home}/.config/songbird",
+                    home = SafeEnv::get_or_default("HOME", HOME_FALLBACK_DIR)
+                )
             }
         })
     }
@@ -160,7 +164,7 @@ impl UnifiedSongbirdConfig {
             if self.is_production() {
                 "/var/cache/songbird".to_string()
             } else {
-                let home = env.get("HOME").map_or("/tmp", String::as_str);
+                let home = env.get("HOME").map_or(HOME_FALLBACK_DIR, String::as_str);
                 format!("{home}/.cache/songbird")
             }
         })
@@ -173,7 +177,10 @@ impl UnifiedSongbirdConfig {
             if self.is_production() {
                 "/var/cache/songbird".to_string()
             } else {
-                format!("{home}/.cache/songbird", home = SafeEnv::get_or_default("HOME", "/tmp"))
+                format!(
+                    "{home}/.cache/songbird",
+                    home = SafeEnv::get_or_default("HOME", HOME_FALLBACK_DIR)
+                )
             }
         })
     }
@@ -185,7 +192,7 @@ impl UnifiedSongbirdConfig {
             if self.is_production() {
                 "/var/log/songbird".to_string()
             } else {
-                let home = env.get("HOME").map_or("/tmp", String::as_str);
+                let home = env.get("HOME").map_or(HOME_FALLBACK_DIR, String::as_str);
                 format!("{home}/.local/share/songbird/logs")
             }
         })
@@ -200,7 +207,7 @@ impl UnifiedSongbirdConfig {
             } else {
                 format!(
                     "{home}/.local/share/songbird/logs",
-                    home = SafeEnv::get_or_default("HOME", "/tmp")
+                    home = SafeEnv::get_or_default("HOME", HOME_FALLBACK_DIR)
                 )
             }
         })

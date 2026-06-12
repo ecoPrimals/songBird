@@ -378,9 +378,10 @@ impl ServiceLocator {
 ///
 /// Derives from the system runtime constant rather than hardcoding a UID-specific path.
 fn default_runtime_fallback() -> PathBuf {
-    PathBuf::from(songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR)
-        .parent()
-        .map_or_else(|| PathBuf::from("/run"), Path::to_path_buf)
+    PathBuf::from(songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR).parent().map_or_else(
+        || PathBuf::from(songbird_types::constants::SYSTEM_RUNTIME_DIR),
+        Path::to_path_buf,
+    )
 }
 
 impl Default for ServiceLocator {

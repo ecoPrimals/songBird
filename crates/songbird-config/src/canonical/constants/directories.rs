@@ -6,6 +6,8 @@
 //! Every path is overridable via `SONGBIRD_*_DIR` environment variables.
 //! Fallback paths follow XDG / AppData conventions per platform.
 
+use songbird_types::constants::HOME_FALLBACK_DIR;
+
 use super::read_process_env;
 
 fn env_get_or_default_with(
@@ -36,7 +38,7 @@ pub fn get_log_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarError
         } else {
             format!(
                 "{}/.local/share/songbird/logs",
-                env_get_or_default_with(env, "HOME", "/tmp".to_string()),
+                env_get_or_default_with(env, "HOME", HOME_FALLBACK_DIR.to_string()),
             )
         }
     })
@@ -58,7 +60,10 @@ pub fn get_cache_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarErr
                 env_get_or_default_with(env, "USERPROFILE", "C:\\Users\\Default".to_string()),
             )
         } else {
-            format!("{}/.cache/songbird", env_get_or_default_with(env, "HOME", "/tmp".to_string()),)
+            format!(
+                "{}/.cache/songbird",
+                env_get_or_default_with(env, "HOME", HOME_FALLBACK_DIR.to_string()),
+            )
         }
     })
 }
@@ -81,7 +86,7 @@ pub fn get_data_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarErro
         } else {
             format!(
                 "{}/.local/share/songbird",
-                env_get_or_default_with(env, "HOME", "/tmp".to_string()),
+                env_get_or_default_with(env, "HOME", HOME_FALLBACK_DIR.to_string()),
             )
         }
     })
@@ -103,7 +108,10 @@ pub fn get_config_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarEr
                 env_get_or_default_with(env, "USERPROFILE", "C:\\Users\\Default".to_string()),
             )
         } else {
-            format!("{}/.config/songbird", env_get_or_default_with(env, "HOME", "/tmp".to_string()),)
+            format!(
+                "{}/.config/songbird",
+                env_get_or_default_with(env, "HOME", HOME_FALLBACK_DIR.to_string()),
+            )
         }
     })
 }

@@ -217,6 +217,13 @@ pub const MAX_DISCOVERY_RETRIES: u32 = 3;
 // SYSTEM CONSTANTS
 // ============================================================================
 
+/// Fallback base directory when `HOME` is unset.
+///
+/// Used only as a degraded last-resort path prefix for data/cache/config/log
+/// directories when no user home directory can be determined. Production
+/// deployments should always have `HOME` set.
+pub const HOME_FALLBACK_DIR: &str = "/tmp";
+
 /// Default configuration file path
 pub const DEFAULT_CONFIG_PATH: &str = "songbird.toml";
 
