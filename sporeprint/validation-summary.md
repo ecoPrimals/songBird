@@ -1,6 +1,6 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 8,910+ lib tests, 31 crates, 58+ JSON-RPC methods, HEALTH-01 compliant (13/13 ecosystem contract), topology-aware cross-gate routing (ipc.resolve mesh fallback), mesh persistence + autonomous reconnect, federation env-aware status + peer health loop, real health probes (TCP/UDS/FS/Custom/JsonRpc), capability-first naming (SecurityProviderVerifier), workspace dep hoisting, 5-tier NAT traversal, cross-gate capability.call (HTTP POST + TURN relay), capability propagation (push model + retry queue + TTL expiry), peer-aware network detection, HTTP/UDS unified state, virtual relay Phase 2 (default mode), DH-1 compliant, zero clippy workspace-wide"
+description = "Sovereign networking primal — 8,918+ lib tests, 31 crates, 58+ JSON-RPC methods, HEALTH-01 compliant (13/13 ecosystem contract), topology-aware cross-gate routing (ipc.resolve mesh fallback), mesh persistence + autonomous reconnect, federation env-aware status + peer health loop, mesh partition tolerance (cross-gate reachability gossip), peer version negotiation (version_skew detection), real health probes (TCP/UDS/FS/Custom/JsonRpc), capability-first naming (SecurityProviderVerifier), workspace dep hoisting, 5-tier NAT traversal, cross-gate capability.call (HTTP POST + TURN relay), capability propagation (push model + retry queue + TTL expiry), peer-aware network detection, HTTP/UDS unified state, virtual relay Phase 2 (default mode), DH-1 compliant, zero clippy workspace-wide"
 date = 2026-06-12
 
 [taxonomies]
@@ -10,7 +10,7 @@ springs = ["primalspring"]
 
 ## Status
 
-- **8,910+ lib tests** passed, 0 failures, 0 flaky (Wave 112 verified June 12, 2026)
+- **8,918+ lib tests** passed, 0 failures, 0 flaky (Wave 113 verified June 12, 2026)
 - **31 workspace crates**, ~422,000 lines of Rust (Edition 2024)
 - **58 JSON-RPC methods** across 15 capability domains (network, mesh, stun, relay, http, tor, onion, punch, discovery, birdsong, capability, ipc, primal, lifecycle, federation)
 - **BTSP Phase 3 FULL** — ChaCha20-Poly1305 AEAD, HKDF-SHA256 session keys, bond type enforcement
