@@ -31,6 +31,33 @@ pub(crate) struct PeerCapabilityEntry {
     pub last_seen: Instant,
 }
 
+/// Metadata tracked per mesh peer (version, cross-gate reachability).
+#[derive(Clone)]
+#[allow(clippy::redundant_pub_crate)]
+pub(crate) struct PeerMetadata {
+    /// Peer's reported version (from `health.ping` or `capabilities_announce`).
+    pub version: Option<String>,
+    /// Peers this remote gate reports as reachable (cross-gate reachability gossip).
+    pub reachable_peers: Vec<String>,
+    /// When we last received fresh metadata from this peer.
+    pub last_updated: Instant,
+}
+
+/// Partition status for a peer — derived from cross-gate reachability comparison.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PartitionStatus {
+    /// All gates agree the peer is reachable.
+    Healthy,
+    /// This gate can reach the peer, but at least one other gate cannot.
+    PartialPartition {
+        unreachable_from: Vec<String>,
+    },
+    /// This gate cannot reach the peer, but at least one other gate can.
+    LocallyUnreachable {
+        reachable_from: Vec<String>,
+    },
+}
+
 /// A capability announcement that failed delivery and is queued for retry.
 pub(super) struct PendingAnnounce {
     pub node_id: String,
@@ -52,6 +79,53 @@ const MAX_PENDING_QUEUE_DEPTH: usize = 50;
 const CAPABILITY_TTL: Duration = Duration::from_secs(600);
 
 impl MeshHandler {
+    /// Compute the partition status for a given peer based on cross-gate reachability gossip.
+    ///
+    /// Returns `Healthy` if no partition evidence exists, `PartialPartition` if
+    /// some gates cannot reach the peer (but we can), or `LocallyUnreachable` if
+    /// other gates can reach the peer but this gate cannot.
+    pub async fn partition_status_for(
+        &self,
+        peer_id: &str,
+        locally_reachable: bool,
+    ) -> PartitionStatus {
+        let meta = self.peer_metadata.read().await;
+        if meta.is_empty() {
+            return PartitionStatus::Healthy;
+        }
+
+        let mut gates_that_can_reach: Vec<String> = Vec::new();
+        let mut gates_that_cannot: Vec<String> = Vec::new();
+
+        for (gate_id, pm) in meta.iter() {
+            if pm.reachable_peers.is_empty() {
+                continue;
+            }
+            if pm.reachable_peers.iter().any(|p| p == peer_id) {
+                gates_that_can_reach.push(gate_id.clone());
+            } else {
+                gates_that_cannot.push(gate_id.clone());
+            }
+        }
+
+        if locally_reachable && !gates_that_cannot.is_empty() {
+            PartitionStatus::PartialPartition {
+                unreachable_from: gates_that_cannot,
+            }
+        } else if !locally_reachable && !gates_that_can_reach.is_empty() {
+            PartitionStatus::LocallyUnreachable {
+                reachable_from: gates_that_can_reach,
+            }
+        } else {
+            PartitionStatus::Healthy
+        }
+    }
+
+    /// Get the known version for a peer (from probing or capabilities announce).
+    pub async fn peer_version(&self, node_id: &str) -> Option<String> {
+        self.peer_metadata.read().await.get(node_id).and_then(|m| m.version.clone())
+    }
+
     /// Get capabilities for a specific remote peer (from announcements).
     ///
     /// Returns empty if the peer has no known capabilities or if the entry has
@@ -115,9 +189,19 @@ impl MeshHandler {
             .map(|a| a.iter().filter_map(Value::as_str).map(String::from).collect())
             .unwrap_or_default();
 
+        let version = params.get("version").and_then(Value::as_str).map(String::from);
+
+        let reachable_peers: Vec<String> = params
+            .get("reachable_peers")
+            .and_then(Value::as_array)
+            .map(|a| a.iter().filter_map(Value::as_str).map(String::from).collect())
+            .unwrap_or_default();
+
         debug!(
             peer = %node_id,
             count = capabilities.len(),
+            version = ?version,
+            remote_reachable = reachable_peers.len(),
             "Accepted capability announcement from mesh peer"
         );
 
@@ -128,6 +212,22 @@ impl MeshHandler {
                 last_seen: Instant::now(),
             },
         );
+
+        {
+            let mut meta = self.peer_metadata.write().await;
+            let entry = meta.entry(node_id.clone()).or_insert_with(|| PeerMetadata {
+                version: None,
+                reachable_peers: Vec::new(),
+                last_updated: Instant::now(),
+            });
+            if let Some(ref v) = version {
+                entry.version = Some(v.clone());
+            }
+            if !reachable_peers.is_empty() {
+                entry.reachable_peers = reachable_peers;
+            }
+            entry.last_updated = Instant::now();
+        }
 
         Ok(json!({
             "accepted": true,
@@ -183,12 +283,16 @@ impl MeshHandler {
             return;
         }
 
+        let reachable_peer_ids: Vec<String> = reachable.clone();
+
         let payload = json!({
             "jsonrpc": "2.0",
             "method": "mesh.capabilities_announce",
             "params": {
                 "node_id": our_node_id,
-                "capabilities": local_capabilities
+                "capabilities": local_capabilities,
+                "version": env!("CARGO_PKG_VERSION"),
+                "reachable_peers": reachable_peer_ids
             },
             "id": null
         });

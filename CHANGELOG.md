@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave113] - 2026-06-12 - Stream 6: Mesh Partition Tolerance + Version Negotiation
+
+### Added
+- **`PeerMetadata` struct** — tracks per-peer version and cross-gate reachability reports for partition detection
+- **`PartitionStatus` enum** — `Healthy`, `PartialPartition { unreachable_from }`, `LocallyUnreachable { reachable_from }`
+- **`partition_status_for()`** — computes partition state for any peer based on cross-gate gossip
+- **`peer_version()`** — query known version for any mesh peer
+- **`probe_peer_full()`** — full probe returning RTT + version metadata (extracts from `health.ping` response)
+- **8 new tests** — partition detection (local/partial/healthy), version tracking, gossip storage, version skew reporting, health check partition flags
+
+### Changed
+- **`mesh.capabilities_announce`** — payload now includes `version` and `reachable_peers` fields for cross-gate gossip
+- **`mesh.status`** — includes `version`, `version_skew[]`, `partition_warnings[]` when detected
+- **`mesh.health_check`** — surfaces `partition_detected: true` and `partitions[]` when cross-gate gossip reveals asymmetric reachability
+- **`mesh.peers`** — enriched with `version`, `version_mismatch` per peer, plus `local_version` at top level
+- **`spawn_peer_health_loop`** — now uses `probe_peer_full()` and records peer version in `PeerMetadata` on each successful probe
+
+### Resolved
+- **MESH-PARTITION-TOLERANCE** (Stream 6, P2) — cross-gate reachability gossip enables partition awareness
+- **PEER-VERSION-MISMATCH** (Stream 6, P3) — version field propagated through probes and capability announces
+
+---
+
+## [v0.2.1-wave113] - 2026-06-12 - Stream 6: Mesh Partition Tolerance + Version Negotiation
+
+### Added
+- **MESH-PARTITION-TOLERANCE** — cross-gate reachability gossip via `mesh.capabilities_announce`: each gate reports its `reachable_peers` list + `version` to all peers. `PeerMetadata` struct tracks per-peer version and cross-gate reachability reports. `partition_status_for()` computes partition state (Healthy / PartialPartition / LocallyUnreachable). `mesh.status` surfaces `partition_warnings` when cross-gate views disagree. `mesh.health_check` emits `partition_detected: true` + `partitions[]` array
+- **PEER-VERSION-MISMATCH** — `probe_peer_full()` extracts version from `health.ping` JSON response during TCP probes (30s interval). `spawn_peer_health_loop` records peer versions in `PeerMetadata`. `mesh.status` reports `version_skew` array when peers run different versions. `mesh.peers` includes `version` field and `version_mismatch: true` flag per peer. Backward-compatible: peers that don't send version are handled gracefully
+- **`PartitionStatus` enum** — public type for downstream consumers to reason about mesh partition state
+- **`peer_version()` method** — query stored version for any known peer
+- **8 new tests** — partition detection (healthy/local/partial), version skew in status, gossip storage, health check partition reporting, peer version retrieval
+
+### Changed
+- **`mesh.capabilities_announce` payload** — now includes `version` (CARGO_PKG_VERSION) and `reachable_peers` (list of locally reachable node_ids)
+- **`mesh.status` response** — adds `version` field (own version), optional `version_skew` and `partition_warnings` arrays
+- **`mesh.peers` response** — adds `local_version`, per-peer `version` field and `version_mismatch` flag
+- **`mesh.health_check` response** — adds optional `partition_detected` and `partitions` fields
+- **`spawn_peer_health_loop`** — upgraded from `probe_peer_rtt` to `probe_peer_full`, stores version in `peer_metadata` on successful probe
+- **`MeshHandler` struct** — new `peer_metadata: Arc<RwLock<HashMap<String, PeerMetadata>>>` field
+
+---
+
 ## [v0.2.19-wave112] - 2026-06-12 - Deep Debt Evolution
 
 ### Changed

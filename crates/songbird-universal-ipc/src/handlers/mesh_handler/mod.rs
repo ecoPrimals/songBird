@@ -37,8 +37,15 @@ use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
-pub(crate) use capability_propagation::PeerCapabilityEntry;
+pub use capability_propagation::PartitionStatus;
 use capability_propagation::PendingAnnounce;
+pub(crate) use capability_propagation::{PeerCapabilityEntry, PeerMetadata};
+
+/// Probe result including RTT and optional peer version.
+struct ProbeResult {
+    rtt: Duration,
+    version: Option<String>,
+}
 
 /// Manages the distributed beacon mesh and provides status,
 /// path finding, and relay announcement via JSON-RPC.
@@ -62,6 +69,8 @@ pub struct MeshHandler {
     pub(crate) peer_capabilities: Arc<RwLock<HashMap<String, PeerCapabilityEntry>>>,
     /// Peers that failed to receive announcements (retried on next health cycle).
     pending_announces: Arc<RwLock<Vec<PendingAnnounce>>>,
+    /// Per-peer metadata: version, cross-gate reachability reports (for partition detection).
+    pub(crate) peer_metadata: Arc<RwLock<HashMap<String, PeerMetadata>>>,
 }
 
 impl MeshHandler {
@@ -74,6 +83,7 @@ impl MeshHandler {
             node_id: Arc::new(RwLock::new(Arc::from(""))),
             peer_capabilities: Arc::new(RwLock::new(HashMap::new())),
             pending_announces: Arc::new(RwLock::new(Vec::new())),
+            peer_metadata: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -90,6 +100,7 @@ impl MeshHandler {
             node_id: Arc::new(RwLock::new(node_id.into())),
             peer_capabilities: Arc::new(RwLock::new(HashMap::new())),
             pending_announces: Arc::new(RwLock::new(Vec::new())),
+            peer_metadata: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -185,7 +196,11 @@ impl MeshHandler {
 
         let peers_added = bootstrap_peers.len();
         if !bootstrap_peers.is_empty() {
-            Self::spawn_peer_health_loop(mesh_ref, bootstrap_peers.clone());
+            Self::spawn_peer_health_loop(
+                mesh_ref,
+                bootstrap_peers.clone(),
+                Arc::clone(&self.peer_metadata),
+            );
 
             let node_id_owned = node_id.as_ref().to_string();
             tokio::task::spawn_blocking(move || {
@@ -243,18 +258,65 @@ impl MeshHandler {
         let node_id = self.node_id.read().await.clone();
         let uptime = self.start_time.elapsed().as_secs();
 
-        Ok(json!({
+        let our_version = env!("CARGO_PKG_VERSION");
+        let meta = self.peer_metadata.read().await;
+        let mut version_skew: Vec<Value> = Vec::new();
+        let mut partition_warnings: Vec<Value> = Vec::new();
+
+        for peer_id in &reachable {
+            if let Some(pm) = meta.get(peer_id)
+                && let Some(ref v) = pm.version
+                && v != our_version
+            {
+                version_skew.push(json!({
+                    "peer": peer_id,
+                    "version": v,
+                    "local_version": our_version
+                }));
+            }
+        }
+
+        let locally_reachable: std::collections::HashSet<&String> = reachable.iter().collect();
+        for (gate_id, pm) in meta.iter() {
+            if pm.reachable_peers.is_empty() {
+                continue;
+            }
+            for remote_peer in &pm.reachable_peers {
+                if !locally_reachable.contains(remote_peer) && remote_peer != node_id.as_ref() {
+                    partition_warnings.push(json!({
+                        "peer": remote_peer,
+                        "reachable_from": gate_id,
+                        "unreachable_from": node_id.as_ref(),
+                        "type": "local_partition"
+                    }));
+                }
+            }
+        }
+
+        drop(meta);
+
+        let mut response = json!({
             "node_id": node_id.as_ref(),
             "reachable_peers": reachable.len(),
             "relay_enabled": true,
             "uptime_seconds": uptime,
+            "version": our_version,
             "paths": {
                 "local": local_count,
                 "direct": direct_count,
                 "family_relay": relay_count,
                 "onion": onion_count
             }
-        }))
+        });
+
+        if !version_skew.is_empty() {
+            response["version_skew"] = json!(version_skew);
+        }
+        if !partition_warnings.is_empty() {
+            response["partition_warnings"] = json!(partition_warnings);
+        }
+
+        Ok(response)
     }
 
     /// Handle `mesh.find_path` method - Find best path to a peer
@@ -355,7 +417,7 @@ impl MeshHandler {
                     let latency_ms =
                         path.latency.map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
 
-                    peers.push(json!({
+                    peers.push((node_id.clone(), json!({
                         "node_id": node_id,
                         "path_type": path_type,
                         "address": address,
@@ -363,18 +425,37 @@ impl MeshHandler {
                         "is_relay": is_relay,
                         "latency_ms": latency_ms,
                         "reachable": path.reachable
-                    }));
+                    })));
                 }
             }
 
             Ok::<_, String>((peers, relay_count))
         }?;
 
+        let meta = self.peer_metadata.read().await;
+        let our_version = env!("CARGO_PKG_VERSION");
+        let enriched_peers: Vec<Value> = peers
+            .into_iter()
+            .map(|(node_id, mut peer_json)| {
+                if let Some(pm) = meta.get(&node_id)
+                    && let Some(ref v) = pm.version
+                {
+                    peer_json["version"] = json!(v);
+                    if v != our_version {
+                        peer_json["version_mismatch"] = json!(true);
+                    }
+                }
+                peer_json
+            })
+            .collect();
+        drop(meta);
+
         Ok(json!({
-            "peers": peers,
-            "total": peers.len(),
-            "online": peers.len(),
-            "relays": relay_count
+            "peers": enriched_peers,
+            "total": enriched_peers.len(),
+            "online": enriched_peers.len(),
+            "relays": relay_count,
+            "local_version": our_version
         }))
     }
 
@@ -492,10 +573,41 @@ impl MeshHandler {
             Ok::<_, String>((results, all_healthy))
         }?;
 
-        Ok(json!({
+        let meta = self.peer_metadata.read().await;
+        let locally_reachable: std::collections::HashSet<&str> = results
+            .iter()
+            .filter_map(|r| {
+                if r["healthy"].as_bool() == Some(true) {
+                    r["node_id"].as_str()
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let mut partitions: Vec<Value> = Vec::new();
+        for (gate_id, pm) in meta.iter() {
+            for remote_peer in &pm.reachable_peers {
+                if !locally_reachable.contains(remote_peer.as_str()) {
+                    partitions.push(json!({
+                        "peer": remote_peer,
+                        "reachable_from": gate_id,
+                        "locally_reachable": false
+                    }));
+                }
+            }
+        }
+        drop(meta);
+
+        let mut response = json!({
             "results": results,
             "all_healthy": all_healthy
-        }))
+        });
+        if !partitions.is_empty() {
+            response["partitions"] = json!(partitions);
+            response["partition_detected"] = json!(true);
+        }
+        Ok(response)
     }
 
     /// Handle `mesh.auto_discover` method - Auto-discover peers on local network
@@ -715,10 +827,19 @@ impl MeshHandler {
     }
 
     /// Probe a peer's TCP endpoint with a minimal JSON-RPC ping to measure RTT.
+    /// Also extracts the peer's version from the response if available.
     async fn probe_peer_rtt(
         addr: std::net::SocketAddr,
         timeout: Duration,
     ) -> Result<Duration, String> {
+        Self::probe_peer_full(addr, timeout).await.map(|r| r.rtt)
+    }
+
+    /// Full probe returning RTT + version metadata.
+    async fn probe_peer_full(
+        addr: std::net::SocketAddr,
+        timeout: Duration,
+    ) -> Result<ProbeResult, String> {
         use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
         use tokio::net::TcpStream;
 
@@ -745,26 +866,35 @@ impl MeshHandler {
             .map_err(|e| format!("read failed: {e}"))?;
 
         let rtt = start.elapsed();
-        Ok(rtt)
+
+        let version = serde_json::from_str::<serde_json::Value>(&response)
+            .ok()
+            .and_then(|v| v["result"]["version"].as_str().map(String::from));
+
+        Ok(ProbeResult {
+            rtt,
+            version,
+        })
     }
 
     /// Background peer health loop: periodically re-probes bootstrap peers.
     ///
     /// When a peer is unreachable, applies exponential backoff (30s → 60s → 120s → cap 300s).
     /// When a previously-failed peer responds, records fresh latency and restores reachability.
-    /// This enables auto-reconnect after VPS/peer restarts without manual `mesh.init`.
+    /// Also extracts peer version for version-skew detection.
     fn spawn_peer_health_loop(
         mesh: Arc<BeaconMesh>,
         bootstrap_peers: Vec<(String, std::net::SocketAddr)>,
+        peer_metadata: Arc<RwLock<HashMap<String, PeerMetadata>>>,
     ) {
-        use std::collections::HashMap;
+        use std::collections::HashMap as StdHashMap;
 
         tokio::spawn(async move {
             let base_interval = Duration::from_secs(30);
             let max_interval = Duration::from_secs(300);
             let probe_timeout = Duration::from_secs(5);
-            let mut backoff: HashMap<String, u32> = HashMap::new();
-            let mut next_probe: HashMap<String, tokio::time::Instant> = bootstrap_peers
+            let mut backoff: StdHashMap<String, u32> = StdHashMap::new();
+            let mut next_probe: StdHashMap<String, tokio::time::Instant> = bootstrap_peers
                 .iter()
                 .map(|(id, _)| (id.clone(), tokio::time::Instant::now() + base_interval))
                 .collect();
@@ -779,13 +909,27 @@ impl MeshHandler {
                         continue;
                     }
 
-                    if let Ok(rtt) = Self::probe_peer_rtt(*addr, probe_timeout).await {
-                        mesh.record_direct_connection(peer_id.clone(), *addr, rtt).await;
+                    if let Ok(result) = Self::probe_peer_full(*addr, probe_timeout).await {
+                        mesh.record_direct_connection(peer_id.clone(), *addr, result.rtt).await;
                         backoff.remove(peer_id);
                         next_probe.insert(peer_id.clone(), now + base_interval);
+
+                        if let Some(ref ver) = result.version {
+                            let mut meta = peer_metadata.write().await;
+                            let entry =
+                                meta.entry(peer_id.clone()).or_insert_with(|| PeerMetadata {
+                                    version: None,
+                                    reachable_peers: Vec::new(),
+                                    last_updated: Instant::now(),
+                                });
+                            entry.version = Some(ver.clone());
+                            entry.last_updated = Instant::now();
+                        }
+
                         tracing::debug!(
                             peer = %peer_id,
-                            latency_ms = %rtt.as_millis(),
+                            latency_ms = %result.rtt.as_millis(),
+                            version = ?result.version,
                             "mesh health: peer alive"
                         );
                     } else {
