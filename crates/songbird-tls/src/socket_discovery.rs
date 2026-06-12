@@ -240,7 +240,6 @@ pub fn discover_security_socket(explicit_path: Option<&PathBuf>) -> String {
     discover_security_socket_with_env(explicit_path, &SystemEnv)
 }
 
-
 /// Internal: Discover AI/Neural API socket path (capability-first)
 ///
 /// ## Resolution Order (capability-first, primal-agnostic)

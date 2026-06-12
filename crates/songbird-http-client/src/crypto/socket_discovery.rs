@@ -431,7 +431,6 @@ pub fn discover_security_socket() -> String {
     fallback
 }
 
-
 /// Discover Neural API socket with full fallback chain (DH-1 compliant)
 ///
 /// Checks in order:

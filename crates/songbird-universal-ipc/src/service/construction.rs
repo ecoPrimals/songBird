@@ -235,10 +235,13 @@ impl IpcServiceHandler {
         let isolated_dir = std::env::temp_dir()
             .join("songbird-test-relays")
             .join(format!("{}", std::process::id()))
-            .join(format!("{:x}", std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .subsec_nanos()));
+            .join(format!(
+                "{:x}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .subsec_nanos()
+            ));
 
         let mut h = Self::assemble(
             registry,

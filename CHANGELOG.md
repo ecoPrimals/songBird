@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.19-wave112] - 2026-06-12 - Deep Debt Evolution
+
+### Changed
+- **`BearDogVerifier` → `SecurityProviderVerifier`** — capability-based naming; type alias retained for backward compat
+- **`HealthProbe::NoOp` evolved** — replaced always-pass placeholder with 5 real probe variants: `TcpConnect`, `UnixSocket`, `FilesystemAccess`, `Custom`, `JsonRpcHealth`; timing measurement on all probes; refactored via `timed_probe()` helper
+- **`check_gaming_services()`** — evolved from env-var check to real TCP connect probe on configured port
+- **`check_federation_services()`** — evolved from env-var check to real TCP connect probe on bind address (validates parseability)
+- **Hardcoded paths eliminated** — `service_locator.rs`: 2× `/run/user/1000` → `dirs::runtime_dir()` + `BIOMEOS_SYSTEM_RUNTIME_DIR` derivation; `"127.0.0.1"` → `songbird_types::constants::LOCALHOST`
+
+### Added
+- `default_runtime_fallback()` helper in service_locator (UID-agnostic runtime dir resolution)
+- 12 new health probe tests (TCP connect, UDS, filesystem, custom closures, checker aggregation, timing)
+
+### Dependencies
+- **Workspace hoisting**: `sha2`, `hmac`, `hex`, `base64`, `gethostname`, `hyper-util` — 14 crates migrated from inline version specs to `[workspace.dependencies]`
+
+---
+
+## [v0.2.19-wave111] - 2026-06-11 - Federation Completion + Mesh Auto-Reconnect
+
+### Fixed
+- **FEDERATION-STATUS-WIRE** — `federation.status` RPC now reads `SONGBIRD_FEDERATION_ENABLED` / `SONGBIRD_PEERS` / `SONGBIRD_FEDERATION_PORT` env vars when `FederationState` is not injected (standalone IPC path). Fixes false `enabled: false` on bin_interface UDS/TCP
+- **`federation_configured_via_env()` helper** — shared env detection logic for both `federation.status` and `federation.peers` handlers
+
+### Added
+- **FEDERATION-RECONNECT** — `spawn_peer_health_loop`: background task probes bootstrap peers every 30s with exponential backoff (30s → 300s cap). Re-records latency via `record_direct_connection()` on peer recovery. Enables auto-reconnect after VPS/peer restarts
+
+---
+
 ## [v0.2.19-wave110] - 2026-06-11 - HEALTH-SB-01 + Federation Status Fix
 
 ### Fixed

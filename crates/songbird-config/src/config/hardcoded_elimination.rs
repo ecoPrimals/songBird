@@ -806,7 +806,9 @@ mod tests {
         let env = mock_env(&[]);
         let result = default_tls_cert_path_with(env);
         assert!(
-            result.contains("songbird") && result.contains("certs") && result.ends_with("songbird.crt"),
+            result.contains("songbird")
+                && result.contains("certs")
+                && result.ends_with("songbird.crt"),
             "unexpected fallback path: {result}"
         );
     }

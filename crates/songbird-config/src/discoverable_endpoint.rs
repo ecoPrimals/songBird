@@ -354,18 +354,16 @@ fn resolve_consul_service(
     let port = parsed.port().unwrap_or(8500);
     let path = parsed.path();
 
-    let mut stream = TcpStream::connect(format!("{host}:{port}")).map_err(|e| {
-        SongbirdError::Configuration {
+    let mut stream =
+        TcpStream::connect(format!("{host}:{port}")).map_err(|e| SongbirdError::Configuration {
             message: format!("Cannot connect to Consul at {host}:{port}: {e}"),
             field: Some("consul_addr".to_string()),
             suggestion: Some("Ensure Consul agent is running".to_string()),
-        }
-    })?;
-    stream
-        .set_read_timeout(Some(std::time::Duration::from_secs(3)))
-        .ok();
+        })?;
+    stream.set_read_timeout(Some(std::time::Duration::from_secs(3))).ok();
 
-    let req = format!("GET {path}?passing=true HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n");
+    let req =
+        format!("GET {path}?passing=true HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n");
     stream.write_all(req.as_bytes()).ok();
 
     let mut buf = Vec::new();

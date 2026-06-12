@@ -245,26 +245,30 @@ impl IntegrationManager {
         }
     }
 
-    /// Check gaming services — only relevant when gaming port is configured.
-    #[expect(
-        clippy::unused_async,
-        reason = "async signature: future expansion to probe gaming endpoints"
-    )]
+    /// Check gaming services — verifies the configured port is bindable/reachable.
     async fn check_gaming_services(&self) -> Result<bool> {
-        let gaming_configured = songbird_process_env::var("SONGBIRD_GAMING_PORT").is_ok();
-        if !gaming_configured {
+        let Ok(port_str) = songbird_process_env::var("SONGBIRD_GAMING_PORT") else {
             tracing::debug!("Gaming services not configured — skipping");
             return Ok(true);
+        };
+
+        let port: u16 = port_str.parse().unwrap_or(0);
+        if port == 0 {
+            tracing::warn!("SONGBIRD_GAMING_PORT invalid: {port_str}");
+            return Ok(false);
         }
-        tracing::debug!("Gaming services configured — assuming available (probe deferred)");
-        Ok(true)
+
+        let addr: std::net::SocketAddr = (std::net::Ipv4Addr::LOCALHOST, port).into();
+        let reachable = tokio::net::TcpStream::connect(addr).await.is_ok();
+        if reachable {
+            tracing::debug!(port, "Gaming services reachable");
+        } else {
+            tracing::debug!(port, "Gaming services not yet listening (may still be starting)");
+        }
+        Ok(reachable)
     }
 
-    /// Check federation services — verifies federation mode is active and bind address is set.
-    #[expect(
-        clippy::unused_async,
-        reason = "async signature: future expansion to probe federation peers"
-    )]
+    /// Check federation services — verifies bind address is reachable locally.
     async fn check_federation_services(&self) -> Result<bool> {
         let federation_mode =
             songbird_process_env::var("SONGBIRD_FEDERATION_MODE").unwrap_or_default();
@@ -280,8 +284,22 @@ impl IntegrationManager {
             return Ok(false);
         }
 
-        tracing::debug!("Federation services configured (mode={federation_mode})");
-        Ok(true)
+        let addr: std::net::SocketAddr = match bind_addr.parse() {
+            Ok(a) => a,
+            Err(e) => {
+                warn!("SONGBIRD_PRODUCTION_BIND_ADDRESS unparseable: {e}");
+                return Ok(false);
+            }
+        };
+
+        let reachable = tokio::net::TcpStream::connect(addr).await.is_ok();
+        tracing::debug!(
+            mode = %federation_mode,
+            addr = %addr,
+            reachable,
+            "Federation services check"
+        );
+        Ok(reachable)
     }
 }
 

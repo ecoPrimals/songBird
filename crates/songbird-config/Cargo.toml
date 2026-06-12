@@ -37,7 +37,7 @@ rand = { workspace = true }
 dirs = { workspace = true }
 chrono = { workspace = true }
 url = "2.5"
-gethostname = "0.4"
+gethostname = { workspace = true }
 hickory-resolver = { workspace = true }
 mdns-sd = "0.10"
 

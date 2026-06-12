@@ -110,10 +110,7 @@ fn load_persisted_peers() -> Vec<(String, String)> {
         return Vec::new();
     };
 
-    file.peers
-        .into_iter()
-        .map(|p| (p.node_id, p.address))
-        .collect()
+    file.peers.into_iter().map(|p| (p.node_id, p.address)).collect()
 }
 
 #[cfg(test)]

@@ -87,10 +87,8 @@ pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
         if let Some((_, persisted)) =
             songbird_universal_ipc::handlers::mesh_handler::persistence::load_persisted_peers()
         {
-            let converted: Vec<(String, String)> = persisted
-                .iter()
-                .map(|(nid, addr)| (nid.clone(), addr.to_string()))
-                .collect();
+            let converted: Vec<(String, String)> =
+                persisted.iter().map(|(nid, addr)| (nid.clone(), addr.to_string())).collect();
             info!(
                 peer_count = converted.len(),
                 "Restoring mesh from persisted peers (autonomous recovery)"

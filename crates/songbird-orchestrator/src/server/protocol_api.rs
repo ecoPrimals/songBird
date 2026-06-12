@@ -124,7 +124,10 @@ impl Default for AvailableProtocols {
             }),
             websocket: Some(ProtocolInfo {
                 version: "13".to_string(),
-                endpoints: HashMap::from([("ws".to_string(), format!("ws://[::]:{port}/api/ws/ws"))]),
+                endpoints: HashMap::from([(
+                    "ws".to_string(),
+                    format!("ws://[::]:{port}/api/ws/ws"),
+                )]),
                 features: vec![
                     "bidirectional".to_string(),
                     "low-latency".to_string(),

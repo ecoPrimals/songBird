@@ -43,7 +43,6 @@ pub mod network {
 
     /// Default retry delay (kept as const - no sovereignty issue)
     pub const DEFAULT_RETRY_DELAY: Duration = Duration::from_millis(1000);
-
 }
 
 /// Health check related constants

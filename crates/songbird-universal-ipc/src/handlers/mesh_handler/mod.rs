@@ -764,8 +764,10 @@ impl MeshHandler {
             let max_interval = Duration::from_secs(300);
             let probe_timeout = Duration::from_secs(5);
             let mut backoff: HashMap<String, u32> = HashMap::new();
-            let mut next_probe: HashMap<String, tokio::time::Instant> =
-                bootstrap_peers.iter().map(|(id, _)| (id.clone(), tokio::time::Instant::now() + base_interval)).collect();
+            let mut next_probe: HashMap<String, tokio::time::Instant> = bootstrap_peers
+                .iter()
+                .map(|(id, _)| (id.clone(), tokio::time::Instant::now() + base_interval))
+                .collect();
 
             loop {
                 tokio::time::sleep(Duration::from_secs(10)).await;

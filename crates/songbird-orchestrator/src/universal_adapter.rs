@@ -273,10 +273,8 @@ impl UniversalAdapter {
         };
         let timeout = songbird_types::defaults::timeouts::DEFAULT_MDNS_TIMEOUT;
 
-        let services = mdns
-            .discover_by_capability(capability, Some(timeout))
-            .await
-            .unwrap_or_else(|e| {
+        let services =
+            mdns.discover_by_capability(capability, Some(timeout)).await.unwrap_or_else(|e| {
                 debug!("mDNS discovery for '{}' unavailable: {}", capability, e);
                 Vec::new()
             });

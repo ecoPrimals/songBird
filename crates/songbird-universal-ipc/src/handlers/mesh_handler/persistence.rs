@@ -71,11 +71,7 @@ pub fn save_peers(node_id: &str, peers: &[(String, SocketAddr)]) {
             if let Err(e) = std::fs::write(&path, content) {
                 warn!("Failed to persist mesh peers to {}: {e}", path.display());
             } else {
-                info!(
-                    "Persisted {} mesh peer(s) to {}",
-                    file.peers.len(),
-                    path.display()
-                );
+                info!("Persisted {} mesh peer(s) to {}", file.peers.len(), path.display());
             }
         }
         Err(e) => warn!("Failed to serialize mesh peers: {e}"),
@@ -106,11 +102,7 @@ pub fn load_persisted_peers() -> Option<(String, Vec<(String, SocketAddr)>)> {
         return None;
     }
 
-    info!(
-        "Loaded {} persisted mesh peer(s) for node '{}'",
-        peers.len(),
-        file.node_id
-    );
+    info!("Loaded {} persisted mesh peer(s) for node '{}'", peers.len(), file.node_id);
 
     Some((file.node_id, peers))
 }
@@ -151,10 +143,8 @@ mod tests {
     fn with_temp_data_dir(f: impl FnOnce()) {
         let _lock = DATA_DIR_LOCK.lock().unwrap();
         let dir = TempDir::new().unwrap();
-        let _env = songbird_process_env::ScopedEnv::new(
-            "SONGBIRD_DATA_DIR",
-            dir.path().to_str().unwrap(),
-        );
+        let _env =
+            songbird_process_env::ScopedEnv::new("SONGBIRD_DATA_DIR", dir.path().to_str().unwrap());
         f();
     }
 
@@ -179,9 +169,8 @@ mod tests {
     #[test]
     fn save_merges_duplicates() {
         with_temp_data_dir(|| {
-            let peers1 = vec![
-                ("peer-a".to_string(), "10.0.0.1:7700".parse::<SocketAddr>().unwrap()),
-            ];
+            let peers1 =
+                vec![("peer-a".to_string(), "10.0.0.1:7700".parse::<SocketAddr>().unwrap())];
             save_peers("node-1", &peers1);
 
             let peers2 = vec![

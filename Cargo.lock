@@ -5101,6 +5101,7 @@ dependencies = [
  "serde_json",
  "songbird-config",
  "songbird-types",
+ "tempfile",
  "tokio",
  "tracing",
  "uuid",

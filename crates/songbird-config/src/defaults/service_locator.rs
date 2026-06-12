@@ -210,9 +210,16 @@ impl ServiceLocator {
         use std::os::unix::net::UnixStream;
 
         let socket_path = env_reader("SONGBIRD_IPC_SOCKET").unwrap_or_else(|_| {
-            let runtime_dir = env_reader("XDG_RUNTIME_DIR")
-                .unwrap_or_else(|_| "/run/user/1000".to_string());
-            format!("{runtime_dir}/biomeos/songbird.sock")
+            let runtime_dir = env_reader("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
+                dirs::runtime_dir()
+                    .unwrap_or_else(default_runtime_fallback)
+                    .to_string_lossy()
+                    .into_owned()
+            });
+            format!(
+                "{runtime_dir}/{}/songbird.sock",
+                songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR
+            )
         });
 
         let mut stream = UnixStream::connect(&socket_path).map_err(|e| {
@@ -221,9 +228,7 @@ impl ServiceLocator {
             ))
         })?;
 
-        stream
-            .set_read_timeout(Some(std::time::Duration::from_secs(2)))
-            .ok();
+        stream.set_read_timeout(Some(std::time::Duration::from_secs(2))).ok();
 
         let request = serde_json::json!({
             "jsonrpc": "2.0",
@@ -233,26 +238,24 @@ impl ServiceLocator {
         });
 
         let payload = format!("{request}\n");
-        stream.write_all(payload.as_bytes()).map_err(|e| {
-            SongbirdError::configuration(format!("IPC write failed: {e}"))
-        })?;
+        stream
+            .write_all(payload.as_bytes())
+            .map_err(|e| SongbirdError::configuration(format!("IPC write failed: {e}")))?;
 
         let mut response_buf = vec![0u8; 4096];
-        let n = stream.read(&mut response_buf).map_err(|e| {
-            SongbirdError::configuration(format!("IPC read failed: {e}"))
-        })?;
+        let n = stream
+            .read(&mut response_buf)
+            .map_err(|e| SongbirdError::configuration(format!("IPC read failed: {e}")))?;
 
-        let response: serde_json::Value =
-            serde_json::from_slice(&response_buf[..n]).map_err(|e| {
-                SongbirdError::configuration(format!("IPC response parse failed: {e}"))
-            })?;
+        let response: serde_json::Value = serde_json::from_slice(&response_buf[..n])
+            .map_err(|e| SongbirdError::configuration(format!("IPC response parse failed: {e}")))?;
 
         let endpoint = &response["result"]["endpoint"];
         let addr = match endpoint["transport"].as_str() {
             Some("tcp") => {
-                let host = endpoint["host"].as_str().unwrap_or("127.0.0.1");
-                let port = u16::try_from(endpoint["port"].as_u64().unwrap_or(0))
-                    .unwrap_or(0);
+                let host =
+                    endpoint["host"].as_str().unwrap_or(songbird_types::constants::LOCALHOST);
+                let port = u16::try_from(endpoint["port"].as_u64().unwrap_or(0)).unwrap_or(0);
                 format!("{host}:{port}").parse::<SocketAddr>().ok()
             }
             _ => None,
@@ -292,9 +295,16 @@ impl ServiceLocator {
         use std::os::unix::net::UnixStream;
 
         let socket_path = songbird_process_env::var("SONGBIRD_IPC_SOCKET").unwrap_or_else(|_| {
-            let runtime_dir = songbird_process_env::var("XDG_RUNTIME_DIR")
-                .unwrap_or_else(|_| "/run/user/1000".to_string());
-            format!("{runtime_dir}/biomeos/songbird.sock")
+            let runtime_dir = songbird_process_env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
+                dirs::runtime_dir()
+                    .unwrap_or_else(default_runtime_fallback)
+                    .to_string_lossy()
+                    .into_owned()
+            });
+            format!(
+                "{runtime_dir}/{}/songbird.sock",
+                songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR
+            )
         });
 
         let mut stream = UnixStream::connect(&socket_path).map_err(|e| {
@@ -303,9 +313,7 @@ impl ServiceLocator {
             ))
         })?;
 
-        stream
-            .set_write_timeout(Some(std::time::Duration::from_secs(2)))
-            .ok();
+        stream.set_write_timeout(Some(std::time::Duration::from_secs(2))).ok();
 
         let primal_id = songbird_process_env::var("SONGBIRD_PRIMAL_ID")
             .unwrap_or_else(|_| "songbird".to_string());
@@ -326,14 +334,12 @@ impl ServiceLocator {
         });
 
         let payload = format!("{request}\n");
-        stream.write_all(payload.as_bytes()).map_err(|e| {
-            SongbirdError::configuration(format!("IPC write failed: {e}"))
-        })?;
+        stream
+            .write_all(payload.as_bytes())
+            .map_err(|e| SongbirdError::configuration(format!("IPC write failed: {e}")))?;
 
         let mut response_buf = vec![0u8; 2048];
-        stream
-            .set_read_timeout(Some(std::time::Duration::from_secs(2)))
-            .ok();
+        stream.set_read_timeout(Some(std::time::Duration::from_secs(2))).ok();
         let n = stream.read(&mut response_buf).unwrap_or(0);
 
         if n > 0
@@ -366,6 +372,15 @@ impl ServiceLocator {
             advertise_addr,
         );
     }
+}
+
+/// Fallback runtime directory when `XDG_RUNTIME_DIR` is unset and `dirs::runtime_dir()` is `None`.
+///
+/// Derives from the system runtime constant rather than hardcoding a UID-specific path.
+fn default_runtime_fallback() -> PathBuf {
+    PathBuf::from(songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR)
+        .parent()
+        .map_or_else(|| PathBuf::from("/run"), Path::to_path_buf)
 }
 
 impl Default for ServiceLocator {

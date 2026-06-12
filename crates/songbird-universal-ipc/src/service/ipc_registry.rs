@@ -558,8 +558,7 @@ impl IpcServiceHandler {
                 signature: entry.signature,
                 signed_payload: entry.signed_payload,
             };
-            return serde_json::to_value(result)
-                .map_err(|e| format!("Serialization error: {e}"));
+            return serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"));
         }
         drop(registry);
 
@@ -587,8 +586,7 @@ impl IpcServiceHandler {
                 signature: None,
                 signed_payload: None,
             };
-            return serde_json::to_value(result)
-                .map_err(|e| format!("Serialization error: {e}"));
+            return serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"));
         }
 
         Err(format!("No provider found for capability: {}", params.capability))

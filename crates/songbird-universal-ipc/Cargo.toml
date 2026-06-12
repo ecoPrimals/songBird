@@ -79,7 +79,7 @@ toml = { workspace = true }
 
 # HTTP client for cross-gate dispatch (remote peers run axum HTTP servers)
 hyper = { workspace = true }
-hyper-util = { version = "0.1", features = ["tokio", "client-legacy", "http1"] }
+hyper-util = { workspace = true }
 http-body-util = { workspace = true }
 
 # Windows named pipes (only on Windows)

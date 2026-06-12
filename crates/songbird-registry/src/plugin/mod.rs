@@ -6,13 +6,13 @@
 //! Provides runtime plugin discovery and composition capabilities.
 //! Plugins are metadata-only [`RegisteredPlugin`] structs (no trait-object dispatch).
 
+use serde_json;
+use songbird_types::errors::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde_json;
-use uuid::Uuid;
-use songbird_types::errors::{SongbirdResult, SongbirdError};
 use tracing;
+use uuid::Uuid;
 
 // NOTE: Plugin types defined locally until architecture is finalized
 // FUTURE WORK: Move to songbird-discovery::traits once plugin system is fully implemented
@@ -159,7 +159,10 @@ pub struct DynamicPluginRegistry {
     plugins: Arc<RwLock<HashMap<String, RegisteredPlugin>>>,
     capabilities: Arc<RwLock<HashMap<String, PluginCapability>>>,
     requirements: Arc<RwLock<HashMap<String, Vec<PluginRequirement>>>>,
-    #[allow(dead_code, reason = "populated by register(); topological sort used by validate_composition()")]
+    #[allow(
+        dead_code,
+        reason = "populated by register(); topological sort used by validate_composition()"
+    )]
     requirement_graph: Arc<RwLock<HashMap<String, Vec<String>>>>,
     #[allow(dead_code, reason = "tracks global health; consumed by future lifecycle.health API")]
     system_health: Arc<RwLock<SystemHealth>>,
@@ -196,7 +199,10 @@ impl DynamicPluginRegistry {
     }
 
     /// Get plugin capabilities
-    pub async fn get_plugin_capabilities(&self, plugin_id: &str) -> SongbirdResult<Vec<PluginCapability>> {
+    pub async fn get_plugin_capabilities(
+        &self,
+        plugin_id: &str,
+    ) -> SongbirdResult<Vec<PluginCapability>> {
         let plugins = self.plugins.read().await;
         Ok(plugins.get(plugin_id).map_or_else(Vec::new, |p| p.capabilities.clone()))
     }
@@ -269,9 +275,8 @@ impl DynamicPluginRegistry {
     ) -> SongbirdResult<CompositionPlan> {
         let plugin_count = plugin_combination.len();
 
-        let base_latency = constraints
-            .max_latency_ms
-            .map_or(Self::DEFAULT_ESTIMATED_LATENCY_MS, |max| max * 0.5);
+        let base_latency =
+            constraints.max_latency_ms.map_or(Self::DEFAULT_ESTIMATED_LATENCY_MS, |max| max * 0.5);
 
         let estimated_performance = PerformanceEstimate {
             latency_ms: base_latency * plugin_count as f64,
@@ -313,7 +318,6 @@ impl DynamicPluginRegistry {
 
         Ok(combinations)
     }
-
 }
 
 impl Default for DynamicPluginRegistry {
@@ -370,10 +374,7 @@ impl DynamicPluginRegistry {
             .await?;
 
         plans.into_iter().next().ok_or_else(|| {
-            SongbirdError::service(
-                "plugin-registry",
-                "No viable composition found".to_string(),
-            )
+            SongbirdError::service("plugin-registry", "No viable composition found".to_string())
         })
     }
 
@@ -427,21 +428,32 @@ impl DynamicPluginRegistry {
 impl DynamicPluginRegistry {
     fn requirement_to_capability(requirement: &PluginRequirement) -> PluginCapability {
         match requirement {
-            PluginRequirement::RequiresEncryption { .. } => PluginCapability::Encryption {
+            PluginRequirement::RequiresEncryption {
+                ..
+            } => PluginCapability::Encryption {
                 algorithms: vec![String::from(Self::WELL_KNOWN_ENCRYPTION_ALGORITHM)],
             },
             PluginRequirement::RequiresServiceDiscovery => PluginCapability::ServiceDiscovery {
                 protocols: vec![String::from(Self::WELL_KNOWN_DISCOVERY_PROTOCOL)],
             },
-            PluginRequirement::RequiresCompute { min_cpu_cores, min_memory_gb } => PluginCapability::Compute {
+            PluginRequirement::RequiresCompute {
+                min_cpu_cores,
+                min_memory_gb,
+            } => PluginCapability::Compute {
                 cpu_cores: *min_cpu_cores,
                 memory_gb: *min_memory_gb,
             },
-            PluginRequirement::RequiresNetwork { min_bandwidth_mbps, max_latency_ms } => PluginCapability::Network {
+            PluginRequirement::RequiresNetwork {
+                min_bandwidth_mbps,
+                max_latency_ms,
+            } => PluginCapability::Network {
                 bandwidth_mbps: *min_bandwidth_mbps,
                 latency_ms: *max_latency_ms,
             },
-            PluginRequirement::Custom { name, .. } => PluginCapability::Custom {
+            PluginRequirement::Custom {
+                name,
+                ..
+            } => PluginCapability::Custom {
                 name: name.clone(),
                 attributes: HashMap::new(),
             },
@@ -582,12 +594,8 @@ mod tests {
     #[tokio::test]
     async fn discover_plugins_finds_matching() {
         let reg = DynamicPluginRegistry::new();
-        reg.register_plugin("enc-1".into(), vec![encryption_cap()], vec![])
-            .await
-            .unwrap();
-        reg.register_plugin("disc-1".into(), vec![discovery_cap()], vec![])
-            .await
-            .unwrap();
+        reg.register_plugin("enc-1".into(), vec![encryption_cap()], vec![]).await.unwrap();
+        reg.register_plugin("disc-1".into(), vec![discovery_cap()], vec![]).await.unwrap();
 
         let found = reg
             .discover_plugins(vec![PluginRequirement::RequiresEncryption {
@@ -602,9 +610,7 @@ mod tests {
     #[tokio::test]
     async fn discover_plugins_returns_empty_when_none_match() {
         let reg = DynamicPluginRegistry::new();
-        reg.register_plugin("disc-1".into(), vec![discovery_cap()], vec![])
-            .await
-            .unwrap();
+        reg.register_plugin("disc-1".into(), vec![discovery_cap()], vec![]).await.unwrap();
 
         let found = reg
             .discover_plugins(vec![PluginRequirement::RequiresCompute {
@@ -634,12 +640,8 @@ mod tests {
     #[tokio::test]
     async fn discover_optimal_composition_returns_plans() {
         let reg = DynamicPluginRegistry::new();
-        reg.register_plugin("enc-a".into(), vec![encryption_cap()], vec![])
-            .await
-            .unwrap();
-        reg.register_plugin("enc-b".into(), vec![encryption_cap()], vec![])
-            .await
-            .unwrap();
+        reg.register_plugin("enc-a".into(), vec![encryption_cap()], vec![]).await.unwrap();
+        reg.register_plugin("enc-b".into(), vec![encryption_cap()], vec![]).await.unwrap();
 
         let plans = reg
             .discover_optimal_composition(
@@ -658,9 +660,7 @@ mod tests {
     #[tokio::test]
     async fn auto_compose_succeeds_with_matching_plugin() {
         let reg = DynamicPluginRegistry::new();
-        reg.register_plugin("net-1".into(), vec![compute_cap(4, 8)], vec![])
-            .await
-            .unwrap();
+        reg.register_plugin("net-1".into(), vec![compute_cap(4, 8)], vec![]).await.unwrap();
 
         let plan = reg.auto_compose(vec![compute_cap(4, 8)]).await.unwrap();
         assert!(!plan.plugins.is_empty());
@@ -676,9 +676,7 @@ mod tests {
     #[tokio::test]
     async fn execute_composition_produces_system() {
         let reg = DynamicPluginRegistry::new();
-        reg.register_plugin("p1".into(), vec![encryption_cap()], vec![])
-            .await
-            .unwrap();
+        reg.register_plugin("p1".into(), vec![encryption_cap()], vec![]).await.unwrap();
 
         let plan = CompositionPlan {
             plugins: vec!["p1".into()],
@@ -700,9 +698,7 @@ mod tests {
     #[tokio::test]
     async fn execute_composition_unhealthy_when_plugin_not_in_plugins_map() {
         let reg = DynamicPluginRegistry::new();
-        reg.register_plugin("registered".into(), vec![], vec![])
-            .await
-            .unwrap();
+        reg.register_plugin("registered".into(), vec![], vec![]).await.unwrap();
 
         let plan = CompositionPlan {
             plugins: vec!["registered".into(), "ghost".into()],
@@ -723,7 +719,9 @@ mod tests {
     #[test]
     fn requirement_to_capability_maps_correctly() {
         let enc = DynamicPluginRegistry::requirement_to_capability(
-            &PluginRequirement::RequiresEncryption { min_key_size: Some(256) },
+            &PluginRequirement::RequiresEncryption {
+                min_key_size: Some(256),
+            },
         );
         assert!(matches!(enc, PluginCapability::Encryption { .. }));
 
@@ -732,15 +730,31 @@ mod tests {
         );
         assert!(matches!(disc, PluginCapability::ServiceDiscovery { .. }));
 
-        let compute = DynamicPluginRegistry::requirement_to_capability(
-            &PluginRequirement::RequiresCompute { min_cpu_cores: 2, min_memory_gb: 4 },
-        );
-        assert!(matches!(compute, PluginCapability::Compute { cpu_cores: 2, memory_gb: 4 }));
+        let compute =
+            DynamicPluginRegistry::requirement_to_capability(&PluginRequirement::RequiresCompute {
+                min_cpu_cores: 2,
+                min_memory_gb: 4,
+            });
+        assert!(matches!(
+            compute,
+            PluginCapability::Compute {
+                cpu_cores: 2,
+                memory_gb: 4
+            }
+        ));
 
-        let net = DynamicPluginRegistry::requirement_to_capability(
-            &PluginRequirement::RequiresNetwork { min_bandwidth_mbps: 100, max_latency_ms: 5 },
-        );
-        assert!(matches!(net, PluginCapability::Network { bandwidth_mbps: 100, latency_ms: 5 }));
+        let net =
+            DynamicPluginRegistry::requirement_to_capability(&PluginRequirement::RequiresNetwork {
+                min_bandwidth_mbps: 100,
+                max_latency_ms: 5,
+            });
+        assert!(matches!(
+            net,
+            PluginCapability::Network {
+                bandwidth_mbps: 100,
+                latency_ms: 5
+            }
+        ));
     }
 
     #[tokio::test]
@@ -771,12 +785,8 @@ mod tests {
     #[tokio::test]
     async fn performance_estimate_scales_with_plugins() {
         let reg = DynamicPluginRegistry::new();
-        reg.register_plugin("p1".into(), vec![encryption_cap()], vec![])
-            .await
-            .unwrap();
-        reg.register_plugin("p2".into(), vec![encryption_cap()], vec![])
-            .await
-            .unwrap();
+        reg.register_plugin("p1".into(), vec![encryption_cap()], vec![]).await.unwrap();
+        reg.register_plugin("p2".into(), vec![encryption_cap()], vec![]).await.unwrap();
 
         let plans = reg
             .discover_optimal_composition(
@@ -791,6 +801,8 @@ mod tests {
         let pair = plans.iter().find(|p| p.plugins.len() == 2).unwrap();
 
         assert!(pair.estimated_performance.latency_ms > single.estimated_performance.latency_ms);
-        assert!(pair.estimated_performance.throughput_rps < single.estimated_performance.throughput_rps);
+        assert!(
+            pair.estimated_performance.throughput_rps < single.estimated_performance.throughput_rps
+        );
     }
 }

@@ -279,7 +279,6 @@ pub mod well_known {
     pub const fn metrics() -> u16 {
         9090
     }
-
 }
 
 #[cfg(test)]
