@@ -4,6 +4,17 @@
 use super::{FederationPeersResponse, FederationStatusResponse, IpcServiceHandler};
 use serde_json::Value;
 
+/// Check if federation is configured via environment variables (fallback when
+/// `FederationState` is not injected into the handler — e.g. standalone IPC path).
+fn federation_configured_via_env() -> bool {
+    songbird_process_env::var("SONGBIRD_FEDERATION_ENABLED")
+        .or_else(|_| songbird_process_env::var("FEDERATION_ENABLED"))
+        .map(|v| matches!(v.to_lowercase().as_str(), "true" | "1" | "yes" | "on"))
+        .unwrap_or(false)
+        || songbird_process_env::var("SONGBIRD_PEERS").is_ok()
+        || songbird_process_env::var("SONGBIRD_FEDERATION_PORT").is_ok()
+}
+
 impl IpcServiceHandler {
     /// Handle `birdsong.advertise` method
     ///
@@ -88,7 +99,7 @@ impl IpcServiceHandler {
             return serde_json::to_value(FederationPeersResponse {
                 peers: vec![],
                 total_count: 0,
-                federation_enabled: false,
+                federation_enabled: federation_configured_via_env(),
             })
             .map_err(|e| format!("Serialization error: {e}"));
         };
@@ -108,12 +119,12 @@ impl IpcServiceHandler {
 
     /// `songbird.federation.status` / `federation.status`
     ///
-    /// `enabled` reflects whether federation was configured at startup (state injected),
+    /// `enabled` reflects whether federation was configured (state injected OR env vars set),
     /// NOT whether remote peers are connected. Use `active_connections` for connectivity.
     pub(super) async fn handle_federation_status_rpc(&self) -> Result<Value, String> {
         let Some(ref state) = self.federation_state else {
             return serde_json::to_value(FederationStatusResponse {
-                enabled: false,
+                enabled: federation_configured_via_env(),
                 active_connections: 0,
             })
             .map_err(|e| format!("Serialization error: {e}"));
@@ -389,5 +400,31 @@ mod tests {
         })
         .expect("to_value status");
         assert_eq!(st, expected_st);
+    }
+
+    #[tokio::test]
+    async fn federation_status_reads_env_var_when_state_not_injected() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new_isolated(registry);
+
+        let _env = songbird_process_env::ScopedEnv::new("SONGBIRD_FEDERATION_ENABLED", "true");
+
+        let st = handler.handle("federation.status", json!({})).await.expect("status");
+        assert_eq!(st["enabled"], json!(true), "env var should wire into response");
+        assert_eq!(st["active_connections"], json!(0));
+
+        let p = handler.handle("federation.peers", json!({})).await.expect("peers");
+        assert_eq!(p["federation_enabled"], json!(true));
+    }
+
+    #[tokio::test]
+    async fn federation_status_reads_peers_env_as_implicit_enabled() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new_isolated(registry);
+
+        let _env = songbird_process_env::ScopedEnv::new("SONGBIRD_PEERS", "157.230.3.183:7700");
+
+        let st = handler.handle("federation.status", json!({})).await.expect("status");
+        assert_eq!(st["enabled"], json!(true), "SONGBIRD_PEERS implies federation enabled");
     }
 }

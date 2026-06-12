@@ -179,21 +179,24 @@ impl MeshHandler {
             mesh.add_endpoint(peer_id.clone(), endpoint).await;
         }
 
+        let mesh_ref = Arc::clone(&mesh);
         *self.mesh.write().await = Some(mesh);
         *self.node_id.write().await = node_id.clone();
 
+        let peers_added = bootstrap_peers.len();
         if !bootstrap_peers.is_empty() {
+            Self::spawn_peer_health_loop(mesh_ref, bootstrap_peers.clone());
+
             let node_id_owned = node_id.as_ref().to_string();
-            let peers_owned = bootstrap_peers.clone();
             tokio::task::spawn_blocking(move || {
-                persistence::save_peers(&node_id_owned, &peers_owned);
+                persistence::save_peers(&node_id_owned, &bootstrap_peers);
             });
         }
 
         Ok(json!({
             "initialized": true,
             "node_id": node_id.as_ref(),
-            "bootstrap_peers_added": bootstrap_peers.len()
+            "bootstrap_peers_added": peers_added
         }))
     }
 
@@ -743,6 +746,63 @@ impl MeshHandler {
 
         let rtt = start.elapsed();
         Ok(rtt)
+    }
+
+    /// Background peer health loop: periodically re-probes bootstrap peers.
+    ///
+    /// When a peer is unreachable, applies exponential backoff (30s → 60s → 120s → cap 300s).
+    /// When a previously-failed peer responds, records fresh latency and restores reachability.
+    /// This enables auto-reconnect after VPS/peer restarts without manual `mesh.init`.
+    fn spawn_peer_health_loop(
+        mesh: Arc<BeaconMesh>,
+        bootstrap_peers: Vec<(String, std::net::SocketAddr)>,
+    ) {
+        use std::collections::HashMap;
+
+        tokio::spawn(async move {
+            let base_interval = Duration::from_secs(30);
+            let max_interval = Duration::from_secs(300);
+            let probe_timeout = Duration::from_secs(5);
+            let mut backoff: HashMap<String, u32> = HashMap::new();
+            let mut next_probe: HashMap<String, tokio::time::Instant> =
+                bootstrap_peers.iter().map(|(id, _)| (id.clone(), tokio::time::Instant::now() + base_interval)).collect();
+
+            loop {
+                tokio::time::sleep(Duration::from_secs(10)).await;
+
+                let now = tokio::time::Instant::now();
+                for (peer_id, addr) in &bootstrap_peers {
+                    let due = next_probe.get(peer_id).copied().unwrap_or(now);
+                    if now < due {
+                        continue;
+                    }
+
+                    if let Ok(rtt) = Self::probe_peer_rtt(*addr, probe_timeout).await {
+                        mesh.record_direct_connection(peer_id.clone(), *addr, rtt).await;
+                        backoff.remove(peer_id);
+                        next_probe.insert(peer_id.clone(), now + base_interval);
+                        tracing::debug!(
+                            peer = %peer_id,
+                            latency_ms = %rtt.as_millis(),
+                            "mesh health: peer alive"
+                        );
+                    } else {
+                        let failures = backoff.entry(peer_id.clone()).or_insert(0);
+                        *failures = failures.saturating_add(1);
+                        let wait = base_interval
+                            .saturating_mul(2u32.saturating_pow(*failures))
+                            .min(max_interval);
+                        next_probe.insert(peer_id.clone(), now + wait);
+                        tracing::debug!(
+                            peer = %peer_id,
+                            failures = *failures,
+                            next_retry_s = %wait.as_secs(),
+                            "mesh health: peer unreachable, backing off"
+                        );
+                    }
+                }
+            }
+        });
     }
 
     /// Handle `mesh.publish` — publish freshness/drift status to the mesh.
