@@ -399,6 +399,10 @@ impl UnixSocketServer {
                 _ => unreachable!(),
             }
         } else if first_meaningful_byte == b'{' {
+            // Wave 112: ERROR on unsignalled connections (deprecation escalation)
+            error!(
+                "UDS JSON-RPC connection without riboCipher signal — legacy path (deprecated Wave 112, reject Wave 113)"
+            );
             let mut first_line = String::new();
             reader.read_line(&mut first_line).await.context("UDS: failed to read first line")?;
 
@@ -443,9 +447,9 @@ impl UnixSocketServer {
             }
         } else {
             // Legacy: non-riboCipher, non-JSON first byte → binary BTSP
-            // Wave 112+: WARN here that connection lacks riboCipher signal
-            debug!(
-                "UDS peek: binary protocol detected (0x{first_meaningful_byte:02X}) — BTSP handshake (legacy, no riboCipher signal)"
+            // Wave 112: ERROR on unsignalled connections (deprecation escalation)
+            error!(
+                "UDS connection without riboCipher signal (0x{first_meaningful_byte:02X}) — legacy BTSP path (deprecated Wave 112, reject Wave 113)"
             );
             let stream = PeekedStream {
                 reader,

@@ -436,6 +436,12 @@ async fn start_https_server(
                     return;
                 }
 
+                // Wave 112: ERROR on unsignalled connections (deprecation escalation)
+                tracing::error!(
+                    "Federation connection from {} without riboCipher signal (0x{first_byte:02X}) — legacy path (deprecated Wave 112, reject Wave 113)",
+                    remote_addr
+                );
+
                 let is_tls = first_byte == 0x16; // TLS Handshake content type
 
                 // Import shared dependencies
