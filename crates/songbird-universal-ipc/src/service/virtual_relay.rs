@@ -9,7 +9,7 @@
 //! (opt-out via `native: true`).
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -523,14 +523,6 @@ fn make_error_response(request_line: &str, error: &anyhow::Error) -> serde_json:
         },
         "id": id
     })
-}
-
-/// Resolve the relay socket path for a primal given the base directory.
-///
-/// Utility for callers who don't have a `VirtualRelayManager` reference.
-#[must_use]
-pub fn virtual_socket_path(base_dir: &Path, primal_name: &str) -> PathBuf {
-    base_dir.join(format!("{primal_name}.sock"))
 }
 
 #[cfg(test)]

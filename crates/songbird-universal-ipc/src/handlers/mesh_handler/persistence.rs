@@ -12,13 +12,15 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
-use tracing::{debug, info, warn};
+#[cfg(test)]
+use tracing::debug;
+use tracing::{info, warn};
 
 /// A single persisted peer entry.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
-pub struct PersistedPeer {
-    pub node_id: String,
-    pub address: String,
+struct PersistedPeer {
+    node_id: String,
+    address: String,
 }
 
 /// Top-level structure for the peers.toml file.
@@ -41,7 +43,7 @@ fn peers_file_path() -> PathBuf {
 ///
 /// Merges with any existing peers (deduplicates by `node_id`, preferring
 /// the newer address if it differs).
-pub fn save_peers(node_id: &str, peers: &[(String, SocketAddr)]) {
+pub(crate) fn save_peers(node_id: &str, peers: &[(String, SocketAddr)]) {
     let path = peers_file_path();
 
     let mut file = load_peers_file().unwrap_or_default();
@@ -108,7 +110,8 @@ pub fn load_persisted_peers() -> Option<(String, Vec<(String, SocketAddr)>)> {
 }
 
 /// Remove a peer from the persisted store (e.g., after permanent disconnect).
-pub fn remove_persisted_peer(node_id: &str) {
+#[cfg(test)]
+fn remove_persisted_peer(node_id: &str) {
     let path = peers_file_path();
     let Some(mut file) = load_peers_file() else {
         return;

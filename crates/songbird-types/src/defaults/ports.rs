@@ -81,3 +81,9 @@ pub const CONSUL_DEFAULT_PORT: u16 = 8500;
 pub const EUREKA_DEFAULT_PORT: u16 = 8761;
 /// Broadcast/mDNS discovery port (env: `SONGBIRD_BROADCAST_DISCOVERY_PORT`)
 pub const DEFAULT_BROADCAST_DISCOVERY_PORT: u16 = 2300;
+/// Default AI provider port (env: `SONGBIRD_AI_PROVIDER_PORT`)
+pub const DEFAULT_AI_PROVIDER_PORT: u16 = 8083;
+/// Default federation broadcast port (secondary range)
+pub const DEFAULT_FEDERATION_BROADCAST_PORT: u16 = 8090;
+/// Default IPC listen port (env: `SONGBIRD_IPC_PORT`)
+pub const DEFAULT_IPC_LISTEN_PORT: u16 = 9901;

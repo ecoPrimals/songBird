@@ -300,13 +300,19 @@ impl Default for PrimalConfig {
             &["SONGBIRD_COMPUTE_PROVIDER_ENDPOINT", "SONGBIRD_COMPUTE_ENDPOINT"],
             "SONGBIRD_TOADSTOOL_ENDPOINT",
             "SONGBIRD_COMPUTE_PROVIDER_ENDPOINT",
-            &format!("http://{base_ip}:8082"),
+            &format!(
+                "http://{base_ip}:{}",
+                songbird_types::defaults::ports::DEFAULT_FEDERATION_COORDINATION_PORT
+            ),
         ));
         let ai_provider_endpoint: Arc<str> = Arc::from(env_capability_first_then_legacy_warn(
             &["SONGBIRD_AI_PROVIDER_ENDPOINT", "SONGBIRD_AI_ENDPOINT"],
             "SONGBIRD_SQUIRREL_ENDPOINT",
             "SONGBIRD_AI_PROVIDER_ENDPOINT",
-            &format!("http://{base_ip}:8083"),
+            &format!(
+                "http://{base_ip}:{}",
+                songbird_types::defaults::ports::DEFAULT_AI_PROVIDER_PORT
+            ),
         ));
 
         let security_provider_endpoint: Arc<str> =
@@ -314,7 +320,10 @@ impl Default for PrimalConfig {
                 &["SONGBIRD_SECURITY_PROVIDER_ENDPOINT", "SONGBIRD_SECURITY_ENDPOINT"],
                 "SONGBIRD_BEARDOG_ENDPOINT",
                 "SONGBIRD_SECURITY_PROVIDER_ENDPOINT",
-                &format!("https://{base_ip}:8443"),
+                &format!(
+                    "https://{base_ip}:{}",
+                    songbird_types::defaults::ports::DEFAULT_HTTPS_PORT
+                ),
             ));
 
         Self {
@@ -331,7 +340,10 @@ impl Default for PrimalConfig {
                 ),
                 env_or_default(
                     "SONGBIRD_DISCOVERY_ENDPOINT_2",
-                    &format!("http://{base_ip}:8081/discovery"),
+                    &format!(
+                        "http://{base_ip}:{}/discovery",
+                        songbird_types::defaults::ports::DEFAULT_DISCOVERY_SERVICE_PORT
+                    ),
                 ),
             ],
             base_port,
@@ -370,14 +382,30 @@ impl Default for FederationConfig {
                     "SONGBIRD_CLUSTER_ENDPOINT_1",
                     &format!("http://{base_ip}:{base_port}"),
                 ),
-                env_or_default("SONGBIRD_CLUSTER_ENDPOINT_2", &format!("http://{base_ip}:8081")),
+                env_or_default(
+                    "SONGBIRD_CLUSTER_ENDPOINT_2",
+                    &format!(
+                        "http://{base_ip}:{}",
+                        songbird_types::defaults::ports::DEFAULT_METRICS_PORT
+                    ),
+                ),
             ],
             heartbeat_endpoint: env_or_default(
                 "SONGBIRD_HEARTBEAT_ENDPOINT",
                 &format!("http://{base_ip}:{base_port}/federation/heartbeat"),
             ),
-            broadcast_ports: vec![8080, 8081, 8082, 8090],
-            discovery_ports: vec![8080, 8000, 3000, 5000],
+            broadcast_ports: vec![
+                songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
+                songbird_types::defaults::ports::DEFAULT_METRICS_PORT,
+                songbird_types::defaults::ports::DEFAULT_FEDERATION_COORDINATION_PORT,
+                songbird_types::defaults::ports::DEFAULT_FEDERATION_BROADCAST_PORT,
+            ],
+            discovery_ports: vec![
+                songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
+                songbird_types::defaults::ports::DEFAULT_FEDERATION_PORT,
+                songbird_types::defaults::ports::DEFAULT_DASHBOARD_UI_PORT,
+                5000,
+            ],
             default_cluster_id: env_or_default("SONGBIRD_CLUSTER_ID", "songbird-cluster"),
             auto_discovery_enabled: env_or_default("SONGBIRD_AUTO_DISCOVERY", "true") == "true",
         }

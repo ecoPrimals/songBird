@@ -268,7 +268,10 @@ fn spawn_ipc_listener(
         tracing::info!("");
         tracing::info!("💡 Tip: Use --socket or --listen to enable IPC");
         tracing::info!("   Unix: --socket /run/user/$(id -u)/biomeos/songbird.sock");
-        tracing::info!("   TCP:  --listen 127.0.0.1:9901 (Android/Universal)");
+        tracing::info!(
+            "   TCP:  --listen 127.0.0.1:{} (Android/Universal)",
+            songbird_types::defaults::ports::DEFAULT_IPC_LISTEN_PORT
+        );
         None
     }
 }
