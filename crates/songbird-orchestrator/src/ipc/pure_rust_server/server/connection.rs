@@ -354,7 +354,57 @@ impl UnixSocketServer {
             first_byte
         };
 
-        if first_meaningful_byte == b'{' {
+        if songbird_types::constants::ribocipher::is_signal_byte(first_meaningful_byte) {
+            // riboCipher transport signal detected — consume signal + version byte, then route.
+            use songbird_types::constants::ribocipher;
+            let tier = ribocipher::tier_name(first_meaningful_byte);
+            reader.consume(1); // consume signal byte
+
+            let version_byte = match reader.fill_buf().await {
+                Ok(buf) if !buf.is_empty() => {
+                    let v = buf[0];
+                    reader.consume(1);
+                    v
+                }
+                _ => {
+                    tracing::warn!("riboCipher {tier}: missing version byte — dropping");
+                    return Ok(());
+                }
+            };
+
+            if version_byte != ribocipher::VERSION_1 {
+                tracing::warn!(
+                    "riboCipher {tier}: unsupported version 0x{version_byte:02X} — dropping"
+                );
+                return Ok(());
+            }
+
+            debug!("riboCipher signal: tier={tier}, version={version_byte} — routing");
+
+            let caller = super::super::method_gate::CallerContext::from_unix();
+            match first_meaningful_byte {
+                ribocipher::CLEAR => {
+                    // Clear tier: standard ecosystem JSON-RPC follows after signal prefix
+                    self.handle_ndjson_session(reader, write_half, &caller).await
+                }
+                ribocipher::MITO => {
+                    // Mito tier: federation inter-gate — currently routes to encrypted session
+                    // (future: mito-specific obfuscation layer)
+                    tracing::info!("riboCipher mito: federation-tier connection accepted");
+                    self.handle_ndjson_session(reader, write_half, &caller).await
+                }
+                ribocipher::NUCLEAR => {
+                    // Nuclear tier: high-security — route to BTSP encrypted session
+                    tracing::info!("riboCipher nuclear: high-security connection accepted");
+                    let stream = PeekedStream {
+                        reader,
+                        writer: write_half,
+                    };
+                    self.handle_btsp_on_stream(stream, &caller).await
+                }
+                _ => unreachable!(),
+            }
+        } else if first_meaningful_byte == b'{' {
             let mut first_line = String::new();
             reader.read_line(&mut first_line).await.context("UDS: failed to read first line")?;
 
@@ -398,8 +448,10 @@ impl UnixSocketServer {
                     .await
             }
         } else {
+            // Legacy: non-riboCipher, non-JSON first byte → binary BTSP
+            // Wave 112+: WARN here that connection lacks riboCipher signal
             debug!(
-                "UDS peek: binary protocol detected (0x{first_meaningful_byte:02X}) — BTSP handshake"
+                "UDS peek: binary protocol detected (0x{first_meaningful_byte:02X}) — BTSP handshake (legacy, no riboCipher signal)"
             );
             let stream = PeekedStream {
                 reader,

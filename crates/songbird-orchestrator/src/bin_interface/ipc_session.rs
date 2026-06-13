@@ -66,10 +66,11 @@ pub(super) async fn dispatch_gated(
     }
 }
 
-/// Handle a single connection with BTSP auto-detection.
+/// Handle a single connection with riboCipher signal detection + BTSP auto-detection.
 ///
-/// Reads the first line from the stream. If it looks like a BTSP `ClientHello`,
-/// performs the NDJSON handshake before falling through to JSON-RPC.
+/// Peeks the first byte to detect riboCipher transport signals (`0xEC`/`0xED`/`0xEE`).
+/// If no signal is present, falls back to line-based BTSP detection for backward
+/// compatibility (legacy path — will WARN in Wave 112+).
 pub(super) async fn handle_connection<S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin>(
     stream: S,
     handler: Arc<IpcServiceHandler>,
@@ -77,8 +78,67 @@ pub(super) async fn handle_connection<S: tokio::io::AsyncRead + tokio::io::Async
     peer_label: &str,
     caller: &CallerContext,
 ) {
+    use songbird_types::constants::ribocipher;
+
     let (reader, mut writer) = tokio::io::split(stream);
     let mut reader = BufReader::new(reader);
+
+    // Peek first byte for riboCipher signal detection
+    let first_byte = match reader.fill_buf().await {
+        Ok(buf) if !buf.is_empty() => buf[0],
+        Ok(_) => {
+            tracing::debug!("{peer_label} disconnected before sending data");
+            return;
+        }
+        Err(e) => {
+            tracing::error!("{peer_label} read error on peek: {e}");
+            return;
+        }
+    };
+
+    if ribocipher::is_signal_byte(first_byte) {
+        let tier = ribocipher::tier_name(first_byte);
+        reader.consume(1); // consume signal byte
+
+        // Read version byte
+        let version_ok = match reader.fill_buf().await {
+            Ok(buf) if !buf.is_empty() && buf[0] == ribocipher::VERSION_1 => {
+                reader.consume(1);
+                true
+            }
+            Ok(buf) if !buf.is_empty() => {
+                tracing::warn!(
+                    "{peer_label} riboCipher {tier}: unsupported version 0x{:02X}",
+                    buf[0]
+                );
+                false
+            }
+            _ => {
+                tracing::warn!("{peer_label} riboCipher {tier}: missing version byte");
+                false
+            }
+        };
+
+        if !version_ok {
+            return;
+        }
+
+        tracing::debug!("{peer_label} riboCipher signal: tier={tier}");
+
+        // After consuming the 2-byte signal prefix, route to JSON-RPC session
+        handle_json_rpc_lines(
+            &mut reader,
+            &mut writer,
+            &handler,
+            &security_client,
+            peer_label,
+            caller,
+        )
+        .await;
+        return;
+    }
+
+    // Legacy path: line-based BTSP/JSON-RPC detection (no riboCipher prefix)
     let mut first_line = String::new();
 
     match reader.read_line(&mut first_line).await {

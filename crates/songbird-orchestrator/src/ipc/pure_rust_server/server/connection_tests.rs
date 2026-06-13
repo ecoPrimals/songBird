@@ -514,3 +514,128 @@ async fn encrypted_session_concurrent_multi_client() {
         h.await.unwrap();
     }
 }
+
+// ============================================================================
+// riboCipher transport signal detection tests
+// ============================================================================
+
+/// Verifies that a clear-tier riboCipher signal (0xEC 0x01) followed by
+/// JSON-RPC is routed correctly through `handle_connection_with_peek`.
+#[cfg(unix)]
+#[tokio::test]
+async fn ribocipher_clear_signal_routes_to_ndjson() {
+    use songbird_types::constants::ribocipher;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let server = test_server();
+    let (mut client, server_stream) = tokio::net::UnixStream::pair().unwrap();
+
+    let server_handle = tokio::spawn(async move {
+        server.handle_connection_with_peek(server_stream).await
+    });
+
+    // Send riboCipher clear prefix + JSON-RPC request
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "health.liveness",
+        "id": 1
+    });
+    let mut payload = ribocipher::CLEAR_PREFIX.to_vec();
+    let req_bytes = serde_json::to_vec(&request).unwrap();
+    payload.extend_from_slice(&req_bytes);
+    payload.push(b'\n');
+    client.write_all(&payload).await.unwrap();
+
+    // Read response
+    let mut buf = vec![0u8; 4096];
+    let n = client.read(&mut buf).await.unwrap();
+    assert!(n > 0, "expected response from server");
+
+    let resp: serde_json::Value = serde_json::from_slice(&buf[..n]).unwrap();
+    assert_eq!(resp["id"], 1);
+    assert!(resp.get("result").is_some() || resp.get("error").is_some());
+
+    drop(client);
+    let _ = server_handle.await;
+}
+
+/// Verifies that mito-tier riboCipher signal (0xED 0x01) is accepted and
+/// routes to federation-tier NDJSON processing.
+#[cfg(unix)]
+#[tokio::test]
+async fn ribocipher_mito_signal_accepted() {
+    use songbird_types::constants::ribocipher;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let server = test_server();
+    let (mut client, server_stream) = tokio::net::UnixStream::pair().unwrap();
+
+    let server_handle = tokio::spawn(async move {
+        server.handle_connection_with_peek(server_stream).await
+    });
+
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "health.liveness",
+        "id": 42
+    });
+    let mut payload = ribocipher::MITO_PREFIX.to_vec();
+    let req_bytes = serde_json::to_vec(&request).unwrap();
+    payload.extend_from_slice(&req_bytes);
+    payload.push(b'\n');
+    client.write_all(&payload).await.unwrap();
+
+    let mut buf = vec![0u8; 4096];
+    let n = client.read(&mut buf).await.unwrap();
+    assert!(n > 0, "expected mito-tier response");
+
+    let resp: serde_json::Value = serde_json::from_slice(&buf[..n]).unwrap();
+    assert_eq!(resp["id"], 42);
+
+    drop(client);
+    let _ = server_handle.await;
+}
+
+/// Verifies that an unsupported riboCipher version byte causes a clean drop
+/// without panic or hang.
+#[cfg(unix)]
+#[tokio::test]
+async fn ribocipher_unsupported_version_drops_cleanly() {
+    use tokio::io::AsyncWriteExt;
+
+    let server = test_server();
+    let (mut client, server_stream) = tokio::net::UnixStream::pair().unwrap();
+
+    let server_handle = tokio::spawn(async move {
+        server.handle_connection_with_peek(server_stream).await
+    });
+
+    // Send signal byte 0xEC with bad version 0xFF
+    client.write_all(&[0xEC, 0xFF]).await.unwrap();
+    drop(client);
+
+    let result = server_handle.await.unwrap();
+    assert!(result.is_ok(), "unsupported version should not error");
+}
+
+/// Verifies that a riboCipher signal byte with no following version byte
+/// (disconnect after signal) is handled gracefully.
+#[cfg(unix)]
+#[tokio::test]
+async fn ribocipher_signal_only_no_version_drops_cleanly() {
+    use tokio::io::AsyncWriteExt;
+
+    let server = test_server();
+    let (mut client, server_stream) = tokio::net::UnixStream::pair().unwrap();
+
+    let server_handle = tokio::spawn(async move {
+        server.handle_connection_with_peek(server_stream).await
+    });
+
+    // Send only the signal byte, then disconnect
+    client.write_all(&[0xED]).await.unwrap();
+    drop(client);
+
+    let result = server_handle.await.unwrap();
+    assert!(result.is_ok(), "missing version byte should not error");
+}

@@ -345,18 +345,98 @@ async fn start_https_server(
                 let mut peek_buf = [0u8; 1];
                 let peek_result = tcp_stream.peek(&mut peek_buf).await;
 
-                let is_tls = match peek_result {
-                    Ok(1) => peek_buf[0] == 0x16, // TLS Handshake content type
+                let first_byte = match peek_result {
+                    Ok(1) => peek_buf[0],
                     Ok(0) => {
                         tracing::debug!("Empty connection from {}, closing", remote_addr);
                         return;
                     }
-                    Ok(_) => false, // Shouldn't happen with 1-byte buffer
+                    Ok(_) => return, // Shouldn't happen with 1-byte buffer
                     Err(e) => {
                         error!("Failed to peek connection from {}: {}", remote_addr, e);
                         return;
                     }
                 };
+
+                // riboCipher transport signal detection (federation-facing)
+                if songbird_types::constants::ribocipher::is_signal_byte(first_byte) {
+                    use songbird_types::constants::ribocipher;
+                    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+                    let tier = ribocipher::tier_name(first_byte);
+                    tracing::info!(
+                        "riboCipher {tier} signal from {} on federation port",
+                        remote_addr
+                    );
+
+                    // Consume signal + version bytes, then serve as NDJSON JSON-RPC
+                    let (reader, mut writer) = tcp_stream.into_split();
+                    let mut reader = BufReader::new(reader);
+
+                    // Consume the 2-byte signal prefix (peeked byte + version)
+                    let mut prefix = [0u8; 2];
+                    if tokio::io::AsyncReadExt::read_exact(&mut reader, &mut prefix).await.is_err()
+                    {
+                        tracing::warn!(
+                            "riboCipher {tier}: failed to read prefix from {}",
+                            remote_addr
+                        );
+                        return;
+                    }
+
+                    if prefix[1] != ribocipher::VERSION_1 {
+                        tracing::warn!(
+                            "riboCipher {tier}: unsupported version 0x{:02X} from {}",
+                            prefix[1],
+                            remote_addr
+                        );
+                        return;
+                    }
+
+                    // After signal prefix: NDJSON JSON-RPC session (federation or local)
+                    let mut line = String::new();
+                    while let Ok(n) = reader.read_line(&mut line).await {
+                        if n == 0 {
+                            break;
+                        }
+                        let trimmed = line.trim();
+                        if trimmed.is_empty() {
+                            line.clear();
+                            continue;
+                        }
+                        // Minimal inline JSON-RPC dispatch for federation riboCipher
+                        let response = match serde_json::from_str::<serde_json::Value>(trimmed) {
+                            Ok(req) => {
+                                let method = req["method"].as_str().unwrap_or("").to_string();
+                                let id = req["id"].clone();
+                                tracing::debug!(
+                                    "riboCipher {tier} RPC from {}: {}",
+                                    remote_addr,
+                                    method
+                                );
+                                serde_json::json!({
+                                    "jsonrpc": "2.0",
+                                    "result": {"status": "ok", "tier": tier, "method": method},
+                                    "id": id
+                                })
+                            }
+                            Err(e) => serde_json::json!({
+                                "jsonrpc": "2.0",
+                                "error": {"code": -32700, "message": format!("Parse error: {e}")},
+                                "id": null
+                            }),
+                        };
+                        let mut resp_bytes = serde_json::to_vec(&response).unwrap_or_default();
+                        resp_bytes.push(b'\n');
+                        if writer.write_all(&resp_bytes).await.is_err() {
+                            break;
+                        }
+                        line.clear();
+                    }
+                    return;
+                }
+
+                let is_tls = first_byte == 0x16; // TLS Handshake content type
 
                 // Import shared dependencies
                 use hyper::body::Incoming;

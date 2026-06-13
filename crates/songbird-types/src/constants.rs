@@ -214,6 +214,56 @@ pub const REGISTRATION_TTL: Duration = Duration::from_secs(300);
 pub const MAX_DISCOVERY_RETRIES: u32 = 3;
 
 // ============================================================================
+// RIBOCIPHER TRANSPORT SIGNAL — Stream 7 convergent standard
+// ============================================================================
+
+/// riboCipher transport signal module.
+///
+/// Modeled on ribosomal codon reading: the accept loop (ribosome) reads
+/// signal bytes (codons) and routes deterministically. Three tiers:
+///
+/// - `CLEAR` (`0xEC`): Ecosystem JSON-RPC, plaintext NDJSON. Default for local IPC.
+/// - `MITO` (`0xED`): Mitochondrial obfuscation. Federation inter-gate traffic.
+/// - `NUCLEAR` (`0xEE`): Nuclear-sealed envelope. High-security tunnels.
+///
+/// Deprecation path: WARN (111-112) → ERROR (112) → REJECT (113) → REMOVE (114)
+pub mod ribocipher {
+    /// Clear ecosystem signal — plaintext JSON-RPC follows.
+    pub const CLEAR: u8 = 0xEC;
+    /// Mito-obfuscated signal — federation inter-gate traffic.
+    pub const MITO: u8 = 0xED;
+    /// Nuclear-sealed signal — high-security encrypted tunnel.
+    pub const NUCLEAR: u8 = 0xEE;
+
+    /// riboCipher version byte (follows the signal byte).
+    pub const VERSION_1: u8 = 0x01;
+
+    /// Full two-byte clear signal prefix: `[0xEC, 0x01]`.
+    pub const CLEAR_PREFIX: [u8; 2] = [CLEAR, VERSION_1];
+    /// Full two-byte mito signal prefix: `[0xED, 0x01]`.
+    pub const MITO_PREFIX: [u8; 2] = [MITO, VERSION_1];
+    /// Full two-byte nuclear signal prefix: `[0xEE, 0x01]`.
+    pub const NUCLEAR_PREFIX: [u8; 2] = [NUCLEAR, VERSION_1];
+
+    /// Returns `true` if the byte is a recognized riboCipher signal tier.
+    #[must_use]
+    pub const fn is_signal_byte(b: u8) -> bool {
+        matches!(b, CLEAR | MITO | NUCLEAR)
+    }
+
+    /// Human-readable tier name for logging.
+    #[must_use]
+    pub const fn tier_name(b: u8) -> &'static str {
+        match b {
+            CLEAR => "clear",
+            MITO => "mito",
+            NUCLEAR => "nuclear",
+            _ => "unknown",
+        }
+    }
+}
+
+// ============================================================================
 // SYSTEM CONSTANTS
 // ============================================================================
 
@@ -281,33 +331,83 @@ mod tests {
     #[test]
     fn test_default_timeout_secs() {
         assert_eq!(DEFAULT_TIMEOUT_SECS, 30);
-        // Value checks would be optimized out by compiler for const values
     }
 
     #[test]
     fn test_default_retry_attempts() {
         assert_eq!(DEFAULT_RETRY_ATTEMPTS, 3);
-        // Value checks would be optimized out by compiler for const values
     }
 
     #[test]
     fn test_default_port() {
         assert_eq!(DEFAULT_PORT, 8080);
-        // Value checks would be optimized out by compiler for const values
     }
 
     #[test]
     fn test_max_concurrent_connections() {
         assert_eq!(MAX_CONCURRENT_CONNECTIONS, 1000);
-        // Value checks would be optimized out by compiler for const values
     }
 
     #[test]
     fn test_constants_are_reasonable() {
-        // All constant values are validated at compile time
         assert_eq!(DEFAULT_TIMEOUT_SECS, 30);
         assert_eq!(DEFAULT_RETRY_ATTEMPTS, 3);
         assert_eq!(DEFAULT_PORT, 8080);
         assert_eq!(MAX_CONCURRENT_CONNECTIONS, 1000);
+    }
+
+    mod ribocipher_tests {
+        use super::super::ribocipher;
+
+        #[test]
+        fn signal_bytes_are_distinct() {
+            assert_ne!(ribocipher::CLEAR, ribocipher::MITO);
+            assert_ne!(ribocipher::MITO, ribocipher::NUCLEAR);
+            assert_ne!(ribocipher::CLEAR, ribocipher::NUCLEAR);
+        }
+
+        #[test]
+        fn signal_byte_values() {
+            assert_eq!(ribocipher::CLEAR, 0xEC);
+            assert_eq!(ribocipher::MITO, 0xED);
+            assert_eq!(ribocipher::NUCLEAR, 0xEE);
+        }
+
+        #[test]
+        fn is_signal_byte_recognizes_all_tiers() {
+            assert!(ribocipher::is_signal_byte(0xEC));
+            assert!(ribocipher::is_signal_byte(0xED));
+            assert!(ribocipher::is_signal_byte(0xEE));
+        }
+
+        #[test]
+        fn is_signal_byte_rejects_non_signals() {
+            assert!(!ribocipher::is_signal_byte(0x00));
+            assert!(!ribocipher::is_signal_byte(0x16)); // TLS
+            assert!(!ribocipher::is_signal_byte(b'{'));
+            assert!(!ribocipher::is_signal_byte(0xEB));
+            assert!(!ribocipher::is_signal_byte(0xEF));
+            assert!(!ribocipher::is_signal_byte(0xFF));
+        }
+
+        #[test]
+        fn tier_names() {
+            assert_eq!(ribocipher::tier_name(0xEC), "clear");
+            assert_eq!(ribocipher::tier_name(0xED), "mito");
+            assert_eq!(ribocipher::tier_name(0xEE), "nuclear");
+            assert_eq!(ribocipher::tier_name(0x00), "unknown");
+        }
+
+        #[test]
+        fn prefixes_match_signal_plus_version() {
+            assert_eq!(ribocipher::CLEAR_PREFIX, [0xEC, 0x01]);
+            assert_eq!(ribocipher::MITO_PREFIX, [0xED, 0x01]);
+            assert_eq!(ribocipher::NUCLEAR_PREFIX, [0xEE, 0x01]);
+        }
+
+        #[test]
+        fn version_byte_is_one() {
+            assert_eq!(ribocipher::VERSION_1, 0x01);
+        }
     }
 }
