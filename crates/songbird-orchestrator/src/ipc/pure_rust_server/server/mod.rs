@@ -29,6 +29,7 @@
 
 mod connection;
 mod handlers;
+mod session_protocol;
 
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};

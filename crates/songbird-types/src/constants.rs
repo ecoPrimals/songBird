@@ -264,6 +264,23 @@ pub mod ribocipher {
 }
 
 // ============================================================================
+// ENDPOINT CONSTRUCTION
+// ============================================================================
+
+/// Standard JSON-RPC endpoint path for inter-primal HTTP communication.
+pub const JSONRPC_PATH: &str = "/jsonrpc";
+
+/// Build an HTTP JSON-RPC endpoint URL from a socket address.
+///
+/// Constructs `http://{ip}:{port}/jsonrpc` from the given address components.
+/// Centralizes the ad-hoc URL format that was previously scattered across
+/// capability propagation, remote dispatch, and federation modules.
+#[must_use]
+pub fn jsonrpc_endpoint_url(addr: &std::net::SocketAddr) -> String {
+    format!("http://{}:{}{JSONRPC_PATH}", addr.ip(), addr.port())
+}
+
+// ============================================================================
 // SYSTEM CONSTANTS
 // ============================================================================
 

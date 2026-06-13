@@ -56,7 +56,7 @@ impl IpcServiceHandler {
             });
             peer_addrs.push((node_id.clone(), peer_sock));
 
-            let tcp_endpoint = format!("http://{}:{}/jsonrpc", peer_sock.ip(), peer_sock.port());
+            let tcp_endpoint = songbird_types::constants::jsonrpc_endpoint_url(&peer_sock);
 
             if self.peer_has_capability(&tcp_endpoint, &call.capability).await == Ok(false) {
                 debug!(peer = %node_id, "Peer lacks capability '{}', skipping", call.capability);

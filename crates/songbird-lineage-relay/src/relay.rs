@@ -443,39 +443,8 @@ impl RelayDiscovery {
         Ok(session)
     }
 
-    /// Wait for relay offer (from ancestors)
-    ///
-    /// 🚨 DEEP DEBT (v3.10.4 - Jan 6, 2026): Polling loop with sleep
-    ///
-    /// CURRENT: Polls broadcaster every 100ms (blocking, wasteful, introduces latency)
-    /// SHOULD BE: Event-driven with watch channel or notification
-    ///
-    /// Modern Rust Solution:
-    /// ```rust,ignore
-    /// // In broadcaster: notify on new messages
-    /// let (offer_tx, mut offer_rx) = tokio::sync::watch::channel(None);
-    ///
-    /// // Producer notifies
-    /// offer_tx.send(Some(offer))?;
-    ///
-    /// // Consumer waits (instant notification, zero latency)
-    /// timeout(duration, async {
-    ///     offer_rx.changed().await?;
-    ///     Ok(offer_rx.borrow().clone().unwrap())
-    /// }).await?
-    /// ```
-    ///
-    /// Benefits:
-    /// - Zero latency (instant notification vs 100ms polling)
-    /// - No CPU waste (event-driven, not busy-waiting)
-    /// - Cleaner code (no manual polling logic)
-    ///
-    /// Alternative: Make `broadcaster.get_messages()` await-able (blocking call)
-    ///
-    /// Status: INCOMPLETE - Requires broadcaster architectural changes
-    /// Priority: MEDIUM (relay functionality is experimental)
+    /// Wait for relay offer from ancestors via Notify-based event-driven wakeup.
     async fn wait_for_relay_offer(&self, duration: Duration) -> Result<RelayOffer> {
-        // ✅ Event-driven: uses Notify-based wakeup (zero polling, instant latency)
         let messages =
             self.broadcaster.wait_for_message_by_type(BirdSongType::RelayOffer, duration).await?;
 

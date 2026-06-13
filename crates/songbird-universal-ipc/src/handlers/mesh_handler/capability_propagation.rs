@@ -270,9 +270,7 @@ impl MeshHandler {
                     }
                     | EndpointType::Local {
                         addr,
-                    } => {
-                        format!("http://{}:{}/jsonrpc", addr.ip(), addr.port())
-                    }
+                    } => songbird_types::constants::jsonrpc_endpoint_url(&addr),
                     _ => continue,
                 };
                 targets.push((node_id.clone(), address));

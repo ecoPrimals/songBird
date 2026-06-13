@@ -10,10 +10,12 @@
 
 use super::*;
 use crate::app::connection_manager::ConnectionManager;
+use crate::ipc::btsp_phase3;
 use crate::ipc::btsp_phase3::SessionKeys;
 use crate::ipc::pure_rust_server::method_gate::CallerContext;
 use crate::ipc::registry::ServiceRegistry;
 use base64::Engine as _;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 fn test_server() -> Arc<UnixSocketServer> {
     let registry = Arc::new(ServiceRegistry::new());
@@ -530,9 +532,8 @@ async fn ribocipher_clear_signal_routes_to_ndjson() {
     let server = test_server();
     let (mut client, server_stream) = tokio::net::UnixStream::pair().unwrap();
 
-    let server_handle = tokio::spawn(async move {
-        server.handle_connection_with_peek(server_stream).await
-    });
+    let server_handle =
+        tokio::spawn(async move { server.handle_connection_with_peek(server_stream).await });
 
     // Send riboCipher clear prefix + JSON-RPC request
     let request = serde_json::json!({
@@ -570,9 +571,8 @@ async fn ribocipher_mito_signal_accepted() {
     let server = test_server();
     let (mut client, server_stream) = tokio::net::UnixStream::pair().unwrap();
 
-    let server_handle = tokio::spawn(async move {
-        server.handle_connection_with_peek(server_stream).await
-    });
+    let server_handle =
+        tokio::spawn(async move { server.handle_connection_with_peek(server_stream).await });
 
     let request = serde_json::json!({
         "jsonrpc": "2.0",
@@ -606,9 +606,8 @@ async fn ribocipher_unsupported_version_drops_cleanly() {
     let server = test_server();
     let (mut client, server_stream) = tokio::net::UnixStream::pair().unwrap();
 
-    let server_handle = tokio::spawn(async move {
-        server.handle_connection_with_peek(server_stream).await
-    });
+    let server_handle =
+        tokio::spawn(async move { server.handle_connection_with_peek(server_stream).await });
 
     // Send signal byte 0xEC with bad version 0xFF
     client.write_all(&[0xEC, 0xFF]).await.unwrap();
@@ -628,9 +627,8 @@ async fn ribocipher_signal_only_no_version_drops_cleanly() {
     let server = test_server();
     let (mut client, server_stream) = tokio::net::UnixStream::pair().unwrap();
 
-    let server_handle = tokio::spawn(async move {
-        server.handle_connection_with_peek(server_stream).await
-    });
+    let server_handle =
+        tokio::spawn(async move { server.handle_connection_with_peek(server_stream).await });
 
     // Send only the signal byte, then disconnect
     client.write_all(&[0xED]).await.unwrap();

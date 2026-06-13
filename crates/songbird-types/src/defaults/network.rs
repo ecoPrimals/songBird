@@ -14,6 +14,12 @@ use crate::constants::{
     DISCOVERY_MULTICAST_GROUP, DISCOVERY_MULTICAST_PORT, MDNS_MULTICAST_GROUP, MDNS_PORT,
 };
 
+/// Maximum allowed BTSP frame payload size (16 MiB).
+///
+/// Frames larger than this are rejected as protocol violations to prevent
+/// resource exhaustion from malformed or malicious length prefixes.
+pub const BTSP_MAX_FRAME_SIZE: usize = 16 * 1024 * 1024;
+
 /// Default CORS origin for development when `SONGBIRD_CORS_ORIGINS` is unset.
 ///
 /// Built from canonical constants: `http://{LOCALHOST_HOSTNAME}:{DEFAULT_DASHBOARD_UI_PORT}`.
