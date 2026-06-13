@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave113] - 2026-06-13 - Stream 7: riboCipher Transport Signal + Deep Debt
+
+### Added
+- **riboCipher transport signal detection** — all 3 accept loops (`pure_rust_server`, `bin_interface`, `http_server`) detect signal bytes `0xEC`/`0xED`/`0xEE` before protocol fork. Constants in `songbird_types::constants::ribocipher`
+- **`session_protocol.rs`** — SRP extraction from `connection.rs` (815→472L): BTSP framing, NDJSON session loop, encrypted Phase 3
+- **`hardcoded_replace.rs`** — SRP extraction from `hardcoded_elimination.rs` (872→689L): convenience API module
+- **`BTSP_MAX_FRAME_SIZE` constant** — replaces `16 * 1024 * 1024` magic number
+- **`jsonrpc_endpoint_url()` helper** — centralized URL construction (replaces ad-hoc `format!` in 2 callsites)
+- **11 new tests** — 4 riboCipher connection tests + 7 riboCipher constant tests
+
+### Changed
+- **`handle_connection_with_peek`** — riboCipher signal detection is first check before JSON-RPC/BTSP fork
+- **`bin_interface/ipc_session.rs`** — peek for riboCipher before `read_line` (prevents hang on binary first byte)
+- **`http_server.rs` accept loop** — riboCipher detection before TLS/HTTP fork (mito tier for federation)
+- **`capability_propagation.rs`** — uses `jsonrpc_endpoint_url()` instead of inline format
+- **`remote_dispatch.rs`** — uses `jsonrpc_endpoint_url()` instead of inline format
+- **`hardcoded_elimination.rs`** — port literal `8443` → `DEFAULT_HTTPS_PORT`
+
+### Removed
+- Stale "DEEP DEBT: polling loop" comment from `lineage-relay/relay.rs` (implementation was already event-driven)
+
+---
+
 ## [v0.2.1-wave113] - 2026-06-12 - Stream 6: Mesh Partition Tolerance + Version Negotiation
 
 ### Added
@@ -27,25 +50,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Resolved
 - **MESH-PARTITION-TOLERANCE** (Stream 6, P2) — cross-gate reachability gossip enables partition awareness
 - **PEER-VERSION-MISMATCH** (Stream 6, P3) — version field propagated through probes and capability announces
-
----
-
-## [v0.2.1-wave113] - 2026-06-12 - Stream 6: Mesh Partition Tolerance + Version Negotiation
-
-### Added
-- **MESH-PARTITION-TOLERANCE** — cross-gate reachability gossip via `mesh.capabilities_announce`: each gate reports its `reachable_peers` list + `version` to all peers. `PeerMetadata` struct tracks per-peer version and cross-gate reachability reports. `partition_status_for()` computes partition state (Healthy / PartialPartition / LocallyUnreachable). `mesh.status` surfaces `partition_warnings` when cross-gate views disagree. `mesh.health_check` emits `partition_detected: true` + `partitions[]` array
-- **PEER-VERSION-MISMATCH** — `probe_peer_full()` extracts version from `health.ping` JSON response during TCP probes (30s interval). `spawn_peer_health_loop` records peer versions in `PeerMetadata`. `mesh.status` reports `version_skew` array when peers run different versions. `mesh.peers` includes `version` field and `version_mismatch: true` flag per peer. Backward-compatible: peers that don't send version are handled gracefully
-- **`PartitionStatus` enum** — public type for downstream consumers to reason about mesh partition state
-- **`peer_version()` method** — query stored version for any known peer
-- **8 new tests** — partition detection (healthy/local/partial), version skew in status, gossip storage, health check partition reporting, peer version retrieval
-
-### Changed
-- **`mesh.capabilities_announce` payload** — now includes `version` (CARGO_PKG_VERSION) and `reachable_peers` (list of locally reachable node_ids)
-- **`mesh.status` response** — adds `version` field (own version), optional `version_skew` and `partition_warnings` arrays
-- **`mesh.peers` response** — adds `local_version`, per-peer `version` field and `version_mismatch` flag
-- **`mesh.health_check` response** — adds optional `partition_detected` and `partitions` fields
-- **`spawn_peer_health_loop`** — upgraded from `probe_peer_rtt` to `probe_peer_full`, stores version in `peer_metadata` on successful probe
-- **`MeshHandler` struct** — new `peer_metadata: Arc<RwLock<HashMap<String, PeerMetadata>>>` field
 
 ---
 

@@ -4,7 +4,7 @@
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: June 12, 2026
+**Last Updated**: June 13, 2026
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
@@ -21,7 +21,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[allow(reason)]` / `#[expect(reason)]` throughout — Wave 58: 146 item-level suppressions evolved to `#[expect(clippy::...)]` (warns if lint stops firing); module-level `unwrap_used`/`expect_used` blanket suppressions remain `#[allow]` (correct for module scope); Wave 149: blanket `#![allow(clippy::all, pedantic, nursery)]` removed from 11 files; zero reasonless suppressions, zero blanket suppressions remain |
 | Concurrent Tests | Injectable env via `songbird-process-env` overlay (all production env sites migrated — zero `std::env` in production); all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
-| Tests | 8,918+ lib tests passed, 0 failures, 0 flaky (Wave 113; June 12, 2026) |
+| Tests | 8,929 lib tests passed, 0 failures, 0 flaky (Wave 113; June 13, 2026) |
 | Line Coverage | **73.41%** (`llvm-cov --workspace --lib`, Apr 27 2026; target 90%; Wave 53: +74 tests across pure-logic modules) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all dispatch handlers |
@@ -30,12 +30,13 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Build | Clean (zero errors, zero warnings) |
 | Formatting | Clean (`cargo fmt --check`; May 27 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >800 lines | **0** — largest: `virtual_relay.rs` 791L; Wave 76: `mesh_handler/mod.rs` (1004→783L via `capability_propagation.rs` extraction); Wave 74: `multi_tier_coordinator.rs` (799→655L); Wave 209: `state.rs` (877→459L) |
+| Files >800 lines | **0** — Wave 111: `connection.rs` (815→472L via `session_protocol.rs` SRP extraction), `hardcoded_elimination.rs` (872→689L via `hardcoded_replace.rs` extraction); Wave 76: `mesh_handler/mod.rs` (1004→783L via `capability_propagation.rs` extraction); Wave 74: `multi_tier_coordinator.rs` (799→655L); Wave 209: `state.rs` (877→459L) |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 33 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, lifecycle, inference, etc.) |
 | Wire Standard L3 | `capabilities.list` returns L3 envelope: `{primal, version, methods, provided_capabilities, consumed_capabilities, protocol, transport}`; `identity.get` returns `{primal, version, domain, license}`; `capabilities.methods` token→method map |
-| BTSP Phase 2 | ClientHello/ChallengeResponse handshake client + server; `perform_server_handshake` (length-prefix) + `perform_server_handshake_ndjson` (JSON-line) on UDS accept when `FAMILY_ID` set; first-line auto-detect: `"protocol":"btsp"` → NDJSON BTSP, plain `{` → JSON-RPC, other → binary BTSP; BIOMEOS_INSECURE guard; domain-based socket naming (`network.sock`); domain symlink `network.sock` → `songbird.sock` |
+| riboCipher (Stream 7) | Transport signal detection in all 3 accept loops (`pure_rust_server`, `bin_interface`, `http_server`). Signal bytes: `0xEC` (clear), `0xED` (mito/federation), `0xEE` (nuclear). Deterministic routing before protocol detection. Deprecation: WARN (111-112) → ERROR (112) → REJECT (113) → REMOVE (114) |
+| BTSP Phase 2 | ClientHello/ChallengeResponse handshake client + server; `perform_server_handshake` (length-prefix) + `perform_server_handshake_ndjson` (JSON-line) on UDS accept when `FAMILY_ID` set; first-line auto-detect: riboCipher signal → tier routing, `"protocol":"btsp"` → NDJSON BTSP, plain `{` → JSON-RPC, other → binary BTSP; BIOMEOS_INSECURE guard; domain-based socket naming (`network.sock`); domain symlink `network.sock` → `songbird.sock` |
 | BTSP Phase 3 (FULL) | `btsp.negotiate` server-side handler — ChaCha20-Poly1305 encrypted framing post-handshake; HKDF-SHA256 session key derivation (directional c2s/s2c keys); graceful NULL cipher fallback; `btsp.server.export_keys` delegation to security provider; length-prefixed encrypted frames `[4B len][12B nonce][ciphertext + Poly1305 tag]`; 16 MiB max frame; `BondingPolicy` cipher floor enforcement; negotiate dispatch wired on all 3 transport paths (NDJSON session, binary-framed BTSP, bin_interface) |
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
 | Lint Inheritance | 30/30 crates inherit workspace lints; 2 with justified custom tables |
