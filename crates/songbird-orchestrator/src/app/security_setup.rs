@@ -146,7 +146,7 @@ fn resolve_bare_name_to_endpoint(endpoint: &str) -> String {
         return endpoint.to_string();
     }
 
-    // Bare name like "beardog" — resolve to UDS socket path
+    // Bare name (e.g. legacy primal name) — resolve to UDS socket path
     let socket_name = if endpoint.contains('.') {
         endpoint.to_string()
     } else {
@@ -192,7 +192,8 @@ fn resolve_bare_name_to_endpoint(endpoint: &str) -> String {
 
 /// Discover security provider socket from XDG runtime directory.
 ///
-/// Scans `$XDG_RUNTIME_DIR/biomeos/` for beardog/security sockets.
+/// Scans `$XDG_RUNTIME_DIR/biomeos/` using capability-based socket names.
+/// Falls back to legacy `beardog.sock` if capability names not found.
 fn discover_security_socket_from_xdg() -> Option<String> {
     let runtime_dir = songbird_process_env::var("XDG_RUNTIME_DIR").ok()?;
     let biomeos_dir = std::path::PathBuf::from(&runtime_dir)
@@ -202,23 +203,31 @@ fn discover_security_socket_from_xdg() -> Option<String> {
         return None;
     }
 
-    let candidates = ["security.sock", "beardog.sock"];
-    for candidate in &candidates {
+    // Capability-first discovery (no primal identity knowledge)
+    for candidate in songbird_types::defaults::paths::CRYPTO_PROVIDER_SOCKET_FILENAMES_XDG {
         let path = biomeos_dir.join(candidate);
         if path.exists() {
             return Some(format!("unix://{}", path.display()));
         }
     }
 
-    // Glob for beardog-*.sock (family-scoped)
+    // Family-scoped security socket (capability-named)
     if let Ok(entries) = std::fs::read_dir(&biomeos_dir) {
         for entry in entries.flatten() {
             let name = entry.file_name();
             let name_str = name.to_string_lossy();
-            if name_str.starts_with("beardog") && name_str.ends_with(".sock") {
+            if name_str.starts_with("security") && name_str.ends_with(".sock") {
                 return Some(format!("unix://{}", entry.path().display()));
             }
         }
+    }
+
+    // Legacy fallback (deprecated — will be removed Wave 114)
+    #[allow(deprecated, reason = "backward-compat: legacy socket name still on disk")]
+    let legacy = biomeos_dir.join(songbird_types::defaults::paths::LEGACY_SECURITY_SOCKET_FILENAME);
+    if legacy.exists() {
+        warn!("Found legacy 'beardog.sock' — migrate to capability-based 'security.sock'");
+        return Some(format!("unix://{}", legacy.display()));
     }
 
     None
