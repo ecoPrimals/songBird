@@ -412,11 +412,19 @@ mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
 
     use super::{SecurityProvider, SecurityProviderFactory, SecurityProviderImpl};
-    use crate::security::{AccessLevel, LineageChain, LineageProof, LineageProvider, LineageRelay};
+    use crate::security::{
+        AccessLevel, BirdSongCrypto, LineageChain, LineageHint, LineageProof, LineageProvider,
+        LineageRelay, RelaySession,
+    };
 
     #[test]
     fn create_noop_is_noop_variant() {
         assert!(matches!(SecurityProviderFactory::create_noop(), SecurityProviderImpl::NoOp(_)));
+    }
+
+    #[test]
+    fn create_mock_is_mock_variant() {
+        assert!(matches!(SecurityProviderFactory::create_mock(), SecurityProviderImpl::Mock(_)));
     }
 
     #[tokio::test]
@@ -442,5 +450,139 @@ mod tests {
             claimer_signature: vec![],
         };
         assert!(LineageProvider::verify_lineage(&p, &proof).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn noop_generate_lineage_errors() {
+        let p = SecurityProviderFactory::create_noop();
+        assert!(p.generate_lineage("node-1", "root-0").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn noop_get_descendants_errors() {
+        let p = SecurityProviderFactory::create_noop();
+        assert!(p.get_descendants("root-0").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn noop_get_lineage_depth_errors() {
+        let p = SecurityProviderFactory::create_noop();
+        assert!(p.get_lineage_depth("a", "b").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn noop_encrypt_for_lineage_errors() {
+        let p = SecurityProviderFactory::create_noop();
+        assert!(p.encrypt_for_lineage(b"hello", LineageHint::Universal).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn noop_decrypt_birdsong_errors() {
+        use crate::security::EncryptedBirdSong;
+        let p = SecurityProviderFactory::create_noop();
+        let encrypted = EncryptedBirdSong {
+            version: 1,
+            ciphertext: vec![0u8; 32],
+            lineage_hint: LineageHint::DirectDescendants,
+            timestamp: chrono::Utc::now(),
+            signature: vec![0u8; 64],
+            genesis_witness: None,
+        };
+        assert!(p.decrypt_birdsong(&encrypted).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn noop_request_key_errors() {
+        let p = SecurityProviderFactory::create_noop();
+        let proof = LineageProof {
+            chain: LineageChain {
+                root_id: "r".into(),
+                node_id: "n".into(),
+                links: vec![],
+                depth: 0,
+            },
+            claimer_signature: vec![],
+        };
+        assert!(p.request_key(&LineageHint::AllDescendants, proof).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn noop_offer_relay_errors() {
+        let p = SecurityProviderFactory::create_noop();
+        let proof = LineageProof {
+            chain: LineageChain {
+                root_id: "r".into(),
+                node_id: "n".into(),
+                links: vec![],
+                depth: 0,
+            },
+            claimer_signature: vec![],
+        };
+        assert!(p.offer_relay("req", "target", proof).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn noop_relay_packet_errors() {
+        let p = SecurityProviderFactory::create_noop();
+        let session = RelaySession {
+            session_id: "sess-1".into(),
+            requester_id: "a".into(),
+            target_id: "b".into(),
+            relay_id: "relay-0".into(),
+            access_level: AccessLevel::FullLineage,
+            created_at: chrono::Utc::now(),
+            expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
+        };
+        assert!(p.relay_packet(&session, b"data").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn noop_revoke_relay_errors() {
+        let p = SecurityProviderFactory::create_noop();
+        assert!(p.revoke_relay("sess-1").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn discover_returns_none_when_no_provider() {
+        // No UPA, no env, no socket — graceful None
+        let result = SecurityProviderFactory::discover().await.unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn mock_provider_is_available() {
+        let p = SecurityProviderFactory::create_mock();
+        assert!(SecurityProvider::is_available(&p).await);
+    }
+
+    #[tokio::test]
+    async fn mock_provider_version() {
+        let p = SecurityProviderFactory::create_mock();
+        assert!(!SecurityProvider::version(&p).is_empty());
+    }
+
+    #[tokio::test]
+    async fn mock_provider_shutdown() {
+        let p = SecurityProviderFactory::create_mock();
+        assert!(SecurityProvider::shutdown(&p).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn mock_generate_lineage_succeeds() {
+        let p = SecurityProviderFactory::create_mock();
+        let chain = p.generate_lineage("child-1", "root-0").await.unwrap();
+        assert_eq!(chain.root_id, "root-0");
+        assert_eq!(chain.node_id, "child-1");
+    }
+
+    #[tokio::test]
+    async fn mock_encrypt_decrypt_roundtrip() {
+        let p = SecurityProviderFactory::create_mock();
+        let encrypted = p
+            .encrypt_for_lineage(b"secret payload", LineageHint::Universal)
+            .await
+            .unwrap();
+        let decrypted = p.decrypt_birdsong(&encrypted).await.unwrap();
+        assert_eq!(decrypted.as_deref(), Some(b"secret payload".as_slice()));
     }
 }
