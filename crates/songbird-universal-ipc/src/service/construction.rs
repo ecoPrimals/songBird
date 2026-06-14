@@ -25,8 +25,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-/// Discover the bearDog signing socket for Phase 3.5 relay signature verification.
-///
 /// Discover security provider's crypto signing socket via capability-based resolution.
 ///
 /// Resolution: `CAPABILITY_SECURITY_ENDPOINT` → XDG runtime discovery.
@@ -38,8 +36,9 @@ fn discover_crypto_signing_socket() -> Option<String> {
     }
 
     if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-        let biomeos_dir = std::path::PathBuf::from(xdg).join("biomeos");
-        for name in ["security.sock", "signing.sock", "crypto.sock"] {
+        let biomeos_dir = std::path::PathBuf::from(xdg)
+            .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR);
+        for name in songbird_types::defaults::paths::CRYPTO_PROVIDER_SOCKET_FILENAMES_XDG {
             let path = biomeos_dir.join(name);
             if path.exists() {
                 return path.to_str().map(String::from);

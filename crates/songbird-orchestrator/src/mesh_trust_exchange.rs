@@ -222,12 +222,13 @@ async fn register_remote_key(remote: &RemoteKeyMaterial) -> Result<(), String> {
 
 /// Discover the security provider's UDS socket via capability-based discovery.
 ///
-/// Resolution: env vars → XDG runtime (`$XDG_RUNTIME_DIR/biomeos/*.sock`)
+/// Resolution: env vars → XDG runtime (`$XDG_RUNTIME_DIR/{BIOMEOS_RUNTIME_SUBDIR}/*.sock`)
 fn discover_security_provider_socket() -> Result<String, String> {
     let path = security_crypto_ipc_socket_from_env(|| {
         if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-            let biomeos_dir = std::path::PathBuf::from(&xdg).join("biomeos");
-            for name in ["security.sock", "crypto.sock", "signing.sock"] {
+            let biomeos_dir = std::path::PathBuf::from(&xdg)
+                .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR);
+            for name in songbird_types::defaults::paths::CRYPTO_PROVIDER_SOCKET_FILENAMES_XDG {
                 let p = biomeos_dir.join(name);
                 if p.exists() {
                     return p.to_string_lossy().to_string();

@@ -119,7 +119,9 @@ impl VirtualRelayManager {
         } else {
             std::env::temp_dir()
         };
-        base.join("biomeos").join("songbird").join("virtual")
+        base.join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR)
+            .join("songbird")
+            .join("virtual")
     }
 
     /// Get the relay socket path for a given primal name.

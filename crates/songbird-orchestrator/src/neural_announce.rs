@@ -30,16 +30,18 @@ pub fn resolve_neural_api_socket() -> Option<PathBuf> {
     let family = resolve_family_id();
 
     if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-        let candidate =
-            PathBuf::from(&xdg).join("biomeos").join(format!("neural-api-{family}.sock"));
+        let candidate = PathBuf::from(&xdg)
+            .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR)
+            .join(format!("neural-api-{family}.sock"));
         if candidate.exists() {
             debug!(path = %candidate.display(), "Neural API socket from XDG_RUNTIME_DIR");
             return Some(candidate);
         }
     }
 
-    let tmp_candidate =
-        std::env::temp_dir().join("biomeos").join(format!("neural-api-{family}.sock"));
+    let tmp_candidate = std::env::temp_dir()
+        .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR)
+        .join(format!("neural-api-{family}.sock"));
     if tmp_candidate.exists() {
         debug!(path = %tmp_candidate.display(), "Neural API socket from /tmp fallback");
         return Some(tmp_candidate);

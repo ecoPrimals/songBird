@@ -152,7 +152,7 @@ impl ServiceRegistry {
     /// Register a service
     ///
     /// # Arguments
-    /// * `name` - Service name (e.g., "beardog")
+    /// * `name` - Service name (e.g., "security-provider")
     /// * `native_endpoint` - Platform-specific endpoint
     /// * `capabilities` - List of capabilities this service provides
     /// * `signature` - Ed25519 signature from crypto provider (`None` in standalone mode)
