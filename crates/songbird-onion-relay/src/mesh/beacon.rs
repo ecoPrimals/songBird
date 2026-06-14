@@ -48,6 +48,12 @@ impl BeaconMesh {
         }
     }
 
+    /// Our node ID.
+    #[must_use]
+    pub fn node_id(&self) -> &str {
+        &self.my_node_id
+    }
+
     /// Set our onion address (when we create one)
     pub async fn set_my_onion(&self, onion_addr: String) {
         info!("🧅 Beacon mesh: my onion = {}", &onion_addr[..16.min(onion_addr.len())]);

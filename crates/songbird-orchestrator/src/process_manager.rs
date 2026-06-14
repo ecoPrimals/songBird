@@ -143,6 +143,17 @@ impl ProcessManager {
             }
         }
 
+        // Priority 1b: SONGBIRD_STATE_DIR/run/ (GrapheneOS, containers)
+        if let Ok(state_dir) = songbird_process_env::var("SONGBIRD_STATE_DIR") {
+            let run_path = PathBuf::from(&state_dir).join("run").join(&filename);
+            if let Some(parent) = run_path.parent()
+                && fs::create_dir_all(parent).is_ok()
+            {
+                debug!("Using SONGBIRD_STATE_DIR/run: {}", run_path.display());
+                return Ok(run_path);
+            }
+        }
+
         // Priority 2: Try system-wide location first
         let system_path =
             PathBuf::from(songbird_types::constants::SONGBIRD_SYSTEM_RUNTIME_DIR).join(&filename);

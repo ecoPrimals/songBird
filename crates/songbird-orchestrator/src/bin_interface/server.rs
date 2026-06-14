@@ -39,6 +39,9 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     if args.dark_forest {
         songbird_process_env::set_var("SONGBIRD_DARK_FOREST", "true");
     }
+    if let Some(ref state_dir) = args.state_dir {
+        songbird_process_env::set_var("SONGBIRD_STATE_DIR", state_dir);
+    }
     if let Some(ref pid_dir) = args.pid_dir {
         songbird_process_env::set_var("SONGBIRD_PID_DIR", pid_dir);
     }

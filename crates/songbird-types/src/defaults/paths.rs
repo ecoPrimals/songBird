@@ -126,11 +126,14 @@ pub const DEFAULT_DATA_DIR: &str = "/var/lib/songbird";
 
 /// Resolve data directory from environment, then XDG, then FHS fallback.
 ///
-/// Priority: `SONGBIRD_DATA_DIR` > `$XDG_DATA_HOME/songbird` > `$HOME/.local/share/songbird` > `/var/lib/songbird`
+/// Priority: `SONGBIRD_DATA_DIR` > `SONGBIRD_STATE_DIR/data` > `$XDG_DATA_HOME/songbird` > `$HOME/.local/share/songbird` > `/var/lib/songbird`
 #[must_use]
 pub fn data_dir() -> PathBuf {
     if let Ok(dir) = songbird_process_env::var("SONGBIRD_DATA_DIR") {
         return PathBuf::from(dir);
+    }
+    if let Ok(state_dir) = songbird_process_env::var("SONGBIRD_STATE_DIR") {
+        return PathBuf::from(state_dir).join("data");
     }
     if let Ok(xdg) = songbird_process_env::var("XDG_DATA_HOME") {
         return PathBuf::from(xdg).join("songbird");

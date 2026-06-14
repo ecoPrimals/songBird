@@ -204,6 +204,7 @@ impl MeshHandler {
         addr: std::net::SocketAddr,
         timeout: Duration,
     ) -> Result<ProbeResult, String> {
+        use songbird_types::constants::ribocipher;
         use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
         use tokio::net::TcpStream;
 
@@ -215,6 +216,12 @@ impl MeshHandler {
             .map_err(|e| format!("connect failed: {e}"))?;
 
         let (reader, mut writer) = stream.into_split();
+
+        // Send riboCipher mito signal prefix for federation outbound
+        tokio::time::timeout(timeout, writer.write_all(&ribocipher::MITO_PREFIX))
+            .await
+            .map_err(|_| "write timeout (riboCipher signal)".to_string())?
+            .map_err(|e| format!("write failed (riboCipher signal): {e}"))?;
 
         let request = b"{\"jsonrpc\":\"2.0\",\"method\":\"health.ping\",\"id\":1}\n";
         tokio::time::timeout(timeout, writer.write_all(request))
@@ -246,6 +253,9 @@ impl MeshHandler {
     /// When a peer is unreachable, applies exponential backoff (30s → 60s → 120s → cap 300s).
     /// When a previously-failed peer responds, records fresh latency and restores reachability.
     /// Also extracts peer version for version-skew detection.
+    ///
+    /// Filters out self-connections: peers whose `node_id` matches our own or whose
+    /// address matches our local bind address are skipped to prevent self-connect loops.
     pub(super) fn spawn_peer_health_loop(
         mesh: Arc<BeaconMesh>,
         bootstrap_peers: Vec<(String, std::net::SocketAddr)>,
@@ -253,7 +263,36 @@ impl MeshHandler {
     ) {
         use std::collections::HashMap as StdHashMap;
 
+        let our_node_id = mesh.node_id().to_string();
+        let local_addrs = Self::detect_local_addresses();
+
+        // Filter out self-connections
+        let peers: Vec<_> = bootstrap_peers
+            .into_iter()
+            .filter(|(peer_id, addr)| {
+                if peer_id == &our_node_id {
+                    tracing::debug!(peer = %peer_id, "Skipping self in health loop (node_id match)");
+                    return false;
+                }
+                if local_addrs.contains(&addr.ip()) {
+                    tracing::debug!(
+                        peer = %peer_id,
+                        addr = %addr,
+                        "Skipping self in health loop (local address match)"
+                    );
+                    return false;
+                }
+                true
+            })
+            .collect();
+
+        if peers.is_empty() {
+            tracing::debug!("No remote peers after self-filter — health loop not started");
+            return;
+        }
+
         tokio::spawn(async move {
+            let bootstrap_peers = peers;
             let base_interval = Duration::from_secs(30);
             let max_interval = Duration::from_secs(300);
             let probe_timeout = Duration::from_secs(5);
@@ -313,5 +352,40 @@ impl MeshHandler {
                 }
             }
         });
+    }
+
+    /// Detect local IP addresses to filter out self-connections in health probing.
+    fn detect_local_addresses() -> Vec<std::net::IpAddr> {
+        use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+
+        let mut addrs = vec![
+            IpAddr::V4(Ipv4Addr::LOCALHOST),
+            IpAddr::V6(Ipv6Addr::LOCALHOST),
+            IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+        ];
+
+        if let Ok(hostname_ip) = songbird_process_env::var("SONGBIRD_NODE_ADDRESS")
+            && let Ok(ip) = hostname_ip.parse::<IpAddr>()
+        {
+            addrs.push(ip);
+        }
+
+        if let Ok(interfaces) = std::net::UdpSocket::bind("0.0.0.0:0")
+            && let Ok(local) = interfaces.local_addr()
+        {
+            addrs.push(local.ip());
+        }
+
+        // Netdev detection: connect to external endpoint to discover our outbound IP
+        if let Ok(sock) = std::net::UdpSocket::bind("0.0.0.0:0")
+            && sock.connect("8.8.8.8:80").is_ok()
+            && let Ok(local) = sock.local_addr()
+        {
+            addrs.push(local.ip());
+        }
+
+        addrs.sort_unstable();
+        addrs.dedup();
+        addrs
     }
 }
