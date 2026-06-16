@@ -393,7 +393,7 @@ async fn start_https_server(
                         return;
                     }
 
-                    // After signal prefix: NDJSON JSON-RPC session (federation or local)
+                    // After signal prefix: NDJSON JSON-RPC session (federation)
                     let mut line = String::new();
                     while let Ok(n) = reader.read_line(&mut line).await {
                         if n == 0 {
@@ -404,7 +404,6 @@ async fn start_https_server(
                             line.clear();
                             continue;
                         }
-                        // Minimal inline JSON-RPC dispatch for federation riboCipher
                         let response = match serde_json::from_str::<serde_json::Value>(trimmed) {
                             Ok(req) => {
                                 let method = req["method"].as_str().unwrap_or("").to_string();
@@ -414,11 +413,7 @@ async fn start_https_server(
                                     remote_addr,
                                     method
                                 );
-                                serde_json::json!({
-                                    "jsonrpc": "2.0",
-                                    "result": {"status": "ok", "tier": tier, "method": method},
-                                    "id": id
-                                })
+                                dispatch_federation_rpc(&method, id, tier)
                             }
                             Err(e) => serde_json::json!({
                                 "jsonrpc": "2.0",
@@ -502,6 +497,57 @@ async fn start_https_server(
     });
 
     Ok(())
+}
+
+/// Dispatch a JSON-RPC method received over a riboCipher-signalled federation connection.
+///
+/// Handles health/liveness probes natively; other methods get a generic ack.
+fn dispatch_federation_rpc(
+    method: &str,
+    id: serde_json::Value,
+    tier: &str,
+) -> serde_json::Value {
+    match method {
+        "health.liveness" | "health" | "ping" => {
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "result": {
+                    "status": "healthy",
+                    "primal": "songbird",
+                    "version": env!("CARGO_PKG_VERSION"),
+                    "tier": tier,
+                    "uptime_secs": std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_secs())
+                        .unwrap_or(0),
+                },
+                "id": id
+            })
+        }
+        "system.capabilities" | "capabilities" => {
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "result": {
+                    "capabilities": [
+                        "mesh.relay",
+                        "federation.peer",
+                        "health.liveness",
+                        "birdsong.broadcast",
+                    ],
+                    "primal": "songbird",
+                    "tier": tier,
+                },
+                "id": id
+            })
+        }
+        _ => {
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "result": {"status": "ok", "tier": tier, "method": method},
+                "id": id
+            })
+        }
+    }
 }
 
 /// Smart port binding with automatic fallback using Sovereign Socket
@@ -640,4 +686,52 @@ pub async fn start_tarpc_server(
     });
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dispatch_health_liveness_returns_healthy() {
+        let resp = dispatch_federation_rpc("health.liveness", serde_json::json!(1), "clear");
+        assert_eq!(resp["jsonrpc"], "2.0");
+        assert_eq!(resp["id"], 1);
+        assert_eq!(resp["result"]["status"], "healthy");
+        assert_eq!(resp["result"]["primal"], "songbird");
+        assert_eq!(resp["result"]["tier"], "clear");
+        assert!(resp["result"]["version"].as_str().is_some());
+    }
+
+    #[test]
+    fn dispatch_health_alias_returns_healthy() {
+        let resp = dispatch_federation_rpc("health", serde_json::json!("abc"), "mito");
+        assert_eq!(resp["result"]["status"], "healthy");
+        assert_eq!(resp["result"]["tier"], "mito");
+    }
+
+    #[test]
+    fn dispatch_ping_returns_healthy() {
+        let resp = dispatch_federation_rpc("ping", serde_json::json!(42), "clear");
+        assert_eq!(resp["result"]["status"], "healthy");
+        assert_eq!(resp["id"], 42);
+    }
+
+    #[test]
+    fn dispatch_capabilities_returns_list() {
+        let resp = dispatch_federation_rpc("system.capabilities", serde_json::json!(2), "clear");
+        let caps = resp["result"]["capabilities"].as_array().unwrap();
+        assert!(caps.iter().any(|c| c == "health.liveness"));
+        assert!(caps.iter().any(|c| c == "mesh.relay"));
+        assert_eq!(resp["result"]["primal"], "songbird");
+    }
+
+    #[test]
+    fn dispatch_unknown_method_returns_generic_ok() {
+        let resp = dispatch_federation_rpc("custom.method", serde_json::json!(99), "nuclear");
+        assert_eq!(resp["result"]["status"], "ok");
+        assert_eq!(resp["result"]["method"], "custom.method");
+        assert_eq!(resp["result"]["tier"], "nuclear");
+        assert_eq!(resp["id"], 99);
+    }
 }
