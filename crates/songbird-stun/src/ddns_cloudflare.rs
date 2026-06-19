@@ -276,7 +276,7 @@ mod tests {
         let list_resp = r#"{"success":true,"result":[]}"#;
         let create_resp = r#"{"success":true,"result":{"id":"new"}}"#;
         let call_count = Arc::new(std::sync::atomic::AtomicU32::new(0));
-        let cc = call_count.clone();
+        let cc = Arc::clone(&call_count);
 
         let http: HttpExecutor = Arc::new(move |req| {
             let n = cc.fetch_add(1, std::sync::atomic::Ordering::SeqCst);

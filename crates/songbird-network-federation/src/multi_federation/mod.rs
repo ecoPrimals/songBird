@@ -211,7 +211,7 @@ pub struct TrustPolicy {
 impl Default for TrustPolicy {
     fn default() -> Self {
         Self {
-            min_trust_level: "anonymous".to_string(),
+            min_trust_level: String::from("anonymous"),
             allow_anonymous: true,
         }
     }
@@ -413,8 +413,8 @@ mod tests {
     fn test_auto_join_policy() {
         let policy = AutoJoinPolicy {
             enabled: true,
-            required_capabilities: vec!["academic".to_string()],
-            forbidden_capabilities: vec!["personal".to_string()],
+            required_capabilities: vec![String::from("academic")],
+            forbidden_capabilities: vec![String::from("personal")],
             max_nodes: Some(10),
             ip_allowlist: None,
             ip_denylist: Vec::new(),
@@ -424,14 +424,14 @@ mod tests {
         let peer = DiscoveredPeer {
             node_id: None,
             node_name: None,
-            session_id: "test".to_string(),
+            session_id: String::from("test"),
             endpoints: None,
-            capabilities: vec!["academic".to_string(), "compute".to_string()],
-            protocols: vec!["https".to_string()],
+            capabilities: vec![String::from("academic"), String::from("compute")],
+            protocols: vec![String::from("https")],
             port: 8080,
             address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 100)), 2300),
             last_seen: SystemTime::now(),
-            version: "2.1".to_string(),
+            version: String::from("2.1"),
             tags: None,
             timestamp: None,
             identity_attestations: Some(Vec::new()),

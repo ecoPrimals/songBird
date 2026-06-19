@@ -50,9 +50,9 @@ impl TcpReachabilityHandler {
         let start = std::time::Instant::now();
         let ep = service.endpoints.first().ok_or_else(|| SongbirdError::Service {
             service: service.id.clone(),
-            message: "No endpoints to probe".to_string(),
+            message: String::from("No endpoints to probe"),
             suggested_alternatives: vec![],
-            recovery_actions: vec!["Register at least one endpoint for this service".to_string()],
+            recovery_actions: vec![String::from("Register at least one endpoint for this service")],
         })?;
 
         let addr = format!("{}:{}", ep.host, ep.port);
@@ -155,7 +155,7 @@ impl CanonicalProtocolHandler {
     pub fn get_metadata(&self) -> HashMap<String, String> {
         match self {
             Self::TcpReachability(_) => {
-                HashMap::from([("probe".to_string(), "tcp_connect".to_string())])
+                HashMap::from([(String::from("probe"), String::from("tcp_connect"))])
             }
             #[cfg(test)]
             Self::MockHttp(_) => HashMap::new(),
@@ -194,16 +194,16 @@ impl CanonicalProtocolRouter {
     pub fn new() -> Self {
         let mut map = HashMap::new();
         map.insert(
-            "http".to_string(),
+            String::from("http"),
             Arc::new(CanonicalProtocolHandler::TcpReachability(TcpReachabilityHandler::http())),
         );
         map.insert(
-            "https".to_string(),
+            String::from("https"),
             Arc::new(CanonicalProtocolHandler::TcpReachability(TcpReachabilityHandler::https())),
         );
         Self {
             handlers: Arc::new(RwLock::new(map)),
-            default_protocol: "http".to_string(),
+            default_protocol: String::from("http"),
         }
     }
 
@@ -282,7 +282,7 @@ impl CanonicalLoadBalancer {
         if services.is_empty() {
             return Err(SongbirdError::Service {
                 service: request.capability.clone(),
-                message: "No services available for this capability".to_string(),
+                message: String::from("No services available for this capability"),
                 suggested_alternatives: vec![],
                 recovery_actions: vec![],
             });

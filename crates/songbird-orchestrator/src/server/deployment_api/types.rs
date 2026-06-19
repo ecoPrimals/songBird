@@ -230,18 +230,18 @@ mod tests {
             ChunkInfo {
                 index: 0,
                 size_bytes: 10,
-                received_at: "t".to_string(),
-                file_path: "/tmp/x".to_string(),
+                received_at: String::from("t"),
+                file_path: String::from("/tmp/x"),
             },
         );
         let n = NegotiationState {
-            negotiation_id: "n1".to_string(),
+            negotiation_id: String::from("n1"),
             binary_size_mb: 1.0,
             chunk_size_mb: 1,
             total_chunks: 1,
             received_chunks: chunks,
-            temp_dir: "/tmp".to_string(),
-            created_at: "now".to_string(),
+            temp_dir: String::from("/tmp"),
+            created_at: String::from("now"),
             timeout_seconds: 60,
         };
         assert_eq!(n.received_chunks.len(), 1);
@@ -263,12 +263,12 @@ mod tests {
     #[test]
     fn negotiation_response_serializes() {
         let r = NegotiationResponse {
-            negotiation_id: "id".to_string(),
-            accepted_method: "chunked".to_string(),
+            negotiation_id: String::from("id"),
+            accepted_method: String::from("chunked"),
             chunk_size_mb: 2,
             total_chunks: 5,
-            chunk_upload_path: "/upload".to_string(),
-            finalize_path: "/done".to_string(),
+            chunk_upload_path: String::from("/upload"),
+            finalize_path: String::from("/done"),
             timeout_seconds: 120,
         };
         let v = serde_json::to_value(&r).unwrap();
@@ -279,8 +279,8 @@ mod tests {
     #[test]
     fn finalize_request_roundtrip() {
         let f = FinalizeRequest {
-            service_name: "svc".to_string(),
-            env_vars: HashMap::from([("A".to_string(), "b".to_string())]),
+            service_name: String::from("svc"),
+            env_vars: HashMap::from([(String::from("A"), String::from("b"))]),
             auto_start: true,
         };
         assert_json_roundtrip(&f);
@@ -289,12 +289,12 @@ mod tests {
     #[test]
     fn deployment_info_roundtrip() {
         let d = DeploymentInfo {
-            deployment_id: "d1".to_string(),
-            service_name: "svc".to_string(),
-            binary_path: "/bin/app".to_string(),
+            deployment_id: String::from("d1"),
+            service_name: String::from("svc"),
+            binary_path: String::from("/bin/app"),
             env_vars: HashMap::new(),
             status: DeploymentStatus::Deploying,
-            deployed_at: "2026-01-01T00:00:00Z".to_string(),
+            deployed_at: String::from("2026-01-01T00:00:00Z"),
             pid: Some(42),
             port: Some(8080),
         };
@@ -317,10 +317,10 @@ mod tests {
     #[test]
     fn deployment_response_serializes() {
         let r = DeploymentResponse {
-            deployment_id: "d".to_string(),
-            status: "ok".to_string(),
-            message: "deployed".to_string(),
-            service_url: Some("http://localhost:1".to_string()),
+            deployment_id: String::from("d"),
+            status: String::from("ok"),
+            message: String::from("deployed"),
+            service_url: Some(String::from("http://localhost:1")),
         };
         let v = serde_json::to_value(&r).unwrap();
         assert_eq!(v["status"], json!("ok"));
@@ -329,23 +329,23 @@ mod tests {
     #[test]
     fn deployment_capabilities_serializes() {
         let c = DeploymentCapabilities {
-            node_id: "node".to_string(),
-            timestamp: "t".to_string(),
+            node_id: String::from("node"),
+            timestamp: String::from("t"),
             network: NetworkCapabilities {
-                network_type: "lan".to_string(),
+                network_type: String::from("lan"),
                 bandwidth_estimate: BandwidthEstimate {
                     download_mbps: 100,
                     upload_mbps: 50,
                     latency_ms: 5,
-                    confidence: "high".to_string(),
+                    confidence: String::from("high"),
                 },
             },
             deployment_methods: DeploymentMethods {
                 single: SingleUploadMethod {
                     enabled: true,
                     max_size_mb: 50,
-                    compression_supported: vec!["gzip".to_string()],
-                    recommended_for: "small".to_string(),
+                    compression_supported: vec![String::from("gzip")],
+                    recommended_for: String::from("small"),
                 },
                 chunked: ChunkedUploadMethod {
                     enabled: true,
@@ -353,13 +353,13 @@ mod tests {
                     chunk_size_mb: 5,
                     max_chunks: 100,
                     compression_supported: vec![],
-                    recommended_for: "large".to_string(),
+                    recommended_for: String::from("large"),
                 },
                 streaming: StreamingUploadMethod {
                     enabled: false,
                     unlimited: false,
                     compression_supported: vec![],
-                    recommended_for: "huge".to_string(),
+                    recommended_for: String::from("huge"),
                 },
             },
             resources: ResourceInfo {
@@ -371,8 +371,8 @@ mod tests {
                 current_deployments: 0,
             },
             preferences: DeploymentPreferences {
-                preferred_compression: "gzip".to_string(),
-                preferred_method: "chunked".to_string(),
+                preferred_compression: String::from("gzip"),
+                preferred_method: String::from("chunked"),
                 encryption_required: true,
             },
         };

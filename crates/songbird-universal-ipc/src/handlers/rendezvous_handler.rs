@@ -51,7 +51,7 @@ impl RendezvousClient {
             #[cfg(test)]
             Self::Mock(m) => m.register(server, node_id, family_id, public_address).await,
             #[cfg(test)]
-            Self::Failing => Err("simulated register failure".to_string()),
+            Self::Failing => Err(String::from("simulated register failure")),
         }
     }
 
@@ -62,7 +62,7 @@ impl RendezvousClient {
             #[cfg(test)]
             Self::Mock(m) => m.lookup(server, target).await,
             #[cfg(test)]
-            Self::Failing => Err("simulated lookup failure".to_string()),
+            Self::Failing => Err(String::from("simulated lookup failure")),
         }
     }
 }

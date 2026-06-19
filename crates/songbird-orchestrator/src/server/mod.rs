@@ -101,23 +101,23 @@ impl ServerManager {
 
         // Check service registry health
         let service_registry_healthy = self.check_service_registry_health(orchestrator).await;
-        health_results.push(("Service Registry".to_string(), service_registry_healthy));
+        health_results.push((String::from("Service Registry"), service_registry_healthy));
 
         // Check gaming manager health
         let gaming_healthy = self.check_gaming_manager_health(orchestrator).await;
-        health_results.push(("Gaming Manager".to_string(), gaming_healthy));
+        health_results.push((String::from("Gaming Manager"), gaming_healthy));
 
         // Check federation manager health
         let federation_healthy = self.check_federation_manager_health(orchestrator).await;
-        health_results.push(("Federation Manager".to_string(), federation_healthy));
+        health_results.push((String::from("Federation Manager"), federation_healthy));
 
         // Check observability manager health
         let observability_healthy = self.check_observability_manager_health(orchestrator).await;
-        health_results.push(("Observability Manager".to_string(), observability_healthy));
+        health_results.push((String::from("Observability Manager"), observability_healthy));
 
         // Check security integration health
         let security_healthy = self.check_security_integration_health(orchestrator).await;
-        health_results.push(("Security Integration".to_string(), security_healthy));
+        health_results.push((String::from("Security Integration"), security_healthy));
 
         health_results
     }
@@ -352,14 +352,42 @@ pub enum HealthStatus {
 /// Service monitoring functionality
 pub struct ServiceMonitor {
     check_interval: Duration,
+    registry_enabled: bool,
+    gaming_enabled: bool,
+    federation_enabled: bool,
+    security_enabled: bool,
 }
 
 impl ServiceMonitor {
-    /// Create new service monitor
+    /// Create new service monitor (snapshots env-driven feature flags at construction).
     #[must_use]
-    pub const fn new(check_interval: Duration) -> Self {
+    pub fn new(check_interval: Duration) -> Self {
         Self {
             check_interval,
+            registry_enabled: SafeEnv::get_or_default("SONGBIRD_SERVICE_REGISTRY_ENABLED", "true")
+                != "false",
+            gaming_enabled: SafeEnv::get_or_default("SONGBIRD_GAMING_ENABLED", "true") != "false",
+            federation_enabled: SafeEnv::get_or_default("SONGBIRD_FEDERATION_ENABLED", "true")
+                != "false",
+            security_enabled: SafeEnv::get_or_default("SONGBIRD_SECURITY_ENABLED", "true")
+                != "false",
+        }
+    }
+
+    #[cfg(test)]
+    fn with_flags(
+        check_interval: Duration,
+        registry: bool,
+        gaming: bool,
+        federation: bool,
+        security: bool,
+    ) -> Self {
+        Self {
+            check_interval,
+            registry_enabled: registry,
+            gaming_enabled: gaming,
+            federation_enabled: federation,
+            security_enabled: security,
         }
     }
 
@@ -373,44 +401,21 @@ impl ServiceMonitor {
     )]
     pub async fn start_monitoring(&self) -> Result<()> {
         let mut monitor_interval = interval(self.check_interval);
+        let registry = self.registry_enabled;
+        let gaming = self.gaming_enabled;
+        let federation = self.federation_enabled;
+        let security = self.security_enabled;
 
         tokio::spawn(async move {
             loop {
                 monitor_interval.tick().await;
 
-                // Monitor services
-                let mut healthy_count = 0;
-                let mut warning_count = 0;
-                let mut critical_count = 0;
-                let _total_services = 4; // registry, gaming, federation, security
-
-                // Monitor service registry
-                if Self::check_service_registry_health().await {
-                    healthy_count += 1;
-                } else {
-                    critical_count += 1;
-                }
-
-                // Monitor gaming bridges
-                if Self::check_gaming_bridges_health().await {
-                    healthy_count += 1;
-                } else {
-                    warning_count += 1;
-                }
-
-                // Monitor federation connections
-                if Self::check_federation_connections_health().await {
-                    healthy_count += 1;
-                } else {
-                    warning_count += 1;
-                }
-
-                // Monitor security services
-                if Self::check_security_services_health().await {
-                    healthy_count += 1;
-                } else {
-                    critical_count += 1;
-                }
+                let healthy_count = u32::from(registry)
+                    + u32::from(gaming)
+                    + u32::from(federation)
+                    + u32::from(security);
+                let warning_count = u32::from(!gaming) + u32::from(!federation);
+                let critical_count = u32::from(!registry) + u32::from(!security);
 
                 info!(
                     "📊 Service monitoring check completed - Healthy: {}, Warning: {}, Critical: {}",
@@ -427,35 +432,30 @@ impl ServiceMonitor {
     ///
     /// Returns an error if the operation fails.
     pub async fn get_monitoring_report(&self) -> Result<ServiceMonitoringReport> {
-        // Implement comprehensive monitoring report generation
         let mut healthy_services = 0;
         let mut warning_services = 0;
         let mut critical_services = 0;
-        let total_services = 4; // registry, gaming, federation, security
+        let total_services = 4;
 
-        // Check service registry health
-        if Self::check_service_registry_health().await {
+        if self.registry_enabled {
             healthy_services += 1;
         } else {
             critical_services += 1;
         }
 
-        // Check gaming bridges health
-        if Self::check_gaming_bridges_health().await {
+        if self.gaming_enabled {
             healthy_services += 1;
         } else {
             warning_services += 1;
         }
 
-        // Check federation connections health
-        if Self::check_federation_connections_health().await {
+        if self.federation_enabled {
             healthy_services += 1;
         } else {
             warning_services += 1;
         }
 
-        // Check security services health
-        if Self::check_security_services_health().await {
+        if self.security_enabled {
             healthy_services += 1;
         } else {
             critical_services += 1;
@@ -468,50 +468,6 @@ impl ServiceMonitor {
             critical_services,
             timestamp: std::time::SystemTime::now(),
         })
-    }
-
-    /// Check service registry health
-    #[expect(
-        clippy::unused_async,
-        reason = "async signature required by Axum, trait objects, or future I/O"
-    )]
-    async fn check_service_registry_health() -> bool {
-        // In production, this would check actual service registry endpoints
-        // For now, simulate with environment variable check
-        SafeEnv::get_or_default("SONGBIRD_SERVICE_REGISTRY_ENABLED", "true") != "false"
-    }
-
-    /// Check gaming bridges health
-    #[expect(
-        clippy::unused_async,
-        reason = "async signature required by Axum, trait objects, or future I/O"
-    )]
-    async fn check_gaming_bridges_health() -> bool {
-        // In production, this would check actual gaming bridge endpoints
-        // For now, simulate with environment variable check
-        SafeEnv::get_or_default("SONGBIRD_GAMING_ENABLED", "true") != "false"
-    }
-
-    /// Check federation connections health
-    #[expect(
-        clippy::unused_async,
-        reason = "async signature required by Axum, trait objects, or future I/O"
-    )]
-    async fn check_federation_connections_health() -> bool {
-        // In production, this would check actual federation node connections
-        // For now, simulate with environment variable check
-        SafeEnv::get_or_default("SONGBIRD_FEDERATION_ENABLED", "true") != "false"
-    }
-
-    /// Check security services health
-    #[expect(
-        clippy::unused_async,
-        reason = "async signature required by Axum, trait objects, or future I/O"
-    )]
-    async fn check_security_services_health() -> bool {
-        // In production, this would check actual security service endpoints
-        // For now, simulate with environment variable check
-        SafeEnv::get_or_default("SONGBIRD_SECURITY_ENABLED", "true") != "false"
     }
 }
 
@@ -577,7 +533,7 @@ mod tests {
 
     #[tokio::test]
     async fn service_monitor_report_all_healthy() {
-        let monitor = ServiceMonitor::new(Duration::from_secs(5));
+        let monitor = ServiceMonitor::with_flags(Duration::from_secs(5), true, true, true, true);
         let report = monitor.get_monitoring_report().await.unwrap();
         assert_eq!(report.services_monitored, 4);
         assert_eq!(report.healthy_services, 4);
@@ -586,10 +542,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn service_monitor_env_disables_service() {
-        let _guard =
-            songbird_process_env::ScopedEnv::new("SONGBIRD_SERVICE_REGISTRY_ENABLED", "false");
-        let monitor = ServiceMonitor::new(Duration::from_secs(5));
+    async fn service_monitor_registry_disabled() {
+        let monitor = ServiceMonitor::with_flags(Duration::from_secs(5), false, true, true, true);
         let report = monitor.get_monitoring_report().await.unwrap();
         assert_eq!(report.critical_services, 1);
         assert_eq!(report.healthy_services, 3);
@@ -597,24 +551,21 @@ mod tests {
 
     #[tokio::test]
     async fn service_monitor_gaming_disabled() {
-        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_GAMING_ENABLED", "false");
-        let monitor = ServiceMonitor::new(Duration::from_secs(5));
+        let monitor = ServiceMonitor::with_flags(Duration::from_secs(5), true, false, true, true);
         let report = monitor.get_monitoring_report().await.unwrap();
         assert_eq!(report.warning_services, 1);
     }
 
     #[tokio::test]
     async fn service_monitor_federation_disabled() {
-        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_FEDERATION_ENABLED", "false");
-        let monitor = ServiceMonitor::new(Duration::from_secs(5));
+        let monitor = ServiceMonitor::with_flags(Duration::from_secs(5), true, true, false, true);
         let report = monitor.get_monitoring_report().await.unwrap();
         assert_eq!(report.warning_services, 1);
     }
 
     #[tokio::test]
     async fn service_monitor_security_disabled() {
-        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_SECURITY_ENABLED", "false");
-        let monitor = ServiceMonitor::new(Duration::from_secs(5));
+        let monitor = ServiceMonitor::with_flags(Duration::from_secs(5), true, true, true, false);
         let report = monitor.get_monitoring_report().await.unwrap();
         assert_eq!(report.critical_services, 1);
     }

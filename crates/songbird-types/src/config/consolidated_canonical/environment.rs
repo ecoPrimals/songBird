@@ -33,8 +33,8 @@ impl CanonicalEnvironmentConfig {
 impl Default for CanonicalEnvironmentConfig {
     fn default() -> Self {
         Self {
-            name: "development".to_string(),
-            deployment_mode: "standalone".to_string(),
+            name: String::from("development"),
+            deployment_mode: String::from("standalone"),
         }
     }
 }

@@ -49,17 +49,17 @@ mod tests {
     fn sample_service(id: &str, capability: &str) -> CanonicalServiceInfo {
         let mut metadata = HashMap::new();
         metadata.insert(
-            "provider_type".to_string(),
+            String::from("provider_type"),
             serde_json::to_string(&ProviderType::Service).expect("serialize ProviderType"),
         );
         CanonicalServiceInfo {
             id: id.to_string(),
             name: format!("service-{id}"),
             service_type: ServiceType::WebService,
-            version: "1.0.0".to_string(),
+            version: String::from("1.0.0"),
             endpoints: vec![Endpoint {
-                protocol: "http".to_string(),
-                host: "127.0.0.1".to_string(),
+                protocol: String::from("http"),
+                host: String::from("127.0.0.1"),
                 port: 8080,
                 path: None,
                 metadata: HashMap::new(),
@@ -76,7 +76,7 @@ mod tests {
     async fn register_service_indexes_by_capability_and_type() {
         let adapter = create_canonical_adapter();
         adapter
-            .register_service(sample_service("alpha", "compute"), vec!["compute".to_string()])
+            .register_service(sample_service("alpha", "compute"), vec![String::from("compute")])
             .await
             .expect("register");
 
@@ -101,14 +101,14 @@ mod tests {
     async fn handle_request_errors_when_protocol_handler_missing() {
         let mut svc = sample_service("s1", "compute");
         svc.endpoints = vec![Endpoint {
-            protocol: "unregistered-protocol".to_string(),
-            host: "127.0.0.1".to_string(),
+            protocol: String::from("unregistered-protocol"),
+            host: String::from("127.0.0.1"),
             port: 9,
             path: None,
             metadata: HashMap::new(),
         }];
         let adapter = create_canonical_adapter();
-        adapter.register_service(svc, vec!["compute".to_string()]).await.expect("register");
+        adapter.register_service(svc, vec![String::from("compute")]).await.expect("register");
 
         let req = create_adapter_request("compute", json!({}), CanonicalRequestPriority::Normal);
         let err = adapter.handle_request(req).await.expect_err("expected protocol error");

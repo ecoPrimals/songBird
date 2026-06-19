@@ -32,8 +32,8 @@ use tracing::{debug, warn};
 ///
 /// let validator = GraphValidator::new();
 /// let graph = Graph::new(
-///     "test".to_string(),
-///     "Test".to_string(),
+///     String::from("test"),
+///     String::from("Test"),
 ///     vec![],
 ///     vec![],
 ///     GraphMetadata::default(),

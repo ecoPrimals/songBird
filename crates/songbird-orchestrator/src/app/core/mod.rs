@@ -383,7 +383,7 @@ impl SongbirdOrchestrator {
         info!(
             "   Family ID: {}",
             songbird_process_env::var("SONGBIRD_FAMILY_ID")
-                .unwrap_or_else(|_| "default".to_string())
+                .unwrap_or_else(|_| String::from("default"))
         );
         info!("   Protocol: JSON-RPC 2.0");
 
@@ -399,7 +399,7 @@ impl SongbirdOrchestrator {
         let crypto_socket = crate::env_config::security_crypto_ipc_socket_from_env(|| {
             let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")
                 .or_else(|_| songbird_process_env::var("FAMILY_ID"))
-                .unwrap_or_else(|_| "default".to_string());
+                .unwrap_or_else(|_| String::from("default"));
             songbird_types::defaults::paths::family_scoped_crypto_socket_path(&family_id)
                 .to_string_lossy()
                 .into_owned()

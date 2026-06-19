@@ -138,7 +138,7 @@ mod tests {
         env.set("TEST_KEY", "test_value");
 
         // Should work as EnvironmentProvider
-        assert_eq!(env.get("TEST_KEY"), Some("test_value".to_string()));
+        assert_eq!(env.get("TEST_KEY"), Some(String::from("test_value")));
         assert!(env.contains_key("TEST_KEY"));
         assert!(!env.contains_key("NONEXISTENT_KEY"));
     }

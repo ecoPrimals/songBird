@@ -217,7 +217,7 @@ impl Default for RiskAssessment {
         Self {
             overall_risk_score: 0.3,
             risk_factors: vec![],
-            mitigation_strategies: vec!["Apply standard security policies".to_string()],
+            mitigation_strategies: vec![String::from("Apply standard security policies")],
             confidence: 0.8,
         }
     }
@@ -238,8 +238,8 @@ impl RiskAssessment {
             overall_risk_score: pressure.mul_add(0.55, 0.15).clamp(0.0, 1.0),
             risk_factors: factors.to_vec(),
             mitigation_strategies: vec![
-                "Apply standard security policies".to_string(),
-                "Enforce resource quotas".to_string(),
+                String::from("Apply standard security policies"),
+                String::from("Enforce resource quotas"),
             ],
             confidence: pressure.mul_add(-0.25, 0.85).clamp(0.4, 0.95),
         }
@@ -278,7 +278,7 @@ impl WorkloadClassification {
             PerformancePrediction::from_resource_requirements(&resource_requirements);
         let risk_assessment = RiskAssessment::from_pressure(
             &resource_requirements,
-            &["No AI provider; heuristic classification only".to_string()],
+            &[String::from("No AI provider; heuristic classification only")],
         );
         Self {
             workload_type: wt,
@@ -389,7 +389,7 @@ mod tests {
 
     fn sample_request(workload_type: &str) -> WorkloadRequest {
         WorkloadRequest {
-            id: "t1".to_string(),
+            id: String::from("t1"),
             workload_type: workload_type.to_string(),
             metadata: HashMap::new(),
             payload: serde_json::json!({}),
@@ -398,9 +398,9 @@ mod tests {
 
     fn sample_request_rich(workload_type: &str) -> WorkloadRequest {
         let mut meta = HashMap::new();
-        meta.insert("k".to_string(), serde_json::json!({"nested": true}));
+        meta.insert(String::from("k"), serde_json::json!({"nested": true}));
         WorkloadRequest {
-            id: "corr-42".to_string(),
+            id: String::from("corr-42"),
             workload_type: workload_type.to_string(),
             metadata: meta,
             payload: serde_json::json!({"items": [1, 2, 3]}),
@@ -471,7 +471,7 @@ mod tests {
     #[test]
     fn basic_estimation_ai_computation_variant() {
         let wt = WorkloadType::AIComputation {
-            computation_type: "inference".to_string(),
+            computation_type: String::from("inference"),
         };
         let r = ResourceRequirements::basic_estimation(&wt);
         assert!(r.cpu_cores >= 8);
@@ -486,7 +486,7 @@ mod tests {
 
         let wt = WorkloadType::RealTimeInteractive {
             expected_response_ms: 10.0,
-            interaction_pattern: "fps".to_string(),
+            interaction_pattern: String::from("fps"),
         };
         let r2 = ResourceRequirements::basic_estimation(&wt);
         assert_eq!(r2.cpu_cores, 4);
@@ -559,7 +559,7 @@ mod tests {
     #[test]
     fn risk_assessment_from_pressure_bounds() {
         let req = ResourceRequirements::default();
-        let r = RiskAssessment::from_pressure(&req, &["factor a".to_string()]);
+        let r = RiskAssessment::from_pressure(&req, &[String::from("factor a")]);
         assert!(r.overall_risk_score >= 0.0 && r.overall_risk_score <= 1.0);
         assert!(r.confidence >= 0.4 && r.confidence <= 0.95);
         assert_eq!(r.risk_factors.len(), 1);
@@ -583,9 +583,9 @@ mod tests {
         hi.cpu_cores = 128;
         hi.memory_mb = 512 * 1024;
         hi.network_bandwidth_mbps = 40_000;
-        let h = RiskAssessment::from_pressure(&hi, &["overload".to_string()]);
+        let h = RiskAssessment::from_pressure(&hi, &[String::from("overload")]);
         assert!(h.overall_risk_score > z.overall_risk_score);
-        assert_eq!(h.risk_factors, vec!["overload".to_string()]);
+        assert_eq!(h.risk_factors, vec![String::from("overload")]);
     }
 
     #[test]
@@ -671,14 +671,14 @@ mod tests {
             WorkloadType::Standard,
             WorkloadType::RealTimeInteractive {
                 expected_response_ms: 12.5,
-                interaction_pattern: "voice".to_string(),
+                interaction_pattern: String::from("voice"),
             },
             WorkloadType::BatchProcessing {
                 batch_size: 99,
                 priority_level: BatchPriority::Critical,
             },
             WorkloadType::AIComputation {
-                computation_type: "train".to_string(),
+                computation_type: String::from("train"),
             },
         ];
         for wt in cases {
@@ -713,7 +713,7 @@ mod tests {
         assert_eq!(pred.expected_latency_ms, pred2.expected_latency_ms);
         assert!((pred.confidence_score - pred2.confidence_score).abs() < f64::EPSILON);
 
-        let risk = RiskAssessment::from_pressure(&req, &["x".to_string()]);
+        let risk = RiskAssessment::from_pressure(&req, &[String::from("x")]);
         let s = serde_json::to_string(&risk).unwrap();
         let risk2: RiskAssessment = serde_json::from_str(&s).unwrap();
         assert!((risk.overall_risk_score - risk2.overall_risk_score).abs() < f64::EPSILON);

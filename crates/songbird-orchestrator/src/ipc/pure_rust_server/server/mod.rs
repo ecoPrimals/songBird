@@ -132,7 +132,7 @@ impl UnixSocketServer {
             .or_else(|_| env_reader("SONGBIRD_ORCHESTRATOR_FAMILY"))
             .or_else(|_| env_reader("BIOMEOS_FAMILY_ID"))
             .or_else(|_| env_reader("SONGBIRD_FAMILY_ID"))
-            .unwrap_or_else(|_| "default".to_string())
+            .unwrap_or_else(|_| String::from("default"))
     }
 
     #[must_use]
@@ -188,7 +188,7 @@ impl UnixSocketServer {
         info!("🔌 Starting IPC server (isomorphic mode)...");
         info!("   Socket path: {}", self.socket_path.display());
 
-        match self.clone().try_unix_server().await {
+        match Arc::clone(&self).try_unix_server().await {
             Ok(()) => Ok(()),
             Err(e) => {
                 if self.is_platform_constraint(&e) {
@@ -244,9 +244,13 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
+    use std::borrow::Cow;
+
+    use songbird_universal_ipc::tower_atomic::JsonRpcRequestWire;
+
     use crate::app::connection_manager::ConnectionManager;
     use crate::ipc::pure_rust_server::method_gate::CallerContext;
-    use crate::ipc::pure_rust_server::protocol::{JsonRpcRequest, JsonRpcResponse};
+    use crate::ipc::pure_rust_server::protocol::JsonRpcResponse;
     use crate::ipc::registry::ServiceRegistry;
 
     fn mock_env(
@@ -266,10 +270,10 @@ mod tests {
         Arc::new(UnixSocketServer::new(registry, None, conn_mgr, security))
     }
 
-    fn jsonrpc_req(method: &str) -> JsonRpcRequest {
-        JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            method: method.to_string(),
+    fn jsonrpc_req(method: &'static str) -> JsonRpcRequestWire<'static> {
+        JsonRpcRequestWire {
+            jsonrpc: Cow::Borrowed("2.0"),
+            method: Cow::Borrowed(method),
             params: None,
             id: Some(serde_json::json!(1)),
         }
@@ -440,10 +444,13 @@ mod tests {
 
     // ── Tower Atomic Validation (GAP-16) ─────────────────────────────────
 
-    fn jsonrpc_req_with_params(method: &str, params: serde_json::Value) -> JsonRpcRequest {
-        JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            method: method.to_string(),
+    fn jsonrpc_req_with_params(
+        method: &'static str,
+        params: serde_json::Value,
+    ) -> JsonRpcRequestWire<'static> {
+        JsonRpcRequestWire {
+            jsonrpc: Cow::Borrowed("2.0"),
+            method: Cow::Borrowed(method),
             params: Some(params),
             id: Some(serde_json::json!(1)),
         }
@@ -608,9 +615,9 @@ mod tests {
     async fn invalid_jsonrpc_version_rejected() {
         let server = test_server();
         let caller = CallerContext::from_unix();
-        let req = JsonRpcRequest {
-            jsonrpc: "1.0".to_string(),
-            method: "health.liveness".to_string(),
+        let req = JsonRpcRequestWire {
+            jsonrpc: Cow::Borrowed("1.0"),
+            method: Cow::Borrowed("health.liveness"),
             params: None,
             id: Some(serde_json::json!(1)),
         };

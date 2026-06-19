@@ -182,7 +182,7 @@ impl UdpPeerConnector {
         // Perform hole punching with timeout
         let punched = tokio::time::timeout(self.timeout, self.hole_punch(&socket, target))
             .await
-            .map_err(|_| "Hole punch timed out".to_string())?
+            .map_err(|_| String::from("Hole punch timed out"))?
             .map_err(|e| format!("Hole punch error: {e}"))?;
 
         let state = if punched {
@@ -233,7 +233,7 @@ impl PeerConnector {
             #[cfg(test)]
             Self::Mock(m) => m.connect(target_address, our_binding, rendezvous_token).await,
             #[cfg(test)]
-            Self::ErrorSim => Err("simulated transport failure".to_string()),
+            Self::ErrorSim => Err(String::from("simulated transport failure")),
             #[cfg(test)]
             Self::Weird => Ok(PeerConnectResult {
                 connection_id: "x".into(),
@@ -287,18 +287,18 @@ impl MockPeerConnector {
 
             Ok(PeerConnectResult {
                 connection_id,
-                state: "connected".to_string(),
+                state: String::from("connected"),
                 channel: Some(super::peer_types::PeerChannel {
                     local_address,
                     remote_address: target_address.to_string(),
-                    protocol: "udp".to_string(),
+                    protocol: String::from("udp"),
                     latency_ms: Some(25),
                 }),
             })
         } else {
             Ok(PeerConnectResult {
                 connection_id,
-                state: "failed".to_string(),
+                state: String::from("failed"),
                 channel: None,
             })
         }

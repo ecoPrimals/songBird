@@ -270,7 +270,7 @@ mod tests {
 
     #[test]
     fn test_user_id_zero_copy() {
-        let s = "alice".to_string();
+        let s = String::from("alice");
         let id1 = UserId::new(s);
         let id2 = id1.clone();
         // Arc means clone is cheap (just increment ref count)

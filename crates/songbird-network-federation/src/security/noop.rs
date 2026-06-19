@@ -8,7 +8,7 @@
 //! `SecurityProviderFactory::discover` walks UPA /
 //! environment / well-known sockets (see wateringHole v1.2 capability layout). When nothing
 //! responds, callers may use `SecurityProviderFactory::create_noop` to obtain a
-//! [`SecurityProviderImpl::NoOp`] ([`NoOpSecurityProvider`]) instead of omitting a provider everywhere.
+//! [`super::SecurityProviderImpl::NoOp`] ([`NoOpSecurityProvider`]) instead of omitting a provider everywhere.
 //!
 //! This type is **not** a mock: crypto and lineage RPCs return [`Result::Err`] with
 //! [`NoOpSecurityError`], not fake ciphertext. [`NoOpSecurityProvider::get_visibility_level`] is a
@@ -249,8 +249,8 @@ mod tests {
         assert!(p.generate_lineage("n", "p").await.is_err());
         let proof = LineageProof {
             chain: LineageChain {
-                root_id: "r".to_string(),
-                node_id: "n".to_string(),
+                root_id: String::from("r"),
+                node_id: String::from("n"),
                 links: vec![],
                 depth: 0,
             },

@@ -463,7 +463,7 @@ impl Default for HealthCheckConfig {
             timeout_secs: 10,
             failure_threshold: 3,
             recovery_threshold: 2,
-            path: "/health".to_string(),
+            path: String::from("/health"),
             max_retries: 0,
         }
     }

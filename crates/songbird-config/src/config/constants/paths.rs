@@ -13,12 +13,12 @@ pub fn get_log_dir() -> String {
         if cfg!(windows) {
             format!(
                 "{}\\AppData\\Local\\Songbird\\logs",
-                SafeEnv::get_or_default("USERPROFILE", "C:\\Users\\Default".to_string()),
+                SafeEnv::get_or_default("USERPROFILE", String::from("C:\\Users\\Default")),
             )
         } else {
             format!(
                 "{}/.local/share/songbird/logs",
-                SafeEnv::get_or_default("HOME", "/tmp".to_string()),
+                SafeEnv::get_or_default("HOME", String::from("/tmp")),
             )
         }
     })
@@ -32,10 +32,10 @@ pub fn get_cache_dir() -> String {
         if cfg!(windows) {
             format!(
                 "{}\\AppData\\Local\\Songbird\\cache",
-                SafeEnv::get_or_default("USERPROFILE", "C:\\Users\\Default".to_string()),
+                SafeEnv::get_or_default("USERPROFILE", String::from("C:\\Users\\Default")),
             )
         } else {
-            format!("{}/.cache/songbird", SafeEnv::get_or_default("HOME", "/tmp".to_string()),)
+            format!("{}/.cache/songbird", SafeEnv::get_or_default("HOME", String::from("/tmp")),)
         }
     })
 }
@@ -48,10 +48,13 @@ pub fn get_data_dir() -> String {
         if cfg!(windows) {
             format!(
                 "{}\\AppData\\Roaming\\Songbird",
-                SafeEnv::get_or_default("USERPROFILE", "C:\\Users\\Default".to_string()),
+                SafeEnv::get_or_default("USERPROFILE", String::from("C:\\Users\\Default")),
             )
         } else {
-            format!("{}/.local/share/songbird", SafeEnv::get_or_default("HOME", "/tmp".to_string()),)
+            format!(
+                "{}/.local/share/songbird",
+                SafeEnv::get_or_default("HOME", String::from("/tmp")),
+            )
         }
     })
 }
@@ -64,10 +67,10 @@ pub fn get_config_dir() -> String {
         if cfg!(windows) {
             format!(
                 "{}\\AppData\\Roaming\\Songbird\\config",
-                SafeEnv::get_or_default("USERPROFILE", "C:\\Users\\Default".to_string()),
+                SafeEnv::get_or_default("USERPROFILE", String::from("C:\\Users\\Default")),
             )
         } else {
-            format!("{}/.config/songbird", SafeEnv::get_or_default("HOME", "/tmp".to_string()),)
+            format!("{}/.config/songbird", SafeEnv::get_or_default("HOME", String::from("/tmp")),)
         }
     })
 }

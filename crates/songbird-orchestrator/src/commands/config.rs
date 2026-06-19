@@ -343,7 +343,7 @@ mod tests {
     #[test]
     fn mask_secrets_preserves_custom_map() {
         let mut c = CanonicalSongbirdConfig::default();
-        c.custom.insert("k".to_string(), serde_json::json!("v"));
+        c.custom.insert(String::from("k"), serde_json::json!("v"));
         let m = mask_secrets_in_config(c.clone());
         assert_eq!(m.custom.get("k"), c.custom.get("k"));
     }
@@ -352,11 +352,11 @@ mod tests {
     fn config_action_show_variants_distinct() {
         let a = ConfigAction::Show {
             show_secrets: true,
-            format: "json".to_string(),
+            format: String::from("json"),
         };
         let b = ConfigAction::Show {
             show_secrets: false,
-            format: "text".to_string(),
+            format: String::from("text"),
         };
         match (a, b) {
             (
@@ -383,7 +383,7 @@ mod tests {
     #[test]
     fn config_action_init_fields() {
         let a = ConfigAction::Init {
-            output: "/tmp/out".to_string(),
+            output: String::from("/tmp/out"),
             force: true,
         };
         match a {

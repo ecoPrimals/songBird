@@ -189,9 +189,11 @@ where
 
     // 6. No hardcoded fallback - fail with helpful message
     Err(SongbirdError::Configuration {
-        message: "No compute provider configured.".to_string(),
-        field: Some("compute_endpoint".to_string()),
-        suggestion: Some("Set COMPUTE_ENDPOINT environment variable (e.g., export COMPUTE_ENDPOINT=http://your-provider:8001) or enable capability discovery.".to_string()),
+        message: String::from("No compute provider configured."),
+        field: Some(String::from("compute_endpoint")),
+        suggestion: Some(String::from(
+            "Set COMPUTE_ENDPOINT environment variable (e.g., export COMPUTE_ENDPOINT=http://your-provider:8001) or enable capability discovery.",
+        )),
     })
 }
 

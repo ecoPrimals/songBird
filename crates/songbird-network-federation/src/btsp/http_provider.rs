@@ -259,8 +259,8 @@ mod tests {
     #[tokio::test]
     async fn test_http_provider_creation() {
         let provider = HttpBtspProvider::new(
-            "https://localhost:8091".to_string(),
-            "test-provider".to_string(),
+            String::from("https://localhost:8091"),
+            String::from("test-provider"),
         )
         .unwrap();
 

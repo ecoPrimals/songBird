@@ -220,12 +220,12 @@ impl RuntimeEndpointResolver {
         );
 
         fallbacks.insert(
-            "orchestrator".to_string(),
+            String::from("orchestrator"),
             vec![SafeEnv::get_or_default("SONGBIRD_ORCHESTRATOR_FALLBACK", &orch_default)],
         );
 
         fallbacks.insert(
-            "registry".to_string(),
+            String::from("registry"),
             vec![SafeEnv::get_or_default("SONGBIRD_REGISTRY_FALLBACK", &registry_default)],
         );
 
@@ -301,19 +301,19 @@ mod tests {
     #[test]
     fn test_env_resolution_compute_endpoint() {
         let result = RuntimeEndpointResolver::try_env_resolution_with("compute", |key| match key {
-            "COMPUTE_ENDPOINT" => Ok("http://env-compute:8080".to_string()),
+            "COMPUTE_ENDPOINT" => Ok(String::from("http://env-compute:8080")),
             _ => Err(std::env::VarError::NotPresent),
         });
-        assert_eq!(result, Some("http://env-compute:8080".to_string()));
+        assert_eq!(result, Some(String::from("http://env-compute:8080")));
     }
 
     #[test]
     fn test_env_resolution_songbird_url_variant() {
         let result = RuntimeEndpointResolver::try_env_resolution_with("storage", |key| match key {
-            "SONGBIRD_STORAGE_URL" => Ok("http://storage-from-songbird:9000".to_string()),
+            "SONGBIRD_STORAGE_URL" => Ok(String::from("http://storage-from-songbird:9000")),
             _ => Err(std::env::VarError::NotPresent),
         });
-        assert_eq!(result, Some("http://storage-from-songbird:9000".to_string()));
+        assert_eq!(result, Some(String::from("http://storage-from-songbird:9000")));
     }
 
     #[test]
@@ -329,15 +329,15 @@ mod tests {
     fn test_select_best_endpoint_prefers_health_score() {
         let endpoints = vec![
             ServiceEndpoint {
-                id: "a".to_string(),
-                url: "http://low".to_string(),
+                id: String::from("a"),
+                url: String::from("http://low"),
                 capabilities: vec![],
                 health_score: 0.2,
                 last_seen: std::time::SystemTime::UNIX_EPOCH,
             },
             ServiceEndpoint {
-                id: "b".to_string(),
-                url: "http://high".to_string(),
+                id: String::from("b"),
+                url: String::from("http://high"),
                 capabilities: vec![],
                 health_score: 0.95,
                 last_seen: std::time::SystemTime::UNIX_EPOCH,

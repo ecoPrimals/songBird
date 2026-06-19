@@ -105,10 +105,10 @@ impl LimitedBtspConnection {
     /// let btsp_client = Arc::new(BtspClient::new());  // Auto-discovers socket
     ///
     /// let conn = LimitedBtspConnection::new(
-    ///     "tower2".to_string(),
-    ///     vec!["btsp_enabled".to_string()],
+    ///     String::from("tower2"),
+    ///     vec![String::from("btsp_enabled")],
     ///     btsp_client,
-    ///     vec!["birdsong/*".to_string(), "health".to_string()],
+    ///     vec![String::from("birdsong/*"), String::from("health")],
     /// ).await?;
     /// # Ok(())
     /// # }
@@ -291,7 +291,7 @@ impl Drop for LimitedBtspConnection {
         // Note: This is a "best effort" cleanup. The tunnel will be closed
         // eventually by the security provider's timeout mechanism if this fails.
 
-        let tunnel_id = self.tunnel_id.clone();
+        let tunnel_id = Arc::clone(&self.tunnel_id);
         let btsp_client = Arc::clone(&self.btsp_client);
         let peer_id = self.peer_id.clone();
 
@@ -345,8 +345,8 @@ mod tests {
 
     #[test]
     fn test_explicit_deny_overrides_allow_for_limited_style_lists() {
-        let allowed = vec!["birdsong/*".to_string(), "data/read".to_string()];
-        let denied = vec!["data/read".to_string()];
+        let allowed = vec![String::from("birdsong/*"), String::from("data/read")];
+        let denied = vec![String::from("data/read")];
 
         assert!(check_operation_allowed("birdsong/x", &allowed, &denied));
         assert!(!check_operation_allowed("data/read", &allowed, &denied));
@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     fn test_custom_allow_exact_only_requires_full_match() {
-        let allowed = vec!["health".to_string()];
+        let allowed = vec![String::from("health")];
         let denied: Vec<String> = vec![];
 
         assert!(check_operation_allowed("health", &allowed, &denied));

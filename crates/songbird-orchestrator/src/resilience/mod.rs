@@ -53,7 +53,7 @@
 //! }
 //!
 //! async fn external_service_call() -> Result<String, std::io::Error> {
-//!     Ok("success".to_string())
+//!     Ok(String::from("success"))
 //! }
 //! ```
 

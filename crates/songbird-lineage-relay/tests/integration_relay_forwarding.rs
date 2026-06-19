@@ -157,7 +157,7 @@ async fn test_relay_packet_forwarding() {
     let test_data = b"Hello through relay!";
     let data_packet = RelayProtocol::DataPacket {
         session_id,
-        data: test_data.to_vec(),
+        data: bytes::Bytes::copy_from_slice(test_data),
     };
     let encoded = data_packet.encode();
     requester_socket.send_to(&encoded, relay_addr).await.unwrap();

@@ -140,8 +140,8 @@ mod tests {
     fn parse_valid_entries() {
         let peers = parse_peers_str("iron-gate@192.168.1.238:7700,south-gate@192.168.4.29:7700");
         assert_eq!(peers.len(), 2);
-        assert_eq!(peers[0], ("iron-gate".to_string(), "192.168.1.238:7700".to_string()));
-        assert_eq!(peers[1], ("south-gate".to_string(), "192.168.4.29:7700".to_string()));
+        assert_eq!(peers[0], (String::from("iron-gate"), String::from("192.168.1.238:7700")));
+        assert_eq!(peers[1], (String::from("south-gate"), String::from("192.168.4.29:7700")));
     }
 
     #[test]
@@ -164,8 +164,14 @@ mod tests {
     fn parse_address_only_format() {
         let peers = parse_peers_str("192.168.1.144:7700,192.168.1.238:7700");
         assert_eq!(peers.len(), 2);
-        assert_eq!(peers[0], ("peer-192.168.1.144".to_string(), "192.168.1.144:7700".to_string()));
-        assert_eq!(peers[1], ("peer-192.168.1.238".to_string(), "192.168.1.238:7700".to_string()));
+        assert_eq!(
+            peers[0],
+            (String::from("peer-192.168.1.144"), String::from("192.168.1.144:7700"))
+        );
+        assert_eq!(
+            peers[1],
+            (String::from("peer-192.168.1.238"), String::from("192.168.1.238:7700"))
+        );
     }
 
     #[test]
@@ -199,7 +205,7 @@ mod tests {
         songbird_process_env::remove_var("SONGBIRD_NODE_ID");
 
         assert_eq!(reachable.len(), 2);
-        assert!(reachable.contains(&"iron-gate".to_string()));
-        assert!(reachable.contains(&"south-gate".to_string()));
+        assert!(reachable.contains(&String::from("iron-gate")));
+        assert!(reachable.contains(&String::from("south-gate")));
     }
 }

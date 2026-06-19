@@ -327,7 +327,9 @@ impl SongbirdError {
         Self::Network {
             message: message.into(),
             interface: None,
-            suggestion: Some("Increase timeout duration or check network connectivity".to_string()),
+            suggestion: Some(String::from(
+                "Increase timeout duration or check network connectivity",
+            )),
         }
     }
 
@@ -442,7 +444,7 @@ impl SongbirdError {
 impl From<serde_json::Error> for SongbirdError {
     fn from(error: serde_json::Error) -> Self {
         Self::Serialization {
-            format: Some("JSON".to_string()),
+            format: Some(String::from("JSON")),
             message: format!("JSON processing error: {error}"),
             debug_info: None,
         }
@@ -454,7 +456,7 @@ impl From<std::net::AddrParseError> for SongbirdError {
         Self::Network {
             message: format!("Address parse error: {error}"),
             interface: None,
-            suggestion: Some("Check the address format".to_string()),
+            suggestion: Some(String::from("Check the address format")),
         }
     }
 }
@@ -484,7 +486,7 @@ impl From<std::io::Error> for SongbirdError {
         Self::Network {
             message: format!("IO error: {error}"),
             interface: None,
-            suggestion: Some("Check file permissions and network connectivity".to_string()),
+            suggestion: Some(String::from("Check file permissions and network connectivity")),
         }
     }
 }

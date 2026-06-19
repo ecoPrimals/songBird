@@ -177,8 +177,8 @@ impl CanonicalSongbirdConfig {
     pub fn test_defaults() -> Self {
         Self {
             environment: CanonicalEnvironmentConfig {
-                name: "test".to_string(),
-                deployment_mode: "standalone".to_string(),
+                name: String::from("test"),
+                deployment_mode: String::from("standalone"),
             },
             ..Self::default()
         }

@@ -54,9 +54,9 @@ mod tests {
     #[test]
     fn service_endpoint_serde_roundtrip() {
         let ep = ServiceEndpoint {
-            id: "id-1".to_string(),
-            url: "http://127.0.0.1:9000".to_string(),
-            capabilities: vec!["compute".to_string()],
+            id: String::from("id-1"),
+            url: String::from("http://127.0.0.1:9000"),
+            capabilities: vec![String::from("compute")],
             health_score: 0.95,
             last_seen: std::time::SystemTime::UNIX_EPOCH,
         };
@@ -70,14 +70,14 @@ mod tests {
     #[test]
     fn discovery_method_registry_and_config_file_equality() {
         let a = DiscoveryMethod::Registry {
-            endpoint: "http://r".to_string(),
+            endpoint: String::from("http://r"),
         };
         let b = DiscoveryMethod::Registry {
-            endpoint: "http://r".to_string(),
+            endpoint: String::from("http://r"),
         };
         assert_eq!(a, b);
         let c = DiscoveryMethod::ConfigFile {
-            path: "/etc/sb.yaml".to_string(),
+            path: String::from("/etc/sb.yaml"),
         };
         assert_ne!(a, c);
     }

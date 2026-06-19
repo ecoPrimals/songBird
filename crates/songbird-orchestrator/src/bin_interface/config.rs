@@ -371,8 +371,8 @@ mod tests {
     fn builder_merges_explicit_sections_with_defaults() {
         let built = CanonicalSongbirdConfig::builder()
             .environment(CanonicalEnvironmentConfigNew {
-                name: "staging".to_string(),
-                deployment_mode: "cluster".to_string(),
+                name: String::from("staging"),
+                deployment_mode: String::from("cluster"),
             })
             .build()
             .expect("builder");
@@ -501,8 +501,8 @@ mod tests {
     #[test]
     fn format_config_display_includes_tls_lines_when_paths_set() {
         let mut config = CanonicalSongbirdConfig::default();
-        config.security.tls.cert_path = Some("/path/with/secret-cert.pem".to_string());
-        config.security.tls.key_path = Some("/path/with/secret-key.pem".to_string());
+        config.security.tls.cert_path = Some(String::from("/path/with/secret-cert.pem"));
+        config.security.tls.key_path = Some(String::from("/path/with/secret-key.pem"));
         let text = super::format_config_display(&config, false);
         assert!(text.contains("TLS Certificate: /path/with/secret-cert.pem"));
         assert!(text.contains("TLS Key: /path/with/secret-key.pem"));
@@ -511,7 +511,7 @@ mod tests {
     #[test]
     fn format_config_display_show_secrets_matches_until_tls_redaction() {
         let mut config = CanonicalSongbirdConfig::default();
-        config.security.tls.cert_path = Some("/c.pem".to_string());
+        config.security.tls.cert_path = Some(String::from("/c.pem"));
         let masked_view = super::format_config_display(&config, false);
         let show_all = super::format_config_display(&config, true);
         assert_eq!(masked_view, show_all);
@@ -520,7 +520,7 @@ mod tests {
     #[test]
     fn format_config_display_lists_custom_fields() {
         let mut config = CanonicalSongbirdConfig::default();
-        config.custom.insert("extra_key".to_string(), json!({"nested": true}));
+        config.custom.insert(String::from("extra_key"), json!({"nested": true}));
         let text = super::format_config_display(&config, false);
         assert!(text.contains("Custom Fields:"));
         assert!(text.contains("extra_key"));
@@ -529,8 +529,8 @@ mod tests {
     #[test]
     fn mask_secrets_identity_for_tls_material_paths() {
         let mut config = CanonicalSongbirdConfig::default();
-        config.security.tls.cert_path = Some("/tls/ca-chain.pem".to_string());
-        config.security.tls.key_path = Some("/tls/private.key".to_string());
+        config.security.tls.cert_path = Some(String::from("/tls/ca-chain.pem"));
+        config.security.tls.key_path = Some(String::from("/tls/private.key"));
         let masked = super::mask_secrets_in_config(config.clone());
         assert_eq!(masked.security.tls.cert_path, config.security.tls.cert_path);
         assert_eq!(masked.security.tls.key_path, config.security.tls.key_path);

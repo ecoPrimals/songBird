@@ -78,7 +78,7 @@ fn convert_discovered_peer(peer: DiscoveredPeer) -> DiscoveredPeerInfo {
     let node_id = peer.node_id.clone().unwrap_or_else(|| peer.session_id.clone());
 
     // Extract family_id from tags if available (Dark Forest protocol)
-    let family_id = extract_family_id(&peer).unwrap_or_else(|| "unknown".to_string());
+    let family_id = extract_family_id(&peer).unwrap_or_else(|| String::from("unknown"));
 
     // Convert SystemTime to ISO 8601 string
     let last_seen = peer
@@ -147,19 +147,19 @@ mod tests {
     #[test]
     fn test_convert_discovered_peer_v3() {
         let peer = DiscoveredPeer {
-            session_id: "session-123".to_string(),
-            node_id: Some("node-alpha".to_string()),
-            node_name: Some("alpha-tower".to_string()),
+            session_id: String::from("session-123"),
+            node_id: Some(String::from("node-alpha")),
+            node_name: Some(String::from("alpha-tower")),
             endpoints: None,
-            capabilities: vec!["crypto".to_string(), "tls".to_string()],
-            tags: Some(vec!["family:nat0".to_string()]),
+            capabilities: vec![String::from("crypto"), String::from("tls")],
+            tags: Some(vec![String::from("family:nat0")]),
             timestamp: Some(1706500000),
             identity_attestations: None,
-            protocols: vec!["birdsong".to_string()],
+            protocols: vec![String::from("birdsong")],
             port: 8081,
             address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 100)), 2300),
             last_seen: SystemTime::now(),
-            version: "3.0".to_string(),
+            version: String::from("3.0"),
         };
 
         let info = convert_discovered_peer(peer);
@@ -175,19 +175,19 @@ mod tests {
     #[test]
     fn test_convert_discovered_peer_v2_fallback() {
         let peer = DiscoveredPeer {
-            session_id: "session-456".to_string(),
+            session_id: String::from("session-456"),
             node_id: None, // v2.x - no node_id
             node_name: None,
             endpoints: None,
-            capabilities: vec!["crypto".to_string()],
+            capabilities: vec![String::from("crypto")],
             tags: None,
             timestamp: None,
             identity_attestations: None,
-            protocols: vec!["http".to_string()],
+            protocols: vec![String::from("http")],
             port: 8080,
             address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 101)), 2300),
             last_seen: SystemTime::now(),
-            version: "2.0".to_string(),
+            version: String::from("2.0"),
         };
 
         let info = convert_discovered_peer(peer);
@@ -200,41 +200,41 @@ mod tests {
     #[test]
     fn test_extract_family_id() {
         let peer = DiscoveredPeer {
-            session_id: "test".to_string(),
+            session_id: String::from("test"),
             node_id: None,
             node_name: None,
             endpoints: None,
             capabilities: vec![],
-            tags: Some(vec!["family:nat0".to_string(), "other:value".to_string()]),
+            tags: Some(vec![String::from("family:nat0"), String::from("other:value")]),
             timestamp: None,
             identity_attestations: None,
             protocols: vec![],
             port: 8080,
             address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 2300),
             last_seen: SystemTime::now(),
-            version: "3.0".to_string(),
+            version: String::from("3.0"),
         };
 
         let family_id = extract_family_id(&peer);
-        assert_eq!(family_id, Some("nat0".to_string()));
+        assert_eq!(family_id, Some(String::from("nat0")));
     }
 
     #[test]
     fn extract_family_id_tag_family_prefix_only_yields_empty_string() {
         let peer = DiscoveredPeer {
-            session_id: "test".to_string(),
+            session_id: String::from("test"),
             node_id: None,
             node_name: None,
             endpoints: None,
             capabilities: vec![],
-            tags: Some(vec!["family:".to_string()]),
+            tags: Some(vec![String::from("family:")]),
             timestamp: None,
             identity_attestations: None,
             protocols: vec![],
             port: 8080,
             address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 2300),
             last_seen: SystemTime::now(),
-            version: "3.0".to_string(),
+            version: String::from("3.0"),
         };
 
         assert_eq!(extract_family_id(&peer), Some(String::new()));
@@ -243,7 +243,7 @@ mod tests {
     #[test]
     fn test_extract_family_id_no_tags() {
         let peer = DiscoveredPeer {
-            session_id: "test".to_string(),
+            session_id: String::from("test"),
             node_id: None,
             node_name: None,
             endpoints: None,
@@ -255,7 +255,7 @@ mod tests {
             port: 8080,
             address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 2300),
             last_seen: SystemTime::now(),
-            version: "3.0".to_string(),
+            version: String::from("3.0"),
         };
 
         let family_id = extract_family_id(&peer);
@@ -265,7 +265,7 @@ mod tests {
     #[test]
     fn test_calculate_quality_fresh() {
         let peer = DiscoveredPeer {
-            session_id: "test".to_string(),
+            session_id: String::from("test"),
             node_id: None,
             node_name: None,
             endpoints: None,
@@ -277,7 +277,7 @@ mod tests {
             port: 8080,
             address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 2300),
             last_seen: SystemTime::now(), // Fresh!
-            version: "3.0".to_string(),
+            version: String::from("3.0"),
         };
 
         let quality = calculate_quality(&peer);
@@ -288,7 +288,7 @@ mod tests {
     fn calculate_quality_age_buckets() {
         let mk = |secs_ago: u64| -> DiscoveredPeer {
             DiscoveredPeer {
-                session_id: "test".to_string(),
+                session_id: String::from("test"),
                 node_id: None,
                 node_name: None,
                 endpoints: None,
@@ -300,7 +300,7 @@ mod tests {
                 port: 8080,
                 address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 2300),
                 last_seen: SystemTime::now() - Duration::from_secs(secs_ago),
-                version: "3.0".to_string(),
+                version: String::from("3.0"),
             }
         };
 
@@ -314,7 +314,7 @@ mod tests {
     #[test]
     fn test_calculate_quality_stale() {
         let peer = DiscoveredPeer {
-            session_id: "test".to_string(),
+            session_id: String::from("test"),
             node_id: None,
             node_name: None,
             endpoints: None,
@@ -326,7 +326,7 @@ mod tests {
             port: 8080,
             address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 2300),
             last_seen: SystemTime::now() - Duration::from_secs(600), // 10 minutes ago
-            version: "3.0".to_string(),
+            version: String::from("3.0"),
         };
 
         let quality = calculate_quality(&peer);

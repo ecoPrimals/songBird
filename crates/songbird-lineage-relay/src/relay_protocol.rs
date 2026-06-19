@@ -27,6 +27,7 @@
 
 use crate::error::{LineageRelayError, Result};
 use crate::types::NodeId;
+use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use uuid::Uuid;
@@ -45,7 +46,7 @@ pub enum RelayProtocol {
         /// Active allocation id from the allocate handshake.
         session_id: Uuid,
         /// Opaque payload to tunnel toward the peer.
-        data: Vec<u8>,
+        data: Bytes,
     },
 
     /// Refresh session (extend TTL)
@@ -115,7 +116,7 @@ impl RelayProtocol {
                     LineageRelayError::InvalidProtocol(format!("Invalid session ID: {e}"))
                 })?;
 
-                let data = payload[16..].to_vec();
+                let data = Bytes::copy_from_slice(&payload[16..]);
 
                 Ok(Self::DataPacket {
                     session_id,
@@ -301,6 +302,7 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
+    use bytes::Bytes;
 
     #[test]
     fn test_protocol_encode_decode_allocate_request() {
@@ -361,7 +363,7 @@ mod tests {
     #[test]
     fn test_protocol_encode_decode_data_packet() {
         let session_id = Uuid::new_v4();
-        let data = b"Hello, World!".to_vec();
+        let data = Bytes::from_static(b"Hello, World!");
 
         let msg = RelayProtocol::DataPacket {
             session_id,
@@ -495,7 +497,7 @@ mod tests {
     #[test]
     fn test_data_packet_large_payload() {
         let session_id = Uuid::new_v4();
-        let data = vec![42u8; 65000]; // Large packet
+        let data = Bytes::from(vec![42u8; 65000]); // Large packet
 
         let msg = RelayProtocol::DataPacket {
             session_id,

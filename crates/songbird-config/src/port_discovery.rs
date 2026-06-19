@@ -180,7 +180,7 @@ pub fn get_recommended_port_range() -> (u16, u16) {
 
     // Check environment
     let env =
-        songbird_process_env::var("SONGBIRD_ENV").unwrap_or_else(|_| "development".to_string());
+        songbird_process_env::var("SONGBIRD_ENV").unwrap_or_else(|_| String::from("development"));
 
     match (can_use_privileged, env.as_str()) {
         (true, "production") => (80, 100),     // HTTP range

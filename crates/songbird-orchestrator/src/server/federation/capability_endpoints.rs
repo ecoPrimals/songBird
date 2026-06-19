@@ -50,7 +50,7 @@ pub async fn register_capability_provider(
             Json(CapabilityRegistrationResponse {
                 success: false,
                 data: None,
-                error: Some("Capability registry not available".to_string()),
+                error: Some(String::from("Capability registry not available")),
                 timestamp: Utc::now(),
             }),
         );
@@ -70,10 +70,10 @@ pub async fn register_capability_provider(
                     data: Some(RegistrationData {
                         provider_id: request.provider_id.clone(),
                         registration_id,
-                        status: "registered".to_string(),
+                        status: String::from("registered"),
                         heartbeat_interval_ms: capability_registry.config().interval.as_millis()
                             as u64,
-                        heartbeat_endpoint: "/api/v1/federation/capability/heartbeat".to_string(),
+                        heartbeat_endpoint: String::from("/api/v1/federation/capability/heartbeat"),
                     }),
                     error: None,
                     timestamp: Utc::now(),
@@ -110,7 +110,7 @@ pub async fn capability_provider_heartbeat(
             Json(crate::core::registry::types::HeartbeatResponse {
                 success: false,
                 data: None,
-                error: Some("Capability registry not available".to_string()),
+                error: Some(String::from("Capability registry not available")),
                 timestamp: Utc::now(),
             }),
         );
@@ -181,7 +181,7 @@ pub async fn unregister_capability_provider(
             Json(CapabilityRegistrationResponse {
                 success: false,
                 data: None,
-                error: Some("Capability registry not available".to_string()),
+                error: Some(String::from("Capability registry not available")),
                 timestamp: Utc::now(),
             }),
         );
@@ -198,7 +198,7 @@ pub async fn unregister_capability_provider(
                     data: Some(RegistrationData {
                         provider_id: provider_id.clone(),
                         registration_id: String::new(),
-                        status: "unregistered".to_string(),
+                        status: String::from("unregistered"),
                         heartbeat_interval_ms: 0,
                         heartbeat_endpoint: String::new(),
                     }),
@@ -236,7 +236,7 @@ pub async fn list_capability_providers(
             Json(ProviderListResponse {
                 success: false,
                 data: None,
-                error: Some("Capability registry not available".to_string()),
+                error: Some(String::from("Capability registry not available")),
                 timestamp: Utc::now(),
             }),
         );

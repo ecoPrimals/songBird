@@ -91,7 +91,7 @@ pub async fn is_crypto_available() -> bool {
     if let Ok(xdg_dir) = songbird_process_env::var("XDG_RUNTIME_DIR") {
         let family_id = songbird_process_env::var("FAMILY_ID").unwrap_or_default();
         let socket_name = if family_id.is_empty() {
-            "neural-api.sock".to_string()
+            String::from("neural-api.sock")
         } else {
             format!("neural-api-{family_id}.sock")
         };
@@ -110,7 +110,7 @@ pub async fn is_crypto_available() -> bool {
     }
 
     let family_id =
-        songbird_process_env::var("FAMILY_ID").unwrap_or_else(|_| "default".to_string());
+        songbird_process_env::var("FAMILY_ID").unwrap_or_else(|_| String::from("default"));
     ai_provider_socket_legacy_path(&family_id).exists()
 }
 

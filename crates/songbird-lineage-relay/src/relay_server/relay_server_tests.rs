@@ -36,7 +36,7 @@ async fn test_masking_none() {
     let data = b"Hello, World!";
     let masked = packet_handler::apply_masking(data, MaskingLevel::None).unwrap();
 
-    assert_eq!(masked, data);
+    assert_eq!(masked.as_ref(), data);
 }
 
 #[tokio::test]
@@ -76,14 +76,14 @@ fn relay_server_stats_uptime_zero_without_start() {
 async fn masking_legacy_masked_passes_through() {
     let data = b"x";
     let m = packet_handler::apply_masking(data, MaskingLevel::Masked).unwrap();
-    assert_eq!(m, data);
+    assert_eq!(m.as_ref(), data);
 }
 
 #[tokio::test]
 async fn masking_full_visibility_passes_through() {
     let data = b"y";
     let m = packet_handler::apply_masking(data, MaskingLevel::FullVisibility).unwrap();
-    assert_eq!(m, data);
+    assert_eq!(m.as_ref(), data);
 }
 
 #[test]

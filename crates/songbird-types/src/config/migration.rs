@@ -30,7 +30,7 @@ impl Default for CanonicalMigrationConfig {
             auto_migrate: true,
             generate_reports: true,
             backup_original: true,
-            log_level: "info".to_string(),
+            log_level: String::from("info"),
         }
     }
 }
@@ -86,7 +86,7 @@ impl ConfigMigrationUtils {
     /// Generate migration report
     #[must_use]
     pub fn generate_migration_report() -> String {
-        "✅ Migration completed successfully!".to_string()
+        String::from("✅ Migration completed successfully!")
     }
 }
 

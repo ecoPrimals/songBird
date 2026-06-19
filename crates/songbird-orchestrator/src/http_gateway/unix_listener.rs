@@ -209,7 +209,7 @@ impl UnixSocketListener {
                     }
 
                     // Spawn task to handle this connection
-                    let listener = self.clone();
+                    let listener = Arc::clone(&self);
                     tokio::spawn(async move {
                         if let Err(e) = listener.handle_connection(stream).await {
                             error!("Error handling connection: {}", e);
@@ -234,7 +234,7 @@ impl UnixSocketListener {
 
         // Ensure we decrement on exit
         let _guard = ConnectionGuard {
-            counter: self.active_connections.clone(),
+            counter: Arc::clone(&self.active_connections),
         };
 
         let (reader, mut writer) = stream.split();
@@ -416,7 +416,7 @@ impl UnixSocketListener {
 
         // Add API key header if present
         if let Some(key) = api_key {
-            headers.insert("Authorization".to_string(), format!("Bearer {key}"));
+            headers.insert(String::from("Authorization"), format!("Bearer {key}"));
         }
 
         // Add custom headers
@@ -426,7 +426,7 @@ impl UnixSocketListener {
 
         // Add content-type if not specified and payload present
         if !backend.headers.contains_key("content-type") && payload.is_some() {
-            headers.insert("Content-Type".to_string(), "application/json".to_string());
+            headers.insert(String::from("Content-Type"), String::from("application/json"));
         }
 
         // Send request using Pure Rust HTTP client
@@ -494,7 +494,7 @@ struct ConnectionGuard {
 
 impl Drop for ConnectionGuard {
     fn drop(&mut self) {
-        let counter = self.counter.clone();
+        let counter = Arc::clone(&self.counter);
         tokio::spawn(async move {
             let mut active = counter.write().await;
             *active = active.saturating_sub(1);
@@ -539,7 +539,7 @@ mod tests {
     fn test_jsonrpc_request_serialization() {
         let request = JsonRpcRequest {
             jsonrpc: JSONRPC_VERSION.into(),
-            method: "proxy".to_string(),
+            method: String::from("proxy"),
             params: serde_json::json!({"capability": "ai:text-generation"}),
             id: Some(serde_json::json!(1)),
         };
@@ -568,7 +568,7 @@ mod tests {
     fn jsonrpc_notification_omits_id_in_json() {
         let request = JsonRpcRequest {
             jsonrpc: JSONRPC_VERSION.into(),
-            method: "ping".to_string(),
+            method: String::from("ping"),
             params: serde_json::Value::Null,
             id: None,
         };

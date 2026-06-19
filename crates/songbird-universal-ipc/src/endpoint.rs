@@ -282,7 +282,7 @@ mod tests {
     #[test]
     fn test_virtual_endpoint_invalid() {
         let endpoint = VirtualEndpoint {
-            path: "/invalid/path".to_string(),
+            path: String::from("/invalid/path"),
         };
         assert_eq!(endpoint.primal_name(), None);
         assert!(!endpoint.is_valid());
@@ -297,19 +297,19 @@ mod tests {
 
     #[test]
     fn test_native_endpoint_display_abstract() {
-        let endpoint = NativeEndpoint::AbstractSocket("@biomeos_test".to_string());
+        let endpoint = NativeEndpoint::AbstractSocket(String::from("@biomeos_test"));
         assert_eq!(endpoint.display(), "abstract://@biomeos_test");
     }
 
     #[test]
     fn test_native_endpoint_display_pipe() {
-        let endpoint = NativeEndpoint::NamedPipe(r"\\.\pipe\biomeos_test".to_string());
+        let endpoint = NativeEndpoint::NamedPipe(String::from(r"\\.\pipe\biomeos_test"));
         assert_eq!(endpoint.display(), r"pipe://\\.\pipe\biomeos_test");
     }
 
     #[test]
     fn test_native_endpoint_display_xpc() {
-        let endpoint = NativeEndpoint::XPC("org.biomeos.test".to_string());
+        let endpoint = NativeEndpoint::XPC(String::from("org.biomeos.test"));
         assert_eq!(endpoint.display(), "xpc://org.biomeos.test");
     }
 
@@ -321,7 +321,7 @@ mod tests {
 
     #[test]
     fn test_native_endpoint_display_shmem() {
-        let endpoint = NativeEndpoint::SharedMemory("biomeos_test_region".to_string());
+        let endpoint = NativeEndpoint::SharedMemory(String::from("biomeos_test_region"));
         assert_eq!(endpoint.display(), "shmem://biomeos_test_region");
     }
 
@@ -338,13 +338,13 @@ mod tests {
             "unix"
         );
         assert_eq!(
-            NativeEndpoint::AbstractSocket("@test".to_string()).transport_type(),
+            NativeEndpoint::AbstractSocket(String::from("@test")).transport_type(),
             "abstract"
         );
-        assert_eq!(NativeEndpoint::NamedPipe("pipe".to_string()).transport_type(), "pipe");
-        assert_eq!(NativeEndpoint::XPC("xpc".to_string()).transport_type(), "xpc");
+        assert_eq!(NativeEndpoint::NamedPipe(String::from("pipe")).transport_type(), "pipe");
+        assert_eq!(NativeEndpoint::XPC(String::from("xpc")).transport_type(), "xpc");
         assert_eq!(NativeEndpoint::InProcess(1).transport_type(), "inprocess");
-        assert_eq!(NativeEndpoint::SharedMemory("mem".to_string()).transport_type(), "shmem");
+        assert_eq!(NativeEndpoint::SharedMemory(String::from("mem")).transport_type(), "shmem");
         assert_eq!(NativeEndpoint::TcpLocal(8080).transport_type(), "tcp");
     }
 
@@ -352,7 +352,7 @@ mod tests {
     fn test_native_endpoint_performance_tier() {
         // Verify performance ordering (lower = better)
         assert!(
-            NativeEndpoint::SharedMemory("m".to_string()).performance_tier()
+            NativeEndpoint::SharedMemory(String::from("m")).performance_tier()
                 < NativeEndpoint::InProcess(1).performance_tier()
         );
         assert!(
@@ -361,10 +361,10 @@ mod tests {
         );
         assert!(
             NativeEndpoint::UnixSocket(PathBuf::from("/tmp/test.sock")).performance_tier()
-                < NativeEndpoint::NamedPipe("p".to_string()).performance_tier()
+                < NativeEndpoint::NamedPipe(String::from("p")).performance_tier()
         );
         assert!(
-            NativeEndpoint::NamedPipe("p".to_string()).performance_tier()
+            NativeEndpoint::NamedPipe(String::from("p")).performance_tier()
                 < NativeEndpoint::TcpLocal(8080).performance_tier()
         );
     }

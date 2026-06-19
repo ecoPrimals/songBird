@@ -124,7 +124,7 @@ where
     if fid != "default" && !fid.is_empty() {
         format!("songbird-{fid}.sock")
     } else {
-        "songbird.sock".to_string()
+        String::from("songbird.sock")
     }
 }
 

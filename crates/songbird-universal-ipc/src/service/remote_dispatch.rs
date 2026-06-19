@@ -240,7 +240,7 @@ impl IpcServiceHandler {
             if let Some(arr) = flat {
                 Ok(arr.iter().any(|c| c.as_str() == Some(capability)))
             } else {
-                Err("no provided_capabilities in response".to_string())
+                Err(String::from("no provided_capabilities in response"))
             }
         }
     }

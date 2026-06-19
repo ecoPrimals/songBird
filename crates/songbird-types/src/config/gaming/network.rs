@@ -44,8 +44,8 @@ pub struct ProtocolConfig {
 impl Default for ProtocolConfig {
     fn default() -> Self {
         Self {
-            supported: vec!["udp".to_string(), "tcp".to_string()],
-            default: "udp".to_string(),
+            supported: vec![String::from("udp"), String::from("tcp")],
+            default: String::from("udp"),
             settings: HashMap::new(),
         }
     }

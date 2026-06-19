@@ -146,7 +146,7 @@ fn resolve_family_id() -> String {
     songbird_process_env::var("FAMILY_ID")
         .or_else(|_| songbird_process_env::var("BIOMEOS_FAMILY_ID"))
         .or_else(|_| songbird_process_env::var("SONGBIRD_FAMILY_ID"))
-        .unwrap_or_else(|_| "ecoPrimal".to_string())
+        .unwrap_or_else(|_| String::from("ecoPrimal"))
 }
 
 #[cfg(test)]

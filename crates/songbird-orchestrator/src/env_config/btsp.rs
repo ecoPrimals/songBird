@@ -22,7 +22,7 @@ where
     let fid = env_reader("FAMILY_ID")
         .or_else(|_| env_reader("SONGBIRD_FAMILY_ID"))
         .or_else(|_| env_reader("BIOMEOS_FAMILY_ID"))
-        .unwrap_or_else(|_| "default".to_string());
+        .unwrap_or_else(|_| String::from("default"));
 
     let insecure = env_reader("BIOMEOS_INSECURE")
         .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))

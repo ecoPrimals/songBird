@@ -36,12 +36,12 @@ impl Default for CachingConfig {
             statistics_enabled: true,
             layers: vec![
                 CacheLayerConfig {
-                    name: "L1".to_string(),
+                    name: String::from("L1"),
                     size_mb: 64,
                     ttl: Duration::from_secs(300), // 5 minutes
                 },
                 CacheLayerConfig {
-                    name: "L2".to_string(),
+                    name: String::from("L2"),
                     size_mb: 192,
                     ttl: Duration::from_secs(3600), // 1 hour
                 },

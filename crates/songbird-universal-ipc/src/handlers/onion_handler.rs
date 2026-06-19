@@ -104,7 +104,7 @@ impl OnionHandler {
         {
             let service = self.service.read().await;
             if service.is_some() {
-                return Err("Onion service already running (use onion.stop first)".to_string());
+                return Err(String::from("Onion service already running (use onion.stop first)"));
             }
         }
 
@@ -321,7 +321,7 @@ impl OnionHandler {
         let service = self.service.read().await;
 
         service.as_ref().map_or_else(
-            || Err("Onion service not running".to_string()),
+            || Err(String::from("Onion service not running")),
             |svc| {
                 Ok(json!({
                     "address": svc.onion_address(),

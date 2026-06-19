@@ -348,7 +348,7 @@ impl MockSecurityProviderClient {
             valid: true,
             same_genesis: false,
             lineage_id: proof.lineage_id.clone(),
-            messages: vec!["Mock verification (test only)".to_string()],
+            messages: vec![String::from("Mock verification (test only)")],
         })
     }
 
@@ -595,7 +595,7 @@ mod tests {
             .evaluate_peer(
                 "peer-1",
                 "http://192.168.1.100:8080",
-                &["compute".to_string()],
+                &[String::from("compute")],
                 None,
                 None,
             )

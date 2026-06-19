@@ -32,7 +32,7 @@ impl Default for CanonicalLocalNodeConfig {
         Self {
             name: songbird_process_env::var("HOSTNAME")
                 .or_else(|_| songbird_process_env::var("COMPUTERNAME"))
-                .unwrap_or_else(|_| "songbird-node".to_string()),
+                .unwrap_or_else(|_| String::from("songbird-node")),
             node_type: CanonicalNodeType::default(),
             listen_addresses: vec![std::net::SocketAddr::new(
                 std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),

@@ -178,7 +178,7 @@ impl CanonicalResponse {
     pub fn success(request_id: impl Into<String>, data: serde_json::Value) -> Self {
         Self {
             request_id: request_id.into(),
-            status: "success".to_string(),
+            status: String::from("success"),
             data: Some(data),
             error_message: None,
             metadata: HashMap::new(),
@@ -191,7 +191,7 @@ impl CanonicalResponse {
     pub fn error(request_id: impl Into<String>, error: impl Into<String>) -> Self {
         Self {
             request_id: request_id.into(),
-            status: "error".to_string(),
+            status: String::from("error"),
             data: None,
             error_message: Some(error.into()),
             metadata: HashMap::new(),
@@ -246,11 +246,11 @@ impl std::str::FromStr for CanonicalNodeType {
             "storage" => Ok(Self::Storage),
             "coordinator" => Ok(Self::Coordinator),
             _ => Err(SongbirdError::Validation {
-                message: "Invalid node type".to_string(),
-                field: Some("node_type".to_string()),
-                suggestion: Some(
-                    "Expected Tower, Edge, Gateway, Storage, or Coordinator".to_string(),
-                ),
+                message: String::from("Invalid node type"),
+                field: Some(String::from("node_type")),
+                suggestion: Some(String::from(
+                    "Expected Tower, Edge, Gateway, Storage, or Coordinator",
+                )),
             }),
         }
     }
@@ -292,7 +292,7 @@ mod tests {
         assert_eq!(endpoint.host, "localhost");
         assert_eq!(endpoint.port, 8080);
         assert_eq!(endpoint.protocol, "http");
-        assert_eq!(endpoint.path, Some("/api/v1".to_string()));
+        assert_eq!(endpoint.path, Some(String::from("/api/v1")));
         // Test URL construction works correctly
         let expected_url = format!(
             "{}://{}:{}{}",
@@ -312,15 +312,15 @@ mod tests {
         let _ = address.with_country("USA");
         let _ = address.with_type("datacenter");
 
-        assert_eq!(address.city, Some("San Francisco".to_string()));
-        assert_eq!(address.country, Some("USA".to_string()));
-        assert_eq!(address.addr_type, Some("datacenter".to_string()));
+        assert_eq!(address.city, Some(String::from("San Francisco")));
+        assert_eq!(address.country, Some(String::from("USA")));
+        assert_eq!(address.addr_type, Some(String::from("datacenter")));
     }
 
     #[test]
     fn test_canonical_request() {
         let request = CanonicalRequest::new(
-            "health_check".to_string(),
+            String::from("health_check"),
             serde_json::json!({"status": "check"}),
         );
 
@@ -341,7 +341,7 @@ mod tests {
 
         let error_response = CanonicalResponse::error(request_id.to_string(), "Test error");
         assert!(!error_response.is_success());
-        assert_eq!(error_response.error_message, Some("Test error".to_string()));
+        assert_eq!(error_response.error_message, Some(String::from("Test error")));
     }
 
     #[test]

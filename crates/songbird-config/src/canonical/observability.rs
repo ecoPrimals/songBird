@@ -72,8 +72,8 @@ impl Default for LoggingConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            level: "info".to_string(),
-            format: "pretty".to_string(),
+            level: String::from("info"),
+            format: String::from("pretty"),
             rotation: LogRotationConfig::default(),
         }
     }

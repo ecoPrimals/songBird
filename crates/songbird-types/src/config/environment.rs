@@ -235,7 +235,7 @@ impl DeploymentMode {
     /// use std::collections::HashMap;
     ///
     /// let mut env = HashMap::new();
-    /// env.insert("SONGBIRD_ENV".to_string(), "production".to_string());
+    /// env.insert(String::from("SONGBIRD_ENV"), String::from("production"));
     ///
     /// let mode = DeploymentMode::from_env_map(&env);
     /// assert!(matches!(mode, DeploymentMode::Production));
@@ -374,7 +374,7 @@ impl Default for EnvironmentHealthCheckConfig {
             interval: Duration::from_secs(30),
             timeout: Duration::from_secs(5),
             max_retries: 3,
-            endpoint_path: "/health".to_string(),
+            endpoint_path: String::from("/health"),
         }
     }
 }
@@ -401,7 +401,7 @@ impl NetworkBindingConfig {
             production_bind_address,
             bind_port,
             port_range: PortRange::default(),
-            interface_preferences: vec!["eth0".to_string(), "en0".to_string()],
+            interface_preferences: vec![String::from("eth0"), String::from("en0")],
         }
     }
 }
@@ -423,7 +423,7 @@ impl Default for NetworkBindingConfig {
             .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)),
             bind_port: SafeEnv::get_port("SONGBIRD_BIND_PORT", crate::constants::DEFAULT_PORT),
             port_range: PortRange::default(),
-            interface_preferences: vec!["eth0".to_string(), "en0".to_string()],
+            interface_preferences: vec![String::from("eth0"), String::from("en0")],
         }
     }
 }
@@ -504,7 +504,7 @@ impl DeprecationWarningsConfig {
 
         Self {
             enabled,
-            log_level: "warn".to_string(),
+            log_level: String::from("warn"),
             suppress_warnings: Vec::new(),
         }
     }
@@ -514,7 +514,7 @@ impl Default for DeprecationWarningsConfig {
     fn default() -> Self {
         Self {
             enabled: SafeEnv::get_bool("SONGBIRD_DEPRECATION_WARNINGS", true),
-            log_level: "warn".to_string(),
+            log_level: String::from("warn"),
             suppress_warnings: Vec::new(),
         }
     }
@@ -545,19 +545,19 @@ impl CanonicalEnvironmentConfig {
             HashMap::with_capacity(std_count + self.capability_endpoints.custom.len());
 
         if let Some(storage) = &self.capability_endpoints.storage {
-            endpoints.insert("storage".to_string(), storage.clone());
+            endpoints.insert(String::from("storage"), storage.clone());
         }
         if let Some(compute) = &self.capability_endpoints.compute {
-            endpoints.insert("compute".to_string(), compute.clone());
+            endpoints.insert(String::from("compute"), compute.clone());
         }
         if let Some(ai) = &self.capability_endpoints.ai {
-            endpoints.insert("ai".to_string(), ai.clone());
+            endpoints.insert(String::from("ai"), ai.clone());
         }
         if let Some(security) = &self.capability_endpoints.security {
-            endpoints.insert("security".to_string(), security.clone());
+            endpoints.insert(String::from("security"), security.clone());
         }
         if let Some(orchestration) = &self.capability_endpoints.orchestration {
-            endpoints.insert("orchestration".to_string(), orchestration.clone());
+            endpoints.insert(String::from("orchestration"), orchestration.clone());
         }
 
         endpoints.extend(self.capability_endpoints.custom.clone());

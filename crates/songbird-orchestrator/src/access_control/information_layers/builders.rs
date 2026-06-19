@@ -39,31 +39,31 @@ impl super::super::InformationLayerBuilder {
             .and_then(|v| v.as_str())
             .map(String::from)
             .or_else(|| match task.spec.task_type.as_ref() {
-                "ml_training" | "data_processing" => Some("data_parallel".to_string()),
-                "model_inference" => Some("model_parallel".to_string()),
-                "batch_processing" => Some("task_parallel".to_string()),
-                _ => Some("single_node".to_string()),
+                "ml_training" | "data_processing" => Some(String::from("data_parallel")),
+                "model_inference" => Some(String::from("model_parallel")),
+                "batch_processing" => Some(String::from("task_parallel")),
+                _ => Some(String::from("single_node")),
             });
 
         let capabilities = {
-            let mut caps = vec!["compute".to_string()];
+            let mut caps = vec![String::from("compute")];
             if task.spec.resources.gpu_count.unwrap_or(0) > 0 {
-                caps.push("gpu-compute".to_string());
+                caps.push(String::from("gpu-compute"));
             }
             if task.spec.resources.memory_mb.unwrap_or(0) > 32 * 1024 {
-                caps.push("high-memory".to_string());
+                caps.push(String::from("high-memory"));
             }
             caps
         };
 
         let gpu_class = if task.spec.resources.gpu_count.unwrap_or(0) > 0 {
             if task.spec.resources.memory_mb.unwrap_or(0) > 64 * 1024 {
-                "high-memory-gpu".to_string()
+                String::from("high-memory-gpu")
             } else {
-                "standard-gpu".to_string()
+                String::from("standard-gpu")
             }
         } else {
-            "cpu-only".to_string()
+            String::from("cpu-only")
         };
 
         let mut learning_notes = Vec::new();
@@ -73,14 +73,15 @@ impl super::super::InformationLayerBuilder {
         }
 
         if task.spec.resources.gpu_count.unwrap_or(0) > 0 {
-            learning_notes.push("Task leverages GPU acceleration for performance".to_string());
+            learning_notes.push(String::from("Task leverages GPU acceleration for performance"));
         }
 
         if let Some(cpus) = task.spec.resources.cpu_cores {
             learning_notes.push(format!("Task parallelized across {cpus} CPU cores"));
         }
 
-        learning_notes.push("Your task was distributed across available compute nodes".to_string());
+        learning_notes
+            .push(String::from("Your task was distributed across available compute nodes"));
 
         EducationalInfo {
             sharding_strategy,
@@ -126,7 +127,7 @@ impl super::super::InformationLayerBuilder {
             let gpu_info = if task.spec.resources.gpu_count.unwrap_or(0) > 0 {
                 format!("GPU x{}", task.spec.resources.gpu_count.unwrap_or(1))
             } else {
-                "CPU-only".to_string()
+                String::from("CPU-only")
             };
 
             vec![NodeIdentity {
@@ -197,7 +198,7 @@ impl super::super::InformationLayerBuilder {
 
             vec![NodeFull {
                 name: tower.as_str().to_string(),
-                internal_ip: "192.0.2.10:8000".to_string(),
+                internal_ip: String::from("192.0.2.10:8000"),
                 uptime_hours,
                 temperature_c: if task.spec.resources.gpu_count.unwrap_or(0) > 0 {
                     Some(65.0)

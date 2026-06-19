@@ -419,8 +419,8 @@ mod tests {
     #[test]
     fn family_id_extracted_from_security_identity_attestation() {
         let att = songbird_discovery::IdentityAttestation {
-            provider_capability: "security/identity".to_string(),
-            format: "json".to_string(),
+            provider_capability: String::from("security/identity"),
+            format: String::from("json"),
             data: serde_json::json!({ "family_id": "fam-42" }),
         };
         assert_eq!(
@@ -432,8 +432,8 @@ mod tests {
     #[test]
     fn family_id_ignored_for_wrong_provider_capability() {
         let att = songbird_discovery::IdentityAttestation {
-            provider_capability: "other/cap".to_string(),
-            format: "json".to_string(),
+            provider_capability: String::from("other/cap"),
+            format: String::from("json"),
             data: serde_json::json!({ "family_id": "x" }),
         };
         assert!(family_id_from_identity_attestations(std::slice::from_ref(&att)).is_none());
@@ -442,15 +442,15 @@ mod tests {
     #[test]
     fn family_id_missing_when_not_string_or_missing_key() {
         let att = songbird_discovery::IdentityAttestation {
-            provider_capability: "security/identity".to_string(),
-            format: "json".to_string(),
+            provider_capability: String::from("security/identity"),
+            format: String::from("json"),
             data: serde_json::json!({ "other": 1 }),
         };
         assert!(family_id_from_identity_attestations(std::slice::from_ref(&att)).is_none());
 
         let att_num = songbird_discovery::IdentityAttestation {
-            provider_capability: "security/identity".to_string(),
-            format: "json".to_string(),
+            provider_capability: String::from("security/identity"),
+            format: String::from("json"),
             data: serde_json::json!({ "family_id": 99 }),
         };
         assert!(family_id_from_identity_attestations(std::slice::from_ref(&att_num)).is_none());

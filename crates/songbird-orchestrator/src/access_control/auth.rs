@@ -38,7 +38,7 @@ where
         // Decode and validate JWT using production-ready implementation
         let validator = crate::access_control::tokens::TokenValidator::new();
         let secret = songbird_process_env::var("SONGBIRD_JWT_SECRET")
-            .unwrap_or_else(|_| "songbird-dev-secret-change-in-production".to_string());
+            .unwrap_or_else(|_| String::from("songbird-dev-secret-change-in-production"));
 
         let token = AccessToken::decode(token_str, secret.as_bytes())
             .map_err(|_| AuthError::InvalidToken)?;
@@ -146,7 +146,7 @@ pub async fn login(Json(req): Json<LoginRequest>) -> Result<Json<LoginResponse>,
             "SONGBIRD_JWT_SECRET not set. Using development secret. \
                  DO NOT USE IN PRODUCTION."
         );
-        "songbird-dev-secret-change-in-production".to_string()
+        String::from("songbird-dev-secret-change-in-production")
     });
 
     let token_str = token.encode(secret.as_bytes()).map_err(|_| AuthError::InvalidToken)?;

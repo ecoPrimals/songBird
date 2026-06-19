@@ -58,7 +58,7 @@ impl DnsSDDiscovery {
     /// Returns error if environment variable is not set
     pub fn from_env() -> SongbirdResult<Self> {
         let domain = songbird_process_env::var("SONGBIRD_DNSSD_DOMAIN")
-            .unwrap_or_else(|_| "songbird.local".to_string());
+            .unwrap_or_else(|_| String::from("songbird.local"));
 
         Ok(Self::new(domain))
     }
@@ -224,9 +224,9 @@ impl DnsSDDiscovery {
             .collect();
 
         if candidates.is_empty() {
-            return Err(SongbirdError::discovery(
-                "No DNS-SD services support required features".to_string(),
-            ));
+            return Err(SongbirdError::discovery(String::from(
+                "No DNS-SD services support required features",
+            )));
         }
 
         // Sort by priority (lower is better), then weight (higher is better)
@@ -236,7 +236,7 @@ impl DnsSDDiscovery {
         });
 
         let selected = candidates.first().ok_or_else(|| {
-            SongbirdError::discovery("No suitable DNS-SD service found".to_string())
+            SongbirdError::discovery(String::from("No suitable DNS-SD service found"))
         })?;
 
         Ok(CapabilityProvider {
@@ -336,7 +336,7 @@ mod tests {
         assert_eq!(svc.endpoint, "https://registry-host.local.:443");
         assert_eq!(svc.protocol, Protocol::Https);
         assert_eq!(svc.features, vec!["kv", "transactions"]);
-        assert_eq!(svc.metadata.get("zone"), Some(&"us-east".to_string()));
+        assert_eq!(svc.metadata.get("zone"), Some(&String::from("us-east")));
         assert_eq!(svc.priority, 5);
     }
 
@@ -364,7 +364,7 @@ mod tests {
         let svc_u =
             DnsSDDiscovery::parse_service(&srv_u, Some(txt_u), &CapabilityRequest::new("compute"));
         assert_eq!(svc_u.protocol, Protocol::Http);
-        assert_eq!(svc_u.metadata.get("extra"), Some(&"v".to_string()));
+        assert_eq!(svc_u.metadata.get("extra"), Some(&String::from("v")));
     }
 
     #[test]

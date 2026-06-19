@@ -180,13 +180,13 @@ impl TaskLifecycleManager {
     pub async fn fail_task(&self, task_id: TaskId, error: Arc<str>) -> Result<()> {
         let mut task = self.require_task(task_id).await?;
 
-        task.fail(error.clone(), 0).map_err(|e| anyhow::anyhow!("{e}"))?;
+        task.fail(Arc::clone(&error), 0).map_err(|e| anyhow::anyhow!("{e}"))?;
 
         self.storage.save_task(&task).await?;
 
         self.emit(TaskEvent::Failed {
             task_id,
-            error: error.clone(),
+            error: Arc::clone(&error),
         });
 
         warn!("Task failed: {} - {}", task_id, error);
@@ -200,13 +200,13 @@ impl TaskLifecycleManager {
     pub async fn cancel_task(&self, task_id: TaskId, reason: Option<Arc<str>>) -> Result<()> {
         let mut task = self.require_task(task_id).await?;
 
-        task.cancel(reason.clone()).map_err(|e| anyhow::anyhow!("{e}"))?;
+        task.cancel(reason.as_ref().map(Arc::clone)).map_err(|e| anyhow::anyhow!("{e}"))?;
 
         self.storage.save_task(&task).await?;
 
         self.emit(TaskEvent::Cancelled {
             task_id,
-            reason: reason.clone(),
+            reason: reason.as_ref().map(Arc::clone),
         });
 
         info!("Task cancelled: {} - {:?}", task_id, reason);
@@ -222,7 +222,7 @@ impl TaskLifecycleManager {
 
         let checkpoint = self.make_checkpoint(task_id, task.progress, state)?;
 
-        let checkpoint_id = checkpoint.id.clone();
+        let checkpoint_id = Arc::clone(&checkpoint.id);
 
         self.storage.save_checkpoint(&checkpoint).await?;
 
@@ -232,7 +232,7 @@ impl TaskLifecycleManager {
 
         self.emit(TaskEvent::CheckpointCreated {
             task_id,
-            checkpoint_id: checkpoint_id.clone(),
+            checkpoint_id: Arc::clone(&checkpoint_id),
         });
 
         debug!("Checkpoint created: {} for task {}", checkpoint_id, task_id);

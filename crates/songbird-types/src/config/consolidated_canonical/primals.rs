@@ -26,7 +26,7 @@ impl Default for CanonicalPrimalConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            discovery_method: "universal".to_string(),
+            discovery_method: String::from("universal"),
         }
     }
 }

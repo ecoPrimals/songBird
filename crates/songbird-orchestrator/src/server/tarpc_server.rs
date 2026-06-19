@@ -218,17 +218,17 @@ impl SongbirdFederation for TarpcServer {
                     .metadata
                     .get("type")
                     .cloned()
-                    .unwrap_or_else(|| "unknown".to_string()),
+                    .unwrap_or_else(|| String::from("unknown")),
                 tower_id: service
                     .metadata
                     .get("tower_id")
                     .cloned()
-                    .unwrap_or_else(|| "local".to_string()),
+                    .unwrap_or_else(|| String::from("local")),
                 tower_name: service
                     .metadata
                     .get("tower_name")
                     .cloned()
-                    .unwrap_or_else(|| "Local Tower".to_string()),
+                    .unwrap_or_else(|| String::from("Local Tower")),
                 endpoint: format!("{}:{}", service.address, service.port),
                 capabilities: service.capabilities,
                 metadata: service.metadata,
@@ -422,11 +422,14 @@ mod tests {
     #[test]
     fn service_info_serialization_roundtrip() {
         let info = ServiceInfo {
-            name: "test-service".to_string(),
-            address: "10.0.0.1".to_string(),
+            name: String::from("test-service"),
+            address: String::from("10.0.0.1"),
             port: 8080,
-            capabilities: vec!["crypto.sign".to_string(), "network.discovery".to_string()],
-            metadata: std::collections::HashMap::from([("type".to_string(), "primal".to_string())]),
+            capabilities: vec![String::from("crypto.sign"), String::from("network.discovery")],
+            metadata: std::collections::HashMap::from([(
+                String::from("type"),
+                String::from("primal"),
+            )]),
         };
         let json = serde_json::to_string(&info).unwrap();
         let deserialized: ServiceInfo = serde_json::from_str(&json).unwrap();
@@ -448,10 +451,10 @@ mod tests {
     #[test]
     fn discovery_query_serialization() {
         let query = DiscoveryQuery {
-            capabilities: vec!["network.discovery".to_string()],
+            capabilities: vec![String::from("network.discovery")],
             filters: std::collections::HashMap::from([(
-                "region".to_string(),
-                "us-east".to_string(),
+                String::from("region"),
+                String::from("us-east"),
             )]),
         };
         let json = serde_json::to_string(&query).unwrap();
@@ -466,7 +469,7 @@ mod tests {
             total_services: 5,
             total_peers: 3,
             uptime_seconds: 120,
-            version: "0.2.1".to_string(),
+            version: String::from("0.2.1"),
         };
         let json = serde_json::to_string(&status).unwrap();
         let deserialized: FederationStatus = serde_json::from_str(&json).unwrap();
@@ -481,8 +484,8 @@ mod tests {
         let update = ServiceUpdate {
             update_type: ServiceUpdateType::Registered,
             service: ServiceInfo {
-                name: "new-svc".to_string(),
-                address: "localhost".to_string(),
+                name: String::from("new-svc"),
+                address: String::from("localhost"),
                 port: 9000,
                 capabilities: vec![],
                 metadata: std::collections::HashMap::new(),
@@ -495,19 +498,19 @@ mod tests {
 
     #[test]
     fn service_error_display() {
-        let err = ServiceError::RegistrationFailed("timeout".to_string());
+        let err = ServiceError::RegistrationFailed(String::from("timeout"));
         assert!(err.to_string().contains("timeout"));
 
-        let err = ServiceError::DiscoveryFailed("no services".to_string());
+        let err = ServiceError::DiscoveryFailed(String::from("no services"));
         assert!(err.to_string().contains("no services"));
 
-        let err = ServiceError::StatusFailed("unavailable".to_string());
+        let err = ServiceError::StatusFailed(String::from("unavailable"));
         assert!(err.to_string().contains("unavailable"));
 
-        let err = ServiceError::StreamFailed("broken pipe".to_string());
+        let err = ServiceError::StreamFailed(String::from("broken pipe"));
         assert!(err.to_string().contains("broken pipe"));
 
-        let err = ServiceError::InternalError("panic".to_string());
+        let err = ServiceError::InternalError(String::from("panic"));
         assert!(err.to_string().contains("panic"));
     }
 
@@ -542,13 +545,13 @@ mod tests {
     #[test]
     fn registration_to_service_info_parses_endpoint() {
         let reg = songbird_network_federation::service_registry::ServiceRegistration {
-            service_id: "id-1".to_string(),
-            service_name: "my-svc".to_string(),
-            service_type: "primal".to_string(),
-            tower_id: "tower-1".to_string(),
-            tower_name: "Tower One".to_string(),
-            endpoint: "192.168.1.10:4433".to_string(),
-            capabilities: vec!["network.tls".to_string()],
+            service_id: String::from("id-1"),
+            service_name: String::from("my-svc"),
+            service_type: String::from("primal"),
+            tower_id: String::from("tower-1"),
+            tower_name: String::from("Tower One"),
+            endpoint: String::from("192.168.1.10:4433"),
+            capabilities: vec![String::from("network.tls")],
             metadata: std::collections::HashMap::new(),
             health_status:
                 songbird_network_federation::service_registry::ServiceHealthStatus::Healthy,
@@ -565,12 +568,12 @@ mod tests {
     #[test]
     fn registration_to_service_info_handles_missing_port() {
         let reg = songbird_network_federation::service_registry::ServiceRegistration {
-            service_id: "id-2".to_string(),
-            service_name: "no-port".to_string(),
-            service_type: "unknown".to_string(),
-            tower_id: "t".to_string(),
-            tower_name: "T".to_string(),
-            endpoint: "host-only".to_string(),
+            service_id: String::from("id-2"),
+            service_name: String::from("no-port"),
+            service_type: String::from("unknown"),
+            tower_id: String::from("t"),
+            tower_name: String::from("T"),
+            endpoint: String::from("host-only"),
             capabilities: vec![],
             metadata: std::collections::HashMap::new(),
             health_status:
@@ -585,7 +588,7 @@ mod tests {
 
     #[tokio::test]
     async fn tarpc_server_creation() {
-        let fed_state = Arc::new(FederationState::new("test-federation".to_string()));
+        let fed_state = Arc::new(FederationState::new(String::from("test-federation")));
         let registry = Arc::new(FederatedServiceRegistry::new());
         let server = TarpcServer::new(Arc::clone(&fed_state), Arc::clone(&registry));
         let start = server.start_time.read().await;

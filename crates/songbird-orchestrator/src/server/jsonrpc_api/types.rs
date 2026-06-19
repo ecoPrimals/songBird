@@ -72,7 +72,7 @@ impl JsonRpcError {
     pub fn parse_error() -> Self {
         Self {
             code: Self::PARSE_ERROR,
-            message: "Parse error".to_string(),
+            message: String::from("Parse error"),
             data: None,
         }
     }

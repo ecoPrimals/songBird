@@ -643,11 +643,11 @@ mod tests {
     #[test]
     fn btsp_session_fields_are_accessible() {
         let session = BtspSession {
-            session_id: "sess-42".to_string(),
-            cipher: "chacha20_poly1305".to_string(),
+            session_id: String::from("sess-42"),
+            cipher: String::from("chacha20_poly1305"),
             target_socket: PathBuf::from("/run/user/1000/biomeos/security.sock"),
-            client_ephemeral_pub: "Y2xpZW50X2tleQ==".to_string(),
-            server_ephemeral_pub: "c2VydmVyX2tleQ==".to_string(),
+            client_ephemeral_pub: String::from("Y2xpZW50X2tleQ=="),
+            server_ephemeral_pub: String::from("c2VydmVyX2tleQ=="),
         };
         assert_eq!(session.session_id, "sess-42");
         assert_eq!(session.cipher, "chacha20_poly1305");
@@ -663,11 +663,11 @@ mod tests {
     #[test]
     fn btsp_session_clone_is_independent() {
         let session = BtspSession {
-            session_id: "sess-1".to_string(),
-            cipher: "hmac_plain".to_string(),
+            session_id: String::from("sess-1"),
+            cipher: String::from("hmac_plain"),
             target_socket: PathBuf::from("/tmp/test.sock"),
-            client_ephemeral_pub: "a2V5MQ==".to_string(),
-            server_ephemeral_pub: "a2V5Mg==".to_string(),
+            client_ephemeral_pub: String::from("a2V5MQ=="),
+            server_ephemeral_pub: String::from("a2V5Mg=="),
         };
         let cloned = session.clone();
         assert_eq!(cloned.session_id, session.session_id);

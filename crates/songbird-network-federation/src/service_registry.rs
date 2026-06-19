@@ -257,13 +257,13 @@ mod tests {
         let registry = FederatedServiceRegistry::new();
 
         let service = ServiceRegistration {
-            service_id: "test-service-1".to_string(),
-            service_name: "Test Service".to_string(),
-            service_type: "test".to_string(),
-            tower_id: "tower-1".to_string(),
-            tower_name: "Tower 1".to_string(),
-            endpoint: "http://localhost:8080".to_string(),
-            capabilities: vec!["test-capability".to_string()],
+            service_id: String::from("test-service-1"),
+            service_name: String::from("Test Service"),
+            service_type: String::from("test"),
+            tower_id: String::from("tower-1"),
+            tower_name: String::from("Tower 1"),
+            endpoint: String::from("http://localhost:8080"),
+            capabilities: vec![String::from("test-capability")],
             metadata: HashMap::new(),
             health_status: ServiceHealthStatus::Healthy,
             registered_at: Utc::now(),
@@ -282,12 +282,12 @@ mod tests {
         let registry = FederatedServiceRegistry::new();
 
         let service1 = ServiceRegistration {
-            service_id: "service-1".to_string(),
-            service_name: "Service 1".to_string(),
-            service_type: "beardog".to_string(),
-            tower_id: "tower-1".to_string(),
-            tower_name: "Tower 1".to_string(),
-            endpoint: "http://localhost:8080".to_string(),
+            service_id: String::from("service-1"),
+            service_name: String::from("Service 1"),
+            service_type: String::from("beardog"),
+            tower_id: String::from("tower-1"),
+            tower_name: String::from("Tower 1"),
+            endpoint: String::from("http://localhost:8080"),
             capabilities: vec![],
             metadata: HashMap::new(),
             health_status: ServiceHealthStatus::Healthy,
@@ -296,12 +296,12 @@ mod tests {
         };
 
         let service2 = ServiceRegistration {
-            service_id: "service-2".to_string(),
-            service_name: "Service 2".to_string(),
-            service_type: "squirrel".to_string(),
-            tower_id: "tower-1".to_string(),
-            tower_name: "Tower 1".to_string(),
-            endpoint: "http://localhost:8081".to_string(),
+            service_id: String::from("service-2"),
+            service_name: String::from("Service 2"),
+            service_type: String::from("squirrel"),
+            tower_id: String::from("tower-1"),
+            tower_name: String::from("Tower 1"),
+            endpoint: String::from("http://localhost:8081"),
             capabilities: vec![],
             metadata: HashMap::new(),
             health_status: ServiceHealthStatus::Healthy,

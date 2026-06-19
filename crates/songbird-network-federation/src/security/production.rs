@@ -213,7 +213,7 @@ impl ProductionSecurityProvider {
                     .or_else(|_| songbird_process_env::var("FAMILY_ID"))
                     .ok()
             })
-            .unwrap_or_else(|| "default".to_string());
+            .unwrap_or_else(|| String::from("default"));
 
         let params = serde_json::json!({
             "plaintext": general_purpose::STANDARD.encode(payload),
@@ -238,7 +238,7 @@ impl ProductionSecurityProvider {
                     .or_else(|_| songbird_process_env::var("FAMILY_ID"))
                     .ok()
             })
-            .unwrap_or_else(|| "default".to_string());
+            .unwrap_or_else(|| String::from("default"));
 
         let params = serde_json::json!({
             "encrypted": encrypted,

@@ -52,7 +52,7 @@ mod tests {
     use super::compute_routing::format_compute_routed_destination;
 
     fn create_test_state() -> ComputeApiState {
-        let federation_state = Arc::new(FederationState::new("default".to_string()));
+        let federation_state = Arc::new(FederationState::new(String::from("default")));
         let service_registry = Arc::new(FederatedServiceRegistry::new());
         ComputeApiState::new(federation_state, service_registry)
     }
@@ -81,10 +81,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_submit_heavy_task() {
-        let federation_state = Arc::new(FederationState::new("default".to_string()));
+        let federation_state = Arc::new(FederationState::new(String::from("default")));
         let service_registry = Arc::new(FederatedServiceRegistry::new());
         let mut overrides = HashMap::new();
-        overrides.insert(CapabilityType::Compute, "http://localhost:9000".to_string());
+        overrides.insert(CapabilityType::Compute, String::from("http://localhost:9000"));
         let state = ComputeApiState::new_with_capability_endpoint_overrides(
             federation_state,
             service_registry,
@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_api_error_display() {
-        let err = ApiError::Routing("Test error".to_string());
+        let err = ApiError::Routing(String::from("Test error"));
         assert_eq!(err.to_string(), "Routing error: Test error");
     }
 
@@ -191,16 +191,16 @@ mod tests {
         assert_eq!(format_compute_routed_destination(&RoutingDecision::ExecuteLocally), "local");
         assert_eq!(
             format_compute_routed_destination(&RoutingDecision::RouteToSongbird {
-                node_id: "n1".to_string(),
-                endpoint: "https://peer".to_string(),
+                node_id: String::from("n1"),
+                endpoint: String::from("https://peer"),
             }),
             "songbird:n1"
         );
         assert_eq!(
             format_compute_routed_destination(&RoutingDecision::RouteToRegisteredService {
-                service_id: "sid".to_string(),
-                service_name: "toad".to_string(),
-                endpoint: "127.0.0.1".to_string(),
+                service_id: String::from("sid"),
+                service_name: String::from("toad"),
+                endpoint: String::from("127.0.0.1"),
                 port: 8080,
             }),
             "service:toad:8080"
@@ -208,15 +208,15 @@ mod tests {
         assert!(
             format_compute_routed_destination(&RoutingDecision::RouteToCapability {
                 capability_type: CapabilityType::Compute,
-                provider_endpoint: "unix:///run/c.sock".to_string(),
+                provider_endpoint: String::from("unix:///run/c.sock"),
             })
             .contains("Compute")
         );
         assert_eq!(
             format_compute_routed_destination(&RoutingDecision::RouteToExternalProvider {
-                provider_id: "prov-1".to_string(),
-                execution_endpoint: "https://x/exec".to_string(),
-                capability_name: "compute_heavy".to_string(),
+                provider_id: String::from("prov-1"),
+                execution_endpoint: String::from("https://x/exec"),
+                capability_name: String::from("compute_heavy"),
             }),
             "external:prov-1"
         );
@@ -234,8 +234,8 @@ mod tests {
         let id = Uuid::nil();
         let resp = ComputeTaskResponse {
             job_id: id,
-            routed_to: "local".to_string(),
-            status: "routing".to_string(),
+            routed_to: String::from("local"),
+            status: String::from("routing"),
             estimated_completion: None,
         };
         let json = serde_json::to_string(&resp)?;
@@ -251,11 +251,11 @@ mod tests {
         let js = JobStatus {
             job_id: Uuid::nil(),
             status: JobStatusType::Failed,
-            routed_to: "x".to_string(),
+            routed_to: String::from("x"),
             progress: Some(0.5),
             started_at: started,
             completed_at: None,
-            error: Some("oops".to_string()),
+            error: Some(String::from("oops")),
         };
         let json = serde_json::to_string(&js)?;
         let back: JobStatus = serde_json::from_str(&json)?;

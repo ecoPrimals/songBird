@@ -141,7 +141,7 @@ impl Default for EnvironmentConfig {
             session_timeout_secs: 300,
             gaming_port_range: (0, 0),
             metrics_interval_secs: 60,
-            log_level: "info".to_string(),
+            log_level: String::from("info"),
         }
     }
 }
@@ -336,11 +336,11 @@ pub fn get_environment() -> String {
 fn detect_environment_from_system() -> String {
     // Check for container/orchestration environments
     if songbird_process_env::var("KUBERNETES_SERVICE_HOST").is_ok() {
-        return "production".to_string();
+        return String::from("production");
     }
 
     if songbird_process_env::var("DOCKER_CONTAINER").is_ok() || songbird_process_env::var("CONTAINER").is_ok() {
-        return "staging".to_string();
+        return String::from("staging");
     }
 
     // Check for CI/CD environments
@@ -349,23 +349,23 @@ fn detect_environment_from_system() -> String {
         || songbird_process_env::var("GITLAB_CI").is_ok()
         || songbird_process_env::var("JENKINS_URL").is_ok()
     {
-        return "testing".to_string();
+        return String::from("testing");
     }
 
     // Check for development indicators
     if songbird_process_env::var("HOME").map(|h| h.contains("dev") || h.contains("developer")).unwrap_or(false)
         || songbird_process_env::var("USER").map(|u| u == "root").unwrap_or(false)
     {
-        return "development".to_string();
+        return String::from("development");
     }
 
     // Default based on system characteristics
     if std::path::Path::new("/proc/version").exists() {
         // Linux system - likely server
-        "production".to_string()
+        String::from("production")
     } else {
         // Other systems - likely development
-        "development".to_string()
+        String::from("development")
     }
 }
 
@@ -505,7 +505,7 @@ impl EnvironmentConfig {
                 self.require_tls = true;
                 self.max_connections *= 2; // Double max connections for high-load environments
                 self.resource_limits.max_connections *= 2; // Double max connections
-                self.log_config.level = "warn".to_string(); // More aggressive logging in prod
+                self.log_config.level = String::from("warn"); // More aggressive logging in prod
             }
             "staging" => {
                 self.performance_config.buffer_pool_size =
@@ -524,7 +524,7 @@ impl EnvironmentConfig {
             "development" => {
                 self.performance_config.buffer_pool_size /= 2; // Less memory usage
                 self.resource_limits.max_connections /= 2; // Fewer connections
-                self.log_config.level = "debug".to_string(); // More verbose logging in dev
+                self.log_config.level = String::from("debug"); // More verbose logging in dev
             }
             _ => {}
         }

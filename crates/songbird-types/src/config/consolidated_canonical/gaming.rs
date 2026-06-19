@@ -26,7 +26,7 @@ impl Default for CanonicalGamingConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            protocol_version: "1.0".to_string(),
+            protocol_version: String::from("1.0"),
         }
     }
 }

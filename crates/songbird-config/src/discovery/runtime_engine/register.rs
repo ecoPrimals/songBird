@@ -121,9 +121,14 @@ mod tests {
     async fn register_environment_backend_always_succeeds() {
         let engine = CapabilityDiscoveryEngine::new(vec![], Duration::from_secs(60));
         let addr = test_addr();
-        register_with_backend(&engine, &DiscoveryBackend::Environment, &["cap1".to_string()], addr)
-            .await
-            .expect("environment registration is a no-op");
+        register_with_backend(
+            &engine,
+            &DiscoveryBackend::Environment,
+            &[String::from("cap1")],
+            addr,
+        )
+        .await
+        .expect("environment registration is a no-op");
     }
 
     #[tokio::test]
@@ -135,7 +140,7 @@ mod tests {
             &DiscoveryBackend::Kubernetes {
                 namespace: None,
             },
-            &["x".to_string()],
+            &[String::from("x")],
             addr,
         )
         .await
@@ -149,9 +154,9 @@ mod tests {
         let err = register_with_backend(
             &engine,
             &DiscoveryBackend::Consul {
-                endpoint: "http://198.51.100.199:59999".to_string(),
+                endpoint: String::from("http://198.51.100.199:59999"),
             },
-            &["cap".to_string()],
+            &[String::from("cap")],
             addr,
         )
         .await
@@ -170,9 +175,9 @@ mod tests {
         let result = register_with_backend(
             &engine,
             &DiscoveryBackend::Etcd {
-                endpoints: vec!["http://198.51.100.198:59998".to_string()],
+                endpoints: vec![String::from("http://198.51.100.198:59998")],
             },
-            &["only-if-post-succeeds".to_string()],
+            &[String::from("only-if-post-succeeds")],
             addr,
         )
         .await;
@@ -195,7 +200,7 @@ mod tests {
         let _ = register_with_backend(
             &engine,
             &DiscoveryBackend::MDNS,
-            &["mdns-cap".to_string()],
+            &[String::from("mdns-cap")],
             addr,
         )
         .await;

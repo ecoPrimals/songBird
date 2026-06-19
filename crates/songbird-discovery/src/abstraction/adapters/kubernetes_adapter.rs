@@ -182,9 +182,11 @@ impl DiscoveryProvider for KubernetesProviderAdapter {
     }
 
     async fn discover(&self, _query: ServiceQuery) -> Result<Vec<ServiceInfo>> {
-        // For now, return empty list - real implementation would query Kubernetes API
-        // In production, this would use the query parameter to filter services
-        Ok(vec![])
+        Err(SongbirdError::configuration(
+            "Kubernetes service discovery requires the `kubernetes` feature, a configured cluster, \
+             and kubeconfig or in-cluster credentials. Use UniversalCapabilityAdapter or enable \
+             the kubernetes capability provider through songbird-universal.",
+        ))
     }
 
     async fn watch(

@@ -268,7 +268,7 @@ mod tests {
         let endpoint = NativeEndpoint::TcpLocal(8080);
 
         let virtual_endpoint = registry
-            .register("test-primal", endpoint, vec!["test".to_string()], None, None)
+            .register("test-primal", endpoint, vec![String::from("test")], None, None)
             .await
             .unwrap();
 
@@ -321,7 +321,7 @@ mod tests {
         let endpoint2 = NativeEndpoint::TcpLocal(8081);
 
         registry
-            .register("primal1", endpoint1, vec!["crypto".to_string()], None, None)
+            .register("primal1", endpoint1, vec![String::from("crypto")], None, None)
             .await
             .unwrap();
 
@@ -329,7 +329,7 @@ mod tests {
             .register(
                 "primal2",
                 endpoint2,
-                vec!["crypto".to_string(), "storage".to_string()],
+                vec![String::from("crypto"), String::from("storage")],
                 None,
                 None,
             )
@@ -417,7 +417,7 @@ mod tests {
 
         registry.register("alpha", ep, vec!["a".into()], None, None).await.expect("register");
         let names = registry.list_services().await;
-        assert!(names.contains(&"alpha".to_string()));
+        assert!(names.contains(&String::from("alpha")));
 
         let meta = registry.get_all_metadata().await;
         assert_eq!(meta.len(), 1);
@@ -444,7 +444,7 @@ mod tests {
         let m = entry.to_metadata();
         assert_eq!(m.name, "z");
         assert_eq!(m.virtual_path, "/primal/z");
-        assert_eq!(m.capabilities, vec!["x".to_string()]);
+        assert_eq!(m.capabilities, vec![String::from("x")]);
     }
 
     #[tokio::test]
@@ -499,7 +499,7 @@ mod tests {
         #[cfg(not(unix))]
         let ep = NativeEndpoint::TcpLocal(4040);
 
-        let sig = Some("base64sig==".to_string());
+        let sig = Some(String::from("base64sig=="));
         let payload =
             Some(r#"{"c":["crypto"],"e":"/tmp/signed.sock","p":"sec","t":"T0"}"#.to_string());
 

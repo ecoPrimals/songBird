@@ -7,6 +7,8 @@ use crate::error::{LineageRelayError, Result};
 use crate::relay::RelayAuthority;
 use crate::relay_protocol::{AllocationRequest, AllocationResponse, RelayProtocol};
 use crate::types::MaskingLevel;
+use bytes::Bytes;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -25,17 +27,17 @@ pub(super) async fn handle_packet(
     authority: &Arc<RelayAuthority>,
     stats: &Arc<RwLock<RelayServerStats>>,
     relay_addr: SocketAddr,
-    data: &[u8],
+    data: Bytes,
     src_addr: SocketAddr,
 ) -> Result<()> {
-    match RelayProtocol::parse(data)? {
+    match RelayProtocol::parse(&data)? {
         RelayProtocol::AllocateRequest(req) => {
             handle_allocate(socket, sessions, authority, stats, relay_addr, req, src_addr).await
         }
         RelayProtocol::DataPacket {
             session_id,
             data,
-        } => forward_packet(socket, sessions, stats, session_id, &data, src_addr).await,
+        } => forward_packet(socket, sessions, stats, session_id, data, src_addr).await,
         RelayProtocol::Refresh {
             session_id,
         } => refresh_session(sessions, session_id, src_addr).await,
@@ -139,7 +141,7 @@ async fn forward_packet(
     sessions: &Arc<RwLock<HashMap<Uuid, RelaySessionState>>>,
     stats: &Arc<RwLock<RelayServerStats>>,
     session_id: Uuid,
-    data: &[u8],
+    data: Bytes,
     src_addr: SocketAddr,
 ) -> Result<()> {
     let (dest_addr, masking_level, data_len) = {
@@ -179,7 +181,7 @@ async fn forward_packet(
     };
 
     // Apply masking based on lineage relationship
-    let masked_data = apply_masking(data, masking_level)?;
+    let masked_data = apply_masking(&data, masking_level)?;
 
     // Forward packet
     socket
@@ -209,16 +211,16 @@ async fn forward_packet(
     clippy::unnecessary_wraps,
     reason = "intentional pattern; clippy false positive for this API"
 )] // Result kept for future masking errors
-pub(super) fn apply_masking(data: &[u8], level: MaskingLevel) -> Result<Vec<u8>> {
+pub(super) fn apply_masking(data: &[u8], level: MaskingLevel) -> Result<Cow<'_, [u8]>> {
     match level {
         MaskingLevel::None => {
             // Direct family (parent ↔ child): No masking
-            Ok(data.to_vec())
+            Ok(Cow::Borrowed(data))
         }
         MaskingLevel::TimingOnly => {
             // Close family (siblings): Timing jitter only
             // Future: Add random delay (not in packet data)
-            Ok(data.to_vec())
+            Ok(Cow::Borrowed(data))
         }
         MaskingLevel::SizeObfuscation => {
             // Extended family: Pad to fixed sizes
@@ -226,7 +228,7 @@ pub(super) fn apply_masking(data: &[u8], level: MaskingLevel) -> Result<Vec<u8>>
             // Pad to next 1KB boundary
             let target_size = data.len().div_ceil(1024) * 1024;
             padded.resize(target_size, 0);
-            Ok(padded)
+            Ok(Cow::Owned(padded))
         }
         MaskingLevel::Full => {
             // Distant family: Full encryption + padding
@@ -235,16 +237,16 @@ pub(super) fn apply_masking(data: &[u8], level: MaskingLevel) -> Result<Vec<u8>>
             let mut padded = data.to_vec();
             let target_size = data.len().div_ceil(1024) * 1024;
             padded.resize(target_size, 0);
-            Ok(padded)
+            Ok(Cow::Owned(padded))
         }
         // Legacy variants (for backward compatibility)
         MaskingLevel::Masked | MaskingLevel::SubMasked => {
             // Minimal masking (legacy default)
-            Ok(data.to_vec())
+            Ok(Cow::Borrowed(data))
         }
         MaskingLevel::FullVisibility => {
             // Full visibility (ancestor privilege - legacy)
-            Ok(data.to_vec())
+            Ok(Cow::Borrowed(data))
         }
     }
 }
@@ -300,14 +302,18 @@ mod tests {
     use super::apply_masking;
     use crate::relay_protocol::{AllocationRequest, AllocationResponse, RelayProtocol};
     use crate::types::{MaskingLevel, NodeId};
+    use bytes::Bytes;
     use std::net::{Ipv4Addr, SocketAddr};
     use uuid::Uuid;
 
     #[test]
     fn apply_masking_none_and_timing_passthrough() {
-        let data = vec![1, 2, 3];
-        assert_eq!(apply_masking(&data, MaskingLevel::None).unwrap(), data);
-        assert_eq!(apply_masking(&data, MaskingLevel::TimingOnly).unwrap(), data);
+        let data = [1, 2, 3];
+        assert_eq!(apply_masking(&data, MaskingLevel::None).unwrap().as_ref(), data.as_slice());
+        assert_eq!(
+            apply_masking(&data, MaskingLevel::TimingOnly).unwrap().as_ref(),
+            data.as_slice()
+        );
     }
 
     #[test]
@@ -329,9 +335,9 @@ mod tests {
 
     #[test]
     fn apply_masking_legacy_variants_passthrough() {
-        let data = vec![9u8; 5];
+        let data = [9u8; 5];
         for level in [MaskingLevel::Masked, MaskingLevel::SubMasked, MaskingLevel::FullVisibility] {
-            assert_eq!(apply_masking(&data, level).unwrap(), data);
+            assert_eq!(apply_masking(&data, level).unwrap().as_ref(), data.as_slice());
         }
     }
 
@@ -362,7 +368,7 @@ mod tests {
         let sid = Uuid::nil();
         let dp = RelayProtocol::DataPacket {
             session_id: sid,
-            data: vec![0xde, 0xad],
+            data: Bytes::from_static(&[0xde, 0xad]),
         };
         let w = dp.encode();
         match RelayProtocol::parse(&w).unwrap() {
@@ -371,7 +377,7 @@ mod tests {
                 data,
             } => {
                 assert_eq!(session_id, sid);
-                assert_eq!(data, vec![0xde, 0xad]);
+                assert_eq!(data.as_ref(), &[0xde, 0xad]);
             }
             other => panic!("unexpected: {other:?}"),
         }

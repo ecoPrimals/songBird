@@ -289,10 +289,10 @@ mod tests {
     async fn test_tunnel_establishment() {
         let provider = LocalBtspProvider::new();
         let peer = PeerInfo {
-            id: "test-peer".to_string(),
-            endpoint: "http://localhost:8080".to_string(),
+            id: String::from("test-peer"),
+            endpoint: String::from("http://localhost:8080"),
             public_key: None,
-            protocols: vec!["https".to_string()],
+            protocols: vec![String::from("https")],
         };
 
         let handle = provider.establish_tunnel(&peer).await.unwrap();
@@ -307,10 +307,10 @@ mod tests {
     async fn test_encrypt_decrypt_roundtrip() {
         let provider = LocalBtspProvider::new();
         let peer = PeerInfo {
-            id: "test-peer".to_string(),
-            endpoint: "http://localhost:8080".to_string(),
+            id: String::from("test-peer"),
+            endpoint: String::from("http://localhost:8080"),
             public_key: None,
-            protocols: vec!["https".to_string()],
+            protocols: vec![String::from("https")],
         };
 
         let handle = provider.establish_tunnel(&peer).await.unwrap();
@@ -333,10 +333,10 @@ mod tests {
     async fn test_tunnel_close() {
         let provider = LocalBtspProvider::new();
         let peer = PeerInfo {
-            id: "test-peer".to_string(),
-            endpoint: "http://localhost:8080".to_string(),
+            id: String::from("test-peer"),
+            endpoint: String::from("http://localhost:8080"),
             public_key: None,
-            protocols: vec!["https".to_string()],
+            protocols: vec![String::from("https")],
         };
 
         let handle = provider.establish_tunnel(&peer).await.unwrap();

@@ -127,10 +127,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_try_execute_with_fallback_success() {
-        let strategy = DegradationStrategy::with_value("fallback".to_string());
+        let strategy = DegradationStrategy::with_value(String::from("fallback"));
 
         let result = strategy
-            .try_execute_with_fallback(|| async { Ok::<_, anyhow::Error>("primary".to_string()) })
+            .try_execute_with_fallback(|| async { Ok::<_, anyhow::Error>(String::from("primary")) })
             .await;
 
         assert!(result.is_ok());
@@ -139,7 +139,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_try_execute_with_fallback_failure() {
-        let strategy = DegradationStrategy::with_value("fallback".to_string());
+        let strategy = DegradationStrategy::with_value(String::from("fallback"));
 
         let result =
             strategy.try_execute_with_fallback(|| async { anyhow::bail!("Primary failed") }).await;
@@ -150,7 +150,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_fallback_fn_with_string() {
-        let strategy = DegradationStrategy::with_fn(|| "computed".to_string());
+        let strategy = DegradationStrategy::with_fn(|| String::from("computed"));
 
         let result = strategy.execute_with_fallback(|| async { anyhow::bail!("Error") }).await;
 

@@ -239,7 +239,7 @@ mod tests {
     #[test]
     fn serde_roundtrip_cache_layer() {
         let layer = CacheLayerConfig {
-            name: "L0".to_string(),
+            name: String::from("L0"),
             size_mb: 32,
             ttl: Duration::from_secs(60),
         };

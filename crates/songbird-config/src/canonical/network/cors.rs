@@ -34,8 +34,8 @@ impl Default for CorsConfig {
             .split(',')
             .map(|s| s.trim().to_string())
             .collect(),
-            allowed_methods: vec!["GET".to_string(), "POST".to_string()],
-            allowed_headers: vec!["Content-Type".to_string()],
+            allowed_methods: vec![String::from("GET"), String::from("POST")],
+            allowed_headers: vec![String::from("Content-Type")],
         }
     }
 }
@@ -52,7 +52,7 @@ mod tests {
     fn default_cors_has_expected_methods() {
         let c = CorsConfig::default();
         assert!(!c.enabled);
-        assert!(c.allowed_methods.contains(&"GET".to_string()));
+        assert!(c.allowed_methods.contains(&String::from("GET")));
     }
 
     #[test]
@@ -60,9 +60,9 @@ mod tests {
         let ctx = TestContext::new("cors_json");
         let c = CorsConfig {
             enabled: true,
-            origins: vec!["https://a.example".to_string()],
-            allowed_methods: vec!["PUT".to_string()],
-            allowed_headers: vec!["X-Req".to_string()],
+            origins: vec![String::from("https://a.example")],
+            allowed_methods: vec![String::from("PUT")],
+            allowed_headers: vec![String::from("X-Req")],
         };
         let json = serde_json::to_string(&c).unwrap();
         let back: CorsConfig = serde_json::from_str(&json).unwrap();

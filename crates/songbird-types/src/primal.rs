@@ -36,7 +36,7 @@ pub enum CanonicalPrimalType {
 
 impl Default for CanonicalPrimalType {
     fn default() -> Self {
-        Self::Unknown("default".to_string())
+        Self::Unknown(String::from("default"))
     }
 }
 
@@ -77,8 +77,8 @@ impl Default for CanonicalPrimalId {
     fn default() -> Self {
         Self {
             primal_type: CanonicalPrimalType::default(),
-            instance_id: "default-instance".to_string(),
-            version: "0.1.0".to_string(),
+            instance_id: String::from("default-instance"),
+            version: String::from("0.1.0"),
             endpoints: HashMap::new(),
             metadata: HashMap::new(),
         }
@@ -208,7 +208,7 @@ impl CanonicalPrimalResponse {
     #[must_use]
     pub fn success(request_id: impl Into<String>, data: impl Into<String>) -> Self {
         Self {
-            status: "success".to_string(),
+            status: String::from("success"),
             data: Some(data.into()),
             error_message: None,
             request_id: request_id.into(),
@@ -220,7 +220,7 @@ impl CanonicalPrimalResponse {
     #[must_use]
     pub fn error(request_id: impl Into<String>, error: impl Into<String>) -> Self {
         Self {
-            status: "error".to_string(),
+            status: String::from("error"),
             data: None,
             error_message: Some(error.into()),
             request_id: request_id.into(),
@@ -235,13 +235,13 @@ impl CanonicalPrimalResponse {
         primal_id: impl Into<String>,
     ) -> Self {
         let mut metadata = HashMap::new();
-        metadata.insert("primal_id".to_string(), primal_id.into());
-        metadata.insert("error_type".to_string(), "service_unavailable".to_string());
+        metadata.insert(String::from("primal_id"), primal_id.into());
+        metadata.insert(String::from("error_type"), String::from("service_unavailable"));
 
         Self {
-            status: "service_unavailable".to_string(),
+            status: String::from("service_unavailable"),
             data: None,
-            error_message: Some("Service is currently unavailable".to_string()),
+            error_message: Some(String::from("Service is currently unavailable")),
             request_id: request_id.into(),
             metadata: Some(metadata),
         }
@@ -293,13 +293,13 @@ mod tests {
     fn test_primal_type_display() {
         assert_eq!(CanonicalPrimalType::Security.to_string(), "Security");
         assert_eq!(CanonicalPrimalType::Storage.to_string(), "Storage");
-        assert_eq!(CanonicalPrimalType::Unknown("custom".to_string()).to_string(), "custom");
+        assert_eq!(CanonicalPrimalType::Unknown(String::from("custom")).to_string(), "custom");
     }
 
     #[test]
     fn test_primal_id_creation() {
         let test_host =
-            songbird_process_env::var("TEST_HOST").unwrap_or_else(|_| "localhost".to_string());
+            songbird_process_env::var("TEST_HOST").unwrap_or_else(|_| String::from("localhost"));
         let test_port = songbird_process_env::var("TEST_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
@@ -326,8 +326,8 @@ mod tests {
         assert!(error.is_error());
 
         let unavailable = CanonicalPrimalResponse::service_unavailable(
-            "primal-001".to_string(),
-            "req-125".to_string(),
+            String::from("primal-001"),
+            String::from("req-125"),
         );
         assert!(!unavailable.is_success());
         assert!(unavailable.is_error());
@@ -340,8 +340,8 @@ mod tests {
         config.with_security_level("high");
         config.with_config("max_workers", "10");
 
-        assert_eq!(config.security_level, Some("high".to_string()));
-        assert_eq!(config.config.get("max_workers"), Some(&"10".to_string()));
+        assert_eq!(config.security_level, Some(String::from("high")));
+        assert_eq!(config.config.get("max_workers"), Some(&String::from("10")));
     }
 
     #[test]

@@ -254,7 +254,7 @@ impl IntelligentProtocolRouter {
 
         // HTTP - Universal, good for JSON
         performance_profiles.insert(
-            "http".to_string(),
+            String::from("http"),
             ProtocolPerformance {
                 req_per_sec: 4_665,     // Measured cross-tower
                 throughput_mbps: 100.0, // Limited by protocol overhead
@@ -267,7 +267,7 @@ impl IntelligentProtocolRouter {
 
         // JSON-RPC - Universal RPC
         performance_profiles.insert(
-            "json-rpc".to_string(),
+            String::from("json-rpc"),
             ProtocolPerformance {
                 req_per_sec: 3_585, // Measured cross-tower
                 throughput_mbps: 80.0,
@@ -280,7 +280,7 @@ impl IntelligentProtocolRouter {
 
         // tarpc - High-performance binary
         performance_profiles.insert(
-            "tarpc".to_string(),
+            String::from("tarpc"),
             ProtocolPerformance {
                 req_per_sec: 4_955,      // Measured cross-tower (will be much higher with 10Gb)
                 throughput_mbps: 1000.0, // With 10Gb NIC
@@ -293,9 +293,9 @@ impl IntelligentProtocolRouter {
 
         Self {
             available_protocols: vec![
-                "http".to_string(),
-                "json-rpc".to_string(),
-                "tarpc".to_string(),
+                String::from("http"),
+                String::from("json-rpc"),
+                String::from("tarpc"),
             ],
             performance_profiles,
         }
@@ -331,9 +331,9 @@ impl IntelligentProtocolRouter {
         // Get best protocol
         let (best_protocol, confidence, reason) = scores.first().cloned().unwrap_or_else(|| {
             (
-                "json-rpc".to_string(),
+                String::from("json-rpc"),
                 50,
-                "Default fallback (JSON-RPC first per wateringHole)".to_string(),
+                String::from("Default fallback (JSON-RPC first per wateringHole)"),
             )
         });
 
@@ -361,7 +361,7 @@ impl IntelligentProtocolRouter {
     fn score_protocol(&self, protocol: &str, workload: &WorkloadCharacteristics) -> (u8, String) {
         let perf = match self.performance_profiles.get(protocol) {
             Some(p) => p,
-            None => return (50, "Unknown protocol".to_string()),
+            None => return (50, String::from("Unknown protocol")),
         };
 
         let mut score: i32 = 50; // Base score
@@ -369,7 +369,7 @@ impl IntelligentProtocolRouter {
 
         // Rule 1: Rust-native check
         if perf.requires_rust && !workload.client_capabilities.rust_native {
-            return (0, "Client is not Rust-native".to_string());
+            return (0, String::from("Client is not Rust-native"));
         }
 
         // Rule 2: Binary data → prefer tarpc
@@ -530,7 +530,7 @@ mod tests {
                 rust_native: true,
                 supports_tls: true,
                 max_connections: 10,
-                protocols: vec!["http".to_string(), "tarpc".to_string()],
+                protocols: vec![String::from("http"), String::from("tarpc")],
             },
             network_context: Some(NetworkContext {
                 network_type: NetworkType::Lan,
@@ -557,7 +557,7 @@ mod tests {
                 rust_native: false,
                 supports_tls: true,
                 max_connections: 1,
-                protocols: vec!["http".to_string()],
+                protocols: vec![String::from("http")],
             },
             network_context: Some(NetworkContext {
                 network_type: NetworkType::Internet,

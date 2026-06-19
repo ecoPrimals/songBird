@@ -139,7 +139,7 @@ impl SongbirdConfig {
     pub fn test_defaults() -> Self {
         // Create a config with test-specific overrides using struct initialization
         Self {
-            environment: "test".to_string(),
+            environment: String::from("test"),
             performance: Some(PerformanceConfig {
                 connection_pool_size: Some(10),
                 worker_threads: Some(2),
@@ -396,7 +396,7 @@ impl Default for RegistrationConfig {
         Self {
             auto_register: true,
             service_name: SafeEnv::get_or_default("SONGBIRD_SERVICE_NAME", SELF_NAME),
-            tags: vec![SELF_NAME.to_string(), "primal".to_string()],
+            tags: vec![SELF_NAME.to_string(), String::from("primal")],
             metadata: HashMap::new(),
         }
     }
@@ -427,7 +427,7 @@ impl Default for MetricsConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            endpoint: "/metrics".to_string(),
+            endpoint: String::from("/metrics"),
             interval_seconds: 15,
             exporters: vec![MetricsExporter::Prometheus],
         }
@@ -558,7 +558,7 @@ mod tests {
     #[test]
     fn test_network_config_serialization() {
         let n = NetworkConfig {
-            bind_address: "10.0.0.1".to_string(),
+            bind_address: String::from("10.0.0.1"),
             port_range: PortRange {
                 start: 1,
                 end: 2,
@@ -634,8 +634,8 @@ mod tests {
     fn test_proxy_config_roundtrip() {
         let p = ProxyConfig {
             enabled: true,
-            proxy_url: "http://proxy:8080".to_string(),
-            bypass_list: vec!["localhost".to_string()],
+            proxy_url: String::from("http://proxy:8080"),
+            bypass_list: vec![String::from("localhost")],
         };
         let json = serde_json::to_string(&p).expect("ser");
         let back: ProxyConfig = serde_json::from_str(&json).expect("de");

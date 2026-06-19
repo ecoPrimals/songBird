@@ -141,7 +141,7 @@ impl UniversalProxy {
 
         // Add API key (provider-agnostic - works with any auth scheme)
         if let Some(key) = api_key {
-            headers.insert("Authorization".to_string(), format!("Bearer {key}"));
+            headers.insert(String::from("Authorization"), format!("Bearer {key}"));
         }
 
         // Add custom headers from configuration
@@ -151,7 +151,7 @@ impl UniversalProxy {
 
         // Add content-type if not specified
         if !backend.headers.contains_key("content-type") && payload.is_some() {
-            headers.insert("Content-Type".to_string(), "application/json".to_string());
+            headers.insert(String::from("Content-Type"), String::from("application/json"));
         }
 
         // Send request using Pure Rust HTTP client
@@ -269,26 +269,26 @@ mod tests {
 
     fn create_test_route() -> Route {
         let capability = Capability {
-            id: "ai:text-generation".to_string(),
-            description: "Test capability".to_string(),
-            category: "ai".to_string(),
-            capability_type: "text-generation".to_string(),
+            id: String::from("ai:text-generation"),
+            description: String::from("Test capability"),
+            category: String::from("ai"),
+            capability_type: String::from("text-generation"),
             sub_type: None,
             metadata: HashMap::new(),
         };
 
         let provider = ProviderConfig {
-            id: "test_provider".to_string(),
-            name: "Test Provider".to_string(),
+            id: String::from("test_provider"),
+            name: String::from("Test Provider"),
             capabilities: vec![capability.clone()],
             socket_path: None,
             backend: Some(BackendConfig {
-                base_url: "https://api.test.com/v1/completions".to_string(),
-                api_key_env: Some("TEST_API_KEY".to_string()),
+                base_url: String::from("https://api.test.com/v1/completions"),
+                api_key_env: Some(String::from("TEST_API_KEY")),
                 request_transform: Some(TransformConfig {
                     field_mappings: {
                         let mut map = HashMap::new();
-                        map.insert("prompt".to_string(), "text".to_string());
+                        map.insert(String::from("prompt"), String::from("text"));
                         map
                     },
                     template: None,
@@ -296,7 +296,7 @@ mod tests {
                 response_transform: Some(TransformConfig {
                     field_mappings: {
                         let mut map = HashMap::new();
-                        map.insert("result".to_string(), "response".to_string());
+                        map.insert(String::from("result"), String::from("response"));
                         map
                     },
                     template: None,

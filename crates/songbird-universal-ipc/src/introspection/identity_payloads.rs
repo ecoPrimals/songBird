@@ -17,7 +17,7 @@ pub fn canonical_family_id(env: impl Fn(&str) -> Result<String, std::env::VarErr
         .or_else(|_| env("SONGBIRD_FAMILY_ID"))
         .or_else(|_| env("FAMILY_ID"))
         .or_else(|_| env("NODE_FAMILY_ID"))
-        .unwrap_or_else(|_| "default".to_string())
+        .unwrap_or_else(|_| String::from("default"))
 }
 
 /// Generate legacy identity response (backward-compat `identity` method).

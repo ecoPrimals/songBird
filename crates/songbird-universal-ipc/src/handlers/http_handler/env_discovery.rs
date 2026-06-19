@@ -47,7 +47,7 @@ impl EnvCryptoDiscovery {
         }
 
         // Default to standard primal namespace
-        let default = "/primal/security".to_string();
+        let default = String::from("/primal/security");
         info!("Using default crypto provider: {}", default);
         Ok(default)
     }

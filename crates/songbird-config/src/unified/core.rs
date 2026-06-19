@@ -169,15 +169,15 @@ mod tests {
         let mut config = UnifiedCoreConfig::from_env();
 
         // Test development
-        config.environment.environment = "development".to_string();
+        config.environment.environment = String::from("development");
         assert!(!config.is_production());
 
         // Test production
-        config.environment.environment = "production".to_string();
+        config.environment.environment = String::from("production");
         assert!(config.is_production());
 
         // Test staging (not production)
-        config.environment.environment = "staging".to_string();
+        config.environment.environment = String::from("staging");
         assert!(!config.is_production());
     }
 
@@ -195,7 +195,7 @@ mod tests {
         assert!(config.extensions.is_empty());
 
         // Add extension
-        config.extensions.insert("custom_key".to_string(), serde_json::json!({"value": 42}));
+        config.extensions.insert(String::from("custom_key"), serde_json::json!({"value": 42}));
         assert_eq!(config.extensions.len(), 1);
         assert!(config.extensions.contains_key("custom_key"));
     }

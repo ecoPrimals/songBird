@@ -59,9 +59,9 @@ impl LimitedConnection {
     /// # use songbird_orchestrator::connections::LimitedConnection;
     /// # async fn example() -> anyhow::Result<()> {
     /// let conn = LimitedConnection::new(
-    ///     "tower2".to_string(),
-    ///     "https://192.168.1.100:8080".to_string(),
-    ///     vec!["birdsong/*".to_string(), "health".to_string()],
+    ///     String::from("tower2"),
+    ///     String::from("https://192.168.1.100:8080"),
+    ///     vec![String::from("birdsong/*"), String::from("health")],
     /// )?;
     /// # Ok(())
     /// # }
@@ -176,8 +176,8 @@ mod tests {
     #[test]
     fn test_limited_allows_birdsong() {
         let conn = LimitedConnection::with_defaults(
-            "test_peer".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("test_peer"),
+            String::from("http://localhost:8080"),
         )
         .unwrap();
 
@@ -190,8 +190,8 @@ mod tests {
     #[test]
     fn test_limited_denies_data() {
         let conn = LimitedConnection::with_defaults(
-            "test_peer".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("test_peer"),
+            String::from("http://localhost:8080"),
         )
         .unwrap();
 
@@ -205,8 +205,8 @@ mod tests {
     #[test]
     fn test_trust_level() {
         let conn = LimitedConnection::with_defaults(
-            "test_peer".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("test_peer"),
+            String::from("http://localhost:8080"),
         )
         .unwrap();
 

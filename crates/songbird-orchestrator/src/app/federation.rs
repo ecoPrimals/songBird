@@ -50,7 +50,7 @@ pub async fn initialize_federation() -> Result<(
     NodeIdentity,
 )> {
     // Initialize federation state (always created, even if federation disabled)
-    let federation_state = Arc::new(FederationState::new("main".to_string()));
+    let federation_state = Arc::new(FederationState::new(String::from("main")));
     let federated_service_registry = Arc::new(FederatedServiceRegistry::new());
 
     // Load stable node identity EARLY (Dec 20, 2025 identity fix)
@@ -129,7 +129,7 @@ fn build_self_registration(node_identity: &NodeIdentity) -> Result<NodeRegistrat
         node_name: node_identity.node_name.clone(),
         node_address,
         endpoints: None, // Will be populated after we know actual port
-        capabilities: vec!["orchestrator".to_string()],
+        capabilities: vec![String::from("orchestrator")],
         cpu_cores: std::thread::available_parallelism().map_or(1, std::num::NonZero::get),
         memory_gb: detect_memory_gb(),
         gpu_model: detect_gpu(),
@@ -223,7 +223,7 @@ mod tests {
         let options = federation_setup::FederationOptions::for_testing().enabled(false).build();
 
         let node_identity = NodeIdentity::new_or_load(None).expect("Failed to load identity");
-        let federation_state = Arc::new(FederationState::new("test".to_string()));
+        let federation_state = Arc::new(FederationState::new(String::from("test")));
 
         let result: anyhow::Result<federation_setup::FederationSetup> =
             federation_setup::setup_federation(&node_identity, federation_state, options).await;

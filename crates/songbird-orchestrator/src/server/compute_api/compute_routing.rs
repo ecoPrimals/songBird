@@ -9,7 +9,7 @@ use crate::core::routing::RoutingDecision;
 #[must_use]
 pub fn format_compute_routed_destination(decision: &RoutingDecision) -> String {
     match decision {
-        RoutingDecision::ExecuteLocally => "local".to_string(),
+        RoutingDecision::ExecuteLocally => String::from("local"),
         RoutingDecision::RouteToSongbird {
             node_id,
             ..

@@ -315,13 +315,13 @@ mod tests {
         };
 
         let json = serde_json::to_string(&policy).map_err(|e| SongbirdError::Serialization {
-            format: Some("JSON".to_string()),
+            format: Some(String::from("JSON")),
             message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
         let deserialized: ScalingPolicy =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
-                format: Some("JSON".to_string()),
+                format: Some(String::from("JSON")),
                 message: format!("Parsing failed: {e}"),
                 debug_info: None,
             })?;

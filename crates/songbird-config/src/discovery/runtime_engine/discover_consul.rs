@@ -38,8 +38,8 @@ fn parse_consul_catalog_entries(
                 .unwrap_or_default();
 
             let mut metadata = HashMap::new();
-            metadata.insert("source".to_string(), "consul".to_string());
-            metadata.insert("consul_endpoint".to_string(), consul_endpoint.to_string());
+            metadata.insert(String::from("source"), String::from("consul"));
+            metadata.insert(String::from("consul_endpoint"), consul_endpoint.to_string());
 
             discovered.push(DiscoveredService {
                 address: addr,
@@ -144,7 +144,7 @@ mod tests {
 
         assert_eq!(out[0].address, "10.0.0.2:9300".parse::<SocketAddr>().unwrap());
         assert_eq!(out[0].capabilities, vec!["a", "b"]);
-        assert_eq!(out[0].metadata.get("source"), Some(&"consul".to_string()));
+        assert_eq!(out[0].metadata.get("source"), Some(&String::from("consul")));
 
         assert_eq!(out[1].address, "10.0.0.3:9400".parse::<SocketAddr>().unwrap());
         assert_eq!(out[1].capabilities, vec![cap.to_string()]);

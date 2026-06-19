@@ -31,7 +31,7 @@ impl StunHandler {
         {
             let instance = self.server_handle.read().await;
             if instance.is_some() {
-                return Err("STUN server is already running (use stun.stop first)".to_string());
+                return Err(String::from("STUN server is already running (use stun.stop first)"));
             }
         }
 
@@ -99,7 +99,7 @@ impl StunHandler {
                 "bind_addr": bind_addr
             }))
         } else {
-            Err("STUN server is not running".to_string())
+            Err(String::from("STUN server is not running"))
         }
     }
 

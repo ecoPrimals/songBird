@@ -92,7 +92,7 @@ impl Default for AuthorizationConfig {
         Self {
             enabled: true,
             rbac_enabled: true,
-            default_role: "user".to_string(),
+            default_role: String::from("user"),
         }
     }
 }
@@ -112,7 +112,7 @@ impl Default for EncryptionConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            algorithm: "AES-256-GCM".to_string(),
+            algorithm: String::from("AES-256-GCM"),
             key_size: 256,
         }
     }
@@ -153,7 +153,7 @@ impl Default for SecurityProviderConfig {
         let security_port = SafeEnv::get_port("SECURITY_PROVIDER_PORT", default_port);
 
         Self {
-            name: "default".to_string(),
+            name: String::from("default"),
             endpoint: format!("{protocol}://{security_host}:{security_port}"),
             credentials: HashMap::new(),
         }

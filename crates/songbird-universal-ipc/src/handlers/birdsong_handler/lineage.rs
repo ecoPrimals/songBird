@@ -70,7 +70,7 @@ impl BirdSongHandler {
         // Get provider (includes our family ID)
         let provider = self.get_provider().await?;
 
-        let family_id = provider.family_id().unwrap_or_else(|| "unknown".to_string());
+        let family_id = provider.family_id().unwrap_or_else(|| String::from("unknown"));
 
         // Query security provider for our node ID (if needed)
         let security_socket = self.discover_security_socket().await?;

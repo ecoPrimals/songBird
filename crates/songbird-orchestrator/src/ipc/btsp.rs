@@ -238,7 +238,7 @@ where
 
     let session_id =
         verification.session_id.context("BTSP: verified but no session_id returned")?;
-    let cipher = verification.cipher.unwrap_or_else(|| "null".to_string());
+    let cipher = verification.cipher.unwrap_or_else(|| String::from("null"));
 
     let complete = HandshakeComplete {
         cipher: cipher.clone(),
@@ -417,7 +417,7 @@ where
 
     let session_id =
         verification.session_id.context("BTSP NDJSON: verified but no session_id returned")?;
-    let cipher = verification.cipher.unwrap_or_else(|| "null".to_string());
+    let cipher = verification.cipher.unwrap_or_else(|| String::from("null"));
 
     let complete = HandshakeComplete {
         cipher: cipher.clone(),
@@ -538,7 +538,7 @@ mod tests {
         let hello = ClientHello {
             protocol: None,
             version: 1,
-            client_ephemeral_pub: "AAAA".to_string(),
+            client_ephemeral_pub: String::from("AAAA"),
         };
         let json = serde_json::to_vec(&hello).unwrap();
         let back: ClientHello = serde_json::from_slice(&json).unwrap();
@@ -546,9 +546,9 @@ mod tests {
 
         let server = ServerHello {
             version: 1,
-            server_ephemeral_pub: "BBBB".to_string(),
-            challenge: "CCCC".to_string(),
-            session_id: "tok-xyz".to_string(),
+            server_ephemeral_pub: String::from("BBBB"),
+            challenge: String::from("CCCC"),
+            session_id: String::from("tok-xyz"),
         };
         let json = serde_json::to_vec(&server).unwrap();
         let back: ServerHello = serde_json::from_slice(&json).unwrap();
@@ -556,16 +556,16 @@ mod tests {
         assert_eq!(back.session_id, "tok-xyz");
 
         let resp = ChallengeResponse {
-            response: "DDDD".to_string(),
-            preferred_cipher: "chacha20_poly1305".to_string(),
+            response: String::from("DDDD"),
+            preferred_cipher: String::from("chacha20_poly1305"),
         };
         let json = serde_json::to_vec(&resp).unwrap();
         let back: ChallengeResponse = serde_json::from_slice(&json).unwrap();
         assert_eq!(back.preferred_cipher, "chacha20_poly1305");
 
         let complete = HandshakeComplete {
-            cipher: "chacha20_poly1305".to_string(),
-            session_id: "abcdef01".to_string(),
+            cipher: String::from("chacha20_poly1305"),
+            session_id: String::from("abcdef01"),
         };
         let json = serde_json::to_vec(&complete).unwrap();
         let back: HandshakeComplete = serde_json::from_slice(&json).unwrap();
@@ -626,9 +626,9 @@ mod tests {
     async fn ndjson_write_read_roundtrip() {
         let value = ServerHello {
             version: 1,
-            server_ephemeral_pub: "BBBB".to_string(),
-            challenge: "CCCC".to_string(),
-            session_id: "tok-ndjson".to_string(),
+            server_ephemeral_pub: String::from("BBBB"),
+            challenge: String::from("CCCC"),
+            session_id: String::from("tok-ndjson"),
         };
         let mut buf = Vec::new();
         write_ndjson(&mut buf, &value).await.unwrap();

@@ -198,7 +198,7 @@ mod tests {
     #[test]
     fn test_tunnel_creation() {
         let tunnel =
-            Tunnel::new("peer-1".to_string(), "http://peer:8080".to_string(), vec![1, 2, 3, 4]);
+            Tunnel::new(String::from("peer-1"), String::from("http://peer:8080"), vec![1, 2, 3, 4]);
 
         assert_eq!(tunnel.state, TunnelState::Active);
         assert_eq!(tunnel.bytes_sent, 0);
@@ -208,7 +208,7 @@ mod tests {
     #[test]
     fn test_tunnel_error_degradation() {
         let mut tunnel =
-            Tunnel::new("peer-1".to_string(), "http://peer:8080".to_string(), vec![1, 2, 3, 4]);
+            Tunnel::new(String::from("peer-1"), String::from("http://peer:8080"), vec![1, 2, 3, 4]);
 
         // Record multiple errors
         for _ in 0..11 {

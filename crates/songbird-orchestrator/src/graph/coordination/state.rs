@@ -132,15 +132,15 @@ mod tests {
         let v = CoordinationValidationResult {
             valid: false,
             pattern: CoordinationPattern::Hybrid,
-            description: "desc".to_string(),
+            description: String::from("desc"),
             issues: vec![
                 CoordinationIssue {
                     severity: IssueSeverity::Error,
-                    message: "e".to_string(),
+                    message: String::from("e"),
                 },
                 CoordinationIssue {
                     severity: IssueSeverity::Warning,
-                    message: "w".to_string(),
+                    message: String::from("w"),
                 },
             ],
         };
@@ -156,12 +156,12 @@ mod tests {
     fn coordination_issue_constructors_match_fields() {
         let e = CoordinationIssue {
             severity: IssueSeverity::Error,
-            message: "m".to_string(),
+            message: String::from("m"),
         };
         assert_eq!(e.severity, IssueSeverity::Error);
         let w = CoordinationIssue {
             severity: IssueSeverity::Warning,
-            message: "m2".to_string(),
+            message: String::from("m2"),
         };
         assert_eq!(w.severity, IssueSeverity::Warning);
     }
@@ -170,12 +170,12 @@ mod tests {
     fn resource_check_fields() {
         let ok = ResourceCheck {
             feasible: true,
-            reason: "ok".to_string(),
+            reason: String::from("ok"),
         };
         assert!(ok.feasible);
         let bad = ResourceCheck {
             feasible: false,
-            reason: "no".to_string(),
+            reason: String::from("no"),
         };
         assert!(!bad.feasible);
     }
@@ -202,7 +202,7 @@ mod tests {
     fn validation_result_new_starts_valid_with_empty_issues() {
         let r = CoordinationValidationResult::new(
             CoordinationPattern::Pipeline,
-            "pipeline".to_string(),
+            String::from("pipeline"),
         );
         assert!(r.valid);
         assert_eq!(r.pattern, CoordinationPattern::Pipeline);

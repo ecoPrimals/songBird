@@ -166,7 +166,6 @@ fn test_timeout_wrapping_operations() {
 }
 
 #[test]
-#[expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
 fn test_timeout_as_f64() {
     let timeout = 10u64;
     #[expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]

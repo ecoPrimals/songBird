@@ -64,7 +64,7 @@ mod tests {
         GraphNode {
             id: id.to_string(),
             primal_name: None,
-            capability: "cap".to_string(),
+            capability: String::from("cap"),
             inputs: vec![],
             outputs: vec![],
             config: serde_json::json!({}),
@@ -76,12 +76,12 @@ mod tests {
     #[test]
     fn graph_new_and_entry_exit_points() {
         let g = Graph::new(
-            "g1".to_string(),
-            "G".to_string(),
+            String::from("g1"),
+            String::from("G"),
             vec![sample_node("a"), sample_node("b")],
             vec![GraphEdge {
-                from: "a".to_string(),
-                to: "b".to_string(),
+                from: String::from("a"),
+                to: String::from("b"),
                 data_mapping: None,
             }],
             GraphMetadata::default(),
@@ -95,8 +95,8 @@ mod tests {
     fn graph_validator_new() {
         let v = GraphValidator::new();
         let g = Graph::new(
-            "empty".to_string(),
-            "E".to_string(),
+            String::from("empty"),
+            String::from("E"),
             vec![],
             vec![],
             GraphMetadata::default(),

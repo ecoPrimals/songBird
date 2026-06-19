@@ -70,20 +70,20 @@ impl RendezvousClient {
         let signature = self.sign_message_for_registration().await;
 
         let msg = RegisterPresenceMessage {
-            message_type: "register_presence".to_string(),
-            version: "1.0".to_string(),
+            message_type: String::from("register_presence"),
+            version: String::from("1.0"),
             timestamp: Utc::now(),
             node_identity: NodeIdentity {
                 node_id: node_info.node_id.clone(),
                 ephemeral_session_id: String::new(), // Server will generate
                 public_key_fingerprint,
                 capabilities: node_info.capabilities.clone(),
-                protocols: vec!["https".to_string(), "btsp".to_string()],
+                protocols: vec![String::from("https"), String::from("btsp")],
             },
             network_context: NetworkContext {
-                nat_type: "unknown".to_string(),
-                reachability: "unknown".to_string(),
-                connection_quality: "unknown".to_string(),
+                nat_type: String::from("unknown"),
+                reachability: String::from("unknown"),
+                connection_quality: String::from("unknown"),
             },
             security: SecurityInfo {
                 signature,
@@ -140,8 +140,8 @@ impl RendezvousClient {
         debug!("🔍 Querying rendezvous for capabilities: {:?}", capabilities);
 
         let msg = QueryPeersMessage {
-            message_type: "query_peers".to_string(),
-            version: "1.0".to_string(),
+            message_type: String::from("query_peers"),
+            version: String::from("1.0"),
             timestamp: Utc::now(),
             requester: RequesterInfo {
                 session_id: session_id.clone(),
@@ -388,9 +388,9 @@ mod tests {
     #[test]
     fn network_context_serde_roundtrip() {
         let ctx = NetworkContext {
-            nat_type: "full_cone".to_string(),
-            reachability: "direct".to_string(),
-            connection_quality: "excellent".to_string(),
+            nat_type: String::from("full_cone"),
+            reachability: String::from("direct"),
+            connection_quality: String::from("excellent"),
         };
         let v = to_value(&ctx).unwrap();
         let back: NetworkContext = from_value(v).unwrap();
@@ -403,14 +403,14 @@ mod tests {
     fn peer_info_serde_roundtrip() {
         let ts = Utc::now();
         let info = PeerInfo {
-            ephemeral_session_id: "sess-1".to_string(),
-            public_key_fingerprint: "sha256:abc".to_string(),
-            capabilities: vec!["a".to_string()],
-            protocols: vec!["https".to_string()],
+            ephemeral_session_id: String::from("sess-1"),
+            public_key_fingerprint: String::from("sha256:abc"),
+            capabilities: vec![String::from("a")],
+            protocols: vec![String::from("https")],
             network_context: NetworkContext {
-                nat_type: "unknown".to_string(),
-                reachability: "unknown".to_string(),
-                connection_quality: "unknown".to_string(),
+                nat_type: String::from("unknown"),
+                reachability: String::from("unknown"),
+                connection_quality: String::from("unknown"),
             },
             last_heartbeat: ts,
         };
@@ -427,9 +427,9 @@ mod tests {
     #[test]
     fn peer_query_serde_roundtrip() {
         let q = PeerQuery {
-            capabilities_required: vec!["btsp".to_string()],
+            capabilities_required: vec![String::from("btsp")],
             capabilities_optional: vec![],
-            exclude_node_ids: vec!["self".to_string()],
+            exclude_node_ids: vec![String::from("self")],
             max_results: 25,
         };
         let v = to_value(&q).unwrap();
@@ -443,9 +443,9 @@ mod tests {
     #[test]
     fn network_context_debug_includes_fields() {
         let ctx = NetworkContext {
-            nat_type: "n".to_string(),
-            reachability: "r".to_string(),
-            connection_quality: "c".to_string(),
+            nat_type: String::from("n"),
+            reachability: String::from("r"),
+            connection_quality: String::from("c"),
         };
         let s = format!("{ctx:?}");
         assert!(s.contains('n') && s.contains('r') && s.contains('c'));

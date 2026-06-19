@@ -241,7 +241,7 @@ async fn handle_socket(socket: WebSocket, state: WebSocketApiState) {
 
     // Send welcome message
     let welcome = WsMessage::Ack {
-        message: Some("Connected to Songbird WebSocket API".to_string()),
+        message: Some(String::from("Connected to Songbird WebSocket API")),
     };
 
     if let Ok(json) = serde_json::to_string(&welcome)
@@ -270,7 +270,7 @@ async fn handle_socket(socket: WebSocket, state: WebSocketApiState) {
                         warn!("Failed to parse WebSocket message: {}", e);
                         let error_msg = WsMessage::Error {
                             message: format!("Invalid message format: {e}"),
-                            code: Some("INVALID_JSON".to_string()),
+                            code: Some(String::from("INVALID_JSON")),
                         };
                         if let Ok(json) = serde_json::to_string(&error_msg) {
                             let _ = sender.send(Message::Text(json.into())).await;
@@ -281,8 +281,8 @@ async fn handle_socket(socket: WebSocket, state: WebSocketApiState) {
             Ok(Message::Binary(_)) => {
                 warn!("Binary messages not supported");
                 let error_msg = WsMessage::Error {
-                    message: "Binary messages not supported".to_string(),
-                    code: Some("UNSUPPORTED_FORMAT".to_string()),
+                    message: String::from("Binary messages not supported"),
+                    code: Some(String::from("UNSUPPORTED_FORMAT")),
                 };
                 if let Ok(json) = serde_json::to_string(&error_msg) {
                     let _ = sender.send(Message::Text(json.into())).await;
@@ -397,8 +397,8 @@ async fn handle_ws_message(msg: WsMessage, state: &WebSocketApiState) -> Option<
         | WsMessage::ServiceList {
             ..
         } => Some(WsMessage::Error {
-            message: "This message type can only be sent by server".to_string(),
-            code: Some("INVALID_DIRECTION".to_string()),
+            message: String::from("This message type can only be sent by server"),
+            code: Some(String::from("INVALID_DIRECTION")),
         }),
 
         // These don't need responses
@@ -419,8 +419,8 @@ async fn handle_ws_message(msg: WsMessage, state: &WebSocketApiState) -> Option<
         | WsMessage::TaskEvent {
             ..
         } => Some(WsMessage::Error {
-            message: "Task events have a dedicated endpoint at /ws/tasks".to_string(),
-            code: Some("WRONG_ENDPOINT".to_string()),
+            message: String::from("Task events have a dedicated endpoint at /ws/tasks"),
+            code: Some(String::from("WRONG_ENDPOINT")),
         }),
     }
 }
@@ -454,8 +454,8 @@ async fn handle_task_events(socket: WebSocket, state: WebSocketApiState) {
         } else {
             error!("Orchestrator event stream not available");
             let error_msg = WsMessage::Error {
-                message: "Event stream not available".to_string(),
-                code: Some("NO_EVENT_STREAM".to_string()),
+                message: String::from("Event stream not available"),
+                code: Some(String::from("NO_EVENT_STREAM")),
             };
             if let Ok(json) = serde_json::to_string(&error_msg) {
                 let _ = sender.send(Message::Text(json.into())).await;
@@ -465,8 +465,8 @@ async fn handle_task_events(socket: WebSocket, state: WebSocketApiState) {
     } else {
         error!("Orchestrator not available");
         let error_msg = WsMessage::Error {
-            message: "Task events not available (orchestrator not configured)".to_string(),
-            code: Some("NO_ORCHESTRATOR".to_string()),
+            message: String::from("Task events not available (orchestrator not configured)"),
+            code: Some(String::from("NO_ORCHESTRATOR")),
         };
         if let Ok(json) = serde_json::to_string(&error_msg) {
             let _ = sender.send(Message::Text(json.into())).await;
@@ -480,7 +480,7 @@ async fn handle_task_events(socket: WebSocket, state: WebSocketApiState) {
 
     // Send welcome message
     let welcome = WsMessage::TaskEventReady {
-        message: "Connected to task event stream".to_string(),
+        message: String::from("Connected to task event stream"),
     };
     if let Ok(json) = serde_json::to_string(&welcome)
         && let Err(e) = sender.send(Message::Text(json.into())).await
@@ -563,21 +563,21 @@ mod tests {
     #[test]
     fn ws_message_subscribe_roundtrip() {
         assert_ws_roundtrip(&WsMessage::Subscribe {
-            events: vec!["a".to_string(), "b".to_string()],
+            events: vec![String::from("a"), String::from("b")],
         });
     }
 
     #[test]
     fn ws_message_unsubscribe_roundtrip() {
         assert_ws_roundtrip(&WsMessage::Unsubscribe {
-            events: vec!["x".to_string()],
+            events: vec![String::from("x")],
         });
     }
 
     #[test]
     fn ws_message_ping_pong_roundtrip() {
         assert_ws_roundtrip(&WsMessage::Ping {
-            data: Some("d".to_string()),
+            data: Some(String::from("d")),
         });
         assert_ws_roundtrip(&WsMessage::Pong {
             data: None,
@@ -592,25 +592,25 @@ mod tests {
     #[test]
     fn ws_message_query_services_roundtrip() {
         assert_ws_roundtrip(&WsMessage::QueryServices {
-            capabilities: vec!["compute".to_string()],
+            capabilities: vec![String::from("compute")],
         });
     }
 
     #[test]
     fn ws_message_service_update_roundtrip() {
         assert_ws_roundtrip(&WsMessage::ServiceUpdate {
-            service_name: "n".to_string(),
-            status: "up".to_string(),
-            address: "127.0.0.1".to_string(),
+            service_name: String::from("n"),
+            status: String::from("up"),
+            address: String::from("127.0.0.1"),
         });
     }
 
     #[test]
     fn ws_message_health_update_roundtrip() {
         assert_ws_roundtrip(&WsMessage::HealthUpdate {
-            service_name: "n".to_string(),
+            service_name: String::from("n"),
             healthy: true,
-            message: Some("ok".to_string()),
+            message: Some(String::from("ok")),
         });
     }
 
@@ -627,10 +627,10 @@ mod tests {
     fn ws_message_service_list_roundtrip() {
         assert_ws_roundtrip(&WsMessage::ServiceList {
             services: vec![ServiceSummary {
-                name: "svc".to_string(),
-                address: "127.0.0.1".to_string(),
+                name: String::from("svc"),
+                address: String::from("127.0.0.1"),
                 port: 8080,
-                capabilities: vec!["c".to_string()],
+                capabilities: vec![String::from("c")],
             }],
         });
     }
@@ -638,20 +638,20 @@ mod tests {
     #[test]
     fn ws_message_error_ack_task_events_roundtrip() {
         assert_ws_roundtrip(&WsMessage::Error {
-            message: "e".to_string(),
-            code: Some("E".to_string()),
+            message: String::from("e"),
+            code: Some(String::from("E")),
         });
         assert_ws_roundtrip(&WsMessage::Ack {
-            message: Some("m".to_string()),
+            message: Some(String::from("m")),
         });
         assert_ws_roundtrip(&WsMessage::TaskEventReady {
-            message: "ready".to_string(),
+            message: String::from("ready"),
         });
         assert_ws_roundtrip(&WsMessage::TaskEvent {
-            task_id: "t".to_string(),
-            user_id: "u".to_string(),
-            event_type: "Started".to_string(),
-            timestamp: "2025-01-01T00:00:00Z".to_string(),
+            task_id: String::from("t"),
+            user_id: String::from("u"),
+            event_type: String::from("Started"),
+            timestamp: String::from("2025-01-01T00:00:00Z"),
         });
     }
 

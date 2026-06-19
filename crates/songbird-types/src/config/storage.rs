@@ -20,7 +20,7 @@ impl Default for CanonicalStorageConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            backend: "memory".to_string(),
+            backend: String::from("memory"),
         }
     }
 }
@@ -48,7 +48,7 @@ mod tests {
     fn test_custom_storage_config() {
         let config = CanonicalStorageConfig {
             enabled: false,
-            backend: "postgres".to_string(),
+            backend: String::from("postgres"),
         };
         assert!(!config.enabled);
         assert_eq!(config.backend, "postgres");
@@ -58,7 +58,7 @@ mod tests {
     fn test_storage_config_serialization() -> Result<(), Box<dyn std::error::Error>> {
         let config = CanonicalStorageConfig::default();
         let json = serde_json::to_string(&config).map_err(|e| SongbirdError::Serialization {
-            format: Some("JSON".to_string()),
+            format: Some(String::from("JSON")),
             message: format!("Serialization failed: {}", e),
             debug_info: None,
         })?;
@@ -73,7 +73,7 @@ mod tests {
         let json = r#"{"enabled":true,"backend":"redis"}"#;
         let config: CanonicalStorageConfig =
             serde_json::from_str(json).map_err(|e| SongbirdError::Serialization {
-                format: Some("JSON".to_string()),
+                format: Some(String::from("JSON")),
                 message: format!("Parsing failed: {}", e),
                 debug_info: None,
             })?;

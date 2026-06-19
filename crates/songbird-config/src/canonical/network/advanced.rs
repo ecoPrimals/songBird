@@ -60,7 +60,8 @@ impl ServiceEndpoint {
 
         let host = songbird_process_env::var(&host_env).ok()?;
         let port = songbird_process_env::var(&port_env).ok()?.parse().ok()?;
-        let scheme = songbird_process_env::var(&scheme_env).unwrap_or_else(|_| "http".to_string());
+        let scheme =
+            songbird_process_env::var(&scheme_env).unwrap_or_else(|_| String::from("http"));
 
         Some(Self::new(&host, port, &scheme))
     }
@@ -88,7 +89,7 @@ impl Default for SelfAwareConfig {
                 .unwrap_or_else(|_| SELF_NAME.to_string()),
             endpoint: ServiceEndpoint::from_env("SONGBIRD_SELF").unwrap_or_default(),
             capabilities: songbird_process_env::var("SONGBIRD_CAPABILITIES")
-                .unwrap_or_else(|_| "orchestration,service_discovery,load_balancing".to_string())
+                .unwrap_or_else(|_| String::from("orchestration,service_discovery,load_balancing"))
                 .split(',')
                 .map(|s| s.trim().to_string())
                 .collect(),
@@ -109,7 +110,7 @@ impl Default for UniversalDiscoveryConfig {
         Self {
             enabled: songbird_process_env::var("SONGBIRD_UNIVERSAL_DISCOVERY_ENABLED").is_ok(),
             discovery_methods: songbird_process_env::var("SONGBIRD_DISCOVERY_METHODS")
-                .unwrap_or_else(|_| "network_scan,service_registry,mdns".to_string())
+                .unwrap_or_else(|_| String::from("network_scan,service_registry,mdns"))
                 .split(',')
                 .map(|s| s.trim().to_string())
                 .collect(),

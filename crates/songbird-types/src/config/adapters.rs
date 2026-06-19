@@ -94,10 +94,10 @@ impl Default for CanonicalPrimalInstanceConfig {
 
         Self {
             base_url: format!("http://{base_host}:{base_port}"),
-            instance_id: "default-instance".to_string(),
-            user_id: "default-user".to_string(),
-            device_id: "default-device".to_string(),
-            security_level: "standard".to_string(),
+            instance_id: String::from("default-instance"),
+            user_id: String::from("default-user"),
+            device_id: String::from("default-device"),
+            security_level: String::from("standard"),
             api_key: None,
             headers: HashMap::new(),
             timeout_seconds: 30,
@@ -145,7 +145,7 @@ impl Default for CanonicalMultiInstanceConfig {
             max_instances_per_type: 10,
             max_instances_per_user: 5,
             load_balancing_strategy: CanonicalLoadBalancingStrategy::HealthBased,
-            selection_strategy: "health_weighted".to_string(),
+            selection_strategy: String::from("health_weighted"),
             health_check_interval: Duration::from_secs(30),
             instance_timeout: Duration::from_secs(300),
             failover: CanonicalFailoverConfig::default(),
@@ -312,7 +312,7 @@ impl Default for CanonicalEncryptionConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            algorithm: "AES-256-GCM".to_string(),
+            algorithm: String::from("AES-256-GCM"),
             key_size: 256,
         }
     }
@@ -478,7 +478,7 @@ impl Default for CanonicalAdapterMonitoringConfig {
             performance_monitoring: true,
             detailed_logging: false,
             metrics_interval: Duration::from_secs(60),
-            log_level: "info".to_string(),
+            log_level: String::from("info"),
             distributed_tracing: true,
         }
     }

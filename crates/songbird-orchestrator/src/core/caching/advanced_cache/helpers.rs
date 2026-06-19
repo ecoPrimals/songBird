@@ -246,7 +246,7 @@ mod tests {
         let key = CacheKey::String("k".into());
         let value = CacheValue::Serialized {
             data: Arc::new(vec![1, 2, 3]),
-            type_hint: "proto".to_string(),
+            type_hint: String::from("proto"),
         };
         assert_eq!(estimate_entry_size(&key, &value), 1 + 3 + 64);
     }
@@ -255,8 +255,8 @@ mod tests {
     fn estimate_entry_size_reference_value() {
         let key = CacheKey::String("r".into());
         let value = CacheValue::Reference {
-            location: "/path/to/data".to_string(),
-            checksum: Some("abc123".to_string()),
+            location: String::from("/path/to/data"),
+            checksum: Some(String::from("abc123")),
         };
         assert_eq!(estimate_entry_size(&key, &value), 1 + 13 + 64);
     }

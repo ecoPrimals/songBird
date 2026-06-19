@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn test_smart_cow() {
-        let data = "test".to_string();
+        let data = String::from("test");
         let cow_borrowed = smart_cow(&data, false);
         let cow_owned = smart_cow(&data, true);
 
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn test_utility_functions() {
-        let data = "test".to_string();
+        let data = String::from("test");
         let shared = share(data.clone());
         let arc_data = arc(data);
 
@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn shared_bytes_from_string_utf8() {
-        let s = "json".to_string();
+        let s = String::from("json");
         let sb = SharedBytes::from(s);
         assert_eq!(sb.as_ref(), b"json");
     }
@@ -266,7 +266,7 @@ mod tests {
 
     #[test]
     fn test_clone_arc_matches_inner() {
-        let s = Shared::new("x".to_string());
+        let s = Shared::new(String::from("x"));
         let a = s.clone_arc();
         assert_eq!(a.as_ref(), s.as_ref());
     }

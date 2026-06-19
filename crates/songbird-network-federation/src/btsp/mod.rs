@@ -62,10 +62,10 @@ mod tests {
     #[test]
     fn peer_info_serde_roundtrip() {
         let p = PeerInfo {
-            id: "p1".to_string(),
-            endpoint: "http://localhost:1".to_string(),
+            id: String::from("p1"),
+            endpoint: String::from("http://localhost:1"),
             public_key: Some(vec![1, 2]),
-            protocols: vec!["btsp".to_string()],
+            protocols: vec![String::from("btsp")],
         };
         let json = serde_json::to_string(&p).unwrap();
         let back: PeerInfo = serde_json::from_str(&json).unwrap();
@@ -75,10 +75,10 @@ mod tests {
 
     #[test]
     fn tunnel_handle_with_id_and_security_context_serde() {
-        let h = TunnelHandle::with_id("tid".to_string());
+        let h = TunnelHandle::with_id(String::from("tid"));
         let ctx = SecurityContext {
             tunnel_id: h.id,
-            peer_id: "peer".to_string(),
+            peer_id: String::from("peer"),
             nonce: Some(vec![0, 1]),
             aad: Some(b"aad".to_vec()),
         };
@@ -107,8 +107,8 @@ mod tests {
     #[tokio::test]
     async fn local_provider_establish_tunnel_and_encrypt_roundtrip() {
         let peer = PeerInfo {
-            id: "peer-a".to_string(),
-            endpoint: "http://127.0.0.1:9".to_string(),
+            id: String::from("peer-a"),
+            endpoint: String::from("http://127.0.0.1:9"),
             public_key: None,
             protocols: vec![],
         };

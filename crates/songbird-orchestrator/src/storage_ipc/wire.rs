@@ -88,14 +88,14 @@ mod tests {
     fn parse_get_accepts_string_result() {
         let v = json!("{\"id\":\"x\"}");
         let s = parse_get_value_string(&v).unwrap();
-        assert_eq!(s, Some("{\"id\":\"x\"}".to_string()));
+        assert_eq!(s, Some(String::from("{\"id\":\"x\"}")));
     }
 
     #[test]
     fn parse_get_accepts_value_object() {
         let v = json!({ "value": "{\"k\":1}" });
         let s = parse_get_value_string(&v).unwrap();
-        assert_eq!(s, Some("{\"k\":1}".to_string()));
+        assert_eq!(s, Some(String::from("{\"k\":1}")));
     }
 
     #[test]

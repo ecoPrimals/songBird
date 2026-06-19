@@ -47,7 +47,7 @@ impl Default for LoadBalancingConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            strategy: "round_robin".to_string(),
+            strategy: String::from("round_robin"),
             health_check_interval_secs: 30,
             backends: Vec::new(),
         }

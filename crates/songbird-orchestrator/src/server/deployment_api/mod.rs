@@ -169,14 +169,14 @@ mod tests {
     #[test]
     fn deployment_info_roundtrip() {
         let mut env = std::collections::HashMap::new();
-        env.insert("A".to_string(), "b".to_string());
+        env.insert(String::from("A"), String::from("b"));
         let info = DeploymentInfo {
-            deployment_id: "d1".to_string(),
-            service_name: "svc".to_string(),
-            binary_path: "/tmp/svc".to_string(),
+            deployment_id: String::from("d1"),
+            service_name: String::from("svc"),
+            binary_path: String::from("/tmp/svc"),
             env_vars: env,
             status: DeploymentStatus::Deploying,
-            deployed_at: "2026-01-01T00:00:00Z".to_string(),
+            deployed_at: String::from("2026-01-01T00:00:00Z"),
             pid: Some(42),
             port: Some(8080),
         };
@@ -190,12 +190,12 @@ mod tests {
     #[test]
     fn negotiation_response_json_shape() {
         let r = NegotiationResponse {
-            negotiation_id: "neg-1".to_string(),
-            accepted_method: "chunked".to_string(),
+            negotiation_id: String::from("neg-1"),
+            accepted_method: String::from("chunked"),
             chunk_size_mb: 10,
             total_chunks: 3,
-            chunk_upload_path: "/api/deployment/chunk/neg-1/{index}".to_string(),
-            finalize_path: "/api/deployment/finalize/neg-1".to_string(),
+            chunk_upload_path: String::from("/api/deployment/chunk/neg-1/{index}"),
+            finalize_path: String::from("/api/deployment/finalize/neg-1"),
             timeout_seconds: 300,
         };
         let j = serde_json::to_string(&r).unwrap();
@@ -225,10 +225,10 @@ mod tests {
     #[test]
     fn deployment_response_fields() {
         let r = DeploymentResponse {
-            deployment_id: "deploy-x".to_string(),
-            status: "deployed".to_string(),
-            message: "ok".to_string(),
-            service_url: Some("http://127.0.0.1:8080".to_string()),
+            deployment_id: String::from("deploy-x"),
+            status: String::from("deployed"),
+            message: String::from("ok"),
+            service_url: Some(String::from("http://127.0.0.1:8080")),
         };
         let j = serde_json::to_string(&r).unwrap();
         assert!(j.contains("deploy-x"));

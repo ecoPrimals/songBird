@@ -104,10 +104,14 @@ impl WindowsPlatformIPC {
 
                 #[cfg(not(windows))]
                 {
-                    Err(IpcError::PlatformError("Named pipes require Windows platform".to_string()))
+                    Err(IpcError::PlatformError(String::from(
+                        "Named pipes require Windows platform",
+                    )))
                 }
             }
-            _ => Err(IpcError::PlatformError("WindowsIPC requires NamedPipe endpoint".to_string())),
+            _ => {
+                Err(IpcError::PlatformError(String::from("WindowsIPC requires NamedPipe endpoint")))
+            }
         }
     }
 
@@ -145,10 +149,14 @@ impl WindowsPlatformIPC {
 
                 #[cfg(not(windows))]
                 {
-                    Err(IpcError::PlatformError("Named pipes require Windows platform".to_string()))
+                    Err(IpcError::PlatformError(String::from(
+                        "Named pipes require Windows platform",
+                    )))
                 }
             }
-            _ => Err(IpcError::PlatformError("WindowsIPC requires NamedPipe endpoint".to_string())),
+            _ => {
+                Err(IpcError::PlatformError(String::from("WindowsIPC requires NamedPipe endpoint")))
+            }
         }
     }
 
@@ -161,7 +169,9 @@ impl WindowsPlatformIPC {
                 debug!("Named pipe cleanup (automatic): {}", name);
                 Ok(())
             }
-            _ => Err(IpcError::PlatformError("WindowsIPC requires NamedPipe endpoint".to_string())),
+            _ => {
+                Err(IpcError::PlatformError(String::from("WindowsIPC requires NamedPipe endpoint")))
+            }
         }
     }
 }
@@ -311,7 +321,7 @@ mod tests {
         // Same logic as `create_endpoint`: read `{PRIMAL}_PIPE` via injectable lookup
         let get_var = |k: &str| -> Result<String, std::env::VarError> {
             if k == "TESTPRIMAL_PIPE" {
-                Ok(r"\\.\pipe\custom_test".to_string())
+                Ok(String::from(r"\\.\pipe\custom_test"))
             } else {
                 Err(std::env::VarError::NotPresent)
             }

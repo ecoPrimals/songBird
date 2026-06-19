@@ -32,8 +32,8 @@ use crate::ipc::types::PrimalEndpoint;
 /// let checker = AvailabilityChecker::new(registry);
 ///
 /// let graph = Graph::new(
-///     "test".to_string(),
-///     "Test".to_string(),
+///     String::from("test"),
+///     String::from("Test"),
 ///     vec![],
 ///     vec![],
 ///     GraphMetadata::default(),
@@ -204,7 +204,7 @@ impl AvailabilityChecker {
                 health_status: None,
                 last_seen: None,
                 required_capability: Some(node.capability.clone()),
-                reason: Some("Internal error: primal list empty".to_string()),
+                reason: Some(String::from("Internal error: primal list empty")),
                 suggested_action: None,
             })
         }

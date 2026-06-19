@@ -241,10 +241,10 @@ mod tests {
     #[test]
     fn test_service_info_serialization() {
         let info = ServiceInfo {
-            id: "test".to_string(),
-            capability: "compute".to_string(),
-            endpoint: "http://localhost:8001".to_string(),
-            status: "healthy".to_string(),
+            id: String::from("test"),
+            capability: String::from("compute"),
+            endpoint: String::from("http://localhost:8001"),
+            status: String::from("healthy"),
             metadata: None,
         };
 

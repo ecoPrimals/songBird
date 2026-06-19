@@ -99,7 +99,7 @@ impl CanonicalUniversalAdapter {
                 .metadata
                 .get("provider_type")
                 .and_then(|t| serde_json::from_str(t).ok())
-                .unwrap_or_else(|| CanonicalProviderType::Custom("unknown".to_string())),
+                .unwrap_or_else(|| CanonicalProviderType::Custom(String::from("unknown"))),
             registered_at: SystemTime::now(),
             last_health_check: None,
             performance: CanonicalServicePerformance::default(),
@@ -155,11 +155,11 @@ impl CanonicalUniversalAdapter {
         if services.is_empty() {
             return Err(SongbirdError::Service {
                 service: request.capability.clone(),
-                message: "No services found with this capability".to_string(),
+                message: String::from("No services found with this capability"),
                 suggested_alternatives: vec![],
-                recovery_actions: vec![
-                    "Check if services with this capability are registered".to_string(),
-                ],
+                recovery_actions: vec![String::from(
+                    "Check if services with this capability are registered",
+                )],
             });
         }
 
@@ -168,9 +168,9 @@ impl CanonicalUniversalAdapter {
         if !self.circuit_breaker.can_execute(&selected_service.service.id).await {
             return Err(SongbirdError::Service {
                 service: selected_service.service.id.clone(),
-                message: "Circuit breaker is open".to_string(),
+                message: String::from("Circuit breaker is open"),
                 suggested_alternatives: vec![],
-                recovery_actions: vec!["Try again later".to_string()],
+                recovery_actions: vec![String::from("Try again later")],
             });
         }
 

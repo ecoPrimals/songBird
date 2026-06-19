@@ -40,7 +40,7 @@ mod tests {
 
     fn rule_named(ops: &[&str], max: Option<f64>) -> AutoApprovalRule {
         AutoApprovalRule {
-            name: "t".to_string(),
+            name: String::from("t"),
             max_cost: max,
             operations: ops.iter().map(ToString::to_string).collect(),
         }
@@ -134,7 +134,7 @@ mod tests {
     fn long_operation_list() {
         let ops: Vec<String> = (0..20).map(|i| format!("op{i}")).collect();
         let r = AutoApprovalRule {
-            name: "many".to_string(),
+            name: String::from("many"),
             max_cost: None,
             operations: ops,
         };

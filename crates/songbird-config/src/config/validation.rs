@@ -142,9 +142,9 @@ impl SongbirdConfig {
         if primal_config.endpoint.primary_url.is_empty() {
             result.errors.push(ValidationError {
                 field: format!("primal_registry.{primal_name}.endpoint.primary_url"),
-                message: "Primal endpoint URL cannot be empty".to_string(),
-                current_value: Some("empty".to_string()),
-                expected_value: Some("Valid URL (http:// or https://)".to_string()),
+                message: String::from("Primal endpoint URL cannot be empty"),
+                current_value: Some(String::from("empty")),
+                expected_value: Some(String::from("Valid URL (http:// or https://)")),
                 severity: ValidationSeverity::Critical,
                 suggestion: format!("Set endpoint URL for primal '{primal_name}'"),
             });
@@ -154,9 +154,9 @@ impl SongbirdConfig {
         if primal_config.capabilities.is_empty() {
             result.warnings.push(ValidationWarning {
                 field: format!("primal_registry.{primal_name}.capabilities"),
-                message: "Primal has no declared capabilities".to_string(),
-                current_value: Some("empty".to_string()),
-                recommended_value: Some("At least one capability".to_string()),
+                message: String::from("Primal has no declared capabilities"),
+                current_value: Some(String::from("empty")),
+                recommended_value: Some(String::from("At least one capability")),
                 severity: ValidationSeverity::Medium,
                 suggestion: format!(
                     "Add capabilities for primal '{primal_name}' to enable capability-based routing"
@@ -170,9 +170,9 @@ impl SongbirdConfig {
                 field: format!(
                     "primal_registry.{primal_name}.connection_settings.connection_timeout"
                 ),
-                message: "Connection timeout cannot be zero".to_string(),
-                current_value: Some("0".to_string()),
-                expected_value: Some("Positive duration (e.g., 30s)".to_string()),
+                message: String::from("Connection timeout cannot be zero"),
+                current_value: Some(String::from("0")),
+                expected_value: Some(String::from("Positive duration (e.g., 30s)")),
                 severity: ValidationSeverity::High,
                 suggestion: format!("Set a positive connection timeout for primal '{primal_name}'"),
             });
@@ -184,27 +184,27 @@ impl SongbirdConfig {
         // Validate bind address is not empty
         if self.network.bind_address.is_empty() {
             result.errors.push(ValidationError {
-                field: "network.bind_address".to_string(),
-                message: "Network bind address cannot be empty".to_string(),
-                current_value: Some("empty".to_string()),
-                expected_value: Some("Valid IP address".to_string()),
+                field: String::from("network.bind_address"),
+                message: String::from("Network bind address cannot be empty"),
+                current_value: Some(String::from("empty")),
+                expected_value: Some(String::from("Valid IP address")),
                 severity: ValidationSeverity::Critical,
-                suggestion: "Set a valid bind address (e.g., &crate::constants::network::DEFAULT_HOST or '0.0.0.0')".to_string(),
+                suggestion: String::from("Set a valid bind address (e.g., &crate::constants::network::DEFAULT_HOST or '0.0.0.0')"),
             });
         }
 
         // Validate port range
         if self.network.port_range.start >= self.network.port_range.end {
             result.errors.push(ValidationError {
-                field: "network.port_range".to_string(),
-                message: "Port range start must be less than end".to_string(),
+                field: String::from("network.port_range"),
+                message: String::from("Port range start must be less than end"),
                 current_value: Some(format!(
                     "{}-{}",
                     self.network.port_range.start, self.network.port_range.end
                 )),
-                expected_value: Some("start < end".to_string()),
+                expected_value: Some(String::from("start < end")),
                 severity: ValidationSeverity::High,
-                suggestion: "Ensure port range start is less than port range end".to_string(),
+                suggestion: String::from("Ensure port range start is less than port range end"),
             });
         }
     }
@@ -214,24 +214,28 @@ impl SongbirdConfig {
         if self.security.enabled {
             if !self.security.authentication.enabled {
                 result.warnings.push(ValidationWarning {
-                    field: "security.authentication.enabled".to_string(),
-                    message: "Security is enabled but authentication is disabled".to_string(),
-                    current_value: Some("false".to_string()),
-                    recommended_value: Some("true".to_string()),
+                    field: String::from("security.authentication.enabled"),
+                    message: String::from("Security is enabled but authentication is disabled"),
+                    current_value: Some(String::from("false")),
+                    recommended_value: Some(String::from("true")),
                     severity: ValidationSeverity::Medium,
-                    suggestion: "Enable authentication when security is enabled".to_string(),
+                    suggestion: String::from("Enable authentication when security is enabled"),
                 });
             }
 
             // Validate encryption settings
             if !self.security.encryption.at_rest && !self.security.encryption.in_transit {
                 result.warnings.push(ValidationWarning {
-                    field: "security.encryption".to_string(),
-                    message: "Security enabled but no encryption configured".to_string(),
-                    current_value: Some("no encryption".to_string()),
-                    recommended_value: Some("at_rest or in_transit encryption enabled".to_string()),
+                    field: String::from("security.encryption"),
+                    message: String::from("Security enabled but no encryption configured"),
+                    current_value: Some(String::from("no encryption")),
+                    recommended_value: Some(String::from(
+                        "at_rest or in_transit encryption enabled",
+                    )),
                     severity: ValidationSeverity::Medium,
-                    suggestion: "Enable at_rest or in_transit encryption for security".to_string(),
+                    suggestion: String::from(
+                        "Enable at_rest or in_transit encryption for security",
+                    ),
                 });
             }
         }
@@ -263,22 +267,22 @@ mod tests {
     #[test]
     fn validation_error_and_warning_roundtrip() {
         let err = ValidationError {
-            field: "network.bind_address".to_string(),
-            message: "empty".to_string(),
+            field: String::from("network.bind_address"),
+            message: String::from("empty"),
             current_value: Some(String::new()),
-            expected_value: Some("0.0.0.0".to_string()),
+            expected_value: Some(String::from("0.0.0.0")),
             severity: ValidationSeverity::Critical,
-            suggestion: "set bind".to_string(),
+            suggestion: String::from("set bind"),
         };
         assert_json_roundtrip(&err);
 
         let warn = ValidationWarning {
-            field: "cap".to_string(),
-            message: "empty capabilities".to_string(),
-            current_value: Some("[]".to_string()),
-            recommended_value: Some("non-empty".to_string()),
+            field: String::from("cap"),
+            message: String::from("empty capabilities"),
+            current_value: Some(String::from("[]")),
+            recommended_value: Some(String::from("non-empty")),
             severity: ValidationSeverity::Medium,
-            suggestion: "add capabilities".to_string(),
+            suggestion: String::from("add capabilities"),
         };
         assert_json_roundtrip(&warn);
     }

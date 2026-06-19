@@ -28,7 +28,7 @@ impl IpcServiceHandler {
         let url = params
             .get("url")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| "Missing 'url' parameter".to_string())?;
+            .ok_or_else(|| String::from("Missing 'url' parameter"))?;
 
         info!("HTTP GET via IPC: {}", url);
 
@@ -43,12 +43,12 @@ impl IpcServiceHandler {
         let url = params
             .get("url")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| "Missing 'url' parameter".to_string())?;
+            .ok_or_else(|| String::from("Missing 'url' parameter"))?;
 
         let body = params
             .get("body")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| "Missing 'body' parameter".to_string())?;
+            .ok_or_else(|| String::from("Missing 'body' parameter"))?;
 
         let content_type = params.get("content_type").and_then(|v| v.as_str());
 
@@ -88,7 +88,7 @@ mod tests {
     fn handler_with_ok_response() -> IpcServiceHandler {
         let mock_response = HttpResponse {
             status_code: 200,
-            headers: HashMap::from([("X-Test".to_string(), "ok".to_string())]),
+            headers: HashMap::from([(String::from("X-Test"), String::from("ok"))]),
             body: json!({"hello": "world"}),
         };
         let inner = Arc::new(RotatingMockClient::new(vec![mock_response]));

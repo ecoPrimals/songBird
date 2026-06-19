@@ -105,13 +105,13 @@ impl CapabilityRouter {
 
     pub(super) fn capability_type_to_name(cap_type: &CapabilityType) -> String {
         match cap_type {
-            CapabilityType::Compute => "compute_heavy".to_string(),
-            CapabilityType::Security => "security".to_string(),
-            CapabilityType::Ai => "ai_inference".to_string(),
-            CapabilityType::Storage => "storage".to_string(),
-            CapabilityType::Orchestration => "orchestration".to_string(),
-            CapabilityType::Observability => "observability".to_string(),
-            CapabilityType::Networking => "networking".to_string(),
+            CapabilityType::Compute => String::from("compute_heavy"),
+            CapabilityType::Security => String::from("security"),
+            CapabilityType::Ai => String::from("ai_inference"),
+            CapabilityType::Storage => String::from("storage"),
+            CapabilityType::Orchestration => String::from("orchestration"),
+            CapabilityType::Observability => String::from("observability"),
+            CapabilityType::Networking => String::from("networking"),
             CapabilityType::Custom(name) => name.clone(),
         }
     }

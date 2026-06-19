@@ -102,7 +102,7 @@ impl Default for CanonicalFederationConfig {
                 .ok()
                 .or_else(|| gethostname::gethostname().into_string().ok()),
             trust_escalation_policy,
-            initial_trust_level: "anonymous".to_string(),
+            initial_trust_level: String::from("anonymous"),
             require_hardware_for_admin: songbird_process_env::var(
                 "SONGBIRD_REQUIRE_HARDWARE_ADMIN",
             )

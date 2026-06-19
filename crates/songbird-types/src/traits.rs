@@ -168,7 +168,7 @@ impl Default for HealthStatus {
     fn default() -> Self {
         Self {
             healthy: false,
-            message: "Unknown".to_string(),
+            message: String::from("Unknown"),
             timestamp: chrono::Utc::now(),
         }
     }
@@ -212,7 +212,7 @@ mod tests {
         let now = chrono::Utc::now();
         let status = HealthStatus {
             healthy: true,
-            message: "All systems operational".to_string(),
+            message: String::from("All systems operational"),
             timestamp: now,
         };
 
@@ -253,7 +253,7 @@ mod tests {
 
         let deserialized: ServiceInstanceStatus =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
-                format: Some("JSON".to_string()),
+                format: Some(String::from("JSON")),
                 message: format!("Deserialization should succeed: {}", e),
                 debug_info: None,
             })?;
@@ -265,10 +265,10 @@ mod tests {
     fn test_metric_value_creation() {
         let now = chrono::Utc::now();
         let mut tags = HashMap::new();
-        tags.insert("service".to_string(), "test".to_string());
+        tags.insert(String::from("service"), String::from("test"));
 
         let metric = MetricValue {
-            name: "requests_total".to_string(),
+            name: String::from("requests_total"),
             value: 42.0,
             tags: tags.clone(),
             timestamp: now,
@@ -277,14 +277,14 @@ mod tests {
         assert_eq!(metric.name, "requests_total");
         assert_eq!(metric.value, 42.0);
         assert_eq!(metric.tags.len(), 1);
-        assert_eq!(metric.tags.get("service"), Some(&"test".to_string()));
+        assert_eq!(metric.tags.get("service"), Some(&String::from("test")));
     }
 
     #[test]
     fn test_metric_value_serialization() -> SongbirdResult<()> {
         let now = chrono::Utc::now();
         let metric = MetricValue {
-            name: "cpu_usage".to_string(),
+            name: String::from("cpu_usage"),
             value: 75.5,
             tags: HashMap::new(),
             timestamp: now,
@@ -298,7 +298,7 @@ mod tests {
 
         let deserialized: MetricValue =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
-                format: Some("JSON".to_string()),
+                format: Some(String::from("JSON")),
                 message: format!("Deserialization should succeed: {}", e),
                 debug_info: None,
             })?;
@@ -311,16 +311,16 @@ mod tests {
     fn test_detailed_health_info_creation() {
         let overall = HealthStatus {
             healthy: true,
-            message: "System healthy".to_string(),
+            message: String::from("System healthy"),
             timestamp: chrono::Utc::now(),
         };
 
         let mut components = HashMap::new();
         components.insert(
-            "database".to_string(),
+            String::from("database"),
             HealthStatus {
                 healthy: true,
-                message: "Connected".to_string(),
+                message: String::from("Connected"),
                 timestamp: chrono::Utc::now(),
             },
         );
@@ -347,7 +347,7 @@ mod tests {
         })?;
         let deserialized: DetailedHealthInfo =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
-                format: Some("JSON".to_string()),
+                format: Some(String::from("JSON")),
                 message: format!("Deserialization should succeed: {}", e),
                 debug_info: None,
             })?;

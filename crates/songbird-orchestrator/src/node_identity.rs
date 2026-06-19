@@ -89,7 +89,7 @@ impl NodeIdentity {
                 .or_else(|_| songbird_process_env::var("NODE_ID"))
                 .ok()
                 .or_else(|| gethostname::gethostname().into_string().ok())
-                .unwrap_or_else(|| "songbird-node".to_string())
+                .unwrap_or_else(|| String::from("songbird-node"))
         });
 
         let identity = Self {
@@ -237,7 +237,7 @@ impl NodeIdentity {
             .or_else(|_| songbird_process_env::var("NODE_ID"))
             .ok()
             .map_or_else(
-                || "node_identity.json".to_string(),
+                || String::from("node_identity.json"),
                 |node_id| format!("node_identity-{node_id}.json"),
             );
 
@@ -332,7 +332,7 @@ impl NodeIdentity {
                 let endpoint = TransportEndpoint {
                     interface_type: interface_type.clone(),
                     address,
-                    protocols: vec!["https".to_string(), "tarpc".to_string()],
+                    protocols: vec![String::from("https"), String::from("tarpc")],
                     preference,
                 };
 
@@ -357,7 +357,7 @@ impl NodeIdentity {
                 let endpoint = TransportEndpoint {
                     interface_type: interface_type.clone(),
                     address,
-                    protocols: vec!["https".to_string(), "tarpc".to_string()],
+                    protocols: vec![String::from("https"), String::from("tarpc")],
                     preference,
                 };
 
@@ -388,7 +388,7 @@ impl NodeIdentity {
             || name_lower.starts_with("ens")
             || name_lower.starts_with("enp")
         {
-            return ("ethernet".to_string(), 100);
+            return (String::from("ethernet"), 100);
         }
 
         // WiFi interfaces
@@ -396,16 +396,16 @@ impl NodeIdentity {
             || name_lower.starts_with("wl")
             || name_lower.starts_with("wifi")
         {
-            return ("wifi".to_string(), 80);
+            return (String::from("wifi"), 80);
         }
 
         // Loopback
         if name_lower.starts_with("lo") {
-            return ("loopback".to_string(), 10);
+            return (String::from("loopback"), 10);
         }
 
         // Unknown/Other
-        ("other".to_string(), 50)
+        (String::from("other"), 50)
     }
 
     /// Get preferred endpoint (highest preference)
@@ -444,7 +444,7 @@ mod tests {
     fn test_endpoint_management() {
         let mut identity = NodeIdentity {
             node_id: Uuid::new_v4(),
-            node_name: "test".to_string(),
+            node_name: String::from("test"),
             endpoints: Vec::new(),
             genetic_lineage: None,
             lineage_proof: None,
@@ -452,17 +452,17 @@ mod tests {
 
         // Add Ethernet endpoint
         identity.add_endpoint(TransportEndpoint {
-            interface_type: "ethernet".to_string(),
+            interface_type: String::from("ethernet"),
             address: "192.0.2.10:8080".parse().unwrap(),
-            protocols: vec!["https".to_string()],
+            protocols: vec![String::from("https")],
             preference: 100,
         });
 
         // Add WiFi endpoint
         identity.add_endpoint(TransportEndpoint {
-            interface_type: "wifi".to_string(),
+            interface_type: String::from("wifi"),
             address: "192.168.1.185:8080".parse().unwrap(),
-            protocols: vec!["https".to_string()],
+            protocols: vec![String::from("https")],
             preference: 80,
         });
 
@@ -479,7 +479,7 @@ mod tests {
     fn test_endpoint_update() {
         let mut identity = NodeIdentity {
             node_id: Uuid::new_v4(),
-            node_name: "test".to_string(),
+            node_name: String::from("test"),
             endpoints: Vec::new(),
             genetic_lineage: None,
             lineage_proof: None,
@@ -489,17 +489,17 @@ mod tests {
 
         // Add endpoint
         identity.add_endpoint(TransportEndpoint {
-            interface_type: "ethernet".to_string(),
+            interface_type: String::from("ethernet"),
             address: addr,
-            protocols: vec!["https".to_string()],
+            protocols: vec![String::from("https")],
             preference: 100,
         });
 
         // Update same endpoint (new preference)
         identity.add_endpoint(TransportEndpoint {
-            interface_type: "ethernet".to_string(),
+            interface_type: String::from("ethernet"),
             address: addr,
-            protocols: vec!["https".to_string(), "tarpc".to_string()],
+            protocols: vec![String::from("https"), String::from("tarpc")],
             preference: 90,
         });
 
@@ -516,7 +516,7 @@ mod tests {
     fn preferred_endpoint_none_when_empty() {
         let id = NodeIdentity {
             node_id: Uuid::new_v4(),
-            node_name: "n".to_string(),
+            node_name: String::from("n"),
             endpoints: vec![],
             genetic_lineage: None,
             lineage_proof: None,
@@ -529,13 +529,13 @@ mod tests {
     fn all_addresses_collects_ips() {
         let mut id = NodeIdentity {
             node_id: Uuid::new_v4(),
-            node_name: "n".to_string(),
+            node_name: String::from("n"),
             endpoints: vec![],
             genetic_lineage: None,
             lineage_proof: None,
         };
         id.add_endpoint(TransportEndpoint {
-            interface_type: "eth".to_string(),
+            interface_type: String::from("eth"),
             address: "10.0.0.1:1".parse().unwrap(),
             protocols: vec![],
             preference: 10,
@@ -555,7 +555,7 @@ mod tests {
     fn has_lineage_false_without_proof() {
         let id = NodeIdentity {
             node_id: Uuid::new_v4(),
-            node_name: "n".to_string(),
+            node_name: String::from("n"),
             endpoints: vec![],
             genetic_lineage: None,
             lineage_proof: None,
@@ -568,11 +568,11 @@ mod tests {
     fn node_identity_serde_roundtrip() {
         let id = NodeIdentity {
             node_id: Uuid::nil(),
-            node_name: "roundtrip".to_string(),
+            node_name: String::from("roundtrip"),
             endpoints: vec![TransportEndpoint {
-                interface_type: "ethernet".to_string(),
+                interface_type: String::from("ethernet"),
                 address: "192.168.1.2:8443".parse().unwrap(),
-                protocols: vec!["https".to_string()],
+                protocols: vec![String::from("https")],
                 preference: 100,
             }],
             genetic_lineage: None,

@@ -54,9 +54,9 @@ impl TowerAtomicClient {
     /// [`Self::connect_unix_path`] is Unix-only; on other platforms this always fails.
     #[cfg(not(unix))]
     pub async fn connect_unix_path(_path: &Path) -> IpcResult<Self> {
-        Err(crate::error::IpcError::PlatformError(
-            "Tower Atomic Unix socket connections are only supported on Unix platforms".to_string(),
-        ))
+        Err(crate::error::IpcError::PlatformError(String::from(
+            "Tower Atomic Unix socket connections are only supported on Unix platforms",
+        )))
     }
 
     /// Connect to a service via virtual endpoint path
@@ -132,7 +132,7 @@ impl TowerAtomicClient {
         }
 
         // Return result
-        response.result.ok_or_else(|| IpcError::Other("Missing result in response".to_string()))
+        response.result.ok_or_else(|| IpcError::Other(String::from("Missing result in response")))
     }
 
     /// Call a JSON-RPC method without parameters

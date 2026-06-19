@@ -99,7 +99,7 @@ impl UnifiedSongbirdConfig {
     pub fn get_data_dir_from_env(&self, env: &std::collections::HashMap<String, String>) -> String {
         env.get("SONGBIRD_DATA_DIR").cloned().unwrap_or_else(|| {
             if self.is_production() {
-                "/var/lib/songbird".to_string()
+                String::from("/var/lib/songbird")
             } else {
                 let home = env.get("HOME").map_or("/tmp", String::as_str);
                 format!("{home}/.local/share/songbird")
@@ -112,7 +112,7 @@ impl UnifiedSongbirdConfig {
     pub fn get_data_dir(&self) -> String {
         SafeEnv::get_or_default("SONGBIRD_DATA_DIR", {
             if self.is_production() {
-                "/var/lib/songbird".to_string()
+                String::from("/var/lib/songbird")
             } else {
                 format!(
                     "{home}/.local/share/songbird",
@@ -130,7 +130,7 @@ impl UnifiedSongbirdConfig {
     ) -> String {
         env.get("SONGBIRD_CONFIG_DIR").cloned().unwrap_or_else(|| {
             if self.is_production() {
-                "/etc/songbird".to_string()
+                String::from("/etc/songbird")
             } else {
                 let home = env.get("HOME").map_or("/tmp", String::as_str);
                 format!("{home}/.config/songbird")
@@ -143,7 +143,7 @@ impl UnifiedSongbirdConfig {
     pub fn get_config_dir(&self) -> String {
         SafeEnv::get_or_default("SONGBIRD_CONFIG_DIR", {
             if self.is_production() {
-                "/etc/songbird".to_string()
+                String::from("/etc/songbird")
             } else {
                 format!("{home}/.config/songbird", home = SafeEnv::get_or_default("HOME", "/tmp"))
             }
@@ -158,7 +158,7 @@ impl UnifiedSongbirdConfig {
     ) -> String {
         env.get("SONGBIRD_CACHE_DIR").cloned().unwrap_or_else(|| {
             if self.is_production() {
-                "/var/cache/songbird".to_string()
+                String::from("/var/cache/songbird")
             } else {
                 let home = env.get("HOME").map_or("/tmp", String::as_str);
                 format!("{home}/.cache/songbird")
@@ -171,7 +171,7 @@ impl UnifiedSongbirdConfig {
     pub fn get_cache_dir(&self) -> String {
         SafeEnv::get_or_default("SONGBIRD_CACHE_DIR", {
             if self.is_production() {
-                "/var/cache/songbird".to_string()
+                String::from("/var/cache/songbird")
             } else {
                 format!("{home}/.cache/songbird", home = SafeEnv::get_or_default("HOME", "/tmp"))
             }
@@ -183,7 +183,7 @@ impl UnifiedSongbirdConfig {
     pub fn get_log_dir_from_env(&self, env: &std::collections::HashMap<String, String>) -> String {
         env.get("SONGBIRD_LOG_DIR").cloned().unwrap_or_else(|| {
             if self.is_production() {
-                "/var/log/songbird".to_string()
+                String::from("/var/log/songbird")
             } else {
                 let home = env.get("HOME").map_or("/tmp", String::as_str);
                 format!("{home}/.local/share/songbird/logs")
@@ -196,7 +196,7 @@ impl UnifiedSongbirdConfig {
     pub fn get_log_dir(&self) -> String {
         SafeEnv::get_or_default("SONGBIRD_LOG_DIR", {
             if self.is_production() {
-                "/var/log/songbird".to_string()
+                String::from("/var/log/songbird")
             } else {
                 format!(
                     "{home}/.local/share/songbird/logs",
@@ -302,7 +302,7 @@ mod tests {
     fn get_bind_address_from_env_override() {
         let c = UnifiedSongbirdConfig::default();
         let mut env = HashMap::new();
-        env.insert("SONGBIRD_BIND_ADDRESS".to_string(), "10.0.0.1".to_string());
+        env.insert(String::from("SONGBIRD_BIND_ADDRESS"), String::from("10.0.0.1"));
         assert_eq!(c.get_bind_address_from_env(&env), "10.0.0.1");
     }
 
@@ -310,7 +310,7 @@ mod tests {
     fn get_data_dir_from_env_non_prod_uses_home() {
         let c = UnifiedSongbirdConfig::default();
         let mut env = HashMap::new();
-        env.insert("HOME".to_string(), "/home/u".to_string());
+        env.insert(String::from("HOME"), String::from("/home/u"));
         assert_eq!(c.get_data_dir_from_env(&env), "/home/u/.local/share/songbird");
     }
 
@@ -318,7 +318,7 @@ mod tests {
     fn get_config_cache_log_dirs_from_env_non_prod() {
         let c = UnifiedSongbirdConfig::default();
         let mut env = HashMap::new();
-        env.insert("HOME".to_string(), "/home/u".to_string());
+        env.insert(String::from("HOME"), String::from("/home/u"));
         assert_eq!(c.get_config_dir_from_env(&env), "/home/u/.config/songbird");
         assert_eq!(c.get_cache_dir_from_env(&env), "/home/u/.cache/songbird");
         assert_eq!(c.get_log_dir_from_env(&env), "/home/u/.local/share/songbird/logs");
@@ -327,7 +327,7 @@ mod tests {
     #[test]
     fn is_test_from_env_detects_ci() {
         let mut env = HashMap::new();
-        env.insert("CI".to_string(), "1".to_string());
+        env.insert(String::from("CI"), String::from("1"));
         assert!(UnifiedSongbirdConfig::is_test_from_env(&env));
     }
 

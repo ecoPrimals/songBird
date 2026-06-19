@@ -414,7 +414,7 @@ impl IpcServiceHandler {
 
                 let response = super::CapabilityCallResult {
                     provider: primal_id,
-                    gate: "local".to_string(),
+                    gate: String::from("local"),
                     result,
                 };
                 return serde_json::to_value(response)

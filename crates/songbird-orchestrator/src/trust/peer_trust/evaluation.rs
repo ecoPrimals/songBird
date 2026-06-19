@@ -40,12 +40,12 @@ pub async fn evaluate_peer_trust(
         peer_tags: peer.tags.clone(),
         connection_info: Some(ConnectionInfo {
             endpoint: peer.endpoint.clone(),
-            protocol: "tarpc".to_string(),
+            protocol: String::from("tarpc"),
         }),
         context: Some({
             let mut ctx = std::collections::HashMap::new();
-            ctx.insert("discovery_method".to_string(), peer.discovery_method.clone());
-            ctx.insert("first_seen_at".to_string(), peer.first_seen_at.to_string());
+            ctx.insert(String::from("discovery_method"), peer.discovery_method.clone());
+            ctx.insert(String::from("first_seen_at"), peer.first_seen_at.to_string());
             ctx
         }),
     };
@@ -57,9 +57,9 @@ pub async fn evaluate_peer_trust(
             warn!("   Defaulting to prompt user (safe default)");
 
             Ok(PeerTrustDecision::PromptUser {
-                reason: "security_provider_unavailable".to_string(),
+                reason: String::from("security_provider_unavailable"),
                 peer_id: peer.node_id.clone(),
-                recommendation: "neutral".to_string(),
+                recommendation: String::from("neutral"),
             })
         }
     }
@@ -99,9 +99,9 @@ pub fn handle_trust_response(
                 reason: response.reason.clone(),
                 peer_id: peer_id.to_string(),
                 recommendation: if response.confidence > 0.5 {
-                    "accept".to_string()
+                    String::from("accept")
                 } else {
-                    "neutral".to_string()
+                    String::from("neutral")
                 },
             })
         }
@@ -126,7 +126,7 @@ pub fn handle_trust_response(
             Ok(PeerTrustDecision::PromptUser {
                 reason: format!("unknown_decision: {unknown}"),
                 peer_id: peer_id.to_string(),
-                recommendation: "reject".to_string(),
+                recommendation: String::from("reject"),
             })
         }
     }

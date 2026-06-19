@@ -377,3 +377,231 @@ fn path_to_json_respects_found_flag_and_latency() {
     assert_eq!(v["reachable"], false);
     assert_eq!(v["path_type"], "local");
 }
+
+fn peer_by_id<'a>(peers: &'a [Value], node_id: &str) -> &'a Value {
+    peers
+        .iter()
+        .find(|p| p["node_id"].as_str() == Some(node_id))
+        .unwrap_or_else(|| panic!("peer {node_id} not found in {peers:?}"))
+}
+
+#[tokio::test]
+async fn mesh_peers_after_init_returns_bootstrap_info() {
+    let handler = MeshHandler::new();
+
+    handler
+        .handle_init(json!({
+            "node_id": "flockGate",
+            "bootstrap_onions": [],
+            "bootstrap_peers": [
+                { "node_id": "golgi", "address": "10.0.0.10:3492" },
+                { "node_id": "sporeGate", "address": "10.0.0.20:3492" }
+            ]
+        }))
+        .await
+        .expect("init");
+
+    let response = handler.handle_peers(json!({})).await.expect("peers");
+    assert_eq!(response["total"], 2);
+
+    let peers = response["peers"].as_array().expect("peers array");
+
+    let golgi = peer_by_id(peers, "golgi");
+    assert_eq!(golgi["path_type"], "direct");
+    assert_eq!(golgi["address"], "10.0.0.10:3492");
+    assert_eq!(golgi["reachable"], true);
+
+    let spore_gate = peer_by_id(peers, "sporeGate");
+    assert_eq!(spore_gate["path_type"], "direct");
+    assert_eq!(spore_gate["address"], "10.0.0.20:3492");
+    assert_eq!(spore_gate["reachable"], true);
+}
+
+#[tokio::test]
+async fn mesh_topology_returns_graph_after_init() {
+    let handler = MeshHandler::new();
+
+    handler
+        .handle_init(json!({
+            "node_id": "flockGate",
+            "bootstrap_onions": [],
+            "bootstrap_peers": [
+                { "node_id": "golgi", "address": "10.0.0.10:3492" },
+                { "node_id": "sporeGate", "address": "10.0.0.20:3492" }
+            ]
+        }))
+        .await
+        .expect("init");
+
+    let response = handler.handle_topology(json!({})).await.expect("topology");
+
+    let nodes = response["nodes"].as_array().expect("nodes");
+    assert_eq!(response["node_count"], 3);
+    assert!(nodes.iter().any(|n| n["id"] == "flockGate" && n["role"] == "self"));
+    assert!(nodes.iter().any(|n| n["id"] == "golgi" && n["role"] == "peer"));
+    assert!(nodes.iter().any(|n| n["id"] == "sporeGate" && n["role"] == "peer"));
+
+    let edges = response["edges"].as_array().expect("edges");
+    assert_eq!(response["edge_count"], 2);
+    assert!(
+        edges.iter().any(|e| {
+            e["from"] == "flockGate" && e["to"] == "golgi" && e["path_type"] == "direct"
+        })
+    );
+    assert!(edges.iter().any(|e| {
+        e["from"] == "flockGate" && e["to"] == "sporeGate" && e["path_type"] == "direct"
+    }));
+}
+
+#[tokio::test]
+async fn mesh_announce_as_relay_true_records_relay() {
+    let handler = MeshHandler::new();
+
+    handler
+        .handle_init(json!({
+            "node_id": "flockGate",
+            "bootstrap_onions": []
+        }))
+        .await
+        .expect("init");
+
+    let before = handler.handle_status(json!({})).await.expect("status before announce");
+    assert_eq!(before["relay_capable"], false);
+
+    handler
+        .handle_announce(json!({
+            "as_relay": true,
+            "capabilities": ["relay"]
+        }))
+        .await
+        .expect("announce");
+
+    let after = handler.handle_status(json!({})).await.expect("status after announce");
+    assert_eq!(after["relay_capable"], true);
+    assert_eq!(after["relay_enabled"], true);
+}
+
+#[tokio::test(start_paused = true)]
+async fn mesh_health_check_with_stale_peer() {
+    let handler = MeshHandler::new();
+
+    handler
+        .handle_init(json!({
+            "node_id": "flockGate",
+            "bootstrap_onions": [],
+            "bootstrap_peers": [
+                { "node_id": "golgi", "address": "10.0.0.10:3492" }
+            ]
+        }))
+        .await
+        .expect("init");
+
+    tokio::time::advance(Duration::from_secs(61)).await;
+
+    {
+        let mesh = handler.mesh().await;
+        let mesh = mesh.as_ref().expect("mesh");
+        mesh.backdate_endpoint_last_seen("golgi", Duration::from_secs(120)).await;
+    }
+
+    let health = handler
+        .handle_health_check(json!({
+            "target_node_ids": ["golgi"]
+        }))
+        .await
+        .expect("health check");
+    let results = health["results"].as_array().expect("results");
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0]["node_id"], "golgi");
+    assert_eq!(results[0]["healthy"], false);
+
+    let mesh = handler.mesh().await;
+    let mesh = mesh.as_ref().expect("mesh");
+    let paths = mesh.get_all_paths("golgi").await;
+    assert_eq!(paths.len(), 1);
+    assert!(!paths[0].reachable, "stale peer should be marked unreachable");
+}
+
+#[tokio::test]
+async fn mesh_init_with_duplicate_node_ids_deduplicates() {
+    let handler = MeshHandler::new();
+
+    let init = handler
+        .handle_init(json!({
+            "node_id": "flockGate",
+            "bootstrap_peers": [
+                { "node_id": "golgi", "address": "10.0.0.10:3492" },
+                { "node_id": "golgi", "address": "10.0.0.11:3492" }
+            ]
+        }))
+        .await
+        .expect("init");
+
+    assert_eq!(init["bootstrap_peers_added"], 1);
+
+    let response = handler.handle_peers(json!({})).await.expect("peers");
+    assert_eq!(response["total"], 1);
+
+    let peers = response["peers"].as_array().expect("peers array");
+    let golgi = peer_by_id(peers, "golgi");
+    assert_eq!(golgi["address"], "10.0.0.11:3492");
+}
+
+#[tokio::test(start_paused = true)]
+async fn mesh_auto_discover_timeout_returns_empty() {
+    let handler = MeshHandler::new();
+
+    handler
+        .handle_init(json!({
+            "node_id": "flockGate",
+            "bootstrap_onions": []
+        }))
+        .await
+        .expect("init");
+
+    let discover = handler
+        .handle_auto_discover(json!({
+            "timeout_ms": 100,
+            "broadcast_port": 15353
+        }))
+        .await
+        .expect("auto_discover");
+
+    assert_eq!(discover["discovered"], 0);
+    assert!(discover["peers"].as_array().expect("peers").is_empty());
+    assert_eq!(discover["timeout_ms"], 100);
+}
+
+#[tokio::test]
+async fn mesh_peers_include_offline_flag() {
+    let handler = MeshHandler::new();
+    let golgi_addr: SocketAddr = "10.0.0.10:3492".parse().expect("golgi addr");
+    let spore_addr: SocketAddr = "10.0.0.20:3492".parse().expect("sporeGate addr");
+
+    handler
+        .test_init_with_peers(
+            "flockGate",
+            &[
+                (String::from("golgi"), golgi_addr, true),
+                (String::from("sporeGate"), spore_addr, false),
+            ],
+        )
+        .await;
+
+    let with_offline =
+        handler.handle_peers(json!({ "include_offline": true })).await.expect("peers with offline");
+    assert_eq!(with_offline["total"], 2);
+    assert_eq!(with_offline["online"], 1);
+
+    let peers = with_offline["peers"].as_array().expect("peers array");
+    let offline = peer_by_id(peers, "sporeGate");
+    assert_eq!(offline["reachable"], false);
+
+    let online_only = handler.handle_peers(json!({})).await.expect("peers online only");
+    assert_eq!(online_only["total"], 1);
+    assert_eq!(online_only["online"], 1);
+
+    let online_peers = online_only["peers"].as_array().expect("online peers");
+    assert!(online_peers.iter().all(|p| p["node_id"] != "sporeGate"));
+    assert!(online_peers.iter().any(|p| p["node_id"] == "golgi"));
+}

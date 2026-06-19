@@ -356,7 +356,7 @@ impl ProcessManager {
         let identity_display = self
             .node_identity
             .as_ref()
-            .map_or_else(|| "NODE_ID: (not set)".to_string(), |id| format!("NODE_ID: {id}"));
+            .map_or_else(|| String::from("NODE_ID: (not set)"), |id| format!("NODE_ID: {id}"));
 
         error!("╔═══════════════════════════════════════════════════════════════════╗");
         error!("║                                                                   ║");

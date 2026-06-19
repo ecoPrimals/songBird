@@ -189,7 +189,7 @@ mod tests {
         let _e = ScopedEnv::remove_and_set_many([key], [(key, "http://unused:1")]).await;
         let names = get_configured_primal_names();
         assert!(
-            names.contains(&"sbtestprimalnamedxyz".to_string()),
+            names.contains(&String::from("sbtestprimalnamedxyz")),
             "expected scan to find {key}, got {names:?}"
         );
     }

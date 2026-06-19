@@ -34,12 +34,12 @@ pub struct CanonicalServiceInfo {
 impl Default for CanonicalServiceInfo {
     fn default() -> Self {
         Self {
-            name: "unknown-service".to_string(),
-            version: "0.1.0".to_string(),
+            name: String::from("unknown-service"),
+            version: String::from("0.1.0"),
             description: None,
             endpoints: HashMap::new(),
             metadata: HashMap::new(),
-            health_check_endpoint: Some("/health".to_string()),
+            health_check_endpoint: Some(String::from("/health")),
             dependencies: Vec::new(),
             capabilities: Vec::new(),
             metrics: None,
@@ -142,7 +142,7 @@ pub enum CanonicalServiceType {
 
 impl Default for CanonicalServiceType {
     fn default() -> Self {
-        Self::Custom("unknown".to_string())
+        Self::Custom(String::from("unknown"))
     }
 }
 
@@ -293,7 +293,7 @@ mod tests {
         assert_eq!(info.description, None);
         assert!(info.endpoints.is_empty());
         assert!(info.metadata.is_empty());
-        assert_eq!(info.health_check_endpoint, Some("/health".to_string()));
+        assert_eq!(info.health_check_endpoint, Some(String::from("/health")));
         assert!(info.dependencies.is_empty());
         assert!(info.capabilities.is_empty());
         assert!(info.metrics.is_none());
@@ -305,7 +305,7 @@ mod tests {
         assert_eq!(info.name, "my-service");
         assert_eq!(info.version, "1.0.0");
         assert_eq!(info.description, None);
-        assert_eq!(info.health_check_endpoint, Some("/health".to_string()));
+        assert_eq!(info.health_check_endpoint, Some(String::from("/health")));
     }
 
     #[test]
@@ -314,7 +314,7 @@ mod tests {
         info.with_endpoint("api", "http://localhost:8080");
 
         assert_eq!(info.endpoints.len(), 1);
-        assert_eq!(info.endpoints.get("api"), Some(&"http://localhost:8080".to_string()));
+        assert_eq!(info.endpoints.get("api"), Some(&String::from("http://localhost:8080")));
     }
 
     #[test]
@@ -324,8 +324,8 @@ mod tests {
             .with_endpoint("admin", "http://localhost:8081");
 
         assert_eq!(info.endpoints.len(), 2);
-        assert_eq!(info.endpoints.get("api"), Some(&"http://localhost:8080".to_string()));
-        assert_eq!(info.endpoints.get("admin"), Some(&"http://localhost:8081".to_string()));
+        assert_eq!(info.endpoints.get("api"), Some(&String::from("http://localhost:8080")));
+        assert_eq!(info.endpoints.get("admin"), Some(&String::from("http://localhost:8081")));
     }
 
     #[test]
@@ -334,7 +334,7 @@ mod tests {
         info.with_metadata("env", "production");
 
         assert_eq!(info.metadata.len(), 1);
-        assert_eq!(info.metadata.get("env"), Some(&"production".to_string()));
+        assert_eq!(info.metadata.get("env"), Some(&String::from("production")));
     }
 
     #[test]
@@ -343,8 +343,8 @@ mod tests {
         info.with_metadata("env", "production").with_metadata("region", "us-east-1");
 
         assert_eq!(info.metadata.len(), 2);
-        assert_eq!(info.metadata.get("env"), Some(&"production".to_string()));
-        assert_eq!(info.metadata.get("region"), Some(&"us-east-1".to_string()));
+        assert_eq!(info.metadata.get("env"), Some(&String::from("production")));
+        assert_eq!(info.metadata.get("region"), Some(&String::from("us-east-1")));
     }
 
     #[test]
@@ -390,7 +390,7 @@ mod tests {
         let mut info = CanonicalServiceInfo::new("my-service", "1.0.0");
         info.with_description("A test service");
 
-        assert_eq!(info.description, Some("A test service".to_string()));
+        assert_eq!(info.description, Some(String::from("A test service")));
     }
 
     #[test]
@@ -406,7 +406,7 @@ mod tests {
         assert_eq!(info.metadata.len(), 1);
         assert_eq!(info.capabilities.len(), 1);
         assert_eq!(info.dependencies.len(), 1);
-        assert_eq!(info.description, Some("A comprehensive service".to_string()));
+        assert_eq!(info.description, Some(String::from("A comprehensive service")));
     }
 
     #[test]
@@ -436,7 +436,7 @@ mod tests {
     #[test]
     fn test_canonical_service_type_default() {
         let service_type = CanonicalServiceType::default();
-        assert_eq!(service_type, CanonicalServiceType::Custom("unknown".to_string()));
+        assert_eq!(service_type, CanonicalServiceType::Custom(String::from("unknown")));
     }
 
     #[test]
@@ -491,7 +491,7 @@ mod tests {
 
     #[test]
     fn test_canonical_service_type_as_str_custom() {
-        let custom = CanonicalServiceType::Custom("my-custom-type".to_string());
+        let custom = CanonicalServiceType::Custom(String::from("my-custom-type"));
         assert_eq!(custom.as_str(), "my-custom-type");
     }
 
@@ -501,9 +501,9 @@ mod tests {
         assert_eq!(CanonicalServiceType::Tarpc, CanonicalServiceType::Tarpc);
         assert_ne!(CanonicalServiceType::Web, CanonicalServiceType::Tarpc);
 
-        let custom1 = CanonicalServiceType::Custom("type1".to_string());
-        let custom2 = CanonicalServiceType::Custom("type1".to_string());
-        let custom3 = CanonicalServiceType::Custom("type2".to_string());
+        let custom1 = CanonicalServiceType::Custom(String::from("type1"));
+        let custom2 = CanonicalServiceType::Custom(String::from("type1"));
+        let custom3 = CanonicalServiceType::Custom(String::from("type2"));
         assert_eq!(custom1, custom2);
         assert_ne!(custom1, custom3);
     }
@@ -524,7 +524,7 @@ mod tests {
     fn test_canonical_service_config_default() {
         let config = CanonicalServiceConfig::default();
         assert_eq!(config.info.name, "unknown-service");
-        assert_eq!(config.service_type, CanonicalServiceType::Custom("unknown".to_string()));
+        assert_eq!(config.service_type, CanonicalServiceType::Custom(String::from("unknown")));
         assert_eq!(config.status, CanonicalServiceStatus::Unknown);
         assert!(config.config.is_empty());
         assert!(config.environment.is_empty());
@@ -549,11 +549,11 @@ mod tests {
     #[test]
     fn test_canonical_service_config_parameter_creation() {
         let param = CanonicalServiceConfigParameter {
-            name: "port".to_string(),
-            value: "8080".to_string(),
-            description: Some("HTTP port".to_string()),
+            name: String::from("port"),
+            value: String::from("8080"),
+            description: Some(String::from("HTTP port")),
             required: true,
-            default_value: Some("8080".to_string()),
+            default_value: Some(String::from("8080")),
             allowed_values: AllowedValues::Range {
                 min: 1024.0,
                 max: 65535.0,
@@ -562,9 +562,9 @@ mod tests {
 
         assert_eq!(param.name, "port");
         assert_eq!(param.value, "8080");
-        assert_eq!(param.description, Some("HTTP port".to_string()));
+        assert_eq!(param.description, Some(String::from("HTTP port")));
         assert!(param.required);
-        assert_eq!(param.default_value, Some("8080".to_string()));
+        assert_eq!(param.default_value, Some(String::from("8080")));
     }
 
     #[test]
@@ -578,7 +578,7 @@ mod tests {
 
     #[test]
     fn test_allowed_values_specific() {
-        let allowed = AllowedValues::Specific(vec!["value1".to_string(), "value2".to_string()]);
+        let allowed = AllowedValues::Specific(vec![String::from("value1"), String::from("value2")]);
         match allowed {
             AllowedValues::Specific(values) => {
                 assert_eq!(values.len(), 2);
@@ -591,7 +591,7 @@ mod tests {
 
     #[test]
     fn test_allowed_values_pattern() {
-        let allowed = AllowedValues::Pattern("^[a-z]+$".to_string());
+        let allowed = AllowedValues::Pattern(String::from("^[a-z]+$"));
         match allowed {
             AllowedValues::Pattern(pattern) => {
                 assert_eq!(pattern, "^[a-z]+$");
@@ -666,7 +666,7 @@ mod tests {
     #[test]
     fn serde_json_roundtrip_canonical_service_type_variants() {
         assert_json_roundtrip(&CanonicalServiceType::MessageQueue);
-        assert_json_roundtrip(&CanonicalServiceType::Custom("x".to_string()));
+        assert_json_roundtrip(&CanonicalServiceType::Custom(String::from("x")));
     }
 
     #[test]
@@ -682,12 +682,12 @@ mod tests {
     #[test]
     fn serde_json_roundtrip_canonical_service_config_parameter_and_allowed_values() {
         let param = CanonicalServiceConfigParameter {
-            name: "p".to_string(),
-            value: "v".to_string(),
+            name: String::from("p"),
+            value: String::from("v"),
             description: None,
             required: true,
             default_value: None,
-            allowed_values: AllowedValues::Specific(vec!["a".to_string()]),
+            allowed_values: AllowedValues::Specific(vec![String::from("a")]),
         };
         assert_json_roundtrip(&param);
         assert_json_roundtrip(&AllowedValues::Any);
@@ -695,7 +695,7 @@ mod tests {
             min: 0.0,
             max: 1.0,
         });
-        assert_json_roundtrip(&AllowedValues::Pattern(".*".to_string()));
+        assert_json_roundtrip(&AllowedValues::Pattern(String::from(".*")));
     }
 
     #[test]
@@ -730,7 +730,7 @@ mod tests {
 
     #[test]
     fn service_type_as_str_custom_returns_inner() {
-        let custom = CanonicalServiceType::Custom("my_service".to_string());
+        let custom = CanonicalServiceType::Custom(String::from("my_service"));
         assert_eq!(custom.as_str(), "my_service");
     }
 }

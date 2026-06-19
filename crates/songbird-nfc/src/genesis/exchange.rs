@@ -27,6 +27,10 @@ pub struct GenesisExchange {
 
     /// Shared crypto provider (Neural API by default; `SECURITY_PROVIDER_MODE=direct` or legacy `BEARDOG_MODE=direct` for direct socket routing)
     pub(super) provider: CryptoProvider,
+
+    /// Test-only: deterministic DH fallback for protocol-logic tests (not crypto tests)
+    #[cfg(test)]
+    pub(super) dh_test_fallback: bool,
 }
 
 impl GenesisExchange {
@@ -43,6 +47,8 @@ impl GenesisExchange {
             protocol,
             timing,
             provider,
+            #[cfg(test)]
+            dh_test_fallback: false,
         }
     }
 
@@ -55,12 +61,24 @@ impl GenesisExchange {
             protocol,
             timing,
             provider,
+            dh_test_fallback: true,
         }
     }
 
     #[cfg(test)]
     pub(super) fn for_test_with_provider(provider: CryptoProvider) -> Self {
-        Self::for_test(NfcConfig::default(), provider)
+        let timing = TimingProtector::new(
+            NfcConfig::default().target_exchange_duration,
+            NfcConfig::default().max_random_delay,
+        );
+        let protocol = NfcProtocol::new(NfcConfig::default());
+        Self {
+            config: NfcConfig::default(),
+            protocol,
+            timing,
+            provider,
+            dh_test_fallback: false,
+        }
     }
 
     /// Initiate genesis exchange (as parent/initiator)

@@ -63,7 +63,7 @@
 //!
 //! // Initialize and start server
 //! ipc::init()?;
-//! let endpoint = ipc::register("my-service", vec!["math".to_string()]).await?;
+//! let endpoint = ipc::register("my-service", vec![String::from("math")]).await?;
 //!
 //! let server = TowerAtomicServer::new(MyService);
 //! server.serve(endpoint).await?;
@@ -100,7 +100,9 @@ use serde_json::Value;
 
 pub use client::TowerAtomicClient;
 pub use server::TowerAtomicServer;
-pub use types::{JSONRPC_VERSION, JsonRpcError, JsonRpcRequest, JsonRpcResponse};
+pub use types::{
+    JSONRPC_VERSION, JsonRpcError, JsonRpcRequest, JsonRpcRequestWire, JsonRpcResponse,
+};
 
 /// JSON-RPC handler trait
 ///

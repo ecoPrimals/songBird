@@ -161,10 +161,10 @@ impl Default for CanonicalSystemConfig {
         let home = songbird_process_env::var("HOME")
             .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().into_owned());
         Self {
-            environment: "development".to_string(),
-            system_id: "songbird-1".to_string(),
+            environment: String::from("development"),
+            system_id: String::from("songbird-1"),
             app_name: SELF_NAME.to_string(),
-            version: "0.1.0".to_string(),
+            version: String::from("0.1.0"),
             instance_id: format!("{}-{}", SELF_NAME, std::process::id()),
             data_dir: format!("{home}/.local/share/songbird"),
             config_dir: format!("{home}/.config/songbird"),
@@ -181,8 +181,8 @@ impl Default for CanonicalSystemConfig {
 impl Default for CanonicalLoggingConfig {
     fn default() -> Self {
         Self {
-            level: "info".to_string(),
-            format: "json".to_string(),
+            level: String::from("info"),
+            format: String::from("json"),
             outputs: vec![CanonicalLogOutput::default()],
             rotation: None,
             structured_fields: HashMap::new(),
@@ -193,7 +193,7 @@ impl Default for CanonicalLoggingConfig {
 impl Default for CanonicalLogOutput {
     fn default() -> Self {
         Self {
-            output_type: "stdout".to_string(),
+            output_type: String::from("stdout"),
             target: None,
             config: HashMap::new(),
         }

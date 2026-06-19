@@ -50,7 +50,7 @@ impl FederationCoordinator {
             .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
 
         Ok(Self {
-            state: Arc::new(FederationState::new("default".to_string())),
+            state: Arc::new(FederationState::new(String::from("default"))),
             client,
             rendezvous_client: Arc::new(RwLock::new(None)),
             security_provider: Arc::new(RwLock::new(None)),
@@ -184,9 +184,9 @@ impl FederationCoordinator {
         // Get our node registration
         let registration =
             config.self_registration.as_ref().ok_or_else(|| SongbirdError::Configuration {
-                message: "Cannot join federation without self registration info".to_string(),
-                field: Some("self_registration".to_string()),
-                suggestion: Some("Provide node registration information".to_string()),
+                message: String::from("Cannot join federation without self registration info"),
+                field: Some(String::from("self_registration")),
+                suggestion: Some(String::from("Provide node registration information")),
             })?;
 
         // POST to bootstrap node's join endpoint
@@ -205,7 +205,7 @@ impl FederationCoordinator {
             .map_err(|e| SongbirdError::Network {
                 message: format!("Failed to connect to bootstrap node: {e}"),
                 interface: Some(bootstrap_address.to_string()),
-                suggestion: Some("Check bootstrap node is running and accessible".to_string()),
+                suggestion: Some(String::from("Check bootstrap node is running and accessible")),
             })?;
 
         if !response.is_success() {
@@ -213,7 +213,7 @@ impl FederationCoordinator {
             return Err(SongbirdError::Network {
                 message: format!("Bootstrap node rejected join request: {status}"),
                 interface: Some(bootstrap_address.to_string()),
-                suggestion: Some("Check bootstrap node is accepting new members".to_string()),
+                suggestion: Some(String::from("Check bootstrap node is accepting new members")),
             });
         }
 
@@ -222,7 +222,7 @@ impl FederationCoordinator {
             response.json().await.map_err(|e| SongbirdError::Network {
                 message: format!("Failed to parse federation status: {e}"),
                 interface: Some(bootstrap_address.to_string()),
-                suggestion: Some("Check response format from bootstrap node".to_string()),
+                suggestion: Some(String::from("Check response format from bootstrap node")),
             })?;
 
         info!("✅ Joined federation successfully");
@@ -391,9 +391,9 @@ impl FederationCoordinator {
         // Get our node registration
         let registration =
             config.self_registration.as_ref().ok_or_else(|| SongbirdError::Configuration {
-                message: "Cannot use rendezvous without self registration info".to_string(),
-                field: Some("self_registration".to_string()),
-                suggestion: Some("Provide node registration information".to_string()),
+                message: String::from("Cannot use rendezvous without self registration info"),
+                field: Some(String::from("self_registration")),
+                suggestion: Some(String::from("Provide node registration information")),
             })?;
 
         // Create rendezvous client
@@ -401,7 +401,7 @@ impl FederationCoordinator {
             SongbirdError::Network {
                 message: format!("Failed to create rendezvous client: {e}"),
                 interface: Some(rendezvous_url.to_string()),
-                suggestion: Some("Check rendezvous server URL is valid".to_string()),
+                suggestion: Some(String::from("Check rendezvous server URL is valid")),
             }
         })?;
 
@@ -412,7 +412,7 @@ impl FederationCoordinator {
         client.register_presence().await.map_err(|e| SongbirdError::Network {
             message: format!("Failed to register with rendezvous: {e}"),
             interface: Some(rendezvous_url.to_string()),
-            suggestion: Some("Check rendezvous server is running and accessible".to_string()),
+            suggestion: Some(String::from("Check rendezvous server is running and accessible")),
         })?;
 
         // Store client
@@ -458,7 +458,7 @@ impl FederationCoordinator {
             debug!("🔍 Discovering peers via rendezvous");
 
             // Query for orchestration capability (other Songbird instances)
-            match client.query_peers(vec!["orchestration".to_string()]).await {
+            match client.query_peers(vec![String::from("orchestration")]).await {
                 Ok(peers) => {
                     info!("🌍 Discovered {} peers via rendezvous", peers.len());
 
@@ -471,10 +471,10 @@ impl FederationCoordinator {
                         );
 
                         // Extract connection info - build endpoint from protocols
-                        let endpoint = if peer.protocols.contains(&"https".to_string()) {
+                        let endpoint = if peer.protocols.contains(&String::from("https")) {
                             // In production, would negotiate actual endpoint
                             format!("https://peer-{}", &peer.ephemeral_session_id[..8])
-                        } else if peer.protocols.contains(&"btsp".to_string()) {
+                        } else if peer.protocols.contains(&String::from("btsp")) {
                             format!("btsp://peer-{}", &peer.ephemeral_session_id[..8])
                         } else {
                             debug!(
@@ -575,7 +575,7 @@ mod tests {
         NodeRegistration {
             node_id: node_id.to_string(),
             node_name: name.to_string(),
-            node_address: "192.168.0.1:8080".to_string(),
+            node_address: String::from("192.168.0.1:8080"),
             endpoints: None,
             cpu_cores: 4,
             memory_gb: 8,
@@ -672,7 +672,7 @@ mod tests {
         let peer = sample_registration("peer-a", "Peer A");
 
         let status = FederationStatus {
-            federation_id: "fed-1".to_string(),
+            federation_id: String::from("fed-1"),
             active_nodes: 2,
             nodes: vec![self_reg.clone(), peer.clone()],
             total_cpu_cores: 0,

@@ -57,7 +57,7 @@ impl WasmPlatformIPC {
             NativeEndpoint::InProcess(id) => Err(IpcError::RegistryError(format!(
                 "WASM primal listen not available (endpoint ID {id}): implement a global in-process registry or a Worker postMessage acceptor before listen()"
             ))),
-            _ => Err(IpcError::PlatformError("WasmIPC requires InProcess endpoint".to_string())),
+            _ => Err(IpcError::PlatformError(String::from("WasmIPC requires InProcess endpoint"))),
         }
     }
 
@@ -67,7 +67,7 @@ impl WasmPlatformIPC {
             NativeEndpoint::InProcess(id) => Err(IpcError::RegistryError(format!(
                 "WASM primal connect not available (endpoint ID {id}): register senders/receivers in a shared registry or use postMessage/SharedArrayBuffer worker bridge"
             ))),
-            _ => Err(IpcError::PlatformError("WasmIPC requires InProcess endpoint".to_string())),
+            _ => Err(IpcError::PlatformError(String::from("WasmIPC requires InProcess endpoint"))),
         }
     }
 
@@ -78,7 +78,7 @@ impl WasmPlatformIPC {
                 debug!("WASM in-process cleanup (no-op until registry exists): ID {id}");
                 Ok(())
             }
-            _ => Err(IpcError::PlatformError("WasmIPC requires InProcess endpoint".to_string())),
+            _ => Err(IpcError::PlatformError(String::from("WasmIPC requires InProcess endpoint"))),
         }
     }
 }

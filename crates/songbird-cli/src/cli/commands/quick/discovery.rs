@@ -336,7 +336,6 @@ fn parse_discovery_response(response: &str, source_ip: IpAddr) -> Option<Discove
 mod tests {
     use super::{calculate_compatibility_score, discover_networks_api, parse_discovery_response};
     use crate::cli::commands::quick::{DiscoveredNetwork, DiscoveryParameters};
-    use songbird_process_env;
     use std::net::IpAddr;
 
     #[test]
@@ -369,16 +368,15 @@ mod tests {
 
     #[test]
     fn parse_discovery_response_reads_json_fields() {
-        songbird_process_env::set_var("SONGBIRD_DISCOVERY_PORT", "7777");
         let src: IpAddr = "198.51.100.2".parse().unwrap();
         let json = r#"{"name":"lab-net","nodes":4,"type":"Research","institution":"U"}"#;
         let net = parse_discovery_response(json, src).unwrap();
-        songbird_process_env::reset_overlay();
         assert_eq!(net.name, "lab-net");
         assert_eq!(net.node_count, 4);
         assert_eq!(net.network_type, "Research");
         assert_eq!(net.institution.as_deref(), Some("U"));
-        assert_eq!(net.endpoint, "198.51.100.2:7777");
+        let expected_port = super::discovery_http_port();
+        assert_eq!(net.endpoint, format!("198.51.100.2:{expected_port}"));
     }
 
     #[test]
@@ -496,22 +494,8 @@ mod tests {
     }
 
     #[test]
-    fn discovery_http_port_overlay_override_numeric() {
-        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_DISCOVERY_PORT", "49152");
-        assert_eq!(super::discovery_http_port(), 49152);
-    }
-
-    #[test]
-    fn discovery_http_port_invalid_overlay_value_falls_back_to_canonical_default() {
-        let expected = songbird_types::defaults::ports::DEFAULT_DISCOVERY_SERVICE_PORT;
-        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_DISCOVERY_PORT", "nan");
-        assert_eq!(super::discovery_http_port(), expected);
-    }
-
-    #[test]
-    fn discovery_http_port_empty_overlay_value_falls_back_to_canonical_default() {
-        let expected = songbird_types::defaults::ports::DEFAULT_DISCOVERY_SERVICE_PORT;
-        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_DISCOVERY_PORT", "");
+    fn discovery_http_port_delegates_to_config_canonical() {
+        let expected = songbird_config::defaults::ports::discovery_port();
         assert_eq!(super::discovery_http_port(), expected);
     }
 }

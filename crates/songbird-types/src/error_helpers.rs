@@ -68,7 +68,7 @@ impl<T, E> UnwrapElimination<T, E> for Result<T, E> {
         self.map_err(|e| SongbirdError::Configuration {
             message: format!("{field}: {e}"),
             field: Some(field.to_string()),
-            suggestion: Some("Check configuration file and environment variables".to_string()),
+            suggestion: Some(String::from("Check configuration file and environment variables")),
         })
     }
 
@@ -79,7 +79,7 @@ impl<T, E> UnwrapElimination<T, E> for Result<T, E> {
         self.map_err(|e| SongbirdError::Network {
             message: format!("{context}: {e}"),
             interface: None,
-            suggestion: Some("Check network connectivity and firewall settings".to_string()),
+            suggestion: Some(String::from("Check network connectivity and firewall settings")),
         })
     }
 
@@ -91,7 +91,7 @@ impl<T, E> UnwrapElimination<T, E> for Result<T, E> {
             service: service.to_string(),
             message: e.to_string(),
             suggested_alternatives: vec![],
-            recovery_actions: vec!["retry".to_string(), "check service health".to_string()],
+            recovery_actions: vec![String::from("retry"), String::from("check service health")],
         })
     }
 
@@ -102,7 +102,7 @@ impl<T, E> UnwrapElimination<T, E> for Result<T, E> {
         self.map_err(|e| SongbirdError::Discovery {
             message: e.to_string(),
             backend: Some(backend.to_string()),
-            retry_strategy: Some("exponential_backoff".to_string()),
+            retry_strategy: Some(String::from("exponential_backoff")),
         })
     }
 
@@ -154,11 +154,11 @@ impl<T> OptionElimination<T> for Option<T> {
     fn or_service_not_found(self, service: &str) -> SongbirdResult<T> {
         self.ok_or_else(|| SongbirdError::Service {
             service: service.to_string(),
-            message: "Service not found".to_string(),
+            message: String::from("Service not found"),
             suggested_alternatives: vec![],
             recovery_actions: vec![
-                "Check service name".to_string(),
-                "Verify service is registered".to_string(),
+                String::from("Check service name"),
+                String::from("Verify service is registered"),
             ],
         })
     }
@@ -167,7 +167,7 @@ impl<T> OptionElimination<T> for Option<T> {
         self.ok_or_else(|| SongbirdError::Network {
             message: format!("Resource '{resource}' is unavailable"),
             interface: None,
-            suggestion: Some("Check resource availability and permissions".to_string()),
+            suggestion: Some(String::from("Check resource availability and permissions")),
         })
     }
 }
@@ -208,9 +208,9 @@ impl SafeParse {
             Err(SongbirdError::Configuration {
                 message: format!("Invalid duration: {ms} ms in {context}"),
                 field: Some(context.to_string()),
-                suggestion: Some(
-                    "Use a reasonable timeout value (e.g., 30000 for 30 seconds)".to_string(),
-                ),
+                suggestion: Some(String::from(
+                    "Use a reasonable timeout value (e.g., 30000 for 30 seconds)",
+                )),
             })
         }
     }
@@ -227,7 +227,7 @@ impl SafeParse {
             Err(SongbirdError::Configuration {
                 message: format!("Invalid duration: {secs} seconds"),
                 field: None,
-                suggestion: Some("Use a positive duration value".to_string()),
+                suggestion: Some(String::from("Use a positive duration value")),
             })
         }
     }
@@ -335,7 +335,7 @@ mod tests {
                 field,
                 ..
             } => {
-                assert_eq!(field, Some("test_field".to_string()));
+                assert_eq!(field, Some(String::from("test_field")));
             }
             _ => panic!("Expected Configuration error"),
         }
@@ -386,7 +386,7 @@ mod tests {
                 retry_strategy,
                 ..
             } => {
-                assert_eq!(backend, Some("mdns".to_string()));
+                assert_eq!(backend, Some(String::from("mdns")));
                 assert!(retry_strategy.is_some());
             }
             _ => panic!("Expected Discovery error"),

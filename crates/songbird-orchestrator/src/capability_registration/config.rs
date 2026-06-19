@@ -66,7 +66,7 @@ impl CapabilityRegistrationConfig {
         Self {
             neural_socket: neural_socket.to_string(),
             songbird_socket: songbird_socket.to_string(),
-            primal_id: "songbird".to_string(),
+            primal_id: String::from("songbird"),
         }
     }
 }

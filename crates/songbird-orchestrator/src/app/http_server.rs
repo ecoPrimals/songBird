@@ -328,7 +328,7 @@ async fn start_https_server(
                 }
             };
 
-            let tls_acceptor = tls_acceptor.clone();
+            let tls_acceptor = Arc::clone(&tls_acceptor);
             let app = app.clone();
 
             // Handle each connection in its own task

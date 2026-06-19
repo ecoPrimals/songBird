@@ -78,19 +78,19 @@ mod tests {
 
     #[test]
     fn service_not_found_display() {
-        let e = IpcError::ServiceNotFound("beardog".to_string());
+        let e = IpcError::ServiceNotFound(String::from("beardog"));
         assert!(e.to_string().contains("beardog"));
     }
 
     #[test]
     fn service_already_registered_display() {
-        let e = IpcError::ServiceAlreadyRegistered("/x".to_string());
+        let e = IpcError::ServiceAlreadyRegistered(String::from("/x"));
         assert!(e.to_string().contains("/x"));
     }
 
     #[test]
     fn invalid_virtual_path_display() {
-        let e = IpcError::InvalidVirtualPath("bad".to_string());
+        let e = IpcError::InvalidVirtualPath(String::from("bad"));
         assert!(e.to_string().contains("bad"));
     }
 
@@ -103,18 +103,18 @@ mod tests {
 
     #[test]
     fn registry_and_rpc_errors_roundtrip_string() {
-        assert!(IpcError::RegistryError("r".to_string()).to_string().contains('r'));
-        assert!(IpcError::RpcError("rpc".to_string()).to_string().contains("rpc"));
-        assert!(IpcError::InvalidParams("p".to_string()).to_string().contains('p'));
-        assert!(IpcError::Internal("i".to_string()).to_string().contains('i'));
-        assert!(IpcError::Other("o".to_string()).to_string().contains('o'));
+        assert!(IpcError::RegistryError(String::from("r")).to_string().contains('r'));
+        assert!(IpcError::RpcError(String::from("rpc")).to_string().contains("rpc"));
+        assert!(IpcError::InvalidParams(String::from("p")).to_string().contains('p'));
+        assert!(IpcError::Internal(String::from("i")).to_string().contains('i'));
+        assert!(IpcError::Other(String::from("o")).to_string().contains('o'));
     }
 
     #[test]
     fn connection_and_listener_errors() {
-        assert!(IpcError::ConnectionFailed("c".to_string()).to_string().contains('c'));
-        assert!(IpcError::ListenerFailed("l".to_string()).to_string().contains('l'));
-        assert!(IpcError::CleanupFailed("u".to_string()).to_string().contains('u'));
-        assert!(IpcError::PlatformError("pl".to_string()).to_string().contains("pl"));
+        assert!(IpcError::ConnectionFailed(String::from("c")).to_string().contains('c'));
+        assert!(IpcError::ListenerFailed(String::from("l")).to_string().contains('l'));
+        assert!(IpcError::CleanupFailed(String::from("u")).to_string().contains('u'));
+        assert!(IpcError::PlatformError(String::from("pl")).to_string().contains("pl"));
     }
 }

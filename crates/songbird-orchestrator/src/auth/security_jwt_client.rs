@@ -113,11 +113,11 @@ pub async fn fetch_jwt_secret_from_security_provider(
 
     // Create JSON-RPC request
     let request = JwtSecretRequest {
-        jsonrpc: "2.0".to_string(),
-        method: "crypto.generate.jwt_secret".to_string(),
+        jsonrpc: String::from("2.0"),
+        method: String::from("crypto.generate.jwt_secret"),
         params: JwtSecretParams {
             purpose: purpose.to_string(),
-            strength: "high".to_string(), // 512 bits, production-ready
+            strength: String::from("high"), // 512 bits, production-ready
         },
         id: 1,
     };
@@ -305,11 +305,11 @@ mod tests {
     #[test]
     fn jwt_secret_request_serializes_expected_method() {
         let req = JwtSecretRequest {
-            jsonrpc: "2.0".to_string(),
-            method: "crypto.generate.jwt_secret".to_string(),
+            jsonrpc: String::from("2.0"),
+            method: String::from("crypto.generate.jwt_secret"),
             params: JwtSecretParams {
                 purpose: STORAGE_PROVIDER_AUTHENTICATION_PURPOSE.to_string(),
-                strength: "high".to_string(),
+                strength: String::from("high"),
             },
             id: 42,
         };

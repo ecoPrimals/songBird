@@ -61,7 +61,7 @@ impl Default for HttpClientConfig {
             timeout: Duration::from_secs(30),
             max_connections_per_host: 10,
             http2_enabled: true,
-            user_agent: "songbird/1.0".to_string(),
+            user_agent: String::from("songbird/1.0"),
             default_headers: HashMap::new(),
             compression_enabled: true,
             keep_alive_timeout: Duration::from_secs(60),
@@ -105,7 +105,7 @@ impl Default for GrpcConfig {
             max_message_size: 4 * 1024 * 1024, // 4MB
             tls_enabled: true,
             tls_config: None,
-            compression: Some("gzip".to_string()),
+            compression: Some(String::from("gzip")),
             max_concurrent_streams: 100,
         }
     }
@@ -276,7 +276,7 @@ impl Default for JsonRpcConfig {
             timeout: Duration::from_secs(30),
             max_batch_size: 100,
             batch_enabled: true,
-            version: "2.0".to_string(),
+            version: String::from("2.0"),
             notifications_enabled: true,
             method_prefix: None,
         }

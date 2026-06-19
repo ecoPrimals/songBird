@@ -167,11 +167,11 @@ mod tests {
     #[test]
     fn test_trust_decision_helpers() {
         let auto_accept = TrustEvaluationResponse {
-            decision: "auto_accept".to_string(),
-            trust_level: "high".to_string(),
+            decision: String::from("auto_accept"),
+            trust_level: String::from("high"),
             confidence: 1.0,
-            reason: "same_family".to_string(),
-            encryption_tag: Some("crypto-provider:family:a3f2".to_string()),
+            reason: String::from("same_family"),
+            encryption_tag: Some(String::from("crypto-provider:family:a3f2")),
             metadata: HashMap::new(),
         };
 
@@ -180,10 +180,10 @@ mod tests {
         assert!(!auto_accept.is_reject());
 
         let prompt = TrustEvaluationResponse {
-            decision: "prompt_user".to_string(),
-            trust_level: "low".to_string(),
+            decision: String::from("prompt_user"),
+            trust_level: String::from("low"),
             confidence: 0.5,
-            reason: "different_family".to_string(),
+            reason: String::from("different_family"),
             encryption_tag: None,
             metadata: HashMap::new(),
         };
@@ -193,10 +193,10 @@ mod tests {
         assert!(!prompt.is_reject());
 
         let reject = TrustEvaluationResponse {
-            decision: "reject".to_string(),
-            trust_level: "none".to_string(),
+            decision: String::from("reject"),
+            trust_level: String::from("none"),
             confidence: 0.0,
-            reason: "no_lineage".to_string(),
+            reason: String::from("no_lineage"),
             encryption_tag: None,
             metadata: HashMap::new(),
         };
@@ -209,9 +209,9 @@ mod tests {
     #[test]
     fn test_identity_response_serialization() {
         let identity = IdentityResponse {
-            encryption_tag: "crypto-provider:family:a3f2:tower1".to_string(),
-            capabilities: vec!["identity".to_string(), "encryption".to_string()],
-            family_id: Some("ecoPrimals-20260101-a3f2".to_string()),
+            encryption_tag: String::from("crypto-provider:family:a3f2:tower1"),
+            capabilities: vec![String::from("identity"), String::from("encryption")],
+            family_id: Some(String::from("ecoPrimals-20260101-a3f2")),
         };
 
         let json = serde_json::to_string(&identity).unwrap();
@@ -225,16 +225,16 @@ mod tests {
     #[test]
     fn test_trust_request_serialization() {
         let mut context = HashMap::new();
-        context.insert("discovery_method".to_string(), "udp_multicast".to_string());
-        context.insert("first_seen_at".to_string(), "2024-01-01T12:00:00Z".to_string());
+        context.insert(String::from("discovery_method"), String::from("udp_multicast"));
+        context.insert(String::from("first_seen_at"), String::from("2024-01-01T12:00:00Z"));
 
         let request = TrustEvaluationRequest {
-            peer_id: "tower2".to_string(),
-            peer_family: Some("a3f2".to_string()), // Extracted from tags
-            peer_tags: vec!["crypto-provider:family:a3f2".to_string()],
+            peer_id: String::from("tower2"),
+            peer_family: Some(String::from("a3f2")), // Extracted from tags
+            peer_tags: vec![String::from("crypto-provider:family:a3f2")],
             connection_info: Some(ConnectionInfo {
-                endpoint: "https://192.168.1.134:8080".to_string(),
-                protocol: "tarpc".to_string(),
+                endpoint: String::from("https://192.168.1.134:8080"),
+                protocol: String::from("tarpc"),
             }),
             context: Some(context),
         };

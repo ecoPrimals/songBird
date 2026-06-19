@@ -244,7 +244,9 @@ impl TorHandler {
         {
             let state = self.state.read().await;
             if state.service_running {
-                return Err("Tor service already running (use tor.service.stop first)".to_string());
+                return Err(String::from(
+                    "Tor service already running (use tor.service.stop first)",
+                ));
             }
         }
 
@@ -409,7 +411,7 @@ impl TorHandler {
 
         // Ensure circuit manager is initialized
         let manager = self.circuit_manager.read().await.as_ref().cloned().ok_or_else(|| {
-            "Circuit manager not initialized. Call tor.consensus.fetch first.".to_string()
+            String::from("Circuit manager not initialized. Call tor.consensus.fetch first.")
         })?;
 
         // Build real circuit
@@ -580,7 +582,7 @@ mod tests {
     #[tokio::test]
     async fn test_set_security_socket_reflected_in_status_path() {
         let handler = TorHandler::new();
-        handler.set_security_socket("/tmp/test-security.sock".to_string()).await;
+        handler.set_security_socket(String::from("/tmp/test-security.sock")).await;
         let status = handler.handle_status(json!({})).await.unwrap();
         assert_eq!(status["security_provider_available"], true);
     }

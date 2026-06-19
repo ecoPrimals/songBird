@@ -9,7 +9,7 @@
 //! - `peer.connect` - Initiate direct connection to peer (hole punching)
 //!
 //! ## Architecture
-//! Uses enum dispatch ([`PeerConnector`](crate::handlers::udp_peer_connector::PeerConnector)) for production UDP and test doubles.
+//! Uses enum dispatch ([`PeerConnector`]) for production UDP and test doubles.
 
 use crate::error::{IpcError, IpcResult};
 use serde_json::Value;

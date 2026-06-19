@@ -21,9 +21,9 @@ pub fn get_log_level_with(env: &impl Fn(&str) -> Result<String, std::env::VarErr
         .or_else(|_| env("RUST_LOG"))
         .unwrap_or_else(|_| {
             match env("SONGBIRD_ENV").as_deref() {
-                Ok("production") => "warn".to_string(),
-                Ok("staging") => "info".to_string(),
-                _ => "debug".to_string(), // Testing and development default
+                Ok("production") => String::from("warn"),
+                Ok("staging") => String::from("info"),
+                _ => String::from("debug"), // Testing and development default
             }
         })
 }
@@ -162,7 +162,7 @@ mod tests {
         let env = mock_env(&map);
         assert_eq!(
             get_canonical_cors_origins_with(&env),
-            vec!["http://example.com".to_string(), "http://other.com".to_string(),]
+            vec![String::from("http://example.com"), String::from("http://other.com"),]
         );
     }
 
@@ -172,7 +172,7 @@ mod tests {
         let env = mock_env(&map);
         assert_eq!(
             get_canonical_cors_origins_with(&env),
-            vec!["http://a.com".to_string(), "http://b.com".to_string()]
+            vec![String::from("http://a.com"), String::from("http://b.com")]
         );
     }
 

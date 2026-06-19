@@ -210,7 +210,7 @@ impl Default for CapabilityDiscoveryConfig {
 ///     enabled: true,
 ///     scan_local_network: true,
 ///     scan_ports: vec![8080, 8443, 9090],
-///     discovery_protocols: vec!["http".to_string(), "https".to_string()],
+///     discovery_protocols: vec![String::from("http"), String::from("https")],
 /// };
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -248,7 +248,7 @@ impl Default for NetworkDiscoveryConfig {
             discovery_protocols: songbird_process_env::var("SONGBIRD_DISCOVERY_PROTOCOLS")
                 .ok()
                 .map_or_else(
-                    || vec!["http".to_string(), "https".to_string()],
+                    || vec![String::from("http"), String::from("https")],
                     |s| s.split(',').map(|p| p.trim().to_string()).collect(),
                 ),
         }
@@ -355,7 +355,7 @@ mod tests {
             enabled: true,
             scan_local_network: true,
             scan_ports: vec![80, 443, 8080],
-            discovery_protocols: vec!["http".to_string()],
+            discovery_protocols: vec![String::from("http")],
         };
 
         assert_eq!(config.scan_ports.len(), 3);
@@ -384,7 +384,7 @@ mod tests {
             enabled: true,
             scan_local_network: false,
             scan_ports: vec![1, 2],
-            discovery_protocols: vec!["http".to_string()],
+            discovery_protocols: vec![String::from("http")],
         };
         let json = serde_json::to_string(&c).unwrap();
         let back: NetworkDiscoveryConfig = serde_json::from_str(&json).unwrap();

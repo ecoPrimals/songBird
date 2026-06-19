@@ -56,7 +56,7 @@ impl FullTrustConnection {
         Ok(Self {
             peer_id,
             socket_path,
-            allowed_capabilities: vec!["*".to_string()],
+            allowed_capabilities: vec![String::from("*")],
             rpc_client,
         })
     }
@@ -117,9 +117,11 @@ mod tests {
 
     #[test]
     fn test_full_trust_allows_everything() {
-        let conn =
-            FullTrustConnection::new("test_peer".to_string(), "http://localhost:8080".to_string())
-                .unwrap();
+        let conn = FullTrustConnection::new(
+            String::from("test_peer"),
+            String::from("http://localhost:8080"),
+        )
+        .unwrap();
 
         // Everything allowed
         assert!(conn.is_operation_allowed("data/read"));
@@ -131,9 +133,11 @@ mod tests {
 
     #[test]
     fn test_trust_level() {
-        let conn =
-            FullTrustConnection::new("test_peer".to_string(), "http://localhost:8080".to_string())
-                .unwrap();
+        let conn = FullTrustConnection::new(
+            String::from("test_peer"),
+            String::from("http://localhost:8080"),
+        )
+        .unwrap();
 
         assert_eq!(conn.trust_level(), TrustLevel::Highest);
     }

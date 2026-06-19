@@ -138,13 +138,13 @@ impl DiscoverableEndpoint {
                         songbird_types::constants::LOCALHOST.to_string(),
                     ],
                     port_range: (8000, 9000),
-                    health_path: "/health".to_string(),
+                    health_path: String::from("/health"),
                 },
             ],
             dev_fallback: Some(EndpointSpec {
                 host: songbird_types::constants::LOCALHOST_HOSTNAME.to_string(),
                 port: songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
-                protocol: Some("http".to_string()),
+                protocol: Some(String::from("http")),
                 path: None,
             }),
             cache_discovery: true,
@@ -167,7 +167,7 @@ impl DiscoverableEndpoint {
             dev_fallback: Some(EndpointSpec {
                 host: format!("{service_name}.{namespace}.svc.cluster.local"),
                 port,
-                protocol: Some("http".to_string()),
+                protocol: Some(String::from("http")),
                 path: None,
             }),
             cache_discovery: true,
@@ -230,9 +230,9 @@ impl DiscoverableEndpoint {
         }
 
         Err(SongbirdError::Configuration {
-            message: "Could not discover endpoint using any method".to_string(),
-            field: Some("endpoint".to_string()),
-            suggestion: Some("Check environment variables or network connectivity".to_string()),
+            message: String::from("Could not discover endpoint using any method"),
+            field: Some(String::from("endpoint")),
+            suggestion: Some(String::from("Check environment variables or network connectivity")),
         })
     }
 
@@ -271,16 +271,16 @@ impl DiscoverableEndpoint {
                             return Ok(EndpointSpec {
                                 host: host.clone(),
                                 port,
-                                protocol: Some("http".to_string()),
+                                protocol: Some(String::from("http")),
                                 path: None,
                             });
                         }
                     }
                 }
                 Err(SongbirdError::Configuration {
-                    message: "Network probe failed".to_string(),
+                    message: String::from("Network probe failed"),
                     field: None,
-                    suggestion: Some("Check network connectivity".to_string()),
+                    suggestion: Some(String::from("Check network connectivity")),
                 })
             }
 
@@ -303,14 +303,14 @@ impl DiscoverableEndpoint {
                     Ok(EndpointSpec {
                         host: format!("{service_name}.{namespace}.svc.cluster.local"),
                         port: port_num,
-                        protocol: Some("http".to_string()),
+                        protocol: Some(String::from("http")),
                         path: None,
                     })
                 } else {
                     Err(SongbirdError::Configuration {
-                        message: "Not in Kubernetes environment".to_string(),
+                        message: String::from("Not in Kubernetes environment"),
                         field: None,
-                        suggestion: Some("Run inside a Kubernetes pod".to_string()),
+                        suggestion: Some(String::from("Run inside a Kubernetes pod")),
                     })
                 }
             }
@@ -346,17 +346,17 @@ fn parse_endpoint(value: &str, parser: &EndpointParser) -> SongbirdResult<Endpoi
             // Parse full URL
             let url = url::Url::parse(value).map_err(|e| SongbirdError::Configuration {
                 message: format!("Invalid URL: {e}"),
-                field: Some("url".to_string()),
-                suggestion: Some("Provide a valid HTTP/HTTPS URL".to_string()),
+                field: Some(String::from("url")),
+                suggestion: Some(String::from("Provide a valid HTTP/HTTPS URL")),
             })?;
 
             Ok(EndpointSpec {
                 host: url
                     .host_str()
                     .ok_or_else(|| SongbirdError::Configuration {
-                        message: "URL missing host".to_string(),
-                        field: Some("url".to_string()),
-                        suggestion: Some("Provide a URL with a hostname".to_string()),
+                        message: String::from("URL missing host"),
+                        field: Some(String::from("url")),
+                        suggestion: Some(String::from("Provide a URL with a hostname")),
                     })?
                     .to_string(),
                 port: url.port_or_known_default().unwrap_or(80),
@@ -370,24 +370,24 @@ fn parse_endpoint(value: &str, parser: &EndpointParser) -> SongbirdResult<Endpoi
             let parts: Vec<&str> = value.split(':').collect();
             if parts.len() != 2 {
                 return Err(SongbirdError::Configuration {
-                    message: "Expected host:port format".to_string(),
-                    field: Some("endpoint".to_string()),
-                    suggestion: Some(
-                        "Use format: hostname:port (e.g., localhost:8080)".to_string(),
-                    ),
+                    message: String::from("Expected host:port format"),
+                    field: Some(String::from("endpoint")),
+                    suggestion: Some(String::from(
+                        "Use format: hostname:port (e.g., localhost:8080)",
+                    )),
                 });
             }
 
             let port = parts[1].parse().map_err(|_| SongbirdError::Configuration {
-                message: "Invalid port number".to_string(),
-                field: Some("port".to_string()),
-                suggestion: Some("Port must be between 0 and 65535".to_string()),
+                message: String::from("Invalid port number"),
+                field: Some(String::from("port")),
+                suggestion: Some(String::from("Port must be between 0 and 65535")),
             })?;
 
             Ok(EndpointSpec {
                 host: parts[0].to_string(),
                 port,
-                protocol: Some("http".to_string()),
+                protocol: Some(String::from("http")),
                 path: None,
             })
         }
@@ -397,7 +397,7 @@ fn parse_endpoint(value: &str, parser: &EndpointParser) -> SongbirdResult<Endpoi
             Ok(EndpointSpec {
                 host: value.to_string(),
                 port: 8080,
-                protocol: Some("http".to_string()),
+                protocol: Some(String::from("http")),
                 path: None,
             })
         }
@@ -424,9 +424,9 @@ async fn probe_endpoint(host: &str, port: u16, _health_path: &str) -> SongbirdRe
     {
         Ok(Ok(_)) => Ok(()),
         _ => Err(SongbirdError::Network {
-            message: "Probe failed".to_string(),
+            message: String::from("Probe failed"),
             interface: None,
-            suggestion: Some("Check network connectivity and firewall settings".to_string()),
+            suggestion: Some(String::from("Check network connectivity and firewall settings")),
         }),
     }
 }
@@ -439,8 +439,8 @@ fn resolve_named_port(name: &str) -> SongbirdResult<u16> {
         "grpc" => Ok(9090),
         _ => Err(SongbirdError::Configuration {
             message: format!("Unknown port name: {name}"),
-            field: Some("port".to_string()),
-            suggestion: Some("Use 'http' (80), 'https' (443), or 'grpc' (9090)".to_string()),
+            field: Some(String::from("port")),
+            suggestion: Some(String::from("Use 'http' (80), 'https' (443), or 'grpc' (9090)")),
         }),
     }
 }
@@ -478,9 +478,9 @@ impl EndpointSpec {
 
         // For hostnames, return error - DNS resolution would happen elsewhere
         Err(SongbirdError::Configuration {
-            message: "Cannot convert hostname to SocketAddr without DNS resolution".to_string(),
-            field: Some("host".to_string()),
-            suggestion: Some("Use an IP address or resolve DNS separately".to_string()),
+            message: String::from("Cannot convert hostname to SocketAddr without DNS resolution"),
+            field: Some(String::from("host")),
+            suggestion: Some(String::from("Use an IP address or resolve DNS separately")),
         })
     }
 }

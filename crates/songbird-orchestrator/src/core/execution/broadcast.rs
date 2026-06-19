@@ -221,7 +221,7 @@ mod tests {
     async fn test_register_tower() {
         // Note: Will fail without crypto provider
         if let Ok(mut executor) = BroadcastExecutor::new().await {
-            executor.register_tower("tower1".to_string(), "http://localhost:9020".to_string());
+            executor.register_tower(String::from("tower1"), String::from("http://localhost:9020"));
             assert_eq!(executor.tower_registry.len(), 1);
         }
     }

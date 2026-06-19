@@ -102,7 +102,7 @@ impl AIWorkloadClassificationDelegate {
             warn!("No AI providers available — using basic risk assessment");
             Ok(RiskAssessment::from_pressure(
                 resources,
-                &["No AI provider; heuristic risk only".to_string()],
+                &[String::from("No AI provider; heuristic risk only")],
             ))
         }
     }

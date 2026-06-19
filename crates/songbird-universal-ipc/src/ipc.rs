@@ -334,7 +334,7 @@ mod tests {
 
         // Register and listen
         let endpoint =
-            register("test-primal-register-connect", vec!["test".to_string()]).await.unwrap();
+            register("test-primal-register-connect", vec![String::from("test")]).await.unwrap();
 
         let mut listener = listen(endpoint).await.unwrap();
 
@@ -368,11 +368,11 @@ mod tests {
         init().unwrap();
 
         // Register services with capabilities
-        register("service1", vec!["crypto".to_string()]).await.unwrap();
+        register("service1", vec![String::from("crypto")]).await.unwrap();
 
-        register("service2", vec!["crypto".to_string(), "storage".to_string()]).await.unwrap();
+        register("service2", vec![String::from("crypto"), String::from("storage")]).await.unwrap();
 
-        register("service3", vec!["storage".to_string()]).await.unwrap();
+        register("service3", vec![String::from("storage")]).await.unwrap();
 
         // Find by capability
         let crypto_services = find_by_capability("crypto").await;

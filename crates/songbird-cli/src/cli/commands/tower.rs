@@ -17,8 +17,11 @@ use crate::errors::SongbirdResult;
 /// Bind address for `tower info` / `tower config` when no CLI `--bind` is parsed (matches
 /// `SONGBIRD_BIND_ADDRESS` with `0.0.0.0` default, same as [`TowerStartArgs::bind`]).
 fn tower_bind_from_env_or_default() -> String {
-    songbird_process_env::var("SONGBIRD_BIND_ADDRESS")
-        .unwrap_or_else(|_| songbird_types::constants::PRODUCTION_BIND_ADDRESS.to_string())
+    resolve_bind_address(songbird_process_env::var("SONGBIRD_BIND_ADDRESS").ok())
+}
+
+fn resolve_bind_address(env_value: Option<String>) -> String {
+    env_value.unwrap_or_else(|| String::from(songbird_types::constants::PRODUCTION_BIND_ADDRESS))
 }
 
 /// Tower management commands
@@ -565,20 +568,25 @@ mod tests {
     }
 
     #[test]
-    fn tower_bind_from_env_or_default_reads_overlay_address() {
-        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_BIND_ADDRESS", "192.168.99.7");
-        assert_eq!(super::tower_bind_from_env_or_default(), "192.168.99.7");
+    fn resolve_bind_address_reads_provided_value() {
+        assert_eq!(super::resolve_bind_address(Some(String::from("192.168.99.7"))), "192.168.99.7");
     }
 
     #[test]
-    fn tower_bind_from_env_or_default_accepts_ipv6_literal_from_overlay() {
-        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_BIND_ADDRESS", "::1");
-        assert_eq!(super::tower_bind_from_env_or_default(), "::1");
+    fn resolve_bind_address_accepts_ipv6_literal() {
+        assert_eq!(super::resolve_bind_address(Some(String::from("::1"))), "::1");
     }
 
     #[test]
-    fn tower_bind_from_env_or_default_trims_nothing_but_preserves_literal_value() {
-        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_BIND_ADDRESS", " 127.0.0.1 ");
-        assert_eq!(super::tower_bind_from_env_or_default(), " 127.0.0.1 ");
+    fn resolve_bind_address_preserves_literal_value() {
+        assert_eq!(super::resolve_bind_address(Some(String::from(" 127.0.0.1 "))), " 127.0.0.1 ");
+    }
+
+    #[test]
+    fn resolve_bind_address_none_returns_production_default() {
+        assert_eq!(
+            super::resolve_bind_address(None),
+            songbird_types::constants::PRODUCTION_BIND_ADDRESS
+        );
     }
 }

@@ -186,11 +186,7 @@ impl AIAdapter {
                         &songbird_config::canonical::constants::get_bind_address()
                     ),
                 );
-                let port = SafeEnv::get_port(
-                    "SONGBIRD_AI_PORT",
-                    songbird_config::defaults::ports::service_port("AI", 8083),
-                )
-                .to_string();
+                let port = songbird_config::defaults::ports::ai_provider_port().to_string();
                 let discovered_endpoint = format!("{endpoint}:{port}");
 
                 debug!("🔄 Using fallback AI endpoint: {}", discovered_endpoint);

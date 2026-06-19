@@ -88,7 +88,7 @@ impl Default for NodeConfig {
             node_id: songbird_process_env::var("SONGBIRD_NODE_ID")
                 .unwrap_or_else(|_| format!("node_{}", std::process::id())),
             name: songbird_process_env::var("SONGBIRD_NODE_NAME")
-                .unwrap_or_else(|_| "songbird-node".to_string()),
+                .unwrap_or_else(|_| String::from("songbird-node")),
             node_type: NodeType::Standard,
             listen_addresses: vec![std::net::SocketAddr::from(([0, 0, 0, 0], default_port))],
             public_addresses: Vec::new(),
@@ -230,7 +230,7 @@ pub struct ConsensusConfig {
 impl Default for ConsensusConfig {
     fn default() -> Self {
         Self {
-            algorithm: "raft".to_string(),
+            algorithm: String::from("raft"),
             election_timeout_ms: 5000,
             heartbeat_interval_ms: 1000,
         }
@@ -250,7 +250,7 @@ impl Default for ReplicationConfig {
         Self {
             enabled: songbird_process_env::var("SONGBIRD_REPLICATION_ENABLED").is_ok(),
             replication_factor: 3,
-            consistency_level: "eventual".to_string(),
+            consistency_level: String::from("eventual"),
         }
     }
 }
@@ -363,7 +363,7 @@ mod tests {
     #[test]
     fn test_node_config_with_location() {
         let mut config = NodeConfig::default();
-        config.location = Some("us-west-2".to_string());
+        config.location = Some(String::from("us-west-2"));
         assert!(config.location.is_some());
         assert_eq!(config.location.unwrap(), "us-west-2");
     }
@@ -372,7 +372,7 @@ mod tests {
     fn test_cluster_config_with_endpoints() {
         let mut config = ClusterConfig::default();
         config.cluster_endpoints =
-            vec!["https://node1:7000".to_string(), "https://node2:7000".to_string()];
+            vec![String::from("https://node1:7000"), String::from("https://node2:7000")];
         assert_eq!(config.cluster_endpoints.len(), 2);
     }
 
@@ -380,13 +380,13 @@ mod tests {
     fn test_replication_consistency_levels() {
         let mut config = ReplicationConfig::default();
 
-        config.consistency_level = "strong".to_string();
+        config.consistency_level = String::from("strong");
         assert_eq!(config.consistency_level, "strong");
 
-        config.consistency_level = "eventual".to_string();
+        config.consistency_level = String::from("eventual");
         assert_eq!(config.consistency_level, "eventual");
 
-        config.consistency_level = "quorum".to_string();
+        config.consistency_level = String::from("quorum");
         assert_eq!(config.consistency_level, "quorum");
     }
 
@@ -395,7 +395,7 @@ mod tests {
         let config = ReplicationConfig {
             enabled: true,
             replication_factor: 5,
-            consistency_level: "quorum".to_string(),
+            consistency_level: String::from("quorum"),
         };
         assert!(config.replication_factor >= 1);
         assert!(config.replication_factor <= 10); // reasonable upper bound

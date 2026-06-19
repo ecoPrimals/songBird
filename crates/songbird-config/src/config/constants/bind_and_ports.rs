@@ -94,7 +94,7 @@ fn calculate_user_port_offset() -> u16 {
     // Use user ID hash for deterministic but unique offset
     let user = SafeEnv::get("USER")
         .or_else(|_| SafeEnv::get("USERNAME"))
-        .unwrap_or_else(|_| "default".to_string());
+        .unwrap_or_else(|_| String::from("default"));
     let hash = user.bytes().fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(u32::from(b)));
     (hash % 500) as u16 // Limit to reasonable range
 }

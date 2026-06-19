@@ -47,7 +47,7 @@ impl IpcServiceHandler {
         // Create a real HolePunchCoordinator so punch.request works
         let node_id = songbird_process_env::var("SONGBIRD_NODE_ID")
             .or_else(|_| songbird_process_env::var("NODE_ID"))
-            .unwrap_or_else(|_| "songbird-default".to_string());
+            .unwrap_or_else(|_| String::from("songbird-default"));
         let punch_config = songbird_onion_relay::coordinator::HolePunchConfig::default();
         let (coordinator, _signal_tx, _signal_rx) =
             songbird_onion_relay::HolePunchCoordinator::new(node_id, punch_config);
@@ -195,5 +195,17 @@ impl IpcServiceHandler {
     #[must_use]
     pub fn registry(&self) -> &Arc<RwLock<ServiceRegistry>> {
         &self.registry
+    }
+}
+
+#[cfg(test)]
+impl IpcServiceHandler {
+    /// Seed the mesh with explicit peer endpoints for remote-dispatch tests.
+    pub async fn test_init_mesh_with_peers(
+        &self,
+        node_id: &str,
+        peers: &[(String, std::net::SocketAddr, bool)],
+    ) {
+        self.mesh_handler.test_init_with_peers(node_id, peers).await;
     }
 }

@@ -386,6 +386,18 @@ impl TurnSession {
     }
 }
 
+/// Decode a hex string to bytes.
+fn hex_decode(hex: &str) -> Result<Vec<u8>, String> {
+    let hex = hex.trim();
+    if !hex.len().is_multiple_of(2) {
+        return Err("odd-length hex string".into());
+    }
+    (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).map_err(|e| e.to_string()))
+        .collect()
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
@@ -483,16 +495,4 @@ mod tests {
         let result = TurnSession::parse_data_indication(&wire, &mut buf);
         assert!(result.is_err());
     }
-}
-
-/// Decode a hex string to bytes.
-fn hex_decode(hex: &str) -> Result<Vec<u8>, String> {
-    let hex = hex.trim();
-    if !hex.len().is_multiple_of(2) {
-        return Err("odd-length hex string".into());
-    }
-    (0..hex.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).map_err(|e| e.to_string()))
-        .collect()
 }

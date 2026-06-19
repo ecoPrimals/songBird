@@ -440,7 +440,7 @@ pub async fn try_multi_transport(primal_name: &str) -> IpcResult<(&'static str, 
     }
 
     // All transports failed
-    Err(last_error.unwrap_or_else(|| IpcError::Other("No transports available".to_string())))
+    Err(last_error.unwrap_or_else(|| IpcError::Other(String::from("No transports available"))))
 }
 
 #[cfg(test)]

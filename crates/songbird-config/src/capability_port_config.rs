@@ -307,7 +307,7 @@ mod tests {
         let cap = CapabilityId::new("test.ephemeral");
 
         let port = registry
-            .register_ephemeral(cap.clone(), Some("Test service".to_string()))
+            .register_ephemeral(cap.clone(), Some(String::from("Test service")))
             .expect("ephemeral registration should succeed");
 
         assert!(port > 0);
@@ -315,7 +315,7 @@ mod tests {
 
         let config = registry.get_config(&cap).expect("config should exist");
         assert_eq!(config.source, PortSource::Ephemeral);
-        assert_eq!(config.description, Some("Test service".to_string()));
+        assert_eq!(config.description, Some(String::from("Test service")));
     }
 
     #[test]
@@ -327,7 +327,7 @@ mod tests {
                 "service.c",
                 8082,
                 PortSource::Discovery,
-                "Discovered service".to_string(),
+                String::from("Discovered service"),
             )
             .build()
             .expect("build should succeed");

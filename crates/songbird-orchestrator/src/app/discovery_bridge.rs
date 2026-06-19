@@ -351,7 +351,7 @@ impl SongbirdOrchestrator {
                                         identity_attestations: trust_attestations, // ✅ FIXED: Pass attestations from discovery
                                         endpoint: endpoint.clone(),
                                         capabilities: peer.capabilities.clone(),
-                                        discovery_method: "udp_multicast".to_string(),
+                                        discovery_method: String::from("udp_multicast"),
                                         first_seen_at: peer.timestamp.unwrap_or(0),
                                     };
 
@@ -380,7 +380,7 @@ impl SongbirdOrchestrator {
                                     // Use fully qualified path to avoid duplicate import
                                     (
                                         Some(crate::trust::peer_trust::PeerTrustDecision::AutoAccept {
-                                        reason: "no_security_provider_configured".to_string(),
+                                        reason: String::from("no_security_provider_configured"),
                                         confidence: 0.0,
                                         encryption_tag: None,
                                     }),
@@ -418,7 +418,7 @@ impl SongbirdOrchestrator {
                                                         dp.capabilities,
                                                         dp.tags,
                                                         &auto_decision,
-                                                        "udp_multicast".to_string(),
+                                                        String::from("udp_multicast"),
                                                     )
                                                     .await
                                             }
@@ -430,7 +430,7 @@ impl SongbirdOrchestrator {
                                                         peer.capabilities.clone(),
                                                         peer.tags.clone().unwrap_or_default(), // v3.18.0: Pass tags for BTSP selection
                                                         &auto_decision,
-                                                        "udp_multicast".to_string(),
+                                                        String::from("udp_multicast"),
                                                     )
                                                     .await
                                             }
@@ -573,7 +573,7 @@ impl SongbirdOrchestrator {
                                                         dp.capabilities,
                                                         dp.tags,
                                                         &reject_decision,
-                                                        "udp_multicast".to_string(),
+                                                        String::from("udp_multicast"),
                                                     )
                                                     .await
                                             }
@@ -585,7 +585,7 @@ impl SongbirdOrchestrator {
                                                         peer.capabilities.clone(),
                                                         peer.tags.clone().unwrap_or_default(), // v3.18.0: Pass tags (unused for rejections)
                                                         &reject_decision,
-                                                        "udp_multicast".to_string(),
+                                                        String::from("udp_multicast"),
                                                     )
                                                     .await
                                             }

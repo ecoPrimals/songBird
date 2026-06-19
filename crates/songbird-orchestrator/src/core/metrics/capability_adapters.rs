@@ -315,9 +315,9 @@ mod tests {
         a.compute_endpoints = vec!["http://c".into()];
         a.custom_endpoints.insert("custom".into(), vec!["http://z".into()]);
 
-        assert_eq!(a.get_endpoints_for_capability("compute"), &["http://c".to_string()]);
+        assert_eq!(a.get_endpoints_for_capability("compute"), &[String::from("http://c")]);
         assert_eq!(a.get_endpoints_for_capability("security"), &[] as &[String]);
-        assert_eq!(a.get_endpoints_for_capability("custom"), &["http://z".to_string()]);
+        assert_eq!(a.get_endpoints_for_capability("custom"), &[String::from("http://z")]);
         assert!(a.get_endpoints_for_capability("nope").is_empty());
     }
 
@@ -336,7 +336,7 @@ mod tests {
         a.compute_endpoints.push("http://primary".into());
         assert_eq!(
             a.get_primary_endpoint_for_capability("compute"),
-            Some(&"http://primary".to_string())
+            Some(&String::from("http://primary"))
         );
     }
 }

@@ -180,8 +180,7 @@ async fn query_by_capability(
 async fn get_orchestrator_info() -> Json<serde_json::Value> {
     // ✅ MIGRATED: Use environment-based configuration
     let base_url = songbird_process_env::var("SONGBIRD_BASE_URL").unwrap_or_else(|_| {
-        let port =
-            songbird_process_env::var("SONGBIRD_PORT").unwrap_or_else(|_| "8080".to_string());
+        let port = songbird_config::defaults::ports::orchestrator_port();
         format!("https://[::]:{port}")
     });
 

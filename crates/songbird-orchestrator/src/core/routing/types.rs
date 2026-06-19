@@ -210,7 +210,7 @@ mod tests {
         assert!(requirements.gpu_required);
         assert_eq!(requirements.cpu_cores, Some(4.0));
         assert_eq!(task.estimated_duration_secs, Some(600));
-        assert_eq!(task.metadata.get("model"), Some(&"resnet50".to_string()));
+        assert_eq!(task.metadata.get("model"), Some(&String::from("resnet50")));
     }
 
     #[test]

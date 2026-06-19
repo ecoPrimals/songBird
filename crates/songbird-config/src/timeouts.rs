@@ -280,10 +280,10 @@ impl TimeoutConfig {
 
         // Check for zero timeouts
         if self.connect.is_zero() {
-            errors.push("connect timeout cannot be zero".to_string());
+            errors.push(String::from("connect timeout cannot be zero"));
         }
         if self.request.is_zero() {
-            errors.push("request timeout cannot be zero".to_string());
+            errors.push(String::from("request timeout cannot be zero"));
         }
 
         // Check for unreasonably large timeouts (> 1 hour)
@@ -297,10 +297,10 @@ impl TimeoutConfig {
 
         // Check logical relationships
         if self.connect > self.request {
-            errors.push("connect timeout should be <= request timeout".to_string());
+            errors.push(String::from("connect timeout should be <= request timeout"));
         }
         if self.handshake > self.request {
-            errors.push("handshake timeout should be <= request timeout".to_string());
+            errors.push(String::from("handshake timeout should be <= request timeout"));
         }
 
         if errors.is_empty() {

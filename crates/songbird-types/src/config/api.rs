@@ -276,7 +276,7 @@ impl Default for CanonicalMonitoringConfig {
         Self {
             enabled: true,
             metrics_interval: Duration::from_secs(60),
-            log_level: "info".to_string(),
+            log_level: String::from("info"),
             enable_tracing: true,
         }
     }

@@ -151,7 +151,7 @@ mod tests {
 
     fn create_test_state() -> Arc<FederationAppState> {
         Arc::new(FederationAppState {
-            federation_state: Arc::new(FederationState::new("default".to_string())),
+            federation_state: Arc::new(FederationState::new(String::from("default"))),
             service_registry: Arc::new(FederatedServiceRegistry::new()),
             capability_registry: None,
             trust_manager: Some(Arc::new(TrustEscalationManager::with_defaults())),
@@ -195,7 +195,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_federation_routes_construction() {
-        let federation_state = Arc::new(FederationState::new("default".to_string()));
+        let federation_state = Arc::new(FederationState::new(String::from("default")));
         let service_registry = Arc::new(FederatedServiceRegistry::new());
 
         let _router = federation_routes(federation_state, service_registry);

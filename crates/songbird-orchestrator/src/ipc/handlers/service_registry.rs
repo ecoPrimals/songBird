@@ -81,7 +81,7 @@ pub async fn register_service(
 
     Ok(RegisterServiceResponse {
         service_id,
-        status: "registered".to_string(),
+        status: String::from("registered"),
         registered_at: system_time_to_iso8601(SystemTime::now()),
     })
 }
@@ -212,8 +212,8 @@ pub async fn health_check(
 
     // Songbird's health is always "healthy" if responding to RPC
     let health = HealthStatus {
-        service_id: "songbird".to_string(),
-        status: "healthy".to_string(),
+        service_id: String::from("songbird"),
+        status: String::from("healthy"),
         message: None,
         timestamp: system_time_to_iso8601(SystemTime::now()),
     };
@@ -266,7 +266,7 @@ pub async fn register_service_json(
 
     let resp = RegisterServiceResponse {
         service_id: response,
-        status: "registered".to_string(),
+        status: String::from("registered"),
         registered_at: system_time_to_iso8601(SystemTime::now()),
     };
 
@@ -449,9 +449,9 @@ pub async fn health_check_json(
     _handlers: &IpcHandlers,
 ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
     let health = HealthStatus {
-        service_id: "songbird".to_string(),
-        status: "healthy".to_string(),
-        message: Some("Songbird orchestrator is running".to_string()),
+        service_id: String::from("songbird"),
+        status: String::from("healthy"),
+        message: Some(String::from("Songbird orchestrator is running")),
         timestamp: system_time_to_iso8601(SystemTime::now()),
     };
 

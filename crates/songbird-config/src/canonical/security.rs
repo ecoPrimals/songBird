@@ -188,21 +188,21 @@ impl Default for SecurityCapabilityRequirements {
     fn default() -> Self {
         Self {
             encryption_capabilities: vec![
-                "aes_256".to_string(),
-                "rsa_2048".to_string(),
-                "tls_1_3".to_string(),
+                String::from("aes_256"),
+                String::from("rsa_2048"),
+                String::from("tls_1_3"),
             ],
             authentication_capabilities: vec![
-                "multi_factor".to_string(),
-                "token_based".to_string(),
-                "certificate_based".to_string(),
+                String::from("multi_factor"),
+                String::from("token_based"),
+                String::from("certificate_based"),
             ],
             access_control_capabilities: vec![
-                "role_based".to_string(),
-                "attribute_based".to_string(),
+                String::from("role_based"),
+                String::from("attribute_based"),
             ],
-            minimum_security_level: "enterprise".to_string(),
-            preferred_security_level: Some("quantum_resistant".to_string()),
+            minimum_security_level: String::from("enterprise"),
+            preferred_security_level: Some(String::from("quantum_resistant")),
         }
     }
 }
@@ -431,9 +431,9 @@ impl Default for TransportEncryptionConfig {
             require_tls: true,
             min_tls_version: TlsVersion::Tls13,
             preferred_cipher_suites: vec![
-                "TLS_AES_256_GCM_SHA384".to_string(),
-                "TLS_CHACHA20_POLY1305_SHA256".to_string(),
-                "TLS_AES_128_GCM_SHA256".to_string(),
+                String::from("TLS_AES_256_GCM_SHA384"),
+                String::from("TLS_CHACHA20_POLY1305_SHA256"),
+                String::from("TLS_AES_128_GCM_SHA256"),
             ],
             certificate_pinning: false,
         }
@@ -504,10 +504,14 @@ impl Default for RbacConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            default_roles: vec!["user".to_string(), "admin".to_string(), "system".to_string()],
+            default_roles: vec![
+                String::from("user"),
+                String::from("admin"),
+                String::from("system"),
+            ],
             role_hierarchy: HashMap::from([
-                ("admin".to_string(), vec!["user".to_string()]),
-                ("system".to_string(), vec!["admin".to_string(), "user".to_string()]),
+                (String::from("admin"), vec![String::from("user")]),
+                (String::from("system"), vec![String::from("admin"), String::from("user")]),
             ]),
         }
     }

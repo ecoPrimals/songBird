@@ -32,9 +32,9 @@
 //!
 //! // Evaluate peer trust
 //! let request = TrustEvaluationRequest {
-//!     peer_id: "tower2".to_string(),
-//!     peer_family: Some("a3f2".to_string()),
-//!     peer_tags: vec!["crypto:family:a3f2".to_string()],
+//!     peer_id: String::from("tower2"),
+//!     peer_family: Some(String::from("a3f2")),
+//!     peer_tags: vec![String::from("crypto:family:a3f2")],
 //!     connection_info: None,
 //!     context: None,
 //! };

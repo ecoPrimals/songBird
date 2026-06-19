@@ -32,7 +32,9 @@ use tokio::net::TcpListener;
 use tokio::net::{UnixListener, UnixStream};
 use tracing::{debug, error, info, warn};
 
-use super::super::protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
+use songbird_universal_ipc::tower_atomic::JsonRpcRequestWire;
+
+use super::super::protocol::{JsonRpcError, JsonRpcResponse};
 use super::UnixSocketServer;
 use crate::ipc::btsp;
 use crate::ipc::btsp_phase3;
@@ -479,7 +481,7 @@ impl UnixSocketServer {
             let mut payload = vec![0u8; frame_len];
             stream.read_exact(&mut payload).await.context("BTSP payload read error")?;
 
-            let request = match serde_json::from_slice::<JsonRpcRequest>(&payload) {
+            let request = match serde_json::from_slice::<JsonRpcRequestWire<'_>>(&payload) {
                 Ok(req) => req,
                 Err(e) => {
                     let resp = JsonRpcResponse::error(
@@ -557,7 +559,7 @@ impl UnixSocketServer {
         W: AsyncWrite + Unpin,
     {
         if !first_line.trim().is_empty() {
-            match serde_json::from_str::<JsonRpcRequest>(&first_line) {
+            match serde_json::from_str::<JsonRpcRequestWire<'_>>(&first_line) {
                 Ok(request) => {
                     let is_notification = request.id.is_none();
                     debug!(
@@ -618,7 +620,7 @@ impl UnixSocketServer {
                         continue;
                     }
 
-                    let request = match serde_json::from_str::<JsonRpcRequest>(&line) {
+                    let request = match serde_json::from_str::<JsonRpcRequestWire<'_>>(&line) {
                         Ok(req) => req,
                         Err(e) => {
                             let resp = JsonRpcResponse::error(
@@ -722,7 +724,7 @@ impl UnixSocketServer {
 
             let plaintext = keys.decrypt(&frame).context("BTSP Phase 3: decryption failed")?;
 
-            let request = match serde_json::from_slice::<JsonRpcRequest>(&plaintext) {
+            let request = match serde_json::from_slice::<JsonRpcRequestWire<'_>>(&plaintext) {
                 Ok(req) => req,
                 Err(e) => {
                     let resp = JsonRpcResponse::error(

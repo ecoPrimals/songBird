@@ -366,7 +366,7 @@ impl ZeroTouchConfig {
                 // Get operations for this capability
                 let ops_var = format!("REQUIRED_OPERATIONS_{}", cap_type.to_uppercase());
                 let operations = env(ops_var.as_str()).map_or_else(
-                    |_| vec!["*".to_string()],
+                    |_| vec![String::from("*")],
                     |ops| ops.split(',').map(|s| s.trim().to_string()).collect(),
                 );
 
@@ -398,7 +398,7 @@ impl ZeroTouchConfig {
 
                 requirements.push(CapabilityRequirement {
                     capability_type: cap_type.to_string(),
-                    required_operations: vec!["*".to_string()],
+                    required_operations: vec![String::from("*")],
                     quality_requirements: QualityRequirements::default(),
                     fallback_behavior: FallbackBehavior::LocalFallback,
                 });
@@ -418,31 +418,31 @@ impl ZeroTouchConfig {
         // Always include environment variable discovery
         methods.push(DiscoveryMethod::Environment {
             patterns: vec![
-                "CAPABILITY_*_ENDPOINT".to_string(),
-                "SERVICE_*_URL".to_string(),
-                "*_PROVIDER_ENDPOINT".to_string(),
+                String::from("CAPABILITY_*_ENDPOINT"),
+                String::from("SERVICE_*_URL"),
+                String::from("*_PROVIDER_ENDPOINT"),
             ],
         });
 
         // Add HTTP registry if endpoint is provided
         if env("SERVICE_REGISTRY_ENDPOINT").is_ok() {
             methods.push(DiscoveryMethod::HttpRegistry {
-                endpoint_env_var: "SERVICE_REGISTRY_ENDPOINT".to_string(),
-                api_path: "/v1/services".to_string(),
+                endpoint_env_var: String::from("SERVICE_REGISTRY_ENDPOINT"),
+                api_path: String::from("/v1/services"),
             });
         }
 
         // Add DNS discovery if domain is provided
         if env("SERVICE_DISCOVERY_DOMAIN").is_ok() {
             methods.push(DiscoveryMethod::DnsSrv {
-                domain_env_var: "SERVICE_DISCOVERY_DOMAIN".to_string(),
+                domain_env_var: String::from("SERVICE_DISCOVERY_DOMAIN"),
             });
         }
 
         // Add container metadata discovery if API endpoint is available
         if env("CONTAINER_METADATA_API").is_ok() {
             methods.push(DiscoveryMethod::ContainerMetadata {
-                api_endpoint_env_var: "CONTAINER_METADATA_API".to_string(),
+                api_endpoint_env_var: String::from("CONTAINER_METADATA_API"),
             });
         }
 
@@ -450,8 +450,8 @@ impl ZeroTouchConfig {
         if env("ENABLE_NETWORK_DISCOVERY").is_ok() {
             warn!("🔍 Network scanning enabled (development mode only)");
             methods.push(DiscoveryMethod::NetworkScan {
-                ranges_env_var: "DISCOVERY_IP_RANGES".to_string(),
-                ports_env_var: "DISCOVERY_PORTS".to_string(),
+                ranges_env_var: String::from("DISCOVERY_IP_RANGES"),
+                ports_env_var: String::from("DISCOVERY_PORTS"),
             });
         }
 
@@ -495,15 +495,15 @@ impl ZeroTouchConfig {
         let service_port = read_env("SERVICE_PORT")
             .or_else(|_| read_env("PORT"))
             .map_err(|_| SongbirdError::Configuration {
-                message: "SERVICE_PORT or PORT environment variable required".to_string(),
-                field: Some("service_port".to_string()),
-                suggestion: Some("Set SERVICE_PORT environment variable".to_string()),
+                message: String::from("SERVICE_PORT or PORT environment variable required"),
+                field: Some(String::from("service_port")),
+                suggestion: Some(String::from("Set SERVICE_PORT environment variable")),
             })?
             .parse()
             .map_err(|_| SongbirdError::Configuration {
-                message: "Invalid SERVICE_PORT value - must be a valid port number".to_string(),
-                field: Some("service_port".to_string()),
-                suggestion: Some("Set SERVICE_PORT to a number between 1 and 65535".to_string()),
+                message: String::from("Invalid SERVICE_PORT value - must be a valid port number"),
+                field: Some(String::from("service_port")),
+                suggestion: Some(String::from("Set SERVICE_PORT to a number between 1 and 65535")),
             })?;
 
         let health_port =
@@ -589,27 +589,27 @@ impl ZeroTouchConfig {
 
         // Collect standard metadata
         if let Ok(version) = read_env("SERVICE_VERSION") {
-            metadata.insert("version".to_string(), version);
+            metadata.insert(String::from("version"), version);
         }
         if let Ok(environment) = read_env("ENVIRONMENT") {
-            metadata.insert("environment".to_string(), environment);
+            metadata.insert(String::from("environment"), environment);
         }
         if let Ok(region) = read_env("REGION") {
-            metadata.insert("region".to_string(), region);
+            metadata.insert(String::from("region"), region);
         }
         if let Ok(az) = read_env("AVAILABILITY_ZONE") {
-            metadata.insert("availability_zone".to_string(), az);
+            metadata.insert(String::from("availability_zone"), az);
         }
 
         // Collect container metadata if available
         if let Ok(pod_name) = read_env("POD_NAME") {
-            metadata.insert("pod_name".to_string(), pod_name);
+            metadata.insert(String::from("pod_name"), pod_name);
         }
         if let Ok(namespace) = read_env("POD_NAMESPACE") {
-            metadata.insert("namespace".to_string(), namespace);
+            metadata.insert(String::from("namespace"), namespace);
         }
         if let Ok(node_name) = read_env("NODE_NAME") {
-            metadata.insert("node_name".to_string(), node_name);
+            metadata.insert(String::from("node_name"), node_name);
         }
 
         metadata
@@ -669,7 +669,7 @@ impl ZeroTouchConfig {
                     backoff_ms: 1000,
                 }),
                 "degraded" => Some(FallbackBehavior::DegradedMode {
-                    degraded_operations: vec!["*".to_string()],
+                    degraded_operations: vec![String::from("*")],
                 }),
                 "local" => Some(FallbackBehavior::LocalFallback),
                 _ => None,

@@ -336,7 +336,7 @@ mod tests {
 
     #[test]
     fn test_trust_relationship_creation() {
-        let relationship = TrustRelationship::new_anonymous("test-session".to_string(), 3600);
+        let relationship = TrustRelationship::new_anonymous(String::from("test-session"), 3600);
 
         assert_eq!(relationship.session_id, "test-session");
         assert_eq!(relationship.trust_level, TrustLevel::Anonymous);
@@ -349,7 +349,7 @@ mod tests {
     #[test]
     fn test_trust_relationship_expiration() {
         // Create a relationship that expires immediately
-        let mut relationship = TrustRelationship::new_anonymous("test-session".to_string(), 0);
+        let mut relationship = TrustRelationship::new_anonymous(String::from("test-session"), 0);
 
         // Set expiration to the past
         relationship.expires_at = SystemTime::now() - std::time::Duration::from_secs(1);
@@ -362,8 +362,8 @@ mod tests {
     fn test_capability_proof_verification() {
         // Valid proof (>= 32 chars)
         let proof = CapabilityProof {
-            capabilities: vec!["orchestration".to_string()],
-            proof: "0123456789abcdef0123456789abcdef".to_string(),
+            capabilities: vec![String::from("orchestration")],
+            proof: String::from("0123456789abcdef0123456789abcdef"),
             timestamp: SystemTime::now(),
         };
 
@@ -372,7 +372,7 @@ mod tests {
         // Empty capabilities should fail
         let invalid_proof = CapabilityProof {
             capabilities: vec![],
-            proof: "0123456789abcdef0123456789abcdef".to_string(),
+            proof: String::from("0123456789abcdef0123456789abcdef"),
             timestamp: SystemTime::now(),
         };
 
@@ -380,8 +380,8 @@ mod tests {
 
         // Short proof should fail (< 32 chars)
         let short_proof = CapabilityProof {
-            capabilities: vec!["orchestration".to_string()],
-            proof: "too-short".to_string(),
+            capabilities: vec![String::from("orchestration")],
+            proof: String::from("too-short"),
             timestamp: SystemTime::now(),
         };
 
@@ -391,8 +391,8 @@ mod tests {
     #[test]
     fn test_identity_proof_verification() {
         let identity = TowerIdentity {
-            node_id: "test-node".to_string(),
-            hostname: "test-host".to_string(),
+            node_id: String::from("test-node"),
+            hostname: String::from("test-host"),
             organization: None,
             public_key: None,
         };
@@ -400,8 +400,8 @@ mod tests {
         // Valid proof (>= 32 chars for identity proofs too)
         let proof = IdentityProof {
             identity,
-            proof: "0123456789abcdef0123456789abcdef".to_string(),
-            proof_type: "jwt".to_string(),
+            proof: String::from("0123456789abcdef0123456789abcdef"),
+            proof_type: String::from("jwt"),
             timestamp: SystemTime::now(),
         };
 
@@ -410,15 +410,15 @@ mod tests {
         // Empty node_id should fail
         let invalid_identity = TowerIdentity {
             node_id: String::new(),
-            hostname: "test-host".to_string(),
+            hostname: String::from("test-host"),
             organization: None,
             public_key: None,
         };
 
         let invalid_proof = IdentityProof {
             identity: invalid_identity,
-            proof: "0123456789abcdef0123456789abcdef".to_string(),
-            proof_type: "jwt".to_string(),
+            proof: String::from("0123456789abcdef0123456789abcdef"),
+            proof_type: String::from("jwt"),
             timestamp: SystemTime::now(),
         };
 

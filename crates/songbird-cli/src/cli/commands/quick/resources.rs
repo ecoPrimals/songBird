@@ -114,15 +114,15 @@ fn detect_gpu_availability() -> bool {
 }
 
 async fn detect_network_speed() -> NetworkSpeed {
-    if let Ok(speed_str) = songbird_process_env::var("SONGBIRD_NETWORK_SPEED") {
-        match speed_str.to_lowercase().as_str() {
-            "fast" => return NetworkSpeed::Fast,
-            "slow" => return NetworkSpeed::Slow,
-            _ => return NetworkSpeed::Medium,
-        }
-    }
+    network_speed_from_env(songbird_process_env::var("SONGBIRD_NETWORK_SPEED").ok().as_deref())
+}
 
-    NetworkSpeed::Medium
+fn network_speed_from_env(value: Option<&str>) -> NetworkSpeed {
+    match value.map(str::to_lowercase).as_deref() {
+        Some("fast") => NetworkSpeed::Fast,
+        Some("slow") => NetworkSpeed::Slow,
+        _ => NetworkSpeed::Medium,
+    }
 }
 
 fn detect_platform() -> String {
@@ -137,22 +137,26 @@ fn detect_architecture() -> String {
 mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
 
-    #[tokio::test]
-    async fn detect_network_speed_fast_case_insensitive() {
-        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_NETWORK_SPEED", "FaSt");
-        assert!(matches!(super::detect_network_speed().await, super::NetworkSpeed::Fast));
+    use super::NetworkSpeed;
+
+    #[test]
+    fn network_speed_fast_case_insensitive() {
+        assert!(matches!(super::network_speed_from_env(Some("FaSt")), NetworkSpeed::Fast));
     }
 
-    #[tokio::test]
-    async fn detect_network_speed_slow_branch() {
-        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_NETWORK_SPEED", "slow");
-        assert!(matches!(super::detect_network_speed().await, super::NetworkSpeed::Slow));
+    #[test]
+    fn network_speed_slow_branch() {
+        assert!(matches!(super::network_speed_from_env(Some("slow")), NetworkSpeed::Slow));
     }
 
-    #[tokio::test]
-    async fn detect_network_speed_unknown_word_maps_to_medium() {
-        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_NETWORK_SPEED", "fiber-line");
-        assert!(matches!(super::detect_network_speed().await, super::NetworkSpeed::Medium));
+    #[test]
+    fn network_speed_unknown_word_maps_to_medium() {
+        assert!(matches!(super::network_speed_from_env(Some("fiber-line")), NetworkSpeed::Medium));
+    }
+
+    #[test]
+    fn network_speed_none_maps_to_medium() {
+        assert!(matches!(super::network_speed_from_env(None), NetworkSpeed::Medium));
     }
 
     #[test]

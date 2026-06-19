@@ -32,7 +32,7 @@ fn compute_submission_ack_response(job_id: Uuid, routed_to: String) -> ComputeTa
     ComputeTaskResponse {
         job_id,
         routed_to,
-        status: "routing".to_string(),
+        status: String::from("routing"),
         estimated_completion: None,
     }
 }

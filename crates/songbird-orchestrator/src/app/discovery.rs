@@ -59,7 +59,7 @@ pub fn initialize_discovery(
         config.federation.trust_timeouts.capability,
         config.federation.trust_timeouts.identity,
         if config.federation.trust_timeouts.hardware == 0 {
-            "never".to_string()
+            String::from("never")
         } else {
             format!("{}s", config.federation.trust_timeouts.hardware)
         }

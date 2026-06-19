@@ -90,11 +90,11 @@ pub fn discover_node_name() -> Result<String> {
 #[must_use]
 pub fn discover_capabilities() -> Vec<String> {
     vec![
-        "discovery".to_string(),
-        "federation".to_string(),
-        "coordination".to_string(),
-        "health".to_string(),
-        "capabilities".to_string(),
+        String::from("discovery"),
+        String::from("federation"),
+        String::from("coordination"),
+        String::from("health"),
+        String::from("capabilities"),
     ]
 }
 
@@ -203,7 +203,7 @@ pub fn discover_endpoints(https_port: u16) -> Vec<TransportEndpointMessage> {
             endpoints.push(TransportEndpointMessage {
                 interface_type: interface_type.to_string(),
                 address: format!("{addr}:{https_port}"),
-                protocols: vec!["https".to_string()],
+                protocols: vec![String::from("https")],
                 preference: 1,
             });
         }
@@ -212,9 +212,9 @@ pub fn discover_endpoints(https_port: u16) -> Vec<TransportEndpointMessage> {
     if endpoints.is_empty() {
         warn!("No endpoints discovered - using localhost fallback");
         endpoints.push(TransportEndpointMessage {
-            interface_type: "ipv4".to_string(),
+            interface_type: String::from("ipv4"),
             address: format!("{}:{https_port}", songbird_types::constants::LOCALHOST),
-            protocols: vec!["https".to_string()],
+            protocols: vec![String::from("https")],
             preference: 0,
         });
     }
@@ -285,7 +285,7 @@ mod tests {
     fn test_discover_capabilities() {
         let capabilities = discover_capabilities();
         assert!(!capabilities.is_empty());
-        assert!(capabilities.contains(&"discovery".to_string()));
+        assert!(capabilities.contains(&String::from("discovery")));
     }
 
     /// Create a mock env reader from a `HashMap` (concurrent-safe, no global state)
@@ -305,11 +305,11 @@ mod tests {
     #[test]
     fn test_discover_identity_tags_from_family() {
         let mut env = std::collections::HashMap::new();
-        env.insert("SONGBIRD_FAMILY_ID".to_string(), "test_family".to_string());
+        env.insert(String::from("SONGBIRD_FAMILY_ID"), String::from("test_family"));
 
         let tags = discover_identity_tags_with(mock_env(env));
         assert!(
-            tags.contains(&"crypto:family:test_family".to_string()),
+            tags.contains(&String::from("crypto:family:test_family")),
             "Expected tag not found. Got: {tags:?}"
         );
     }
@@ -317,16 +317,19 @@ mod tests {
     #[test]
     fn test_discover_identity_tags_explicit() {
         let mut env = std::collections::HashMap::new();
-        env.insert("SONGBIRD_TAGS".to_string(), "custom:tag:value1,another:tag:value2".to_string());
+        env.insert(
+            String::from("SONGBIRD_TAGS"),
+            String::from("custom:tag:value1,another:tag:value2"),
+        );
 
         let tags = discover_identity_tags_with(mock_env(env));
 
         assert!(
-            tags.contains(&"custom:tag:value1".to_string()),
+            tags.contains(&String::from("custom:tag:value1")),
             "Expected custom:tag:value1 in tags. Got: {tags:?}"
         );
         assert!(
-            tags.contains(&"another:tag:value2".to_string()),
+            tags.contains(&String::from("another:tag:value2")),
             "Expected another:tag:value2 in tags. Got: {tags:?}"
         );
     }
@@ -334,30 +337,30 @@ mod tests {
     #[test]
     fn test_discover_identity_tags_org_and_role() {
         let mut env = std::collections::HashMap::new();
-        env.insert("SONGBIRD_ORG_ID".to_string(), "acme".to_string());
-        env.insert("SONGBIRD_ROLE".to_string(), "relay".to_string());
+        env.insert(String::from("SONGBIRD_ORG_ID"), String::from("acme"));
+        env.insert(String::from("SONGBIRD_ROLE"), String::from("relay"));
 
         let tags = discover_identity_tags_with(mock_env(env));
 
-        assert!(tags.contains(&"crypto:org:acme".to_string()));
-        assert!(tags.contains(&"security provider:role:relay".to_string()));
+        assert!(tags.contains(&String::from("crypto:org:acme")));
+        assert!(tags.contains(&String::from("security provider:role:relay")));
     }
 
     #[test]
     fn test_discover_identity_tags_all_sources() {
         let mut env = std::collections::HashMap::new();
-        env.insert("SONGBIRD_TAGS".to_string(), "explicit:tag:1".to_string());
-        env.insert("SONGBIRD_FAMILY_ID".to_string(), "nat0".to_string());
-        env.insert("SONGBIRD_ORG_ID".to_string(), "org1".to_string());
-        env.insert("SONGBIRD_ROLE".to_string(), "edge".to_string());
+        env.insert(String::from("SONGBIRD_TAGS"), String::from("explicit:tag:1"));
+        env.insert(String::from("SONGBIRD_FAMILY_ID"), String::from("nat0"));
+        env.insert(String::from("SONGBIRD_ORG_ID"), String::from("org1"));
+        env.insert(String::from("SONGBIRD_ROLE"), String::from("edge"));
 
         let tags = discover_identity_tags_with(mock_env(env));
 
         assert_eq!(tags.len(), 4);
-        assert!(tags.contains(&"explicit:tag:1".to_string()));
-        assert!(tags.contains(&"crypto:family:nat0".to_string()));
-        assert!(tags.contains(&"crypto:org:org1".to_string()));
-        assert!(tags.contains(&"security provider:role:edge".to_string()));
+        assert!(tags.contains(&String::from("explicit:tag:1")));
+        assert!(tags.contains(&String::from("crypto:family:nat0")));
+        assert!(tags.contains(&String::from("crypto:org:org1")));
+        assert!(tags.contains(&String::from("security provider:role:edge")));
     }
 
     #[test]
@@ -370,10 +373,10 @@ mod tests {
     #[test]
     fn discover_identity_tags_trims_whitespace() {
         let mut env = std::collections::HashMap::new();
-        env.insert("SONGBIRD_TAGS".to_string(), "  a:b:c  ,  d:e:f  ".to_string());
+        env.insert(String::from("SONGBIRD_TAGS"), String::from("  a:b:c  ,  d:e:f  "));
         let tags = discover_identity_tags_with(|k| env.get(k).cloned());
-        assert!(tags.contains(&"a:b:c".to_string()));
-        assert!(tags.contains(&"d:e:f".to_string()));
+        assert!(tags.contains(&String::from("a:b:c")));
+        assert!(tags.contains(&String::from("d:e:f")));
     }
 
     #[test]
@@ -386,7 +389,7 @@ mod tests {
     #[test]
     fn network_interface_struct_fields() {
         let ni = NetworkInterface {
-            name: "eth0".to_string(),
+            name: String::from("eth0"),
             addresses: vec!["127.0.0.1".parse().unwrap()],
             flags: vec![],
             mtu: Some(1500),

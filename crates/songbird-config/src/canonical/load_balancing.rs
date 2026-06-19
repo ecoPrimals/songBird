@@ -171,7 +171,7 @@ mod tests {
     #[test]
     fn test_custom_strategy_display() {
         let custom = LoadBalancingStrategy::Custom {
-            name: "my-strategy".to_string(),
+            name: String::from("my-strategy"),
             config: serde_json::json!({"key": "value"}),
         };
         assert_eq!(custom.to_string(), "custom-my-strategy");
@@ -264,15 +264,15 @@ mod tests {
     #[test]
     fn test_custom_strategy_equality() {
         let c1 = LoadBalancingStrategy::Custom {
-            name: "test".to_string(),
+            name: String::from("test"),
             config: serde_json::json!({"a": 1}),
         };
         let c2 = LoadBalancingStrategy::Custom {
-            name: "test".to_string(),
+            name: String::from("test"),
             config: serde_json::json!({"a": 1}),
         };
         let c3 = LoadBalancingStrategy::Custom {
-            name: "other".to_string(),
+            name: String::from("other"),
             config: serde_json::json!({"a": 1}),
         };
 
@@ -328,7 +328,7 @@ mod tests {
     #[test]
     fn test_custom_serialization() {
         let custom = LoadBalancingStrategy::Custom {
-            name: "custom-algo".to_string(),
+            name: String::from("custom-algo"),
             config: serde_json::json!({"threshold": 100, "enabled": true}),
         };
         let json = serde_json::to_string(&custom).expect("Failed to serialize");

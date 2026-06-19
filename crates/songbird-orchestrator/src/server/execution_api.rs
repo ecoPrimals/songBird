@@ -153,10 +153,10 @@ mod tests {
 
     fn sample_request() -> ExecutionRequest {
         ExecutionRequest {
-            id: Some("job-1".to_string()),
-            command: "echo hi".to_string(),
+            id: Some(String::from("job-1")),
+            command: String::from("echo hi"),
             working_dir: Some(PathBuf::from("/tmp")),
-            env: HashMap::from([("PATH".to_string(), "/usr/bin".to_string())]),
+            env: HashMap::from([(String::from("PATH"), String::from("/usr/bin"))]),
             background: false,
             timeout_seconds: Some(60),
             capture_output: true,
@@ -166,7 +166,7 @@ mod tests {
     #[test]
     fn single_tower_request_serde_roundtrip() {
         let req = SingleTowerRequest {
-            tower_endpoint: "https://tower.example/api".to_string(),
+            tower_endpoint: String::from("https://tower.example/api"),
             request: sample_request(),
         };
         let json = serde_json::to_string(&req).unwrap();
@@ -178,7 +178,7 @@ mod tests {
     #[test]
     fn broadcast_request_optional_fields_default_in_handler_logic() {
         let req = BroadcastRequest {
-            tower_ids: vec!["a".to_string()],
+            tower_ids: vec![String::from("a")],
             request: sample_request(),
             fail_fast: None,
             min_success_rate: None,
@@ -195,7 +195,7 @@ mod tests {
     #[test]
     fn broadcast_request_explicit_options_roundtrip() {
         let req = BroadcastRequest {
-            tower_ids: vec!["t1".to_string(), "t2".to_string()],
+            tower_ids: vec![String::from("t1"), String::from("t2")],
             request: sample_request(),
             fail_fast: Some(true),
             min_success_rate: Some(0.5),
@@ -210,9 +210,9 @@ mod tests {
 
     #[test]
     fn api_error_display() {
-        let e = ApiError::Execution("boom".to_string());
+        let e = ApiError::Execution(String::from("boom"));
         assert!(format!("{e}").contains("boom"));
-        let i = ApiError::InvalidRequest("bad".to_string());
+        let i = ApiError::InvalidRequest(String::from("bad"));
         assert!(format!("{i}").contains("bad"));
     }
 
@@ -220,20 +220,20 @@ mod tests {
     fn api_error_into_response_status() {
         use axum::http::StatusCode;
 
-        let r = ApiError::Execution("e".to_string()).into_response();
+        let r = ApiError::Execution(String::from("e")).into_response();
         assert_eq!(r.status(), StatusCode::INTERNAL_SERVER_ERROR);
-        let r2 = ApiError::InvalidRequest("i".to_string()).into_response();
+        let r2 = ApiError::InvalidRequest(String::from("i")).into_response();
         assert_eq!(r2.status(), StatusCode::BAD_REQUEST);
     }
 
     #[test]
     fn execution_response_serde_shape() {
         let resp = ExecutionResponse {
-            job_id: "j1".to_string(),
+            job_id: String::from("j1"),
             status: ExecutionStatus::Completed,
             pid: Some(7),
             exit_code: Some(0),
-            stdout: "out".to_string(),
+            stdout: String::from("out"),
             stderr: String::new(),
             started_at: SystemTime::UNIX_EPOCH,
             completed_at: Some(SystemTime::UNIX_EPOCH),

@@ -47,7 +47,7 @@ impl Default for GamingAuthConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            method: "jwt".to_string(),
+            method: String::from("jwt"),
             session_timeout: 3600,
         }
     }
@@ -78,7 +78,7 @@ impl Default for EncryptionConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            algorithm: "AES256".to_string(),
+            algorithm: String::from("AES256"),
             key_size: 256,
         }
     }
@@ -101,7 +101,7 @@ impl Default for AuthenticationConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            method: "bearer_token".to_string(),
+            method: String::from("bearer_token"),
             token_lifetime: Duration::from_secs(3600),
         }
     }

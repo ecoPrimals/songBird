@@ -96,7 +96,7 @@ impl Default for CanonicalDiscoveryConfig {
         Self {
             mode,
             backend: songbird_process_env::var("SONGBIRD_DISCOVERY_BACKEND")
-                .unwrap_or_else(|_| "universal".to_string()),
+                .unwrap_or_else(|_| String::from("universal")),
             port: songbird_process_env::var("SONGBIRD_DISCOVERY_PORT")
                 .ok()
                 .and_then(|v| v.parse().ok())
@@ -113,7 +113,7 @@ impl Default for CanonicalDiscoveryConfig {
                 })
                 .unwrap_or_else(|| {
                     // Use multicast by default (224.0.0.251 is mDNS multicast group)
-                    vec!["224.0.0.251:2300".to_string()]
+                    vec![String::from("224.0.0.251:2300")]
                 }),
             known_peers: songbird_process_env::var("SONGBIRD_KNOWN_PEERS")
                 .ok()
@@ -126,7 +126,7 @@ impl Default for CanonicalDiscoveryConfig {
                     }
                 })
                 .unwrap_or_default(),
-            protocol_version: "2.0".to_string(),
+            protocol_version: String::from("2.0"),
             session_rotation_interval: 3600, // 1 hour
         }
     }

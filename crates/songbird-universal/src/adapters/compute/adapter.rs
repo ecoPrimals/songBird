@@ -117,11 +117,7 @@ impl ComputeAdapter {
                     "SONGBIRD_HOST",
                     format!("http://{}", songbird_types::constants::LOCALHOST_HOSTNAME),
                 );
-                let port = SafeEnv::get_port(
-                    "SONGBIRD_COMPUTE_PORT",
-                    songbird_config::defaults::ports::service_port("COMPUTE", 8080),
-                )
-                .to_string();
+                let port = songbird_config::defaults::ports::compute_provider_port().to_string();
                 let endpoint = format!("{host}:{port}");
 
                 debug!("🔄 Using fallback compute endpoint: {}", endpoint);
@@ -527,7 +523,8 @@ mod tests {
         let adapter =
             ComputeAdapter::new_from_discovery_with_resolver(CapabilityEndpointResolver::new())
                 .await?;
-        assert_eq!(adapter.endpoint(), "http://localhost:8080");
+        let expected_port = songbird_config::defaults::ports::compute_provider_port();
+        assert_eq!(adapter.endpoint(), format!("http://localhost:{expected_port}"));
 
         songbird_process_env::reset_overlay();
         Ok(())

@@ -128,7 +128,7 @@ mod tests {
     #[test]
     fn test_batch_result_success_rate_precision() {
         let mut result = BatchResult::<String>::new(3);
-        result.successes.push("a".to_string());
+        result.successes.push(String::from("a"));
 
         let rate = result.success_rate();
         assert!((rate - 0.333_333_333).abs() < 0.001);
@@ -170,7 +170,7 @@ mod tests {
     #[test]
     fn complete_success_empty_failure_list() {
         let mut r = BatchResult::<String>::new(1);
-        r.successes.push("ok".to_string());
+        r.successes.push(String::from("ok"));
         assert!(r.is_complete_success());
         assert!(!r.is_complete_failure());
     }
@@ -221,8 +221,8 @@ mod tests {
     #[test]
     fn batch_result_with_string_type() {
         let mut r = BatchResult::<String>::new(2);
-        r.successes.push("a".to_string());
-        r.successes.push("b".to_string());
+        r.successes.push(String::from("a"));
+        r.successes.push(String::from("b"));
         assert_eq!(r.success_rate(), 1.0);
     }
 

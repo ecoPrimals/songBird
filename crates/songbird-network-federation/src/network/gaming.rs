@@ -244,7 +244,7 @@ pub struct SessionConfig {
 impl Default for SessionConfig {
     fn default() -> Self {
         Self {
-            name: "Game Session".to_string(),
+            name: String::from("Game Session"),
             max_players: 8,
             password: None,
             public: true,
@@ -318,9 +318,9 @@ pub fn create_protocol_handler(protocol: GameProtocolType) -> SongbirdResult<Pro
         GameProtocolType::Custom(name) => Err(SongbirdError::Network {
             message: format!("Custom protocol '{name}' not supported"),
             interface: None,
-            suggestion: Some(
-                "Use a standard protocol (UDP, TCP, IPX, DirectPlay, NetBIOS)".to_string(),
-            ),
+            suggestion: Some(String::from(
+                "Use a standard protocol (UDP, TCP, IPX, DirectPlay, NetBIOS)",
+            )),
         }),
     }
 }

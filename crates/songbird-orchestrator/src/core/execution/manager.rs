@@ -86,7 +86,7 @@ mod tests {
         // Note: Will fail without crypto provider
         if let Ok(manager) = ExecutionManager::new().await {
             manager
-                .register_tower("test-tower".to_string(), "http://localhost:9020".to_string())
+                .register_tower(String::from("test-tower"), String::from("http://localhost:9020"))
                 .await;
         }
     }

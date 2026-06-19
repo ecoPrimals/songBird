@@ -178,22 +178,22 @@ impl TrustLevel {
         match self {
             Self::None => vec![],
             Self::Limited => vec![
-                "discovery".to_string(),
-                "coordination/*".to_string(),
-                "birdsong/*".to_string(),
-                "health".to_string(),
-                "capabilities".to_string(),
+                String::from("discovery"),
+                String::from("coordination/*"),
+                String::from("birdsong/*"),
+                String::from("health"),
+                String::from("capabilities"),
             ],
             Self::Elevated => vec![
-                "discovery".to_string(),
-                "coordination/*".to_string(),
-                "birdsong/*".to_string(),
-                "health".to_string(),
-                "capabilities".to_string(),
-                "federation/*".to_string(),
-                "data/read".to_string(),
+                String::from("discovery"),
+                String::from("coordination/*"),
+                String::from("birdsong/*"),
+                String::from("health"),
+                String::from("capabilities"),
+                String::from("federation/*"),
+                String::from("data/read"),
             ],
-            Self::Highest => vec!["*".to_string()],
+            Self::Highest => vec![String::from("*")],
         }
     }
 
@@ -201,17 +201,17 @@ impl TrustLevel {
     #[must_use]
     pub fn default_denied_capabilities(self) -> Vec<String> {
         match self {
-            Self::None => vec!["*".to_string()],
+            Self::None => vec![String::from("*")],
             Self::Limited => vec![
-                "data/*".to_string(),
-                "commands/*".to_string(),
-                "federation/*".to_string(),
-                "keys/*".to_string(),
+                String::from("data/*"),
+                String::from("commands/*"),
+                String::from("federation/*"),
+                String::from("keys/*"),
             ],
             Self::Elevated => vec![
-                "data/write".to_string(),
-                "commands/sensitive".to_string(),
-                "keys/*".to_string(),
+                String::from("data/write"),
+                String::from("commands/sensitive"),
+                String::from("keys/*"),
             ],
             Self::Highest => vec![],
         }
@@ -289,13 +289,13 @@ impl TrustEvaluation {
             TrustLevel::None | TrustLevel::Highest => None,
             TrustLevel::Limited => Some(ElevationPath {
                 next_level: TrustLevel::Elevated,
-                requirements: vec!["human_approval".to_string()],
-                method: "user_consent_ui".to_string(),
+                requirements: vec![String::from("human_approval")],
+                method: String::from("user_consent_ui"),
             }),
             TrustLevel::Elevated => Some(ElevationPath {
                 next_level: TrustLevel::Highest,
-                requirements: vec!["human_entropy".to_string()],
-                method: "solokey_or_phone_hsm".to_string(),
+                requirements: vec![String::from("human_entropy")],
+                method: String::from("solokey_or_phone_hsm"),
             }),
         }
     }

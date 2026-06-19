@@ -128,6 +128,6 @@ mod tests {
     #[tokio::test]
     async fn service_registry_register_noop() {
         let mut r = ServiceRegistry::new(RegistryConfig::default());
-        r.register_service("id".to_string(), serde_json::json!({})).await.expect("register");
+        r.register_service(String::from("id"), serde_json::json!({})).await.expect("register");
     }
 }

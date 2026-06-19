@@ -38,7 +38,7 @@ mod tests {
             tcp_reachable: false,
             https_reachable: false,
             rtt_ms: None,
-            error: Some("unit".to_string()),
+            error: Some(String::from("unit")),
         };
         assert_eq!(r.target, addr);
         assert!(!r.tcp_reachable);

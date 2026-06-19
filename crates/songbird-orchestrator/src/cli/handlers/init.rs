@@ -11,7 +11,7 @@ use anyhow::Result;
 ///
 /// Returns an error if the operation fails.
 pub async fn handle_init_command(directory: Option<String>, non_interactive: bool) -> Result<()> {
-    let target_dir = directory.unwrap_or_else(|| ".".to_string());
+    let target_dir = directory.unwrap_or_else(|| String::from("."));
     print_info(&format!("🚀 Initializing Songbird in directory: {target_dir}"));
 
     std::fs::create_dir_all(&target_dir)?;

@@ -50,7 +50,7 @@ impl BirdSongHandler {
         let encrypted_b64 = STANDARD.encode(&encrypted);
 
         // Get family ID for plaintext header
-        let family_id = provider.family_id().unwrap_or_else(|| "unknown".to_string());
+        let family_id = provider.family_id().unwrap_or_else(|| String::from("unknown"));
 
         info!(
             "✅ Generated encrypted beacon for node: {} (family: {}, size: {} bytes)",

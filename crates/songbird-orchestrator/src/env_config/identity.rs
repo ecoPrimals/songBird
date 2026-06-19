@@ -36,11 +36,11 @@ where
         .or_else(|_| env_reader("BIOMEOS_FAMILY_ID"))
         .or_else(|_| env_reader("SONGBIRD_FAMILY_ID"))
         .or_else(|_| env_reader("FAMILY_ID"))
-        .unwrap_or_else(|_| "default".to_string())
+        .unwrap_or_else(|_| String::from("default"))
 }
 
 /// Get node ID (self-knowledge)
 #[must_use]
 pub fn node_id() -> String {
-    env("SONGBIRD_NODE_ID").or_else(|_| env("NODE_ID")).unwrap_or_else(|_| "default".to_string())
+    env("SONGBIRD_NODE_ID").or_else(|_| env("NODE_ID")).unwrap_or_else(|_| String::from("default"))
 }

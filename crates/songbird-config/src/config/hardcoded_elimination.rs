@@ -221,10 +221,10 @@ impl Default for NetworkConfig {
             port_ranges: {
                 let base = crate::canonical::constants::get_port_range_start();
                 let mut ranges = HashMap::new();
-                ranges.insert("orchestrator".to_string(), (base, base.saturating_add(10)));
-                ranges.insert("gaming".to_string(), (7000, 7100));
-                ranges.insert("federation".to_string(), (base, base.saturating_add(10)));
-                ranges.insert("capability_services".to_string(), (base, base.saturating_add(10)));
+                ranges.insert(String::from("orchestrator"), (base, base.saturating_add(10)));
+                ranges.insert(String::from("gaming"), (7000, 7100));
+                ranges.insert(String::from("federation"), (base, base.saturating_add(10)));
+                ranges.insert(String::from("capability_services"), (base, base.saturating_add(10)));
                 ranges
             },
             orchestrator_endpoint: Arc::from(format!("http://{bind_ip}:{orchestrator_port}")),

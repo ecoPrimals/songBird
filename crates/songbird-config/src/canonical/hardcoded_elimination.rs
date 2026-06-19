@@ -161,7 +161,7 @@ impl HostConfig {
     /// use songbird_config::canonical::hardcoded_elimination::HostConfig;
     ///
     /// let mut config = HostConfig::with_defaults();
-    /// config.orchestrator = "custom.example.com".to_string();
+    /// config.orchestrator = String::from("custom.example.com");
     /// ```
     #[must_use]
     pub fn with_defaults() -> Self {
@@ -485,8 +485,8 @@ mod tests {
     #[test]
     fn test_endpoint_config_from_env() {
         let env = |key: &str| match key {
-            "SONGBIRD_ORCHESTRATOR_PORT" => Ok("9999".to_string()),
-            "SONGBIRD_ORCHESTRATOR_HOST" => Ok("test.local".to_string()),
+            "SONGBIRD_ORCHESTRATOR_PORT" => Ok(String::from("9999")),
+            "SONGBIRD_ORCHESTRATOR_HOST" => Ok(String::from("test.local")),
             _ => read_process_env(key),
         };
         let config = EndpointConfig::from_env_reader(&env).expect("Failed to load config");
@@ -508,7 +508,7 @@ mod tests {
     #[test]
     fn test_port_config_from_env_rejects_invalid_port() {
         let env = |key: &str| match key {
-            "SONGBIRD_ORCHESTRATOR_PORT" => Ok("not_a_u16".to_string()),
+            "SONGBIRD_ORCHESTRATOR_PORT" => Ok(String::from("not_a_u16")),
             _ => read_process_env(key),
         };
         let err = PortConfig::from_env_reader(&env).expect_err("invalid port");
@@ -553,7 +553,7 @@ mod tests {
     fn host_config_from_env_overrides_single_host() {
         let env = |key: &str| -> Result<String, std::env::VarError> {
             if key == "SONGBIRD_ORCHESTRATOR_HOST" {
-                Ok("custom.host".to_string())
+                Ok(String::from("custom.host"))
             } else {
                 Err(std::env::VarError::NotPresent)
             }

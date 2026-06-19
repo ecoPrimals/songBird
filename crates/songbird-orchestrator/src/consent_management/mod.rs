@@ -234,7 +234,7 @@ impl ConsentManager {
         {
             // Auto-approve
             let record = ConsentRecord {
-                id: id.clone(),
+                id: Arc::clone(&id),
                 user_id,
                 task_id,
                 operation,
@@ -252,14 +252,14 @@ impl ConsentManager {
             }
 
             let mut records = self.records.write().await;
-            records.insert(id.clone(), record);
+            records.insert(Arc::clone(&id), record);
             return id;
         }
         drop(prefs);
 
         // Create pending request
         let record = ConsentRecord {
-            id: id.clone(),
+            id: Arc::clone(&id),
             user_id,
             task_id,
             operation,
@@ -276,7 +276,7 @@ impl ConsentManager {
         }
 
         let mut records = self.records.write().await;
-        records.insert(id.clone(), record);
+        records.insert(Arc::clone(&id), record);
 
         id
     }
@@ -288,14 +288,12 @@ impl ConsentManager {
         if let Some(record) = records.get_mut(consent_id) {
             record.status = ConsentStatus::Approved;
             record.responded_at = Some(Utc::now());
-            record.reason = reason.clone();
+            record.reason.clone_from(&reason);
 
-            // Persist to storage if available
             if let Some(ref storage) = self.storage {
-                let _ = storage.save(record).await; // Best effort
+                let _ = storage.save(record).await;
             }
 
-            // Wake any waiters (event-driven consent decision)
             self.decision_notify.notify_waiters();
 
             true
@@ -311,14 +309,12 @@ impl ConsentManager {
         if let Some(record) = records.get_mut(consent_id) {
             record.status = ConsentStatus::Denied;
             record.responded_at = Some(Utc::now());
-            record.reason = reason.clone();
+            record.reason.clone_from(&reason);
 
-            // Persist to storage if available
             if let Some(ref storage) = self.storage {
-                let _ = storage.save(record).await; // Best effort
+                let _ = storage.save(record).await;
             }
 
-            // Wake any waiters (event-driven consent decision)
             self.decision_notify.notify_waiters();
 
             true

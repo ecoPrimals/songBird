@@ -65,7 +65,7 @@ impl MetricsCollector {
     /// Record a metric
     pub async fn record(&self, metric: MetricValue) {
         let mut metrics = self.metrics.write().await;
-        metrics.entry(metric.name.clone()).or_insert_with(Vec::new).push(metric);
+        metrics.entry(Arc::clone(&metric.name)).or_insert_with(Vec::new).push(metric);
     }
 
     /// Get all metrics for a name

@@ -53,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
         match args[i].as_str() {
             "--url" => {
                 if i + 1 < args.len() {
-                    url = args[i + 1].clone();
+                    url.clone_from(&args[i + 1]);
                     i += 2;
                 } else {
                     eprintln!("Error: --url requires a value");
@@ -66,7 +66,7 @@ async fn main() -> anyhow::Result<()> {
             }
             "--security-provider-socket" => {
                 if i + 1 < args.len() {
-                    security_provider_socket = args[i + 1].clone();
+                    security_provider_socket.clone_from(&args[i + 1]);
                     i += 2;
                 } else {
                     eprintln!("Error: --security-provider-socket requires a value");

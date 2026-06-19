@@ -12,7 +12,7 @@ use std::sync::{Arc, RwLock};
 
 /// Sync persistence backend for onion service data.
 ///
-/// Production path: [`IpcOnionStorage`](crate::storage_ipc::IpcOnionStorage) delegates
+/// Production path: [`IpcOnionStorage`] delegates
 /// to the `storage.*` capability provider via JSON-RPC at runtime.
 /// Fallback: [`InMemoryOnionStorage`] when no provider is available.
 pub trait OnionStorageBackend: Send + Sync {

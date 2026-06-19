@@ -31,12 +31,12 @@ pub fn get_log_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarError
         if cfg!(windows) {
             format!(
                 "{}\\AppData\\Local\\Songbird\\logs",
-                env_get_or_default_with(env, "USERPROFILE", "C:\\Users\\Default".to_string()),
+                env_get_or_default_with(env, "USERPROFILE", String::from("C:\\Users\\Default")),
             )
         } else {
             format!(
                 "{}/.local/share/songbird/logs",
-                env_get_or_default_with(env, "HOME", "/tmp".to_string()),
+                env_get_or_default_with(env, "HOME", String::from("/tmp")),
             )
         }
     })
@@ -55,10 +55,13 @@ pub fn get_cache_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarErr
         if cfg!(windows) {
             format!(
                 "{}\\AppData\\Local\\Songbird\\cache",
-                env_get_or_default_with(env, "USERPROFILE", "C:\\Users\\Default".to_string()),
+                env_get_or_default_with(env, "USERPROFILE", String::from("C:\\Users\\Default")),
             )
         } else {
-            format!("{}/.cache/songbird", env_get_or_default_with(env, "HOME", "/tmp".to_string()),)
+            format!(
+                "{}/.cache/songbird",
+                env_get_or_default_with(env, "HOME", String::from("/tmp")),
+            )
         }
     })
 }
@@ -76,12 +79,12 @@ pub fn get_data_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarErro
         if cfg!(windows) {
             format!(
                 "{}\\AppData\\Roaming\\Songbird",
-                env_get_or_default_with(env, "USERPROFILE", "C:\\Users\\Default".to_string()),
+                env_get_or_default_with(env, "USERPROFILE", String::from("C:\\Users\\Default")),
             )
         } else {
             format!(
                 "{}/.local/share/songbird",
-                env_get_or_default_with(env, "HOME", "/tmp".to_string()),
+                env_get_or_default_with(env, "HOME", String::from("/tmp")),
             )
         }
     })
@@ -100,10 +103,13 @@ pub fn get_config_dir_with(env: &impl Fn(&str) -> Result<String, std::env::VarEr
         if cfg!(windows) {
             format!(
                 "{}\\AppData\\Roaming\\Songbird\\config",
-                env_get_or_default_with(env, "USERPROFILE", "C:\\Users\\Default".to_string()),
+                env_get_or_default_with(env, "USERPROFILE", String::from("C:\\Users\\Default")),
             )
         } else {
-            format!("{}/.config/songbird", env_get_or_default_with(env, "HOME", "/tmp".to_string()),)
+            format!(
+                "{}/.config/songbird",
+                env_get_or_default_with(env, "HOME", String::from("/tmp")),
+            )
         }
     })
 }

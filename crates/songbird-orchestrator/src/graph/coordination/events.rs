@@ -78,15 +78,15 @@ impl CoordinationValidator {
     ) -> Result<CoordinationValidationResult> {
         let mut result = CoordinationValidationResult::new(
             CoordinationPattern::Sequential,
-            "Sequential execution pattern".to_string(),
+            String::from("Sequential execution pattern"),
         );
 
         // Check linear chain
         let dependencies = self.build_dependency_map(graph);
         if !self.is_linear_chain(&dependencies, graph.nodes.len()) {
-            result.add_issue(CoordinationIssue::error(
-                "Sequential pattern requires linear chain".to_string(),
-            ));
+            result.add_issue(CoordinationIssue::error(String::from(
+                "Sequential pattern requires linear chain",
+            )));
         }
 
         // Check data flow
@@ -113,13 +113,14 @@ impl CoordinationValidator {
     ) -> Result<CoordinationValidationResult> {
         let mut result = CoordinationValidationResult::new(
             CoordinationPattern::Parallel,
-            "Parallel execution pattern".to_string(),
+            String::from("Parallel execution pattern"),
         );
 
         // Check for parallel branches
         let parallel_groups = self.identify_parallel_groups(graph)?;
         if parallel_groups.is_empty() {
-            result.add_issue(CoordinationIssue::warning("No parallel groups detected".to_string()));
+            result
+                .add_issue(CoordinationIssue::warning(String::from("No parallel groups detected")));
         }
 
         // Check resource availability for concurrent execution
@@ -154,7 +155,7 @@ impl CoordinationValidator {
     async fn validate_pipeline(&self, graph: &Graph) -> Result<CoordinationValidationResult> {
         let mut result = CoordinationValidationResult::new(
             CoordinationPattern::Pipeline,
-            "Pipeline execution pattern".to_string(),
+            String::from("Pipeline execution pattern"),
         );
 
         // Identify pipeline stages
@@ -163,9 +164,9 @@ impl CoordinationValidator {
 
         // Check stage dependencies
         if stages.len() < 2 {
-            result.add_issue(CoordinationIssue::warning(
-                "Pipeline pattern requires at least 2 stages".to_string(),
-            ));
+            result.add_issue(CoordinationIssue::warning(String::from(
+                "Pipeline pattern requires at least 2 stages",
+            )));
         }
 
         // Check data flow between stages
@@ -197,7 +198,7 @@ impl CoordinationValidator {
     async fn validate_mapreduce(&self, graph: &Graph) -> Result<CoordinationValidationResult> {
         let mut result = CoordinationValidationResult::new(
             CoordinationPattern::MapReduce,
-            "MapReduce execution pattern".to_string(),
+            String::from("MapReduce execution pattern"),
         );
 
         // Identify map and reduce nodes
@@ -205,16 +206,16 @@ impl CoordinationValidator {
 
         // Validate map phase
         if map_nodes.is_empty() {
-            result.add_issue(CoordinationIssue::error(
-                "MapReduce pattern requires map nodes".to_string(),
-            ));
+            result.add_issue(CoordinationIssue::error(String::from(
+                "MapReduce pattern requires map nodes",
+            )));
         }
 
         // Validate reduce phase
         if reduce_nodes.is_empty() {
-            result.add_issue(CoordinationIssue::error(
-                "MapReduce pattern requires reduce nodes".to_string(),
-            ));
+            result.add_issue(CoordinationIssue::error(String::from(
+                "MapReduce pattern requires reduce nodes",
+            )));
         }
 
         // Check data partitioning
@@ -243,7 +244,7 @@ impl CoordinationValidator {
     async fn validate_hybrid(&self, graph: &Graph) -> Result<CoordinationValidationResult> {
         let mut result = CoordinationValidationResult::new(
             CoordinationPattern::Hybrid,
-            "Hybrid coordination pattern (complex graph)".to_string(),
+            String::from("Hybrid coordination pattern (complex graph)"),
         );
 
         // Decompose into sub-patterns

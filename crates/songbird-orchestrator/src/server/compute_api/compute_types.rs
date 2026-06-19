@@ -195,7 +195,7 @@ mod tests {
         JobStatus {
             job_id,
             status,
-            routed_to: "local".to_string(),
+            routed_to: String::from("local"),
             progress: None,
             started_at: chrono::Utc::now(),
             completed_at: None,

@@ -56,5 +56,5 @@ pub fn is_production() -> bool {
 /// 3. `"info"` (default)
 #[must_use]
 pub fn log_level() -> String {
-    env("SONGBIRD_LOG").or_else(|_| env("RUST_LOG")).unwrap_or_else(|_| "info".to_string())
+    env("SONGBIRD_LOG").or_else(|_| env("RUST_LOG")).unwrap_or_else(|_| String::from("info"))
 }

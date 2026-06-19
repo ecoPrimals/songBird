@@ -154,10 +154,10 @@ impl CapabilityDiscovery {
                     capability,
                     capability.to_uppercase()
                 ),
-                backend: Some("all_methods".to_string()),
-                retry_strategy: Some(
-                    "Set environment variable or enable discovery methods".to_string(),
-                ),
+                backend: Some(String::from("all_methods")),
+                retry_strategy: Some(String::from(
+                    "Set environment variable or enable discovery methods",
+                )),
             });
         }
 

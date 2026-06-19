@@ -24,7 +24,7 @@ pub struct GamingProfile {
 impl Default for GamingProfile {
     fn default() -> Self {
         Self {
-            name: "default".to_string(),
+            name: String::from("default"),
             protocol_preference: vec![GameProtocolClass::RealTimeStrategy],
             performance_mode: PerformanceMode::Balanced,
         }

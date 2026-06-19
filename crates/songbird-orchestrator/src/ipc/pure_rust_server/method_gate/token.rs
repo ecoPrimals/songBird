@@ -37,7 +37,7 @@ pub enum TokenVerifyError {
 /// Abstraction over ionic token verification.
 ///
 /// Production deployments wire [`BearDogVerifier`] which calls
-/// `auth.verify_ionic` on the security provider. Tests use [`NoopVerifier`].
+/// `auth.verify_ionic` on the security provider. Tests use `NoopVerifier`.
 pub trait TokenVerifier: Send + Sync {
     /// Verify an ionic token and extract its claims.
     fn verify(

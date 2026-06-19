@@ -276,7 +276,7 @@ mod tests {
     #[test]
     fn test_tower_capabilities() {
         let mut caps =
-            TowerCapabilities::new("tower-1".to_string(), "http://localhost:8080".to_string());
+            TowerCapabilities::new(String::from("tower-1"), String::from("http://localhost:8080"));
 
         caps.add_protocol(ProtocolCapability {
             protocol: Protocol::Http,
@@ -301,8 +301,8 @@ mod tests {
     #[tokio::test]
     async fn test_capability_manager() {
         let manager = ProtocolCapabilityManager::new(
-            "tower-1".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("tower-1"),
+            String::from("http://localhost:8080"),
         );
 
         manager
@@ -323,8 +323,8 @@ mod tests {
     #[tokio::test]
     async fn test_protocol_negotiation() {
         let manager = ProtocolCapabilityManager::new(
-            "tower-1".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("tower-1"),
+            String::from("http://localhost:8080"),
         );
 
         // Register local protocols
@@ -350,7 +350,7 @@ mod tests {
 
         // Store peer capabilities
         let mut peer_caps =
-            TowerCapabilities::new("tower-2".to_string(), "http://peer:8080".to_string());
+            TowerCapabilities::new(String::from("tower-2"), String::from("http://peer:8080"));
         peer_caps.add_protocol(ProtocolCapability {
             protocol: Protocol::Http,
             port: 8080,
@@ -558,8 +558,8 @@ mod tests {
         manager.store_peer_capabilities(p2).await;
         let peers = manager.get_active_peers().await;
         assert_eq!(peers.len(), 2);
-        assert!(peers.contains(&"peer-a".to_string()));
-        assert!(peers.contains(&"peer-b".to_string()));
+        assert!(peers.contains(&String::from("peer-a")));
+        assert!(peers.contains(&String::from("peer-b")));
     }
 
     #[tokio::test]
@@ -570,7 +570,7 @@ mod tests {
         manager.register_feature("arm64".into()).await;
         let caps = manager.get_local_capabilities().await;
         assert_eq!(caps.features.len(), 2);
-        assert!(caps.features.contains(&"gpu-compute".to_string()));
+        assert!(caps.features.contains(&String::from("gpu-compute")));
     }
 
     #[test]

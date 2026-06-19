@@ -52,8 +52,8 @@ impl<T> SongbirdResult<T> {
             success: false,
             data: None,
             error: Some(ResponseError {
-                code: "ERROR".to_string(),
-                message: "An error occurred".to_string(),
+                code: String::from("ERROR"),
+                message: String::from("An error occurred"),
                 details: None,
             }),
             metadata: None,
@@ -67,7 +67,7 @@ impl<T> SongbirdResult<T> {
             success: false,
             data: None,
             error: Some(ResponseError {
-                code: "SONGBIRD_ERROR".to_string(),
+                code: String::from("SONGBIRD_ERROR"),
                 message: error.to_string(),
                 details: None,
             }),
@@ -126,7 +126,7 @@ impl<T> SongbirdResult<T> {
             let msg = self
                 .error
                 .as_ref()
-                .map_or_else(|| "Unknown error".to_string(), |e| e.message.clone());
+                .map_or_else(|| String::from("Unknown error"), |e| e.message.clone());
             Err(anyhow::anyhow!("{msg}"))
         }
     }
@@ -309,7 +309,7 @@ mod tests {
         response.with_action("Say hello back");
 
         assert_eq!(response.data, "Hello");
-        assert_eq!(response.context, Some("Greeting response".to_string()));
+        assert_eq!(response.context, Some(String::from("Greeting response")));
         assert_eq!(response.confidence, Some(0.95));
         assert_eq!(response.suggested_actions.len(), 1);
     }

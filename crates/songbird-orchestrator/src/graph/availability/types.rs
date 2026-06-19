@@ -181,11 +181,11 @@ mod tests {
     fn availability_report_roundtrip() {
         let mut details = HashMap::new();
         details.insert(
-            "n1".to_string(),
+            String::from("n1"),
             NodeAvailability {
                 status: NodeAvailabilityStatus::Available,
-                primal: Some("p".to_string()),
-                service_id: Some("s".to_string()),
+                primal: Some(String::from("p")),
+                service_id: Some(String::from("s")),
                 endpoint: None,
                 protocol: None,
                 health_status: None,
@@ -196,7 +196,7 @@ mod tests {
             },
         );
         let report = AvailabilityReport {
-            available: vec!["n1".to_string()],
+            available: vec![String::from("n1")],
             unavailable: vec![],
             unhealthy: vec![],
             degraded: vec![],
@@ -217,18 +217,18 @@ mod tests {
         let sug = AlternativeSuggestions {
             alternatives: vec![AlternativePrimal {
                 rank: 1,
-                service_id: "sid".to_string(),
-                primal_name: "pn".to_string(),
-                endpoint: "e".to_string(),
-                protocol: "http".to_string(),
-                health_status: "ok".to_string(),
-                last_seen: "t".to_string(),
-                reason: "nearby".to_string(),
+                service_id: String::from("sid"),
+                primal_name: String::from("pn"),
+                endpoint: String::from("e"),
+                protocol: String::from("http"),
+                health_status: String::from("ok"),
+                last_seen: String::from("t"),
+                reason: String::from("nearby"),
                 compatibility_score: 90,
             }],
             recommendation: Some(AlternativeRecommendation {
-                service_id: "sid".to_string(),
-                reason: "best".to_string(),
+                service_id: String::from("sid"),
+                reason: String::from("best"),
             }),
             unavailable_reason: None,
         };
@@ -242,7 +242,7 @@ mod tests {
         let sug = AlternativeSuggestions {
             alternatives: vec![],
             recommendation: None,
-            unavailable_reason: Some("none found".to_string()),
+            unavailable_reason: Some(String::from("none found")),
         };
         let j = serde_json::to_string(&sug).unwrap();
         let back: AlternativeSuggestions = serde_json::from_str(&j).unwrap();

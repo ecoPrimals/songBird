@@ -404,20 +404,20 @@ mod tests {
     #[test]
     fn test_get_configured_primal_names_in_env_collects_endpoints() {
         let mut m = HashMap::new();
-        m.insert("SECURITY_PROVIDER_ENDPOINT".to_string(), "http://x".to_string());
-        m.insert("PRIMAL_COMPUTE_PROVIDER_ENDPOINT".to_string(), "http://y".to_string());
-        m.insert("SONGBIRD_IGNORED_ENDPOINT".to_string(), "http://z".to_string());
+        m.insert(String::from("SECURITY_PROVIDER_ENDPOINT"), String::from("http://x"));
+        m.insert(String::from("PRIMAL_COMPUTE_PROVIDER_ENDPOINT"), String::from("http://y"));
+        m.insert(String::from("SONGBIRD_IGNORED_ENDPOINT"), String::from("http://z"));
         let mut names = get_configured_primal_names_in_env(&m);
         names.sort();
-        assert!(names.contains(&"security_provider".to_string()));
-        assert!(names.contains(&"compute_provider".to_string()));
-        assert!(!names.contains(&"songbird_ignored".to_string()));
+        assert!(names.contains(&String::from("security_provider")));
+        assert!(names.contains(&String::from("compute_provider")));
+        assert!(!names.contains(&String::from("songbird_ignored")));
     }
 
     #[test]
     fn test_get_common_primal_ports_from_env_map_override() {
         let mut m = HashMap::new();
-        m.insert("SONGBIRD_COMMON_PORTS".to_string(), "1111,2222".to_string());
+        m.insert(String::from("SONGBIRD_COMMON_PORTS"), String::from("1111,2222"));
         let ports = get_common_primal_ports_from_env_map(&m);
         assert_eq!(ports, vec![1111, 2222]);
     }
@@ -425,9 +425,9 @@ mod tests {
     #[test]
     fn test_get_common_primal_ports_computed_with_enable_flags() {
         let mut m = HashMap::new();
-        m.insert("SONGBIRD_ENABLE_ALPHA".to_string(), "true".to_string());
-        m.insert("SONGBIRD_ENABLE_BETA".to_string(), "1".to_string());
-        m.insert("SONGBIRD_ENABLE_GAMMA".to_string(), "false".to_string());
+        m.insert(String::from("SONGBIRD_ENABLE_ALPHA"), String::from("true"));
+        m.insert(String::from("SONGBIRD_ENABLE_BETA"), String::from("1"));
+        m.insert(String::from("SONGBIRD_ENABLE_GAMMA"), String::from("false"));
         let ports = get_common_primal_ports_from_env_map(&m);
         assert!(ports.len() >= 2);
         assert_eq!(ports[0], get_port_range_start());
@@ -436,7 +436,10 @@ mod tests {
     #[test]
     fn test_find_primals_capability_providers_override() {
         let mut m = HashMap::new();
-        m.insert("SONGBIRD_CAPABILITY_STORAGE_PROVIDERS".to_string(), "alpha, Beta ".to_string());
+        m.insert(
+            String::from("SONGBIRD_CAPABILITY_STORAGE_PROVIDERS"),
+            String::from("alpha, Beta "),
+        );
         let out = find_primals_with_capability_in_env("storage", &m);
         assert_eq!(out, vec!["alpha", "beta"]);
     }
@@ -444,8 +447,8 @@ mod tests {
     #[test]
     fn test_find_primals_from_declared_capabilities() {
         let mut m = HashMap::new();
-        m.insert("FOO_CAPABILITIES".to_string(), "embeddings, text-gen".to_string());
-        m.insert("FOO_ENDPOINT".to_string(), "http://foo".to_string());
+        m.insert(String::from("FOO_CAPABILITIES"), String::from("embeddings, text-gen"));
+        m.insert(String::from("FOO_ENDPOINT"), String::from("http://foo"));
         let out = find_primals_with_capability_in_env("embeddings", &m);
         assert_eq!(out, vec!["foo"]);
     }
@@ -453,8 +456,8 @@ mod tests {
     #[test]
     fn test_find_primals_alternate_capability_keys() {
         let mut m = HashMap::new();
-        m.insert("PRIMAL_BAR_CAPABILITIES".to_string(), "compute".to_string());
-        m.insert("BAR_ENDPOINT".to_string(), "http://bar".to_string());
+        m.insert(String::from("PRIMAL_BAR_CAPABILITIES"), String::from("compute"));
+        m.insert(String::from("BAR_ENDPOINT"), String::from("http://bar"));
         let out = find_primals_with_capability_in_env("compute", &m);
         assert_eq!(out, vec!["bar"]);
     }
@@ -526,7 +529,7 @@ mod tests {
     #[test]
     fn test_find_primals_capability_name_normalizes_dashes() {
         let mut m = HashMap::new();
-        m.insert("SONGBIRD_CAPABILITY_TEXT_GEN_PROVIDERS".to_string(), "p1".to_string());
+        m.insert(String::from("SONGBIRD_CAPABILITY_TEXT_GEN_PROVIDERS"), String::from("p1"));
         let out = find_primals_with_capability_in_env("text-gen", &m);
         assert_eq!(out, vec!["p1"]);
     }
@@ -534,7 +537,7 @@ mod tests {
     #[test]
     fn test_get_common_primal_ports_empty_override_yields_empty_vec() {
         let mut m = HashMap::new();
-        m.insert("SONGBIRD_COMMON_PORTS".to_string(), "  ,  , ".to_string());
+        m.insert(String::from("SONGBIRD_COMMON_PORTS"), String::from("  ,  , "));
         let ports = get_common_primal_ports_from_env_map(&m);
         assert!(ports.is_empty());
     }

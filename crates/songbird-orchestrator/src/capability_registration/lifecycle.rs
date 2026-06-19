@@ -36,7 +36,7 @@ pub async fn register_capabilities_with(config: &CapabilityRegistrationConfig) -
 
     let family_id = env::var("FAMILY_ID")
         .or_else(|_| env::var("SONGBIRD_FAMILY_ID"))
-        .unwrap_or_else(|_| "default".to_string());
+        .unwrap_or_else(|_| String::from("default"));
 
     let registration = capability_registration_params(
         primal_id,

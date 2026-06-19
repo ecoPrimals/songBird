@@ -202,8 +202,8 @@ impl CanonicalNetworkConfig {
         .parse()
         .map_err(|e| SongbirdError::Configuration {
             message: format!("Invalid bind address: {e}"),
-            field: Some("bind_address".to_string()),
-            suggestion: Some("Provide a valid IP address".to_string()),
+            field: Some(String::from("bind_address")),
+            suggestion: Some(String::from("Provide a valid IP address")),
         })?;
 
         let discovery_port = env_port(&env, "SONGBIRD_DISCOVERY_PORT", ports::DEFAULT_TARPC_PORT);
@@ -251,7 +251,7 @@ impl CanonicalNetworkConfig {
             discovery_ports: vec![discovery_port],
             federation_endpoints: Vec::new(),
             stun_servers: Vec::new(),
-            allowed_networks: vec!["127.0.0.0/8".to_string()],
+            allowed_networks: vec![String::from("127.0.0.0/8")],
             timeouts: NetworkTimeouts::default(),
             connection_limits: ConnectionLimits::default(),
             metrics_bind_address: bind_address,
@@ -322,20 +322,20 @@ impl CanonicalNetworkConfig {
                 .map(|s| s.trim().to_string())
                 .collect(),
                 allowed_methods: vec![
-                    "GET".to_string(),
-                    "POST".to_string(),
-                    "PUT".to_string(),
-                    "DELETE".to_string(),
+                    String::from("GET"),
+                    String::from("POST"),
+                    String::from("PUT"),
+                    String::from("DELETE"),
                 ],
-                allowed_headers: vec!["Content-Type".to_string(), "Authorization".to_string()],
+                allowed_headers: vec![String::from("Content-Type"), String::from("Authorization")],
             },
             discovery_ports: vec![discovery_port],
             federation_endpoints: Vec::new(),
             stun_servers: Vec::new(),
             allowed_networks: vec![
-                "10.0.0.0/8".to_string(),
-                "172.16.0.0/12".to_string(),
-                "192.168.0.0/16".to_string(),
+                String::from("10.0.0.0/8"),
+                String::from("172.16.0.0/12"),
+                String::from("192.168.0.0/16"),
             ],
             timeouts: NetworkTimeouts::default(),
             connection_limits: ConnectionLimits::default(),
@@ -362,9 +362,13 @@ impl CanonicalNetworkConfig {
         let localhost_v4 = std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST);
         if self.bind_address == localhost_v4 {
             return Err(SongbirdError::Configuration {
-                message: "Production deployment should not use localhost bind address".to_string(),
-                field: Some("bind_address".to_string()),
-                suggestion: Some("Use 0.0.0.0 or a specific IP address for production".to_string()),
+                message: String::from(
+                    "Production deployment should not use localhost bind address",
+                ),
+                field: Some(String::from("bind_address")),
+                suggestion: Some(String::from(
+                    "Use 0.0.0.0 or a specific IP address for production",
+                )),
             });
         }
         Ok(())
@@ -379,8 +383,8 @@ impl CanonicalNetworkConfig {
         let addr = format!("{}:{}", self.bind_address, self.orchestrator_port);
         let socket_addr = addr.parse::<SocketAddr>().map_err(|e| SongbirdError::Configuration {
             message: format!("Invalid address: {e}"),
-            field: Some("address".to_string()),
-            suggestion: Some("Provide a valid IP and port format".to_string()),
+            field: Some(String::from("address")),
+            suggestion: Some(String::from("Provide a valid IP and port format")),
         })?;
         Ok(socket_addr)
     }
@@ -397,8 +401,8 @@ impl CanonicalNetworkConfig {
             _ => {
                 return Err(SongbirdError::Configuration {
                     message: format!("Unknown protocol: {protocol}"),
-                    field: Some("protocol".to_string()),
-                    suggestion: Some("Use 'starcraft', 'aoe2', or 'udp'".to_string()),
+                    field: Some(String::from("protocol")),
+                    suggestion: Some(String::from("Use 'starcraft', 'aoe2', or 'udp'")),
                 });
             }
         };
@@ -492,7 +496,7 @@ mod tests {
     #[test]
     fn test_from_env_invalid_bind_address_errors() {
         let env = |key: &str| match key {
-            "SONGBIRD_BIND_ADDRESS" => Ok(":::not-valid".to_string()),
+            "SONGBIRD_BIND_ADDRESS" => Ok(String::from(":::not-valid")),
             _ => Err(std::env::VarError::NotPresent),
         };
         let err = CanonicalNetworkConfig::from_env_reader(env).expect_err("invalid bind");

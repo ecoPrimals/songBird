@@ -170,7 +170,7 @@ async fn gather_health_status(comprehensive: bool) -> Result<DoctorHealthStatus>
 
     // Collect binary information
     let binary_info = BinaryInfo {
-        name: "songbird".to_string(),
+        name: String::from("songbird"),
         version: env!("CARGO_PKG_VERSION").to_string(),
         build: env!("CARGO_PKG_VERSION").to_string(),
         healthy: true,
@@ -180,12 +180,12 @@ async fn gather_health_status(comprehensive: bool) -> Result<DoctorHealthStatus>
     let config_status = match CanonicalSongbirdConfig::from_env() {
         Ok(_) => ConfigStatus {
             valid: true,
-            source: "environment".to_string(),
+            source: String::from("environment"),
             error: None,
         },
         Err(e) => ConfigStatus {
             valid: false,
-            source: "environment".to_string(),
+            source: String::from("environment"),
             error: Some(e.to_string()),
         },
     };
@@ -198,17 +198,17 @@ async fn gather_health_status(comprehensive: bool) -> Result<DoctorHealthStatus>
     let port_checks = vec![
         PortCheck {
             port: http_api_port,
-            name: "HTTP API".to_string(),
+            name: String::from("HTTP API"),
             available: check_port_availability(http_api_port).await?,
         },
         PortCheck {
             port: metrics_port,
-            name: "Metrics".to_string(),
+            name: String::from("Metrics"),
             available: check_port_availability(metrics_port).await?,
         },
         PortCheck {
             port: tarpc_port,
-            name: "tarpc RPC".to_string(),
+            name: String::from("tarpc RPC"),
             available: check_port_availability(tarpc_port).await?,
         },
     ];
@@ -226,7 +226,7 @@ async fn gather_health_status(comprehensive: bool) -> Result<DoctorHealthStatus>
         let crypto_found =
             matches!(discover_capability_provider("crypto").await, DiscoveryResult::Found(_));
         discovered.insert(
-            "crypto".to_string(),
+            String::from("crypto"),
             check_primal_status("crypto", futures_util::future::ready(Ok(crypto_found))).await,
         );
         for capability in &["ai", "storage", "sovereign-storage", "messaging"] {
@@ -265,17 +265,17 @@ where
     match check.await {
         Ok(true) => PrimalStatus {
             name: name.to_string(),
-            status: "connected".to_string(),
+            status: String::from("connected"),
             error: None,
         },
         Ok(false) => PrimalStatus {
             name: name.to_string(),
-            status: "not_reachable".to_string(),
+            status: String::from("not_reachable"),
             error: None,
         },
         Err(e) => PrimalStatus {
             name: name.to_string(),
-            status: "error".to_string(),
+            status: String::from("error"),
             error: Some(e.to_string()),
         },
     }

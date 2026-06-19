@@ -143,7 +143,7 @@ mod tests {
     async fn register_active_peer(state: &FederationState, id: &str, addr: &str) {
         let reg = NodeRegistration {
             node_id: id.to_string(),
-            node_name: "peer".to_string(),
+            node_name: String::from("peer"),
             node_address: addr.to_string(),
             endpoints: None,
             cpu_cores: 4,
@@ -189,7 +189,7 @@ mod tests {
     }
 
     fn create_test_router() -> CapabilityRouter {
-        let federation_state = Arc::new(FederationState::new("default".to_string()));
+        let federation_state = Arc::new(FederationState::new(String::from("default")));
         let service_registry = Arc::new(FederatedServiceRegistry::new());
         CapabilityRouter::new(federation_state, service_registry)
     }
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn capability_type_to_name_custom_variant() {
-        let ct = CapabilityType::Custom("my_cap".to_string());
+        let ct = CapabilityType::Custom(String::from("my_cap"));
         assert_eq!(CapabilityRouter::capability_type_to_name(&ct), "my_cap");
     }
 

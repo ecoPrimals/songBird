@@ -40,7 +40,7 @@ pub fn stun_server_list() -> Vec<String> {
 pub fn default_stun_servers_fallback() -> Vec<String> {
     vec![
         DEFAULT_PRIMARY_STUN_SERVER.to_string(),
-        "stun.cloudflare.com:3478".to_string(),
-        "stun.sip.us:3478".to_string(),
+        String::from("stun.cloudflare.com:3478"),
+        String::from("stun.sip.us:3478"),
     ]
 }

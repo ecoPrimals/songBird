@@ -73,8 +73,8 @@ where
         let content = tokio::fs::read_to_string(&self.path).await.map_err(|e| {
             SongbirdError::Configuration {
                 message: format!("Failed to read config file: {e}"),
-                field: Some("config_file".to_string()),
-                suggestion: Some("Check if the file exists and is readable".to_string()),
+                field: Some(String::from("config_file")),
+                suggestion: Some(String::from("Check if the file exists and is readable")),
             }
         })?;
 
@@ -82,22 +82,22 @@ where
             ConfigFormat::Toml => {
                 toml::from_str(&content).map_err(|e| SongbirdError::Configuration {
                     message: format!("Failed to parse TOML config: {e}"),
-                    field: Some("config_parsing".to_string()),
-                    suggestion: Some("Check TOML syntax".to_string()),
+                    field: Some(String::from("config_parsing")),
+                    suggestion: Some(String::from("Check TOML syntax")),
                 })?
             }
             ConfigFormat::Json => {
                 serde_json::from_str(&content).map_err(|e| SongbirdError::Configuration {
                     message: format!("Failed to parse JSON config: {e}"),
-                    field: Some("config_parsing".to_string()),
-                    suggestion: Some("Check JSON syntax".to_string()),
+                    field: Some(String::from("config_parsing")),
+                    suggestion: Some(String::from("Check JSON syntax")),
                 })?
             }
             ConfigFormat::Yaml => {
                 serde_yaml::from_str(&content).map_err(|e| SongbirdError::Configuration {
                     message: format!("Failed to parse YAML config: {e}"),
-                    field: Some("config_parsing".to_string()),
-                    suggestion: Some("Check YAML syntax".to_string()),
+                    field: Some(String::from("config_parsing")),
+                    suggestion: Some(String::from("Check YAML syntax")),
                 })?
             }
         };
@@ -110,30 +110,30 @@ where
             ConfigFormat::Toml => {
                 toml::to_string_pretty(config).map_err(|e| SongbirdError::Configuration {
                     message: format!("Failed to serialize config to TOML: {e}"),
-                    field: Some("config_serialization".to_string()),
-                    suggestion: Some("Check if the config structure is valid".to_string()),
+                    field: Some(String::from("config_serialization")),
+                    suggestion: Some(String::from("Check if the config structure is valid")),
                 })?
             }
             ConfigFormat::Json => {
                 serde_json::to_string_pretty(config).map_err(|e| SongbirdError::Configuration {
                     message: format!("Failed to serialize config to JSON: {e}"),
-                    field: Some("config_serialization".to_string()),
-                    suggestion: Some("Check if the config structure is valid".to_string()),
+                    field: Some(String::from("config_serialization")),
+                    suggestion: Some(String::from("Check if the config structure is valid")),
                 })?
             }
             ConfigFormat::Yaml => {
                 serde_yaml::to_string(config).map_err(|e| SongbirdError::Configuration {
                     message: format!("Failed to serialize config to YAML: {e}"),
-                    field: Some("config_serialization".to_string()),
-                    suggestion: Some("Check if the config structure is valid".to_string()),
+                    field: Some(String::from("config_serialization")),
+                    suggestion: Some(String::from("Check if the config structure is valid")),
                 })?
             }
         };
 
         tokio::fs::write(&self.path, content).await.map_err(|e| SongbirdError::Configuration {
             message: format!("Failed to write config file: {e}"),
-            field: Some("config_file".to_string()),
-            suggestion: Some("Check if you have write permissions for this file".to_string()),
+            field: Some(String::from("config_file")),
+            suggestion: Some(String::from("Check if you have write permissions for this file")),
         })?;
 
         Ok(())
@@ -141,7 +141,7 @@ where
 
     fn provider_info(&self) -> ConfigProviderInfo {
         ConfigProviderInfo {
-            name: "FileConfigProvider".to_string(),
+            name: String::from("FileConfigProvider"),
             description: format!("File-based configuration provider for {}", self.path.display()),
             format: self.format.clone(),
         }
@@ -173,7 +173,7 @@ mod tests {
         let path = dir.path().join("cfg.toml");
         let provider = FileConfigProvider::<SampleCfg>::new(path.clone(), ConfigFormat::Toml);
         let original = SampleCfg {
-            name: "songbird".to_string(),
+            name: String::from("songbird"),
             count: 42,
         };
         provider.save(&original).await.expect("save");
@@ -190,7 +190,7 @@ mod tests {
         let path = dir.path().join("cfg.json");
         let provider = FileConfigProvider::<SampleCfg>::new(path, ConfigFormat::Json);
         let original = SampleCfg {
-            name: "j".to_string(),
+            name: String::from("j"),
             count: 1,
         };
         provider.save(&original).await.expect("save");
@@ -204,7 +204,7 @@ mod tests {
         let path = dir.path().join("cfg.yaml");
         let provider = FileConfigProvider::<SampleCfg>::new(path, ConfigFormat::Yaml);
         let original = SampleCfg {
-            name: "y".to_string(),
+            name: String::from("y"),
             count: 7,
         };
         provider.save(&original).await.expect("save");

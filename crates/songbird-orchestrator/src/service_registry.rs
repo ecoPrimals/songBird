@@ -405,7 +405,7 @@ impl ServiceRegistry {
             last_heartbeat_instant: tokio::time::Instant::now(),
             heartbeat_interval: self.config.default_heartbeat_interval,
             status: ServiceStatus::Active,
-            trust_level: "anonymous".to_string(),
+            trust_level: String::from("anonymous"),
             missed_heartbeats: 0,
             metadata: request.metadata.unwrap_or_default(),
         };
@@ -419,13 +419,13 @@ impl ServiceRegistry {
         info!("✅ Registered {} as service {} on port {}", request.primal_name, service_id, port);
 
         Ok(RegistrationResponse {
-            status: "registered".to_string(),
+            status: String::from("registered"),
             service_id,
             assigned_endpoint,
             fallback_endpoint,
             registration_token: token,
             heartbeat_interval_sec: self.config.default_heartbeat_interval,
-            trust_level: "anonymous".to_string(),
+            trust_level: String::from("anonymous"),
         })
     }
 
@@ -459,7 +459,7 @@ impl ServiceRegistry {
         debug!("✅ Heartbeat acknowledged for {}", service.service_name);
 
         Ok(HeartbeatResponse {
-            status: "acknowledged".to_string(),
+            status: String::from("acknowledged"),
             next_heartbeat_sec: service.heartbeat_interval,
             commands: vec![],
         })

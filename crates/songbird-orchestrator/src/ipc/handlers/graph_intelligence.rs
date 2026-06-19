@@ -251,8 +251,8 @@ mod tests {
 
     fn minimal_graph_value() -> serde_json::Value {
         let graph = Graph::new(
-            "g-test".to_string(),
-            "Test Graph".to_string(),
+            String::from("g-test"),
+            String::from("Test Graph"),
             vec![],
             vec![],
             GraphMetadata::default(),
@@ -262,9 +262,9 @@ mod tests {
 
     fn sample_node_json() -> serde_json::Value {
         let node = GraphNode {
-            id: "n1".to_string(),
+            id: String::from("n1"),
             primal_name: None,
-            capability: "encryption".to_string(),
+            capability: String::from("encryption"),
             inputs: vec![],
             outputs: vec![],
             config: serde_json::json!({}),

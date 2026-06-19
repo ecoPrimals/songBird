@@ -181,7 +181,7 @@ impl MockSecurityProvider {
             session_id: format!("mock_relay_{}", uuid::Uuid::new_v4()),
             requester_id: requester.to_string(),
             target_id: target.to_string(),
-            relay_id: "mock_relay_node".to_string(),
+            relay_id: String::from("mock_relay_node"),
             access_level: AccessLevel::SubMasked,
             created_at: chrono::Utc::now(),
             expires_at: chrono::Utc::now() + chrono::Duration::hours(1),

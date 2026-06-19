@@ -171,7 +171,7 @@ pub struct CapabilityCallParams {
 }
 
 fn default_routing() -> String {
-    "any".to_string()
+    String::from("any")
 }
 
 /// `capability.call` response — result from the resolved provider.
@@ -287,8 +287,8 @@ mod tests {
     #[test]
     fn register_result_serializes() {
         let result = RegisterResult {
-            virtual_endpoint: "/primal/security".to_string(),
-            registered_at: "2026-03-27T12:00:00Z".to_string(),
+            virtual_endpoint: String::from("/primal/security"),
+            registered_at: String::from("2026-03-27T12:00:00Z"),
             signature: None,
             signed_payload: None,
         };
@@ -301,10 +301,10 @@ mod tests {
     #[test]
     fn resolve_result_serializes_with_capabilities() {
         let result = ResolveResult {
-            socket: Some("/tmp/security.sock".to_string()),
-            virtual_endpoint: "/primal/security".to_string(),
-            native_endpoint: "unix:///tmp/security.sock".to_string(),
-            capabilities: vec!["crypto".to_string(), "auth".to_string()],
+            socket: Some(String::from("/tmp/security.sock")),
+            virtual_endpoint: String::from("/primal/security"),
+            native_endpoint: String::from("unix:///tmp/security.sock"),
+            capabilities: vec![String::from("crypto"), String::from("auth")],
             signature: None,
             signed_payload: None,
         };
@@ -328,11 +328,11 @@ mod tests {
     fn discover_result_with_providers() {
         let result = DiscoverResult {
             providers: vec![ProviderInfo {
-                primal_id: "songbird".to_string(),
-                socket: Some("/tmp/songbird.sock".to_string()),
-                virtual_endpoint: "/primal/songbird".to_string(),
-                native_endpoint: "unix:///tmp/songbird.sock".to_string(),
-                capabilities: vec!["network.discovery".to_string()],
+                primal_id: String::from("songbird"),
+                socket: Some(String::from("/tmp/songbird.sock")),
+                virtual_endpoint: String::from("/primal/songbird"),
+                native_endpoint: String::from("unix:///tmp/songbird.sock"),
+                capabilities: vec![String::from("network.discovery")],
                 signature: None,
                 signed_payload: None,
             }],
@@ -349,14 +349,17 @@ mod tests {
         let result = ListResult {
             services: vec![
                 ServiceInfo {
-                    primal_id: "security".to_string(),
-                    virtual_endpoint: "/primal/security".to_string(),
-                    capabilities: vec!["crypto".to_string()],
+                    primal_id: String::from("security"),
+                    virtual_endpoint: String::from("/primal/security"),
+                    capabilities: vec![String::from("crypto")],
                 },
                 ServiceInfo {
-                    primal_id: "songbird".to_string(),
-                    virtual_endpoint: "/primal/songbird".to_string(),
-                    capabilities: vec!["network.discovery".to_string(), "ipc.jsonrpc".to_string()],
+                    primal_id: String::from("songbird"),
+                    virtual_endpoint: String::from("/primal/songbird"),
+                    capabilities: vec![
+                        String::from("network.discovery"),
+                        String::from("ipc.jsonrpc"),
+                    ],
                 },
             ],
         };
@@ -370,7 +373,7 @@ mod tests {
     #[test]
     fn federation_peers_response_serializes() {
         let result = FederationPeersResponse {
-            peers: vec!["node-a".to_string(), "node-b".to_string()],
+            peers: vec![String::from("node-a"), String::from("node-b")],
             total_count: 2,
             federation_enabled: true,
         };
@@ -394,13 +397,13 @@ mod tests {
     #[test]
     fn provider_info_clone_is_independent() {
         let original = ProviderInfo {
-            primal_id: "test".to_string(),
-            socket: Some("/tmp/test.sock".to_string()),
-            virtual_endpoint: "/primal/test".to_string(),
-            native_endpoint: "unix:///tmp/test.sock".to_string(),
-            capabilities: vec!["cap1".to_string()],
-            signature: Some("sig123".to_string()),
-            signed_payload: Some("payload".to_string()),
+            primal_id: String::from("test"),
+            socket: Some(String::from("/tmp/test.sock")),
+            virtual_endpoint: String::from("/primal/test"),
+            native_endpoint: String::from("unix:///tmp/test.sock"),
+            capabilities: vec![String::from("cap1")],
+            signature: Some(String::from("sig123")),
+            signed_payload: Some(String::from("payload")),
         };
         let cloned = original.clone();
         assert_eq!(original.primal_id, cloned.primal_id);
@@ -417,9 +420,9 @@ mod tests {
     #[test]
     fn register_result_with_signature_serializes() {
         let result = RegisterResult {
-            virtual_endpoint: "/primal/nestgate".to_string(),
-            registered_at: "2026-04-28T14:00:00Z".to_string(),
-            signature: Some("c2lnbmF0dXJl".to_string()),
+            virtual_endpoint: String::from("/primal/nestgate"),
+            registered_at: String::from("2026-04-28T14:00:00Z"),
+            signature: Some(String::from("c2lnbmF0dXJl")),
             signed_payload: Some(
                 r#"{"c":["storage"],"e":"/tmp/ng.sock","p":"nestgate","t":"2026-04-28T14:00:00Z"}"#
                     .to_string(),
@@ -433,12 +436,12 @@ mod tests {
     #[test]
     fn resolve_result_with_signature_serializes() {
         let result = ResolveResult {
-            socket: Some("/run/user/1000/biomeos/beardog.sock".to_string()),
-            virtual_endpoint: "/primal/beardog".to_string(),
-            native_endpoint: "unix:///run/user/1000/biomeos/beardog.sock".to_string(),
-            capabilities: vec!["crypto".to_string()],
-            signature: Some("sig_b64".to_string()),
-            signed_payload: Some("payload_json".to_string()),
+            socket: Some(String::from("/run/user/1000/biomeos/beardog.sock")),
+            virtual_endpoint: String::from("/primal/beardog"),
+            native_endpoint: String::from("unix:///run/user/1000/biomeos/beardog.sock"),
+            capabilities: vec![String::from("crypto")],
+            signature: Some(String::from("sig_b64")),
+            signed_payload: Some(String::from("payload_json")),
         };
         let json = serde_json::to_value(&result).unwrap();
         assert_eq!(json["signature"], "sig_b64");
@@ -449,11 +452,11 @@ mod tests {
     #[test]
     fn capability_resolve_result_omits_none_signature() {
         let result = CapabilityResolveResult {
-            primal_id: "songbird".to_string(),
-            socket: Some("/tmp/songbird.sock".to_string()),
-            virtual_endpoint: "/primal/songbird".to_string(),
-            native_endpoint: "unix:///tmp/songbird.sock".to_string(),
-            capabilities: vec!["network.discovery".to_string()],
+            primal_id: String::from("songbird"),
+            socket: Some(String::from("/tmp/songbird.sock")),
+            virtual_endpoint: String::from("/primal/songbird"),
+            native_endpoint: String::from("unix:///tmp/songbird.sock"),
+            capabilities: vec![String::from("network.discovery")],
             signature: None,
             signed_payload: None,
         };

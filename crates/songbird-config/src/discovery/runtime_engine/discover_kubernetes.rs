@@ -43,15 +43,15 @@ pub(super) async fn discover_from_kubernetes(
     // Attempt DNS-based discovery first (works without API access)
     let cluster_domain = engine
         .read_env("SONGBIRD_K8S_CLUSTER_DOMAIN")
-        .unwrap_or_else(|_| "cluster.local".to_string());
+        .unwrap_or_else(|_| String::from("cluster.local"));
     let dns_name = kubernetes_dns_service_hostname(capability, ns, &cluster_domain);
     if let Ok(addrs) = tokio::net::lookup_host(format!("{dns_name}:0")).await {
         let discovered: Vec<DiscoveredService> = addrs
             .filter(|a| a.port() > 0)
             .map(|addr| {
                 let mut metadata = HashMap::new();
-                metadata.insert("source".to_string(), "kubernetes-dns".to_string());
-                metadata.insert("namespace".to_string(), ns.to_string());
+                metadata.insert(String::from("source"), String::from("kubernetes-dns"));
+                metadata.insert(String::from("namespace"), ns.to_string());
                 DiscoveredService {
                     address: addr,
                     capabilities: vec![capability.to_string()],
@@ -75,7 +75,7 @@ pub(super) async fn discover_from_kubernetes(
     // Fall back to Kubernetes API if in-cluster service account is available
     let token_path = engine
         .read_env("SONGBIRD_K8S_TOKEN_PATH")
-        .unwrap_or_else(|_| "/var/run/secrets/kubernetes.io/serviceaccount/token".to_string());
+        .unwrap_or_else(|_| String::from("/var/run/secrets/kubernetes.io/serviceaccount/token"));
     let k8s_host = engine.read_env("KUBERNETES_SERVICE_HOST");
 
     if std::path::Path::new(&token_path).exists() && k8s_host.is_ok() {
@@ -169,8 +169,8 @@ fn extract_k8s_endpoints(
             for &port in &ports {
                 if let Ok(addr) = format!("{ip}:{port}").parse::<SocketAddr>() {
                     let mut metadata = HashMap::new();
-                    metadata.insert("source".to_string(), "kubernetes-api".to_string());
-                    metadata.insert("namespace".to_string(), ns.to_string());
+                    metadata.insert(String::from("source"), String::from("kubernetes-api"));
+                    metadata.insert(String::from("namespace"), ns.to_string());
                     out.push(DiscoveredService {
                         address: addr,
                         capabilities: vec![capability.to_string()],
@@ -220,9 +220,9 @@ mod tests {
         assert!(addrs.contains(&"10.20.30.40:8080".parse().unwrap()));
         assert!(addrs.contains(&"10.20.30.40:65535".parse().unwrap()));
         assert!(
-            out.iter().all(|d| d.metadata.get("source") == Some(&"kubernetes-api".to_string()))
+            out.iter().all(|d| d.metadata.get("source") == Some(&String::from("kubernetes-api")))
         );
-        assert!(out.iter().all(|d| d.metadata.get("namespace") == Some(&"ns1".to_string())));
+        assert!(out.iter().all(|d| d.metadata.get("namespace") == Some(&String::from("ns1"))));
     }
 
     #[test]

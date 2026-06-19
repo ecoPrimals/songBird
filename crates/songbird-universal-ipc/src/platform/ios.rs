@@ -128,7 +128,7 @@ impl IosPlatformIPC {
         #[cfg(not(any(target_os = "macos", target_os = "ios")))]
         {
             let _ = primal_name;
-            Err(IpcError::PlatformError("iOSIPC is for macOS/iOS only".to_string()))
+            Err(IpcError::PlatformError(String::from("iOSIPC is for macOS/iOS only")))
         }
     }
 
@@ -162,9 +162,9 @@ impl IosPlatformIPC {
                 service
             ))),
 
-            _ => Err(IpcError::PlatformError(
-                "iOSIPC requires UnixSocket (macOS) or XPC (iOS) endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError(String::from(
+                "iOSIPC requires UnixSocket (macOS) or XPC (iOS) endpoint",
+            ))),
         }
     }
 
@@ -196,9 +196,9 @@ impl IosPlatformIPC {
                 service
             ))),
 
-            _ => Err(IpcError::PlatformError(
-                "iOSIPC requires UnixSocket (macOS) or XPC (iOS) endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError(String::from(
+                "iOSIPC requires UnixSocket (macOS) or XPC (iOS) endpoint",
+            ))),
         }
     }
 
@@ -228,9 +228,9 @@ impl IosPlatformIPC {
                 Ok(())
             }
 
-            _ => Err(IpcError::PlatformError(
-                "iOSIPC requires UnixSocket (macOS) or XPC (iOS) endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError(String::from(
+                "iOSIPC requires UnixSocket (macOS) or XPC (iOS) endpoint",
+            ))),
         }
     }
 }

@@ -122,13 +122,13 @@ impl UniversalTrustRequest {
     /// Create a new universal trust request
     pub fn new(peer_id: impl Into<String>, attestations: Vec<IdentityAttestation>) -> Self {
         Self {
-            request_format: "universal_trust_v1".to_string(),
+            request_format: String::from("universal_trust_v1"),
             evaluator: EvaluatorInfo {
                 peer_id: peer_id.into(),
                 attestations,
             },
             context: DiscoveryContext {
-                discovery_method: "unknown".to_string(),
+                discovery_method: String::from("unknown"),
                 first_seen_at: chrono::Utc::now().to_rfc3339(),
                 endpoint: String::new(),
                 capabilities: Vec::new(),
@@ -188,7 +188,7 @@ impl IdentityAttestation {
     pub fn tag_list(tags: Vec<String>) -> Self {
         Self {
             provider: None,
-            format: "tag_list".to_string(),
+            format: String::from("tag_list"),
             data: serde_json::json!({
                 "tags": tags
             }),
@@ -199,7 +199,7 @@ impl IdentityAttestation {
     pub fn tag_list_with_family(tags: Vec<String>, family_id: impl Into<String>) -> Self {
         Self {
             provider: None,
-            format: "tag_list".to_string(),
+            format: String::from("tag_list"),
             data: serde_json::json!({
                 "tags": tags,
                 "family_id": family_id.into()
@@ -242,12 +242,12 @@ mod tests {
     #[test]
     fn test_universal_trust_request_creation() {
         let attestations =
-            vec![IdentityAttestation::tag_list(vec!["crypto:family:iidn:tower1".to_string()])];
+            vec![IdentityAttestation::tag_list(vec![String::from("crypto:family:iidn:tower1")])];
 
         let request = UniversalTrustRequest::new("tower1", attestations)
             .with_discovery_method("udp_multicast")
             .with_endpoint("https://192.168.1.100:8080")
-            .with_capabilities(vec!["orchestration".to_string()]);
+            .with_capabilities(vec![String::from("orchestration")]);
 
         assert_eq!(request.request_format, "universal_trust_v1");
         assert_eq!(request.evaluator.peer_id, "tower1");
@@ -257,7 +257,7 @@ mod tests {
     #[test]
     fn test_identity_attestation_tag_list() {
         let attestation = IdentityAttestation::tag_list_with_family(
-            vec!["crypto:family:iidn:tower1".to_string()],
+            vec![String::from("crypto:family:iidn:tower1")],
             "iidn",
         );
 
@@ -284,11 +284,11 @@ mod tests {
     #[test]
     fn test_universal_trust_response_helpers() {
         let response = UniversalTrustResponse {
-            response_format: "universal_trust_v1".to_string(),
+            response_format: String::from("universal_trust_v1"),
             decision: TrustDecision::AutoAccept,
             confidence: 1.0,
-            reason: "Same family".to_string(),
-            reason_code: "same_genetic_family".to_string(),
+            reason: String::from("Same family"),
+            reason_code: String::from("same_genetic_family"),
             metadata: HashMap::new(),
             expires_at: None,
             custom: HashMap::new(),

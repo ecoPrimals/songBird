@@ -260,7 +260,7 @@ impl Default for HealthCheckConfig {
         Self {
             enabled: true,
             interval: Duration::from_secs(30),
-            endpoint_path: "/health".to_string(),
+            endpoint_path: String::from("/health"),
             expected_status_codes: vec![200],
             timeout: Duration::from_secs(10),
             failure_threshold: 3,
@@ -406,7 +406,7 @@ mod tests {
     fn test_primal_type_parsing() -> SongbirdResult<()> {
         assert_eq!("compute".parse::<PrimalType>()?, PrimalType::Compute);
         assert_eq!("AI".parse::<PrimalType>()?, PrimalType::AI);
-        assert_eq!("custom-test".parse::<PrimalType>()?, PrimalType::Custom("test".to_string()));
+        assert_eq!("custom-test".parse::<PrimalType>()?, PrimalType::Custom(String::from("test")));
         Ok(())
     }
 
@@ -414,14 +414,14 @@ mod tests {
     fn test_primal_type_display() {
         assert_eq!(PrimalType::Compute.to_string(), "compute");
         assert_eq!(PrimalType::Gaming.to_string(), "gaming");
-        assert_eq!(PrimalType::Custom("test".to_string()).to_string(), "custom-test");
+        assert_eq!(PrimalType::Custom(String::from("test")).to_string(), "custom-test");
     }
 
     #[test]
     fn test_service_category_display() {
         assert_eq!(ServiceCategory::Infrastructure.to_string(), "infrastructure");
         assert_eq!(ServiceCategory::Application.to_string(), "application");
-        assert_eq!(ServiceCategory::Custom("test".to_string()).to_string(), "custom-test");
+        assert_eq!(ServiceCategory::Custom(String::from("test")).to_string(), "custom-test");
     }
 
     #[test]

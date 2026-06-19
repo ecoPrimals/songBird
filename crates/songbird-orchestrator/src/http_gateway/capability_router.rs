@@ -491,7 +491,7 @@ mod tests {
         let parsed = Capability::parse("ai:text-generation:chat").expect("parse");
         assert_eq!(parsed.0, "ai");
         assert_eq!(parsed.1, "text-generation");
-        assert_eq!(parsed.2, Some("chat".to_string()));
+        assert_eq!(parsed.2, Some(String::from("chat")));
     }
 
     #[tokio::test]

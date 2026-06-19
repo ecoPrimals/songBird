@@ -100,7 +100,7 @@ pub fn initialize_components(config: &CanonicalSongbirdConfig) -> Result<Initial
         config.federation.trust_timeouts.capability,
         config.federation.trust_timeouts.identity,
         if config.federation.trust_timeouts.hardware == 0 {
-            "never".to_string()
+            String::from("never")
         } else {
             format!("{}s", config.federation.trust_timeouts.hardware)
         }
@@ -113,7 +113,7 @@ pub fn initialize_components(config: &CanonicalSongbirdConfig) -> Result<Initial
     info!("      Philosophy: Same family = hear the song, NOT enter the nest");
 
     // Initialize federation (if enabled)
-    let federation_state = Arc::new(FederationState::new("main".to_string()));
+    let federation_state = Arc::new(FederationState::new(String::from("main")));
     let federated_service_registry = Arc::new(FederatedServiceRegistry::new());
     info!("   ✅ Federation state and registry");
 

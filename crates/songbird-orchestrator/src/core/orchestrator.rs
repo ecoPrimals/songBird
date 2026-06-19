@@ -17,7 +17,7 @@ pub struct OrchestratorConfig {
 impl Default for OrchestratorConfig {
     fn default() -> Self {
         Self {
-            name: "Songbird Orchestrato".to_string(),
+            name: String::from("Songbird Orchestrato"),
             max_services: 1000,
         }
     }

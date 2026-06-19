@@ -58,7 +58,7 @@ impl Default for CanonicalOrchestrationFederationConfig {
             discovery_interval: Duration::from_secs(30),
             heartbeat_interval: Duration::from_secs(10),
             max_nodes: 100,
-            protocol: "gossip".to_string(),
+            protocol: String::from("gossip"),
             cross_federation: false,
         }
     }
@@ -101,7 +101,7 @@ mod tests {
             discovery_interval: Duration::from_secs(60),
             heartbeat_interval: Duration::from_secs(5),
             max_nodes: 50,
-            protocol: "raft".to_string(),
+            protocol: String::from("raft"),
             cross_federation: true,
         };
         assert!(!config.enabled);
@@ -115,19 +115,19 @@ mod tests {
     #[test]
     fn test_federation_protocols() {
         let gossip = CanonicalOrchestrationFederationConfig {
-            protocol: "gossip".to_string(),
+            protocol: String::from("gossip"),
             ..Default::default()
         };
         assert_eq!(gossip.protocol, "gossip");
 
         let raft = CanonicalOrchestrationFederationConfig {
-            protocol: "raft".to_string(),
+            protocol: String::from("raft"),
             ..Default::default()
         };
         assert_eq!(raft.protocol, "raft");
 
         let custom = CanonicalOrchestrationFederationConfig {
-            protocol: "custom".to_string(),
+            protocol: String::from("custom"),
             ..Default::default()
         };
         assert_eq!(custom.protocol, "custom");

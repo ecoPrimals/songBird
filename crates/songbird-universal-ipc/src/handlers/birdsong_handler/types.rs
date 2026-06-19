@@ -45,7 +45,7 @@ impl BirdSongHandler {
 /// pre-validation collects every missing field into one diagnostic.
 pub(super) fn validate_required_fields(params: &Value, required: &[&str]) -> Result<(), String> {
     let Some(obj) = params.as_object() else {
-        return Err("Invalid params: expected JSON object".to_string());
+        return Err(String::from("Invalid params: expected JSON object"));
     };
 
     let missing: Vec<&str> =

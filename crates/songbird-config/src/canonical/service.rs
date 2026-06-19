@@ -54,7 +54,7 @@ pub type UniversalServiceInfo = ServiceInfo;
 impl Default for ServiceConfig {
     fn default() -> Self {
         Self {
-            name: "default-service".to_string(),
+            name: String::from("default-service"),
             address: songbird_types::constants::LOCALHOST_HOSTNAME.to_string(),
             port: songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
             metadata: HashMap::new(),
@@ -66,8 +66,8 @@ impl Default for ServiceConfig {
 impl Default for ServiceInfo {
     fn default() -> Self {
         Self {
-            service_id: "default-service".to_string(),
-            name: "default-service".to_string(),
+            service_id: String::from("default-service"),
+            name: String::from("default-service"),
             host: songbird_types::constants::LOCALHOST_HOSTNAME.to_string(),
             port: songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
             metadata: HashMap::new(),
@@ -78,7 +78,7 @@ impl Default for ServiceInfo {
 impl Default for HealthCheckConfig {
     fn default() -> Self {
         Self {
-            endpoint: "/health".to_string(),
+            endpoint: String::from("/health"),
             interval: 30,
             timeout: 5,
         }

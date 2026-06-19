@@ -81,7 +81,7 @@ pub async fn handle_deployment_create(
     let mut val =
         serde_json::to_value(&body).map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
     if let Some(o) = val.as_object_mut() {
-        o.insert("http_status".to_string(), (status.as_u16()).into());
+        o.insert(String::from("http_status"), (status.as_u16()).into());
     }
     Ok(val)
 }
@@ -168,7 +168,7 @@ pub async fn handle_consent_check(
     let id = extract_str_param(params.as_ref(), "consent_id")?;
     let rec = state.consent_manager.get_consent(&id).await.ok_or_else(|| JsonRpcError {
         code: -32001,
-        message: "Consent not found".to_string(),
+        message: String::from("Consent not found"),
         data: None,
     })?;
     serde_json::to_value(rec).map_err(|e| JsonRpcError::internal_error(e.to_string()))
@@ -191,7 +191,7 @@ pub async fn handle_consent_grant(
     if !state.consent_manager.approve(id, reason).await {
         return Err(JsonRpcError {
             code: -32001,
-            message: "Consent not found".to_string(),
+            message: String::from("Consent not found"),
             data: None,
         });
     }

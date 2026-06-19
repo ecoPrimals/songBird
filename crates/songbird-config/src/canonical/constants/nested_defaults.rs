@@ -130,17 +130,17 @@ impl CanonicalNetworkDefaults {
             SafeEnv::get_required("SONGBIRD_ALLOWED_NETWORKS").map_or_else(
                 |_| {
                     vec![
-                        "10.0.0.0/8".to_string(),     // Private networks
-                        "172.16.0.0/12".to_string(),  // Private networks
-                        "192.168.0.0/16".to_string(), // Private networks
+                        String::from("10.0.0.0/8"),     // Private networks
+                        String::from("172.16.0.0/12"),  // Private networks
+                        String::from("192.168.0.0/16"), // Private networks
                     ]
                 },
                 |nets| nets.split(',').map(String::from).collect(),
             )
         } else {
             vec![
-                "127.0.0.0/8".to_string(), // Localhost only for development
-                "10.0.0.0/8".to_string(),  // Local development networks
+                String::from("127.0.0.0/8"), // Localhost only for development
+                String::from("10.0.0.0/8"),  // Local development networks
             ]
         }
     }

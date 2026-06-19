@@ -189,7 +189,7 @@ impl HttpHandler {
         // DEBUG: Log incoming params (Issue #1 & #2 investigation - Jan 28, 2026)
         tracing::info!(
             "🔍 handle_request → params: {}",
-            serde_json::to_string(&params).unwrap_or_else(|_| "invalid json".to_string())
+            serde_json::to_string(&params).unwrap_or_else(|_| String::from("invalid json"))
         );
 
         // 1. Parse parameters
@@ -243,7 +243,7 @@ impl HttpHandler {
         let security_socket = crate::env_config::security_crypto_ipc_socket_from_env(|| {
             let family_id = songbird_process_env::var("SONGBIRD_FAMILY_ID")
                 .or_else(|_| songbird_process_env::var("FAMILY_ID"))
-                .unwrap_or_else(|_| "default".to_string());
+                .unwrap_or_else(|_| String::from("default"));
             songbird_types::defaults::paths::family_scoped_security_socket_path(&family_id)
                 .to_string_lossy()
                 .into_owned()
@@ -296,7 +296,7 @@ impl HttpHandler {
         // DEBUG: Log http.post invocation (Issue #1 investigation - Jan 28, 2026)
         tracing::info!(
             "🔍 handle_post → incoming params: {}",
-            serde_json::to_string(&params).unwrap_or_else(|_| "invalid json".to_string())
+            serde_json::to_string(&params).unwrap_or_else(|_| String::from("invalid json"))
         );
 
         let mut req_params = params;
@@ -305,7 +305,7 @@ impl HttpHandler {
         // DEBUG: Log modified params (Issue #1 investigation - Jan 28, 2026)
         tracing::info!(
             "🔍 handle_post → modified params: {}",
-            serde_json::to_string(&req_params).unwrap_or_else(|_| "invalid json".to_string())
+            serde_json::to_string(&req_params).unwrap_or_else(|_| String::from("invalid json"))
         );
 
         self.handle_request(req_params).await

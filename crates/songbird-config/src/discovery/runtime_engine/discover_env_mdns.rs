@@ -25,8 +25,8 @@ pub(super) async fn discover_from_environment(
             address: addr,
             capabilities: vec![capability.to_string()],
             metadata: std::collections::HashMap::from([(
-                "source".to_string(),
-                "environment".to_string(),
+                String::from("source"),
+                String::from("environment"),
             )]),
             discovered_at: std::time::SystemTime::now(),
         };

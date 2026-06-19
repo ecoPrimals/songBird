@@ -250,8 +250,11 @@ impl UniversalAdapter {
                     provider_id: format!("env-{capability}"),
                     capabilities: vec![capability.to_string()],
                     endpoint: endpoint.to_string(),
-                    protocol: "http".to_string(), // Assume HTTP for env providers
-                    metadata: HashMap::from([("source".to_string(), "environment".to_string())]),
+                    protocol: String::from("http"), // Assume HTTP for env providers
+                    metadata: HashMap::from([(
+                        String::from("source"),
+                        String::from("environment"),
+                    )]),
                     discovered_at: Instant::now(),
                 });
 

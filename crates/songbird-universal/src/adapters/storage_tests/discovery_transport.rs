@@ -174,7 +174,7 @@ async fn from_discovery_fallback_default_songbird_host_and_storage_port() -> Son
         format!(
             "http://{}:{}",
             songbird_types::constants::LOCALHOST,
-            songbird_config::defaults::ports::service_port("STORAGE", 8082)
+            songbird_config::defaults::ports::storage_provider_port()
         )
     );
     assert_protocol_debug(&adapter, "Http");

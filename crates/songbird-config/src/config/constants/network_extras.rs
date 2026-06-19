@@ -23,10 +23,10 @@ pub fn get_dashboard_port() -> u16 {
 #[must_use]
 pub fn protocol_port_mappings() -> std::collections::HashMap<String, u16> {
     let mut mappings = std::collections::HashMap::new();
-    mappings.insert("udp".to_string(), 6112);
-    mappings.insert("tcp".to_string(), 6113);
-    mappings.insert("websocket".to_string(), 8080);
-    mappings.insert("secure_websocket".to_string(), 8443);
+    mappings.insert(String::from("udp"), 6112);
+    mappings.insert(String::from("tcp"), 6113);
+    mappings.insert(String::from("websocket"), 8080);
+    mappings.insert(String::from("secure_websocket"), 8443);
     mappings
 }
 
@@ -42,7 +42,7 @@ pub fn external_address() -> String {
 /// Get default subnet configuration
 #[must_use]
 pub fn default_subnet() -> String {
-    SafeEnv::get_or_default("SONGBIRD_SUBNET", "10.0.0.0/24".to_string())
+    SafeEnv::get_or_default("SONGBIRD_SUBNET", String::from("10.0.0.0/24"))
 }
 
 /// Universal capability query - works with any capability name

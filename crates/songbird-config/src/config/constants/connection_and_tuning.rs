@@ -41,9 +41,9 @@ pub fn get_log_level() -> String {
         .or_else(|_| SafeEnv::get("RUST_LOG"))
         .unwrap_or_else(|_| {
             match SafeEnv::get("SONGBIRD_ENV").as_deref() {
-                Ok("production") => "warn".to_string(),
-                Ok("staging") => "info".to_string(),
-                _ => "debug".to_string(), // Testing and development default
+                Ok("production") => String::from("warn"),
+                Ok("staging") => String::from("info"),
+                _ => String::from("debug"), // Testing and development default
             }
         })
 }

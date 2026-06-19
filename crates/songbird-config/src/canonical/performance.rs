@@ -311,7 +311,7 @@ impl MetricsConfig {
 ///     duration_secs: 120,
 ///     concurrent_requests: 500,
 ///     warmup_duration_secs: 15,
-///     output_format: "json".to_string(),
+///     output_format: String::from("json"),
 ///     batch_test_size: 2000,
 /// };
 /// ```
@@ -360,7 +360,8 @@ impl BenchmarkConfig {
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(10),
-            output_format: env("SONGBIRD_BENCHMARK_OUTPUT").unwrap_or_else(|_| "json".to_string()),
+            output_format: env("SONGBIRD_BENCHMARK_OUTPUT")
+                .unwrap_or_else(|_| String::from("json")),
             batch_test_size: 1000,
         }
     }

@@ -104,32 +104,32 @@ impl CapabilityRegistry {
             return Err(SongbirdError::Registry {
                 message: format!("Provider '{}' is already registered", request.provider_id),
                 service_name: Some(request.provider_id),
-                operation: "register".to_string(),
+                operation: String::from("register"),
             });
         }
 
         // Validate required fields
         if request.provider_id.is_empty() {
             return Err(SongbirdError::Validation {
-                message: "provider_id cannot be empty".to_string(),
-                field: Some("provider_id".to_string()),
-                suggestion: Some("Provide a unique identifier for this provider".to_string()),
+                message: String::from("provider_id cannot be empty"),
+                field: Some(String::from("provider_id")),
+                suggestion: Some(String::from("Provide a unique identifier for this provider")),
             });
         }
 
         if request.endpoint.is_empty() {
             return Err(SongbirdError::Validation {
-                message: "endpoint cannot be empty".to_string(),
-                field: Some("endpoint".to_string()),
-                suggestion: Some("Provide the base HTTP endpoint".to_string()),
+                message: String::from("endpoint cannot be empty"),
+                field: Some(String::from("endpoint")),
+                suggestion: Some(String::from("Provide the base HTTP endpoint")),
             });
         }
 
         if request.capabilities.is_empty() {
             return Err(SongbirdError::Validation {
-                message: "capabilities list cannot be empty".to_string(),
-                field: Some("capabilities".to_string()),
-                suggestion: Some("Provide at least one capability".to_string()),
+                message: String::from("capabilities list cannot be empty"),
+                field: Some(String::from("capabilities")),
+                suggestion: Some(String::from("Provide at least one capability")),
             });
         }
 
@@ -203,21 +203,21 @@ impl CapabilityRegistry {
         let provider = providers.get_mut(provider_id).ok_or_else(|| SongbirdError::Registry {
             message: format!("Provider '{provider_id}' not found"),
             service_name: Some(provider_id.to_string()),
-            operation: "heartbeat".to_string(),
+            operation: String::from("heartbeat"),
         })?;
 
         // Verify registration ID (`Arc<str>` can be compared with `&str`)
         if provider.registration_id.as_ref() != registration_id {
             return Err(SongbirdError::Security(songbird_types::SecurityError {
                 message: format!("Registration ID mismatch for provider '{provider_id}'"),
-                operation: Some("heartbeat".to_string()),
+                operation: Some(String::from("heartbeat")),
                 required_permission: Some(format!(
                     "Valid registration_id for provider '{provider_id}'"
                 )),
-                context: Some("capability_provider_heartbeat".to_string()),
-                remediation: Some(
-                    "Use the registration_id returned during registration".to_string(),
-                ),
+                context: Some(String::from("capability_provider_heartbeat")),
+                remediation: Some(String::from(
+                    "Use the registration_id returned during registration",
+                )),
             }));
         }
 
@@ -263,7 +263,7 @@ impl CapabilityRegistry {
         providers.remove(provider_id).ok_or_else(|| SongbirdError::Registry {
             message: format!("Provider '{provider_id}' not found"),
             service_name: Some(provider_id.to_string()),
-            operation: "unregister".to_string(),
+            operation: String::from("unregister"),
         })?;
 
         info!(
@@ -319,7 +319,7 @@ impl CapabilityRegistry {
         let result = providers.get(provider_id).cloned().ok_or_else(|| SongbirdError::Registry {
             message: format!("Provider '{provider_id}' not found"),
             service_name: Some(provider_id.to_string()),
-            operation: "get".to_string(),
+            operation: String::from("get"),
         });
         drop(providers);
         result
@@ -420,21 +420,21 @@ mod tests {
 
     fn create_test_registration() -> CapabilityRegistrationRequest {
         let mut metadata = HashMap::new();
-        metadata.insert("max_concurrent_tasks".to_string(), serde_json::json!(10));
+        metadata.insert(String::from("max_concurrent_tasks"), serde_json::json!(10));
 
         CapabilityRegistrationRequest {
-            provider_id: "test-provider".to_string(),
-            provider_name: "Test Provider".to_string(),
-            provider_type: "compute".to_string(),
-            version: "1.0.0".to_string(),
-            endpoint: "http://localhost:9000".to_string(),
+            provider_id: String::from("test-provider"),
+            provider_name: String::from("Test Provider"),
+            provider_type: String::from("compute"),
+            version: String::from("1.0.0"),
+            endpoint: String::from("http://localhost:9000"),
             capabilities: vec![CapabilityDescriptor {
-                name: "compute_gpu".to_string(),
-                description: "GPU compute".to_string(),
+                name: String::from("compute_gpu"),
+                description: String::from("GPU compute"),
                 metadata: HashMap::new(),
             }],
-            workload_endpoint: "/execute".to_string(),
-            health_endpoint: "/health".to_string(),
+            workload_endpoint: String::from("/execute"),
+            health_endpoint: String::from("/health"),
             metadata,
         }
     }

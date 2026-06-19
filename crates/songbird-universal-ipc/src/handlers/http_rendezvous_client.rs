@@ -131,7 +131,7 @@ impl HttpRendezvousClient {
 
         // Extract body after \r\n\r\n
         response_str.find("\r\n\r\n").map_or_else(
-            || Err("Invalid HTTP response: no body separator".to_string()),
+            || Err(String::from("Invalid HTTP response: no body separator")),
             |body_start| Ok(response_str[body_start + 4..].to_string()),
         )
     }
@@ -167,7 +167,7 @@ impl HttpRendezvousClient {
         let response_str = String::from_utf8_lossy(&response);
 
         response_str.find("\r\n\r\n").map_or_else(
-            || Err("Invalid HTTP response: no body separator".to_string()),
+            || Err(String::from("Invalid HTTP response: no body separator")),
             |body_start| Ok(response_str[body_start + 4..].to_string()),
         )
     }

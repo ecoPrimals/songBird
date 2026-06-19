@@ -73,7 +73,7 @@ impl HttpHandler {
     pub async fn handle_get(&self, url: &str) -> IpcResult<HttpResponseResult> {
         let params = HttpRequestParams {
             url: url.to_string(),
-            method: "GET".to_string(),
+            method: String::from("GET"),
             headers: HashMap::new(),
             body: None,
             timeout_ms: 30_000,
@@ -93,12 +93,12 @@ impl HttpHandler {
     ) -> IpcResult<HttpResponseResult> {
         let mut headers = caller_headers;
         if let Some(ct) = content_type {
-            headers.insert("Content-Type".to_string(), ct.to_string());
+            headers.insert(String::from("Content-Type"), ct.to_string());
         }
 
         let params = HttpRequestParams {
             url: url.to_string(),
-            method: "POST".to_string(),
+            method: String::from("POST"),
             headers,
             body: Some(body.to_string()),
             timeout_ms: 30_000,
@@ -123,7 +123,7 @@ impl crate::tower_atomic::JsonRpcHandler for HttpHandler {
                 let url = params
                     .get("url")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| "Missing 'url' parameter".to_string())?;
+                    .ok_or_else(|| String::from("Missing 'url' parameter"))?;
 
                 let result = self.handle_get(url).await.map_err(|e| e.to_string())?;
 
@@ -133,12 +133,12 @@ impl crate::tower_atomic::JsonRpcHandler for HttpHandler {
                 let url = params
                     .get("url")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| "Missing 'url' parameter".to_string())?;
+                    .ok_or_else(|| String::from("Missing 'url' parameter"))?;
 
                 let body = params
                     .get("body")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| "Missing 'body' parameter".to_string())?;
+                    .ok_or_else(|| String::from("Missing 'body' parameter"))?;
 
                 let content_type = params.get("content_type").and_then(|v| v.as_str());
 
@@ -242,8 +242,8 @@ mod tests {
         assert_eq!(caps.len(), 1);
         assert_eq!(caps[0].0, "POST");
         assert_eq!(caps[0].1, "https://example.test/post");
-        assert_eq!(caps[0].2.get("Authorization"), Some(&"Bearer t".to_string()));
-        assert_eq!(caps[0].2.get("X-Custom"), Some(&"c".to_string()));
+        assert_eq!(caps[0].2.get("Authorization"), Some(&String::from("Bearer t")));
+        assert_eq!(caps[0].2.get("X-Custom"), Some(&String::from("c")));
         assert_eq!(caps[0].3.as_deref(), Some(&b"{\"a\":1}"[..]));
     }
 
@@ -327,8 +327,8 @@ mod tests {
         assert_eq!(out["status_code"], 200);
 
         let caps = mock.take_captures();
-        assert_eq!(caps[0].2.get("Content-Type"), Some(&"application/json".to_string()));
-        assert_eq!(caps[0].2.get("X-Api"), Some(&"k".to_string()));
+        assert_eq!(caps[0].2.get("Content-Type"), Some(&String::from("application/json")));
+        assert_eq!(caps[0].2.get("X-Api"), Some(&String::from("k")));
 
         assert_eq!(
             handler.handle("http.post", json!({ "body": "{}" })).await.expect_err("url"),

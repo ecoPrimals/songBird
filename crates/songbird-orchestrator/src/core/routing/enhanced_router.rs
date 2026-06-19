@@ -325,8 +325,8 @@ impl EnhancedCapabilityRouter {
         }
 
         Err(SongbirdError::Service {
-            service: "federation".to_string(),
-            message: "No active peer Songbirds available".to_string(),
+            service: String::from("federation"),
+            message: String::from("No active peer Songbirds available"),
             suggested_alternatives: vec![],
             recovery_actions: vec![],
         })
@@ -370,13 +370,13 @@ impl EnhancedCapabilityRouter {
                 SongbirdError::Network {
                     message: format!("Failed to discover crypto provider: {e}"),
                     interface: None,
-                    suggestion: Some("Check security provider availability".to_string()),
+                    suggestion: Some(String::from("Check security provider availability")),
                 }
             })?;
 
         let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
         let task_json = serde_json::to_value(task).map_err(|e| SongbirdError::Serialization {
-            format: Some("JSON".to_string()),
+            format: Some(String::from("JSON")),
             message: e.to_string(),
             debug_info: None,
         })?;
@@ -387,14 +387,14 @@ impl EnhancedCapabilityRouter {
         )
         .await
         .map_err(|_| SongbirdError::Network {
-            message: "Request timeout (5 minutes)".to_string(),
+            message: String::from("Request timeout (5 minutes)"),
             interface: Some(endpoint.to_string()),
-            suggestion: Some("Check service health and network connectivity".to_string()),
+            suggestion: Some(String::from("Check service health and network connectivity")),
         })?
         .map_err(|e| SongbirdError::Network {
             message: format!("Failed to send task to service: {e}"),
             interface: Some(endpoint.to_string()),
-            suggestion: Some("Check service health and network connectivity".to_string()),
+            suggestion: Some(String::from("Check service health and network connectivity")),
         })?;
 
         if response.status < 200 || response.status >= 300 {

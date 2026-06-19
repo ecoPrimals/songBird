@@ -183,7 +183,7 @@ pub async fn handle_command(command: Commands, _config: &CliConfig) -> Result<()
 /// Get or create the discovery configuration (cached for performance)
 pub fn get_discovery_config() -> &'static SongbirdDiscoveryConfig {
     DISCOVERY_CONFIG.get_or_init(|| SongbirdDiscoveryConfig {
-        node_id: Some("orchestrator-cli".to_string()),
+        node_id: Some(String::from("orchestrator-cli")),
         node_type: NodeType::Orchestrator,
         institution: None,
         federation_enabled: false,
@@ -277,8 +277,8 @@ mod tests {
         config.set_colored_output(false);
         assert!(!config.is_colored_output_enabled());
 
-        config.set_config_path("/test/config.toml".to_string());
-        assert_eq!(config.get_config_path(), Some("/test/config.toml".to_string()));
+        config.set_config_path(String::from("/test/config.toml"));
+        assert_eq!(config.get_config_path(), Some(String::from("/test/config.toml")));
     }
 
     #[tokio::test]

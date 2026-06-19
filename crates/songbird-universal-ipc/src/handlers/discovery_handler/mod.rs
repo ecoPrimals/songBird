@@ -79,7 +79,7 @@ impl DiscoveryHandler {
         }
     }
 
-    /// Inject a custom registry slot (e.g. [`PeerRegistrySlot::Mock`] in unit tests).
+    /// Inject a custom registry slot (e.g. `PeerRegistrySlot::Mock` in unit tests).
     #[must_use]
     pub fn with_peer_registry(slot: PeerRegistrySlot) -> Self {
         Self {
@@ -211,10 +211,10 @@ impl DiscoveryHandler {
                 address,
                 tcp_port,
                 capabilities: Vec::new(),
-                last_seen: "mesh".to_string(),
+                last_seen: String::from("mesh"),
                 quality: Some(1.0),
                 node_name: None,
-                protocols: vec!["tcp".to_string()],
+                protocols: vec![String::from("tcp")],
             });
         }
 

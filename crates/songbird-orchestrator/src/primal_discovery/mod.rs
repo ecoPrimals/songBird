@@ -149,32 +149,32 @@ mod tests {
 
     #[test]
     fn test_matches_crypto_tokens() {
-        let t = vec!["crypto.delegate".to_string(), "ipc.jsonrpc".to_string()];
+        let t = vec![String::from("crypto.delegate"), String::from("ipc.jsonrpc")];
         assert!(Capability::Crypto.matches_capability_tokens(&t));
     }
 
     #[test]
     fn test_matches_security_tokens() {
-        let t = vec!["security.verify".to_string()];
+        let t = vec![String::from("security.verify")];
         assert!(Capability::Security.matches_capability_tokens(&t));
     }
 
     #[test]
     fn test_matches_http_tokens() {
-        let t = vec!["http.request".to_string()];
+        let t = vec![String::from("http.request")];
         assert!(Capability::Http.matches_capability_tokens(&t));
     }
 
     #[test]
     fn test_matches_storage_not_sovereign() {
-        let t = vec!["storage.get".to_string()];
+        let t = vec![String::from("storage.get")];
         assert!(Capability::Storage.matches_capability_tokens(&t));
         assert!(!matches_sovereign_storage_tokens(&t));
     }
 
     #[test]
     fn test_matches_sovereign_storage() {
-        let t = vec!["storage.get".to_string(), "edge.sovereign".to_string()];
+        let t = vec![String::from("storage.get"), String::from("edge.sovereign")];
         assert!(matches_sovereign_storage_tokens(&t));
     }
 
@@ -208,7 +208,7 @@ mod tests {
 
         let candidates = vec![file_path.clone()];
         let result = check_tcp_discovery_from_candidates(&candidates);
-        assert_eq!(result, Some("127.0.0.1:12345".to_string()));
+        assert_eq!(result, Some(String::from("127.0.0.1:12345")));
 
         std::fs::remove_file(file_path).ok();
     }
@@ -226,7 +226,7 @@ mod tests {
 
         let candidates = vec![file_path.clone()];
         let result = check_tcp_discovery_from_candidates(&candidates);
-        assert_eq!(result, Some("127.0.0.1:33765".to_string()));
+        assert_eq!(result, Some(String::from("127.0.0.1:33765")));
 
         std::fs::remove_file(file_path).ok();
     }
@@ -527,7 +527,7 @@ mod tests {
 
         let candidates = vec![file_path.clone()];
         let result = check_tcp_discovery_from_candidates(&candidates);
-        assert_eq!(result, Some("[::1]:9876".to_string()));
+        assert_eq!(result, Some(String::from("[::1]:9876")));
 
         std::fs::remove_file(file_path).ok();
     }

@@ -338,9 +338,9 @@ mod tests {
     #[test]
     fn test_lineage_proof_chain_length() {
         let sig = LineageSignature {
-            signer_node_id: "n1".to_string(),
-            signature: "aa".to_string(),
-            signed_data_hash: "bb".to_string(),
+            signer_node_id: String::from("n1"),
+            signature: String::from("aa"),
+            signed_data_hash: String::from("bb"),
             timestamp: 1,
         };
         let proof = LineageProof {
@@ -382,8 +382,8 @@ mod tests {
             .with_genesis_tower("tower1")
             .with_parent("parent-node-id");
 
-        assert_eq!(lineage.genesis_tower, Some("tower1".to_string()));
-        assert_eq!(lineage.parent_node_id, Some("parent-node-id".to_string()));
+        assert_eq!(lineage.genesis_tower, Some(String::from("tower1")));
+        assert_eq!(lineage.parent_node_id, Some(String::from("parent-node-id")));
     }
 
     #[test]
@@ -392,7 +392,7 @@ mod tests {
             valid: true,
             same_genesis: false,
             lineage_id: LineageId::new("lineage:x:1:h"),
-            messages: vec!["ok".to_string()],
+            messages: vec![String::from("ok")],
         };
         let json = serde_json::to_string(&v).expect("serde");
         let back: LineageVerification = serde_json::from_str(&json).expect("de");

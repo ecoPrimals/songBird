@@ -54,7 +54,7 @@ pub struct OrchestratorConfig {
 impl Default for OrchestratorConfig {
     fn default() -> Self {
         Self {
-            database_url: "songbird.db".to_string(),
+            database_url: String::from("songbird.db"),
             enable_resource_management: true,
             enable_consent_management: true,
             enable_observability: true,
@@ -243,7 +243,7 @@ impl SongbirdOrchestrator {
                     ..
                 } => {
                     warn!("Task {} blocked: {}", task_id, reason);
-                    self.lifecycle.cancel_task(task_id, Some(reason.clone())).await?;
+                    self.lifecycle.cancel_task(task_id, Some(Arc::clone(&reason))).await?;
                     return Err(anyhow::anyhow!("Task blocked: {reason}"));
                 }
                 EnforcementResult::Pending {
@@ -266,7 +266,7 @@ impl SongbirdOrchestrator {
                             ..
                         } => {
                             warn!("Task {} consent denied: {}", task_id, reason);
-                            self.lifecycle.cancel_task(task_id, Some(reason.clone())).await?;
+                            self.lifecycle.cancel_task(task_id, Some(Arc::clone(&reason))).await?;
                             return Err(anyhow::anyhow!("Consent denied: {reason}"));
                         }
                         _ => {
@@ -295,7 +295,7 @@ impl SongbirdOrchestrator {
                     reason,
                 } => {
                     warn!("Task {} rejected: {}", task_id, reason);
-                    self.lifecycle.cancel_task(task_id, Some(reason.clone())).await?;
+                    self.lifecycle.cancel_task(task_id, Some(Arc::clone(&reason))).await?;
                     return Err(anyhow::anyhow!("Task rejected: {reason}"));
                 }
                 AdmissionDecision::Delayed {
@@ -362,7 +362,7 @@ impl SongbirdOrchestrator {
                 warn!("Task {} failed: {}", task_id, e);
 
                 let error_msg: Arc<str> = e.to_string().into();
-                self.lifecycle.fail_task(task_id, error_msg.clone()).await?;
+                self.lifecycle.fail_task(task_id, Arc::clone(&error_msg)).await?;
 
                 // Emit failure event
                 if let Some(ref stream) = self.event_stream {
@@ -376,7 +376,7 @@ impl SongbirdOrchestrator {
                         task_id,
                         task.owner,
                         TaskEventType::Failed {
-                            error: error_msg.clone(),
+                            error: Arc::clone(&error_msg),
                         },
                     );
                     stream.emit(event).await.ok();

@@ -197,6 +197,23 @@ impl BeaconMesh {
             .collect()
     }
 
+    /// Get all known node IDs (reachable and unreachable).
+    pub async fn get_known_nodes(&self) -> Vec<String> {
+        self.endpoints.read().await.keys().cloned().collect()
+    }
+
+    /// Backdate `last_seen` for health-check simulation and integration tests.
+    pub async fn backdate_endpoint_last_seen(&self, node_id: &str, age: Duration) {
+        let mut endpoints = self.endpoints.write().await;
+        if let Some(eps) = endpoints.get_mut(node_id) {
+            for ep in eps.iter_mut() {
+                if let Some(stale) = ep.last_seen.checked_sub(age) {
+                    ep.last_seen = stale;
+                }
+            }
+        }
+    }
+
     /// Announce ourselves as relay to the mesh
     pub async fn announce_as_relay(&self) -> SignalingMessage {
         let reachable = self.get_reachable_nodes().await;
@@ -247,15 +264,27 @@ impl BeaconMesh {
     /// Periodic health check - update reachability
     pub async fn health_check(&self) {
         let now = Instant::now();
-        let mut endpoints = self.endpoints.write().await;
+        let mut affected = Vec::new();
 
-        for (node_id, eps) in endpoints.iter_mut() {
-            for ep in eps.iter_mut() {
-                if now.duration_since(ep.last_seen) > Duration::from_secs(60) && ep.reachable {
-                    debug!("📴 {} endpoint via {:?} marked unreachable", node_id, ep.endpoint_type);
-                    ep.reachable = false;
+        {
+            let mut endpoints = self.endpoints.write().await;
+
+            for (node_id, eps) in endpoints.iter_mut() {
+                for ep in eps.iter_mut() {
+                    if now.duration_since(ep.last_seen) > Duration::from_secs(60) && ep.reachable {
+                        debug!(
+                            "📴 {} endpoint via {:?} marked unreachable",
+                            node_id, ep.endpoint_type
+                        );
+                        ep.reachable = false;
+                        affected.push(node_id.clone());
+                    }
                 }
             }
+        }
+
+        for node_id in affected {
+            self.update_best_path(&node_id).await;
         }
     }
 
@@ -276,8 +305,11 @@ impl BeaconMesh {
 
             drop(endpoints);
 
+            let mut best_paths = self.best_paths.write().await;
             if let Some(ep) = best {
-                self.best_paths.write().await.insert(node_id.to_string(), ep);
+                best_paths.insert(node_id.to_string(), ep);
+            } else {
+                best_paths.remove(node_id);
             }
         }
     }

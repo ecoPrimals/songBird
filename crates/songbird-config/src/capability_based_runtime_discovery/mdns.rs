@@ -43,7 +43,7 @@ impl MdnsDiscovery {
     #[must_use]
     pub fn new(service_type: Option<String>) -> Self {
         Self {
-            service_type: service_type.unwrap_or_else(|| "_songbird._tcp.local.".to_string()),
+            service_type: service_type.unwrap_or_else(|| String::from("_songbird._tcp.local.")),
             timeout: DEFAULT_MDNS_TIMEOUT,
             interface: None,
         }
@@ -264,9 +264,9 @@ impl MdnsDiscovery {
             .collect();
 
         if candidates.is_empty() {
-            return Err(SongbirdError::discovery(
-                "No mDNS services support required features".to_string(),
-            ));
+            return Err(SongbirdError::discovery(String::from(
+                "No mDNS services support required features",
+            )));
         }
 
         // Sort by priority (lower is better)
@@ -281,7 +281,7 @@ impl MdnsDiscovery {
         });
 
         let selected = candidates.first().ok_or_else(|| {
-            SongbirdError::discovery("No suitable mDNS service found".to_string())
+            SongbirdError::discovery(String::from("No suitable mDNS service found"))
         })?;
 
         Ok(CapabilityProvider {
@@ -335,14 +335,14 @@ mod tests {
 
     #[test]
     fn test_mdns_with_custom_service_type() {
-        let discovery = MdnsDiscovery::new(Some("_custom._tcp.local.".to_string()));
+        let discovery = MdnsDiscovery::new(Some(String::from("_custom._tcp.local.")));
         assert_eq!(discovery.service_type, "_custom._tcp.local.");
     }
 
     #[test]
     fn test_mdns_with_interface() {
         let discovery = MdnsDiscovery::new(None).with_interface("eth0");
-        assert_eq!(discovery.interface, Some("eth0".to_string()));
+        assert_eq!(discovery.interface, Some(String::from("eth0")));
     }
 
     #[test]
@@ -378,8 +378,8 @@ mod tests {
         assert_eq!(svc.protocol, Protocol::Https);
         assert_eq!(svc.features, vec!["batch", "gpu"]);
         assert_eq!(svc.priority, 5);
-        assert_eq!(svc.metadata.get("note"), Some(&"lab".to_string()));
-        assert_eq!(svc.metadata.get("capability"), Some(&"compute".to_string()));
+        assert_eq!(svc.metadata.get("note"), Some(&String::from("lab")));
+        assert_eq!(svc.metadata.get("capability"), Some(&String::from("compute")));
     }
 
     #[test]

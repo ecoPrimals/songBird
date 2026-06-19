@@ -221,13 +221,13 @@ impl OptimizedCapabilities {
         let mut capabilities = Vec::new();
 
         if self.security {
-            capabilities.push("security".to_string());
+            capabilities.push(String::from("security"));
         }
         if self.storage {
-            capabilities.push("storage".to_string());
+            capabilities.push(String::from("storage"));
         }
         if self.compute {
-            capabilities.push("compute".to_string());
+            capabilities.push(String::from("compute"));
         }
 
         capabilities.extend(self.custom.clone());
@@ -303,7 +303,7 @@ mod tests {
         let mut caps = OptimizedCapabilities::new();
         caps.with_security().with_storage();
 
-        caps.add_custom("custom-capability".to_string());
+        caps.add_custom(String::from("custom-capability"));
 
         assert_eq!(caps.count(), 3);
     }
@@ -314,8 +314,8 @@ mod tests {
         caps.with_compute();
         caps.add_custom("x");
         let v = caps.to_string_vec();
-        assert!(v.contains(&"compute".to_string()));
-        assert!(v.contains(&"x".to_string()));
+        assert!(v.contains(&String::from("compute")));
+        assert!(v.contains(&String::from("x")));
     }
 
     #[test]

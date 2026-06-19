@@ -283,7 +283,7 @@ mod tests {
     async fn test_environment_strategy() {
         let providers = EnvironmentStrategy::discover_with("crypto", |k| {
             if k == "CRYPTO_PROVIDER_SOCKET" {
-                Ok("/tmp/test-crypto.sock".to_string())
+                Ok(String::from("/tmp/test-crypto.sock"))
             } else {
                 Err(std::env::VarError::NotPresent)
             }
@@ -317,8 +317,8 @@ mod tests {
     #[tokio::test]
     async fn environment_strategy_prefers_provider_socket_over_provider() {
         let providers = EnvironmentStrategy::discover_with("ab", |k| match k {
-            "AB_PROVIDER_SOCKET" => Ok("/tmp/first.sock".to_string()),
-            "AB_PROVIDER" => Ok("/tmp/second.sock".to_string()),
+            "AB_PROVIDER_SOCKET" => Ok(String::from("/tmp/first.sock")),
+            "AB_PROVIDER" => Ok(String::from("/tmp/second.sock")),
             _ => Err(std::env::VarError::NotPresent),
         })
         .await
@@ -331,7 +331,7 @@ mod tests {
     async fn environment_strategy_falls_back_to_capability_provider() {
         let providers = EnvironmentStrategy::discover_with("xy", |k| match k {
             "XY_PROVIDER_SOCKET" => Err(std::env::VarError::NotPresent),
-            "XY_PROVIDER" => Ok("/run/xy.sock".to_string()),
+            "XY_PROVIDER" => Ok(String::from("/run/xy.sock")),
             _ => Err(std::env::VarError::NotPresent),
         })
         .await
@@ -344,7 +344,7 @@ mod tests {
     async fn environment_strategy_third_tier_generic_socket() {
         let providers = EnvironmentStrategy::discover_with("zz", |k| match k {
             "ZZ_PROVIDER_SOCKET" | "ZZ_PROVIDER" => Err(std::env::VarError::NotPresent),
-            "ZZ_SOCKET" => Ok("/var/zz.sock".to_string()),
+            "ZZ_SOCKET" => Ok(String::from("/var/zz.sock")),
             _ => Err(std::env::VarError::NotPresent),
         })
         .await

@@ -51,13 +51,13 @@ impl CapabilityType {
     #[must_use]
     pub fn env_var_name(&self) -> String {
         match self {
-            Self::Security => "CAPABILITY_SECURITY_ENDPOINT".to_string(),
-            Self::Storage => "CAPABILITY_STORAGE_ENDPOINT".to_string(),
-            Self::Compute => "CAPABILITY_COMPUTE_ENDPOINT".to_string(),
-            Self::Ai => "CAPABILITY_AI_ENDPOINT".to_string(),
-            Self::Orchestration => "CAPABILITY_ORCHESTRATION_ENDPOINT".to_string(),
-            Self::Observability => "CAPABILITY_OBSERVABILITY_ENDPOINT".to_string(),
-            Self::Networking => "CAPABILITY_NETWORKING_ENDPOINT".to_string(),
+            Self::Security => String::from("CAPABILITY_SECURITY_ENDPOINT"),
+            Self::Storage => String::from("CAPABILITY_STORAGE_ENDPOINT"),
+            Self::Compute => String::from("CAPABILITY_COMPUTE_ENDPOINT"),
+            Self::Ai => String::from("CAPABILITY_AI_ENDPOINT"),
+            Self::Orchestration => String::from("CAPABILITY_ORCHESTRATION_ENDPOINT"),
+            Self::Observability => String::from("CAPABILITY_OBSERVABILITY_ENDPOINT"),
+            Self::Networking => String::from("CAPABILITY_NETWORKING_ENDPOINT"),
             Self::Custom(name) => format!("CAPABILITY_{}_ENDPOINT", name.to_uppercase()),
         }
     }

@@ -43,7 +43,7 @@ mod tests {
     async fn test_environment_discovery() {
         let result = RuntimeDiscoveryEngine::from_environment_with("test", &|k| {
             if k == "TEST_ENDPOINT" {
-                Ok("http://test.example.com:8080".to_string())
+                Ok(String::from("http://test.example.com:8080"))
             } else {
                 Err(std::env::VarError::NotPresent)
             }
@@ -70,8 +70,8 @@ mod tests {
     async fn test_check_cache_misses_expired_entry() {
         let engine = RuntimeDiscoveryEngine::new();
         let service = DiscoveredService {
-            capability: "exp".to_string(),
-            endpoint: "http://old".to_string(),
+            capability: String::from("exp"),
+            endpoint: String::from("http://old"),
             discovered_via: DiscoveryMethod::Environment,
             health_score: 1.0,
             last_seen: std::time::SystemTime::UNIX_EPOCH,
@@ -85,8 +85,8 @@ mod tests {
         let engine = RuntimeDiscoveryEngine::new();
 
         let service = DiscoveredService {
-            capability: "test".to_string(),
-            endpoint: "http://test.example.com:8080".to_string(),
+            capability: String::from("test"),
+            endpoint: String::from("http://test.example.com:8080"),
             discovered_via: DiscoveryMethod::Environment,
             health_score: 1.0,
             last_seen: std::time::SystemTime::now(),
@@ -133,7 +133,7 @@ mod tests {
         let engine = RuntimeDiscoveryEngine::new();
         let fresh = DiscoveredService {
             capability: cap.to_string(),
-            endpoint: "http://cached-first".to_string(),
+            endpoint: String::from("http://cached-first"),
             discovered_via: DiscoveryMethod::Environment,
             health_score: 1.0,
             last_seen: std::time::SystemTime::now(),

@@ -265,7 +265,7 @@ pub async fn handle_negotiate(
             warn!("BTSP Phase 3 negotiate failed — falling back to null cipher: {e:#}");
             (
                 NegotiateResult {
-                    cipher: "null".to_string(),
+                    cipher: String::from("null"),
                     server_nonce: String::new(),
                 },
                 None,
@@ -291,7 +291,7 @@ async fn handle_negotiate_inner(
         );
         return Ok((
             NegotiateResult {
-                cipher: "null".to_string(),
+                cipher: String::from("null"),
                 server_nonce: String::new(),
             },
             None,
@@ -317,7 +317,7 @@ async fn handle_negotiate_inner(
     let keys = SessionKeys::derive(&handshake_key, &client_nonce, &server_nonce, false)?;
 
     let result = NegotiateResult {
-        cipher: "chacha20-poly1305".to_string(),
+        cipher: String::from("chacha20-poly1305"),
         server_nonce: BASE64_STANDARD.encode(server_nonce),
     };
 
@@ -552,8 +552,8 @@ mod tests {
     #[test]
     fn negotiate_result_serialize() {
         let r = NegotiateResult {
-            cipher: "chacha20-poly1305".to_string(),
-            server_nonce: "abc123".to_string(),
+            cipher: String::from("chacha20-poly1305"),
+            server_nonce: String::from("abc123"),
         };
         let json = serde_json::to_value(&r).unwrap();
         assert_eq!(json["cipher"], "chacha20-poly1305");
@@ -563,7 +563,7 @@ mod tests {
     #[test]
     fn null_negotiate_result_serialize() {
         let r = NegotiateResult {
-            cipher: "null".to_string(),
+            cipher: String::from("null"),
             server_nonce: String::new(),
         };
         let json = serde_json::to_value(&r).unwrap();

@@ -15,7 +15,7 @@ pub fn system_time_to_iso8601(time: SystemTime) -> String {
 
     // Simple ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ
     chrono::DateTime::from_timestamp(secs as i64, nanos).map_or_else(
-        || "1970-01-01T00:00:00Z".to_string(),
+        || String::from("1970-01-01T00:00:00Z"),
         |dt| dt.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
     )
 }

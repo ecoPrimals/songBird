@@ -168,7 +168,7 @@ mod tests {
     #[test]
     fn json_rpc_response_success_serializes_result_only() {
         let res = JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: String::from("2.0"),
             result: Some(serde_json::json!({"capabilities": ["a"]})),
             error: None,
             id: serde_json::json!(7),
@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn json_rpc_response_error_serializes_error_only() {
         let res = JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: String::from("2.0"),
             result: None,
             error: Some(JsonRpcError::invalid_request("missing jsonrpc")),
             id: serde_json::Value::Null,

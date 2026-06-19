@@ -9,6 +9,7 @@ use crate::birdsong::BirdSongBroadcaster;
 use crate::error::{LineageRelayError, Result};
 use crate::relay_protocol::RelayProtocol;
 use crate::types::{BirdSongType, LineageHint, MaskingLevel, NodeId, RelayAuthorization};
+use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use songbird_types::constants::EPHEMERAL_BIND_ADDR;
 use std::net::SocketAddr;
@@ -198,7 +199,7 @@ impl RelaySession {
         // Wrap data in relay protocol
         let packet = RelayProtocol::DataPacket {
             session_id: self.session_id,
-            data: data.to_vec(),
+            data: Bytes::copy_from_slice(data),
         };
 
         // Encode to wire format

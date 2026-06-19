@@ -103,7 +103,7 @@ impl Default for CanonicalHealthCheckConfig {
             enabled: true,
             interval: Duration::from_secs(30),
             timeout: Duration::from_secs(5),
-            endpoint: "/health".to_string(),
+            endpoint: String::from("/health"),
             expected_status_codes: vec![200, 204],
             failure_threshold: 3,
             success_threshold: 2,
@@ -129,7 +129,7 @@ impl Default for CanonicalTracingConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            level: "info".to_string(),
+            level: String::from("info"),
             sampling_rate: 1.0,
             export_endpoints: vec![],
         }

@@ -184,7 +184,7 @@ impl<H: JsonRpcHandler + 'static> TowerAtomicServer<H> {
             return JsonRpcResponse::error(
                 JsonRpcError {
                     code: JsonRpcError::INVALID_REQUEST,
-                    message: "Invalid JSON-RPC version (must be 2.0)".to_string(),
+                    message: String::from("Invalid JSON-RPC version (must be 2.0)"),
                     data: None,
                 },
                 id,

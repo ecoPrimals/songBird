@@ -65,7 +65,7 @@ impl CanonicalHealthCheck {
     pub fn healthy() -> Self {
         Self {
             status: CanonicalHealthStatus::Healthy,
-            message: Some("All systems operational".to_string()),
+            message: Some(String::from("All systems operational")),
             metrics: HashMap::new(),
             components: HashMap::new(),
         }
@@ -133,7 +133,7 @@ impl Default for CanonicalHealthConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            endpoint: "/health".to_string(),
+            endpoint: String::from("/health"),
             check_interval_seconds: 30,
             timeout_seconds: 5,
         }
@@ -184,7 +184,7 @@ mod tests {
     fn test_health_check_healthy() {
         let check = CanonicalHealthCheck::healthy();
         assert_eq!(check.status, CanonicalHealthStatus::Healthy);
-        assert_eq!(check.message, Some("All systems operational".to_string()));
+        assert_eq!(check.message, Some(String::from("All systems operational")));
         assert!(check.is_healthy());
     }
 
@@ -192,7 +192,7 @@ mod tests {
     fn test_health_check_degraded() {
         let check = CanonicalHealthCheck::degraded("Some services slow");
         assert_eq!(check.status, CanonicalHealthStatus::Degraded);
-        assert_eq!(check.message, Some("Some services slow".to_string()));
+        assert_eq!(check.message, Some(String::from("Some services slow")));
         assert!(!check.is_healthy());
     }
 
@@ -200,7 +200,7 @@ mod tests {
     fn test_health_check_unhealthy() {
         let check = CanonicalHealthCheck::unhealthy("Database down");
         assert_eq!(check.status, CanonicalHealthStatus::Unhealthy);
-        assert_eq!(check.message, Some("Database down".to_string()));
+        assert_eq!(check.message, Some(String::from("Database down")));
         assert!(!check.is_healthy());
     }
 

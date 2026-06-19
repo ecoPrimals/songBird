@@ -55,7 +55,7 @@
 //! ipc::init()?;
 //!
 //! // Register this primal
-//! let endpoint = ipc::register("myprimal", vec!["capability1".to_string()]).await?;
+//! let endpoint = ipc::register("myprimal", vec![String::from("capability1")]).await?;
 //!
 //! // Listen for connections
 //! let mut listener = ipc::listen(endpoint).await?;

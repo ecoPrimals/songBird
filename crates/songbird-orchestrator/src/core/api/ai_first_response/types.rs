@@ -35,7 +35,7 @@ impl AIFirstError {
     #[must_use]
     pub fn service_mesh_failure(service: &str, message: impl Into<String>) -> Self {
         Self {
-            code: "SERVICE_MESH_FAILURE".to_string(),
+            code: String::from("SERVICE_MESH_FAILURE"),
             message: message.into(),
             category: AIErrorCategory::ServiceMeshFailure,
             retry_strategy: RetryStrategy {
@@ -45,19 +45,19 @@ impl AIFirstError {
                 backoff_strategy: BackoffType::Exponential {
                     base: 2.0,
                 },
-                retry_conditions: vec!["service_available".to_string()],
+                retry_conditions: vec![String::from("service_available")],
                 success_probability: 0.7,
             },
             automation_hints: vec![
-                "Check service health".to_string(),
-                "Try alternative service endpoint".to_string(),
+                String::from("Check service health"),
+                String::from("Try alternative service endpoint"),
             ],
             severity: ErrorSeverity::High,
             requires_human_intervention: false,
             context: {
                 let mut ctx = HashMap::new();
                 ctx.insert(
-                    "failed_service".to_string(),
+                    String::from("failed_service"),
                     serde_json::Value::String(service.to_string()),
                 );
                 ctx
@@ -70,7 +70,7 @@ impl AIFirstError {
     pub fn human_intervention_required(reason: impl Into<String>) -> Self {
         let reason = reason.into();
         Self {
-            code: "HUMAN_INTERVENTION_REQUIRED".to_string(),
+            code: String::from("HUMAN_INTERVENTION_REQUIRED"),
             message: format!("Human intervention required: {reason}"),
             category: AIErrorCategory::HumanInterventionRequired,
             retry_strategy: RetryStrategy {
@@ -78,18 +78,18 @@ impl AIFirstError {
                 delay_ms: 0,
                 max_attempts: 0,
                 backoff_strategy: BackoffType::Linear,
-                retry_conditions: vec!["human_approval_received".to_string()],
+                retry_conditions: vec![String::from("human_approval_received")],
                 success_probability: 1.0,
             },
             automation_hints: vec![
-                "Escalate to human operator".to_string(),
-                "Provide context for decision".to_string(),
+                String::from("Escalate to human operator"),
+                String::from("Provide context for decision"),
             ],
             severity: ErrorSeverity::Medium,
             requires_human_intervention: true,
             context: {
                 let mut ctx = HashMap::new();
-                ctx.insert("intervention_reason".to_string(), serde_json::Value::String(reason));
+                ctx.insert(String::from("intervention_reason"), serde_json::Value::String(reason));
                 ctx
             },
         }

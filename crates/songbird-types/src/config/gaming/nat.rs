@@ -52,7 +52,7 @@ impl Default for NatTraversalConfig {
         Self {
             enabled: true,
             stun_servers: vec![StunServerConfig {
-                address: "stun.nextcloud.com:3478".to_string(),
+                address: String::from("stun.nextcloud.com:3478"),
                 enabled: true,
             }],
             turn_servers: Vec::new(),

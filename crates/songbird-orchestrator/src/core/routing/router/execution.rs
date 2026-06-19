@@ -26,13 +26,13 @@ impl CapabilityRouter {
                 SongbirdError::Network {
                     message: format!("Failed to discover crypto provider: {e}"),
                     interface: None,
-                    suggestion: Some("Check security provider availability".to_string()),
+                    suggestion: Some(String::from("Check security provider availability")),
                 }
             })?;
 
         let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
         let task_json = serde_json::to_value(task).map_err(|e| SongbirdError::Serialization {
-            format: Some("JSON".to_string()),
+            format: Some(String::from("JSON")),
             message: e.to_string(),
             debug_info: None,
         })?;
@@ -43,28 +43,28 @@ impl CapabilityRouter {
         )
         .await
         .map_err(|_| SongbirdError::Network {
-            message: "Request timeout (5 minutes)".to_string(),
+            message: String::from("Request timeout (5 minutes)"),
             interface: Some(endpoint.to_string()),
-            suggestion: Some("Check provider endpoint and network connectivity".to_string()),
+            suggestion: Some(String::from("Check provider endpoint and network connectivity")),
         })?
         .map_err(|e| SongbirdError::Network {
             message: format!("Failed to send task to external provider: {e}"),
             interface: Some(endpoint.to_string()),
-            suggestion: Some("Check provider endpoint and network connectivity".to_string()),
+            suggestion: Some(String::from("Check provider endpoint and network connectivity")),
         })?;
 
         if response.status < 200 || response.status >= 300 {
             return Err(SongbirdError::Service {
-                service: "external_provider".to_string(),
+                service: String::from("external_provider"),
                 message: format!("Provider returned error status: {}", response.status),
                 suggested_alternatives: vec![],
-                recovery_actions: vec!["retry".to_string(), "route_to_fallback".to_string()],
+                recovery_actions: vec![String::from("retry"), String::from("route_to_fallback")],
             });
         }
 
         let result =
             serde_json::from_value(response.body).map_err(|e| SongbirdError::Serialization {
-                format: Some("JSON".to_string()),
+                format: Some(String::from("JSON")),
                 message: format!("Failed to parse provider response: {e}"),
                 debug_info: None,
             })?;

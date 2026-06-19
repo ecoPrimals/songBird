@@ -246,7 +246,7 @@ mod tests {
         let reg = NodeRegistration::new(
             "node-123",
             "test-node",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://localhost:8080",
         );
 
@@ -263,7 +263,7 @@ mod tests {
         let reg = NodeRegistration::with_lineage(
             "node-123",
             "test-node",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://localhost:8080",
             lineage_id,
             proof,
@@ -277,7 +277,7 @@ mod tests {
         let mut reg = NodeRegistration::new(
             "node-123",
             "test-node",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://localhost:8080",
         );
 
@@ -297,7 +297,7 @@ mod tests {
         let reg = NodeRegistration::new(
             "node-123",
             "test-node",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://localhost:8080",
         );
 

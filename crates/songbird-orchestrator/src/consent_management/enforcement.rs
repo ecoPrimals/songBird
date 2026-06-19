@@ -173,7 +173,7 @@ impl ConsentEnforcer {
             .request_consent(
                 task.owner.clone(),
                 task.id,
-                task.spec.task_type.clone(),
+                Arc::clone(&task.spec.task_type),
                 estimated_cost,
             )
             .await;

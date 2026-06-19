@@ -199,7 +199,7 @@ pub async fn setup_federation(
         node_name: node_identity.node_name.clone(),
         node_address: format!("{node_address}:{port}"),
         endpoints: None, // Will be populated in start() after we know the actual port
-        capabilities: vec!["orchestrator".to_string()],
+        capabilities: vec![String::from("orchestrator")],
         cpu_cores: std::thread::available_parallelism().map_or(1, std::num::NonZero::get),
         memory_gb: detect_memory_gb(),
         gpu_model: SongbirdOrchestrator::detect_gpu(),
@@ -268,7 +268,7 @@ mod tests {
         let options = FederationOptions::for_testing().enabled(false).build();
 
         let node_identity = NodeIdentity::new_or_load(None).expect("Failed to load identity");
-        let federation_state = Arc::new(FederationState::new("test".to_string()));
+        let federation_state = Arc::new(FederationState::new(String::from("test")));
 
         let result = setup_federation(&node_identity, federation_state, options).await;
         assert!(result.is_ok());
@@ -291,7 +291,7 @@ mod tests {
             .build();
 
         let node_identity = NodeIdentity::new_or_load(None).expect("Failed to load identity");
-        let federation_state = Arc::new(FederationState::new("test".to_string()));
+        let federation_state = Arc::new(FederationState::new(String::from("test")));
 
         let result = setup_federation(&node_identity, federation_state, options).await;
         assert!(result.is_ok());
@@ -312,8 +312,8 @@ mod tests {
         assert!(!self_reg.capabilities.is_empty(), "Should have capabilities");
 
         // Verify bootstrap and rendezvous from options
-        assert_eq!(config.bootstrap_address, Some("http://localhost:8000".to_string()));
-        assert_eq!(config.rendezvous_url, Some("http://localhost:8001".to_string()));
+        assert_eq!(config.bootstrap_address, Some(String::from("http://localhost:8000")));
+        assert_eq!(config.rendezvous_url, Some(String::from("http://localhost:8001")));
     }
 
     #[tokio::test]
@@ -329,7 +329,7 @@ mod tests {
             .build();
 
         let node_identity = NodeIdentity::new_or_load(None).expect("Failed to load identity");
-        let federation_state = Arc::new(FederationState::new("test".to_string()));
+        let federation_state = Arc::new(FederationState::new(String::from("test")));
 
         let setup1 =
             setup_federation(&node_identity, Arc::clone(&federation_state), options.clone())

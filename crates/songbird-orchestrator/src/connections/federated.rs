@@ -149,8 +149,8 @@ mod tests {
     #[test]
     fn test_federated_allows_level1_plus_federation() {
         let conn = FederatedConnection::with_defaults(
-            "test_peer".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("test_peer"),
+            String::from("http://localhost:8080"),
         )
         .unwrap();
 
@@ -166,8 +166,8 @@ mod tests {
     #[test]
     fn test_federated_denies_sensitive() {
         let conn = FederatedConnection::with_defaults(
-            "test_peer".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("test_peer"),
+            String::from("http://localhost:8080"),
         )
         .unwrap();
 
@@ -179,8 +179,8 @@ mod tests {
     #[test]
     fn test_trust_level() {
         let conn = FederatedConnection::with_defaults(
-            "test_peer".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("test_peer"),
+            String::from("http://localhost:8080"),
         )
         .unwrap();
 

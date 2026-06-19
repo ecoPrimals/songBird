@@ -431,7 +431,7 @@ mod tests {
 
     #[test]
     fn test_to_socket_addrs_interface_falls_back_to_ipv4_unspecified() {
-        let strategy = NetworkBindingStrategy::Interface("eth0".to_string());
+        let strategy = NetworkBindingStrategy::Interface(String::from("eth0"));
         let addrs = strategy.to_socket_addrs(9000);
         assert_eq!(addrs.len(), 1);
         assert_eq!(addrs[0], "0.0.0.0:9000".parse::<SocketAddr>().unwrap());
@@ -439,7 +439,7 @@ mod tests {
 
     #[test]
     fn test_primary_socket_addr_interface_matches_ipv4_all_shape() {
-        let strategy = NetworkBindingStrategy::Interface("wlan0".to_string());
+        let strategy = NetworkBindingStrategy::Interface(String::from("wlan0"));
         assert_eq!(
             strategy.primary_socket_addr(4444),
             NetworkBindingStrategy::IPv4All.primary_socket_addr(4444)
@@ -448,7 +448,7 @@ mod tests {
 
     #[test]
     fn test_interface_strategy_supports_ipv4_not_ipv6() {
-        let strategy = NetworkBindingStrategy::Interface("tailscale0".to_string());
+        let strategy = NetworkBindingStrategy::Interface(String::from("tailscale0"));
         assert!(strategy.supports_ipv4());
         assert!(!strategy.supports_ipv6());
     }

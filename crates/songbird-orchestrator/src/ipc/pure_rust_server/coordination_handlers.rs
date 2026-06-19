@@ -182,9 +182,9 @@ mod tests {
     async fn handle_discover_capabilities_returns_expected_shape() {
         let v = super::handle_discover_capabilities().await.expect("ok");
         let caps: Vec<String> = serde_json::from_value(v["capabilities"].clone()).expect("caps");
-        assert!(caps.contains(&"http.get".to_string()));
-        assert!(caps.contains(&"http.post".to_string()));
-        assert!(caps.contains(&"http.request".to_string()));
+        assert!(caps.contains(&String::from("http.get")));
+        assert!(caps.contains(&String::from("http.post")));
+        assert!(caps.contains(&String::from("http.request")));
         assert_eq!(v["metadata"]["primal_name"], "songbird");
         assert_eq!(v["metadata"]["version"].as_str().expect("version"), env!("CARGO_PKG_VERSION"));
         let fid = v["metadata"]["family_id"].as_str().expect("family_id");

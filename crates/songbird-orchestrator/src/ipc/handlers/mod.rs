@@ -69,8 +69,10 @@ impl IpcHandlers {
         connection_manager: Arc<ConnectionManager>,
         security_client: Arc<SecurityRpcClient>,
     ) -> Self {
-        let availability_checker = Arc::new(AvailabilityChecker::new(service_registry.clone()));
-        let coordination_validator = Arc::new(CoordinationValidator::new(service_registry.clone()));
+        let availability_checker =
+            Arc::new(AvailabilityChecker::new(Arc::clone(&service_registry)));
+        let coordination_validator =
+            Arc::new(CoordinationValidator::new(Arc::clone(&service_registry)));
         let http_handler = Arc::new(http::HttpHandler::new(security_client));
         let mesh_handler = Arc::new(MeshHandler::new());
 

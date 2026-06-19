@@ -80,7 +80,7 @@ impl Default for ComputeMetrics {
             queued_jobs: 0,
             performance_score: 0.8,
             zero_copy_operations_per_sec: 1000,
-            metric_name: "songbird.compute".to_string(),
+            metric_name: String::from("songbird.compute"),
             timestamp: chrono::Utc::now(),
         }
     }

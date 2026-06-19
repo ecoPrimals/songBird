@@ -433,7 +433,7 @@ mod tests {
     #[test]
     fn test_environment_detect_songbird_env() {
         let env = |key: &str| match key {
-            "SONGBIRD_ENV" => Ok("staging".to_string()),
+            "SONGBIRD_ENV" => Ok(String::from("staging")),
             _ => Err(std::env::VarError::NotPresent),
         };
         assert_eq!(Environment::detect_with(env), Environment::Staging);
@@ -442,7 +442,7 @@ mod tests {
     #[test]
     fn test_environment_detect_environment_fallback() {
         let env = |key: &str| match key {
-            "ENVIRONMENT" => Ok("production".to_string()),
+            "ENVIRONMENT" => Ok(String::from("production")),
             _ => Err(std::env::VarError::NotPresent),
         };
         assert_eq!(Environment::detect_with(env), Environment::Production);
@@ -451,7 +451,7 @@ mod tests {
     #[test]
     fn test_service_endpoints_get_by_capability() {
         let env = |key: &str| match key {
-            "FOO_ENDPOINT" => Ok("http://cap:1".to_string()),
+            "FOO_ENDPOINT" => Ok(String::from("http://cap:1")),
             _ => Err(std::env::VarError::NotPresent),
         };
         let ep = ServiceEndpoints::get_by_capability_with(env, "foo", 9999);
@@ -467,12 +467,12 @@ mod tests {
     #[test]
     fn test_environment_config_from_env_matches_detect() {
         let env = |key: &str| match key {
-            "SONGBIRD_ENV" => Ok("production".to_string()),
+            "SONGBIRD_ENV" => Ok(String::from("production")),
             _ => Err(std::env::VarError::NotPresent),
         };
         let cfg = EnvironmentConfig::from_env_reader(env);
         let detected = Environment::detect_with(|key| match key {
-            "SONGBIRD_ENV" => Ok("production".to_string()),
+            "SONGBIRD_ENV" => Ok(String::from("production")),
             _ => Err(std::env::VarError::NotPresent),
         });
         assert_eq!(cfg.environment, detected);

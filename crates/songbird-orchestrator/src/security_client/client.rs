@@ -146,7 +146,7 @@ impl SecurityCapabilityClient {
             }
             anyhow::bail!(
                 "Security provider returned success=false: {}",
-                wrapped.error.unwrap_or_else(|| "Unknown error".to_string())
+                wrapped.error.unwrap_or_else(|| String::from("Unknown error"))
             );
         }
 
@@ -203,8 +203,8 @@ impl SecurityCapabilityClient {
         // Convert to universal format
         let connection_info_map = request.connection_info.as_ref().map(|info| {
             let mut map = HashMap::new();
-            map.insert("endpoint".to_string(), info.endpoint.clone());
-            map.insert("protocol".to_string(), info.protocol.clone());
+            map.insert(String::from("endpoint"), info.endpoint.clone());
+            map.insert(String::from("protocol"), info.protocol.clone());
             map
         });
 
@@ -242,8 +242,8 @@ impl SecurityCapabilityClient {
 
                 // Return reject decision on error (fail-safe)
                 TrustEvaluationResponse {
-                    decision: "reject".to_string(),
-                    trust_level: "none".to_string(),
+                    decision: String::from("reject"),
+                    trust_level: String::from("none"),
                     confidence: 0.0,
                     reason: format!("Security provider error: {e}"),
                     encryption_tag: None,
@@ -325,8 +325,8 @@ impl SecurityCapabilityClient {
             }
 
             attestations.push(UniversalIdentityAttestation {
-                provider: Some("security/identity".to_string()),
-                format: "tag_list".to_string(),
+                provider: Some(String::from("security/identity")),
+                format: String::from("tag_list"),
                 data,
             });
         }
@@ -353,8 +353,8 @@ impl SecurityCapabilityClient {
             }
 
             attestations.push(songbird_discovery::IdentityAttestation {
-                provider_capability: "security/identity".to_string(),
-                format: "tag_list".to_string(),
+                provider_capability: String::from("security/identity"),
+                format: String::from("tag_list"),
                 data,
             });
         }
@@ -429,7 +429,7 @@ impl SecurityCapabilityClient {
             peer_tags: tags,
             connection_info: Some(ConnectionInfo {
                 endpoint: universal_request.context.endpoint.clone(),
-                protocol: "tarpc".to_string(),
+                protocol: String::from("tarpc"),
             }),
             context: None,
         };
@@ -447,7 +447,7 @@ impl SecurityCapabilityClient {
         };
 
         Ok(UniversalTrustResponse {
-            response_format: "universal_trust_v1".to_string(),
+            response_format: String::from("universal_trust_v1"),
             decision,
             confidence: legacy_response.confidence,
             reason: legacy_response.reason.clone(),
@@ -509,7 +509,7 @@ impl SecurityCapabilityClient {
                 "Security provider lineage verification failed: {} - {}",
                 response.status, response.body
             );
-            let invalid_lineage = LineageId::new("error-invalid".to_string());
+            let invalid_lineage = LineageId::new(String::from("error-invalid"));
             return Ok(VerificationResult {
                 valid: false,
                 same_genesis: false,

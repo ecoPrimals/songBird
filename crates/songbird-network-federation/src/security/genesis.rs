@@ -185,20 +185,20 @@ mod tests {
     #[test]
     fn test_genesis_proof_validation() {
         let proof = GenesisWitnessProof {
-            ceremony_id: "test-ceremony-123".to_string(),
-            node_id: "test-node-456".to_string(),
-            witness_device_id: "solokey-789".to_string(),
+            ceremony_id: String::from("test-ceremony-123"),
+            node_id: String::from("test-node-456"),
+            witness_device_id: String::from("solokey-789"),
             witness_signature: vec![1, 2, 3, 4],
             physical_channel: PhysicalChannelType::HardwareKey,
             primal_witnesses: vec![
                 PrimalWitnessSignature {
-                    primal_name: "Songbird".to_string(),
+                    primal_name: String::from("Songbird"),
                     lineage_data: vec![5, 6, 7, 8],
                     signature: vec![9, 10, 11, 12],
                     witness_timestamp: Utc::now(),
                 },
                 PrimalWitnessSignature {
-                    primal_name: "security provider".to_string(),
+                    primal_name: String::from("security provider"),
                     lineage_data: vec![13, 14, 15, 16],
                     signature: vec![17, 18, 19, 20],
                     witness_timestamp: Utc::now(),
@@ -220,9 +220,9 @@ mod tests {
     #[test]
     fn test_genesis_proof_no_witnesses() {
         let proof = GenesisWitnessProof {
-            ceremony_id: "test".to_string(),
-            node_id: "test".to_string(),
-            witness_device_id: "test".to_string(),
+            ceremony_id: String::from("test"),
+            node_id: String::from("test"),
+            witness_device_id: String::from("test"),
             witness_signature: vec![],
             physical_channel: PhysicalChannelType::HardwareKey,
             primal_witnesses: vec![],
@@ -237,13 +237,13 @@ mod tests {
     #[test]
     fn test_trust_level_validation() {
         let mut proof = GenesisWitnessProof {
-            ceremony_id: "test".to_string(),
-            node_id: "test".to_string(),
-            witness_device_id: "test".to_string(),
+            ceremony_id: String::from("test"),
+            node_id: String::from("test"),
+            witness_device_id: String::from("test"),
             witness_signature: vec![],
             physical_channel: PhysicalChannelType::HardwareKey,
             primal_witnesses: vec![PrimalWitnessSignature {
-                primal_name: "Test".to_string(),
+                primal_name: String::from("Test"),
                 lineage_data: vec![],
                 signature: vec![],
                 witness_timestamp: Utc::now(),
@@ -261,7 +261,7 @@ mod tests {
 
         // Add second witness - now Maximum is OK
         proof.primal_witnesses.push(PrimalWitnessSignature {
-            primal_name: "Test2".to_string(),
+            primal_name: String::from("Test2"),
             lineage_data: vec![],
             signature: vec![],
             witness_timestamp: Utc::now(),

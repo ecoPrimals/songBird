@@ -372,9 +372,9 @@ mod tests {
     #[tokio::test]
     async fn test_event_creation() {
         let event = Event::service_update(
-            "test-service".to_string(),
-            "running".to_string(),
-            "localhost:8080".to_string(),
+            String::from("test-service"),
+            String::from("running"),
+            String::from("localhost:8080"),
         );
 
         assert_eq!(event.event_type, "service_update");
@@ -385,8 +385,9 @@ mod tests {
     async fn test_subscription() {
         let broadcaster = EventBroadcaster::new();
 
-        let _rx =
-            broadcaster.subscribe("client1".to_string(), vec!["service_update".to_string()]).await;
+        let _rx = broadcaster
+            .subscribe(String::from("client1"), vec![String::from("service_update")])
+            .await;
 
         assert_eq!(broadcaster.subscriber_count().await, 1);
     }
@@ -395,13 +396,14 @@ mod tests {
     async fn test_broadcast() {
         let broadcaster = EventBroadcaster::new();
 
-        let mut rx =
-            broadcaster.subscribe("client1".to_string(), vec!["service_update".to_string()]).await;
+        let mut rx = broadcaster
+            .subscribe(String::from("client1"), vec![String::from("service_update")])
+            .await;
 
         let event = Event::service_update(
-            "test-service".to_string(),
-            "running".to_string(),
-            "localhost:8080".to_string(),
+            String::from("test-service"),
+            String::from("running"),
+            String::from("localhost:8080"),
         );
 
         broadcaster.broadcast(event.clone()).await;
@@ -418,19 +420,19 @@ mod tests {
 
         let _rx = broadcaster
             .subscribe(
-                "client1".to_string(),
-                vec!["service_update".to_string(), "health_update".to_string()],
+                String::from("client1"),
+                vec![String::from("service_update"), String::from("health_update")],
             )
             .await;
 
         assert_eq!(broadcaster.subscriber_count().await, 1);
 
-        broadcaster.unsubscribe("client1", vec!["service_update".to_string()]).await;
+        broadcaster.unsubscribe("client1", vec![String::from("service_update")]).await;
 
         // Still subscribed to health_update
         assert_eq!(broadcaster.subscriber_count().await, 1);
 
-        broadcaster.unsubscribe("client1", vec!["health_update".to_string()]).await;
+        broadcaster.unsubscribe("client1", vec![String::from("health_update")]).await;
 
         // Now fully unsubscribed
         assert_eq!(broadcaster.subscriber_count().await, 0);

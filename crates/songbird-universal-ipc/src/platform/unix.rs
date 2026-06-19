@@ -165,7 +165,7 @@ impl UnixPlatformIPC {
                     inner: listener,
                 }))
             }
-            _ => Err(IpcError::PlatformError("UnixIPC requires UnixSocket endpoint".to_string())),
+            _ => Err(IpcError::PlatformError(String::from("UnixIPC requires UnixSocket endpoint"))),
         }
     }
 
@@ -187,7 +187,7 @@ impl UnixPlatformIPC {
 
                 Ok(AsyncStreamImpl::Unix(stream))
             }
-            _ => Err(IpcError::PlatformError("UnixIPC requires UnixSocket endpoint".to_string())),
+            _ => Err(IpcError::PlatformError(String::from("UnixIPC requires UnixSocket endpoint"))),
         }
     }
 
@@ -210,7 +210,7 @@ impl UnixPlatformIPC {
                 }
                 Ok(())
             }
-            _ => Err(IpcError::PlatformError("UnixIPC requires UnixSocket endpoint".to_string())),
+            _ => Err(IpcError::PlatformError(String::from("UnixIPC requires UnixSocket endpoint"))),
         }
     }
 }

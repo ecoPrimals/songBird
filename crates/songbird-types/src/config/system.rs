@@ -60,10 +60,10 @@ mod tests {
     #[test]
     fn test_custom_system_config() {
         let config = CanonicalSystemConfig {
-            environment: "production".to_string(),
-            system_id: "songbird-prod-1".to_string(),
-            instance_id: "instance-42".to_string(),
-            version: "1.0.0".to_string(),
+            environment: String::from("production"),
+            system_id: String::from("songbird-prod-1"),
+            instance_id: String::from("instance-42"),
+            version: String::from("1.0.0"),
         };
         assert_eq!(config.environment, "production");
         assert_eq!(config.system_id, "songbird-prod-1");
@@ -74,26 +74,26 @@ mod tests {
     #[test]
     fn test_system_config_environments() {
         let dev = CanonicalSystemConfig {
-            environment: "development".to_string(),
-            system_id: "test".to_string(),
-            instance_id: "test".to_string(),
-            version: "0.1.0".to_string(),
+            environment: String::from("development"),
+            system_id: String::from("test"),
+            instance_id: String::from("test"),
+            version: String::from("0.1.0"),
         };
         assert_eq!(dev.environment, "development");
 
         let staging = CanonicalSystemConfig {
-            environment: "staging".to_string(),
-            system_id: "test".to_string(),
-            instance_id: "test".to_string(),
-            version: "0.1.0".to_string(),
+            environment: String::from("staging"),
+            system_id: String::from("test"),
+            instance_id: String::from("test"),
+            version: String::from("0.1.0"),
         };
         assert_eq!(staging.environment, "staging");
 
         let prod = CanonicalSystemConfig {
-            environment: "production".to_string(),
-            system_id: "test".to_string(),
-            instance_id: "test".to_string(),
-            version: "0.1.0".to_string(),
+            environment: String::from("production"),
+            system_id: String::from("test"),
+            instance_id: String::from("test"),
+            version: String::from("0.1.0"),
         };
         assert_eq!(prod.environment, "production");
     }
@@ -101,14 +101,14 @@ mod tests {
     #[test]
     fn test_system_config_serialization() -> Result<(), Box<dyn std::error::Error>> {
         let config = CanonicalSystemConfig {
-            environment: "production".to_string(),
-            system_id: "songbird-1".to_string(),
-            instance_id: "inst-1".to_string(),
-            version: "2.0.0".to_string(),
+            environment: String::from("production"),
+            system_id: String::from("songbird-1"),
+            instance_id: String::from("inst-1"),
+            version: String::from("2.0.0"),
         };
 
         let json = serde_json::to_string(&config).map_err(|e| SongbirdError::Serialization {
-            format: Some("JSON".to_string()),
+            format: Some(String::from("JSON")),
             message: format!("Serialization failed: {}", e),
             debug_info: None,
         })?;
@@ -130,7 +130,7 @@ mod tests {
 
         let config: CanonicalSystemConfig =
             serde_json::from_str(json).map_err(|e| SongbirdError::Serialization {
-                format: Some("JSON".to_string()),
+                format: Some(String::from("JSON")),
                 message: format!("Parsing failed: {}", e),
                 debug_info: None,
             })?;

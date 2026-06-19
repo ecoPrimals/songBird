@@ -63,7 +63,7 @@ impl BirdSongPayload {
         session_id: String,
     ) -> Self {
         Self {
-            version: "3.1".to_string(),
+            version: String::from("3.1"),
             node_id,
             node_name,
             transports,
@@ -132,7 +132,7 @@ impl PlaintextPayload {
         session_id: String,
     ) -> Self {
         Self {
-            version: "3.1".to_string(),
+            version: String::from("3.1"),
             node_id,
             node_name,
             transports,
@@ -171,11 +171,11 @@ mod tests {
     #[test]
     fn test_birdsong_payload_fresh() {
         let payload = BirdSongPayload::new(
-            "node-123".to_string(),
-            "test-node".to_string(),
+            String::from("node-123"),
+            String::from("test-node"),
             vec![],
             vec![],
-            "session-456".to_string(),
+            String::from("session-456"),
         );
 
         assert!(payload.is_fresh());
@@ -184,11 +184,11 @@ mod tests {
     #[test]
     fn test_birdsong_payload_json() {
         let payload = BirdSongPayload::new(
-            "node-123".to_string(),
-            "test-node".to_string(),
+            String::from("node-123"),
+            String::from("test-node"),
             vec![],
-            vec!["compute".to_string()],
-            "session-456".to_string(),
+            vec![String::from("compute")],
+            String::from("session-456"),
         );
 
         let json = payload.to_json().unwrap();
@@ -202,17 +202,17 @@ mod tests {
     #[test]
     fn test_plaintext_to_birdsong() {
         let plaintext = PlaintextPayload::new(
-            "node-789".to_string(),
-            "plain-node".to_string(),
+            String::from("node-789"),
+            String::from("plain-node"),
             vec![],
-            vec!["storage".to_string()],
-            "session-012".to_string(),
+            vec![String::from("storage")],
+            String::from("session-012"),
         );
 
         let birdsong = plaintext.to_birdsong();
 
         assert_eq!(birdsong.node_id, "node-789");
         assert_eq!(birdsong.node_name, "plain-node");
-        assert_eq!(birdsong.capabilities, vec!["storage".to_string()]);
+        assert_eq!(birdsong.capabilities, vec![String::from("storage")]);
     }
 }

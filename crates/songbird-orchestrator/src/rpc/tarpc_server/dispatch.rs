@@ -66,8 +66,8 @@ pub async fn register(
         service_id: reg_id.clone(),
         service_name: reg_name.clone(),
         service_type: reg_cap,
-        tower_id: registration.tower_id.unwrap_or_else(|| "unknown".to_string()),
-        tower_name: registration.tower_name.unwrap_or_else(|| "Unknown Tower".to_string()),
+        tower_id: registration.tower_id.unwrap_or_else(|| String::from("unknown")),
+        tower_name: registration.tower_name.unwrap_or_else(|| String::from("Unknown Tower")),
         endpoint: registration.endpoint,
         capabilities,
         metadata: registration.metadata,
@@ -124,7 +124,7 @@ pub async fn health(
     let services_count = registry.get_all_services().await.len();
 
     HealthStatus {
-        status: "healthy".to_string(),
+        status: String::from("healthy"),
         version: env!("CARGO_PKG_VERSION").to_string(),
         uptime_seconds,
         services_count,
@@ -137,8 +137,12 @@ pub fn version() -> VersionInfo {
 
     VersionInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
-        protocol: "tarpc".to_string(),
-        capabilities: vec!["discovery".to_string(), "registry".to_string(), "health".to_string()],
+        protocol: String::from("tarpc"),
+        capabilities: vec![
+            String::from("discovery"),
+            String::from("registry"),
+            String::from("health"),
+        ],
     }
 }
 
@@ -152,19 +156,19 @@ pub fn protocols_simple() -> Vec<ProtocolInfo> {
 
     vec![
         ProtocolInfo {
-            name: "tarpc".to_string(),
+            name: String::from("tarpc"),
             port: tarpc_port,
             enabled: true,
             info: HashMap::new(),
         },
         ProtocolInfo {
-            name: "jsonrpc".to_string(),
+            name: String::from("jsonrpc"),
             port: 0,
             enabled: true,
-            info: HashMap::from([("path".to_string(), ipc_path)]),
+            info: HashMap::from([(String::from("path"), ipc_path)]),
         },
         ProtocolInfo {
-            name: "http".to_string(),
+            name: String::from("http"),
             port: http_port,
             enabled: true,
             info: HashMap::new(),
@@ -182,25 +186,25 @@ pub fn protocols_legacy() -> Vec<ProtocolInfo> {
 
     vec![
         ProtocolInfo {
-            name: "HTTP".to_string(),
+            name: String::from("HTTP"),
             port: http_port,
             enabled: true,
             info: HashMap::new(),
         },
         ProtocolInfo {
-            name: "HTTPS".to_string(),
+            name: String::from("HTTPS"),
             port: https_port,
             enabled: true,
             info: HashMap::new(),
         },
         ProtocolInfo {
-            name: "JSON-RPC".to_string(),
+            name: String::from("JSON-RPC"),
             port: https_port,
             enabled: true,
-            info: HashMap::from([("path".to_string(), "/jsonrpc".to_string())]),
+            info: HashMap::from([(String::from("path"), String::from("/jsonrpc"))]),
         },
         ProtocolInfo {
-            name: "tarpc".to_string(),
+            name: String::from("tarpc"),
             port: tarpc_port,
             enabled: true,
             info: HashMap::new(),

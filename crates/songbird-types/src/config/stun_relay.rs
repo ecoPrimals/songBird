@@ -373,7 +373,7 @@ impl Default for SteamRendezvousConfig {
 }
 
 fn default_steam_comment() -> String {
-    "Future: Piggyback Steam's infrastructure for friend connections".to_string()
+    String::from("Future: Piggyback Steam's infrastructure for friend connections")
 }
 
 /// Discord rendezvous configuration (FUTURE)
@@ -403,7 +403,7 @@ impl Default for DiscordRendezvousConfig {
 }
 
 fn default_discord_comment() -> String {
-    "Future: Use Discord's voice infrastructure for friend gaming".to_string()
+    String::from("Future: Use Discord's voice infrastructure for friend gaming")
 }
 
 /// Custom rendezvous configuration
@@ -526,7 +526,7 @@ const fn default_max_relays() -> u32 {
     10
 }
 fn default_https() -> String {
-    "https".to_string()
+    String::from("https")
 }
 const fn default_priority() -> u32 {
     100

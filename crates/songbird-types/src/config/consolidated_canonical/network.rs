@@ -288,7 +288,7 @@ impl Default for CanonicalBindConfig {
 impl Default for CanonicalClientConfig {
     fn default() -> Self {
         Self {
-            user_agent: "songbird/0.1.0".to_string(),
+            user_agent: String::from("songbird/0.1.0"),
             connect_timeout: Duration::from_secs(10),
             request_timeout: Duration::from_secs(30),
             max_connections: 100,
@@ -352,7 +352,7 @@ impl Default for CanonicalRateLimitConfig {
             requests_per_second: 100.0,
             burst_capacity: 200,
             window: Duration::from_secs(1),
-            strategy: "token_bucket".to_string(),
+            strategy: String::from("token_bucket"),
         }
     }
 }

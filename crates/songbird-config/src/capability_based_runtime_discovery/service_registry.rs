@@ -156,9 +156,9 @@ impl ServiceRegistryDiscovery {
             candidates.retain(|s| self.meets_sla_requirements(s, sla));
 
             if candidates.is_empty() {
-                return Err(SongbirdError::discovery(
-                    "No services meet SLA requirements".to_string(),
-                ));
+                return Err(SongbirdError::discovery(String::from(
+                    "No services meet SLA requirements",
+                )));
             }
         }
 
@@ -171,7 +171,7 @@ impl ServiceRegistryDiscovery {
 
         // Select the highest scoring service
         let selected = candidates.first().ok_or_else(|| {
-            SongbirdError::discovery("No suitable service found after scoring".to_string())
+            SongbirdError::discovery(String::from("No suitable service found after scoring"))
         })?;
 
         Ok(CapabilityProvider {
@@ -315,25 +315,25 @@ mod tests {
         let _ = _discovery; // Suppress unused warning
 
         let service = RegistryService {
-            name: "test-service".to_string(),
-            endpoint: "http://test:8080".to_string(),
+            name: String::from("test-service"),
+            endpoint: String::from("http://test:8080"),
             protocol: Protocol::Http,
-            features: vec!["feature1".to_string(), "feature2".to_string()],
+            features: vec![String::from("feature1"), String::from("feature2")],
             metadata: HashMap::new(),
             health_metrics: None,
         };
 
         assert!(ServiceRegistryDiscovery::supports_required_features(
             &service,
-            &["feature1".to_string()]
+            &[String::from("feature1")]
         ));
         assert!(ServiceRegistryDiscovery::supports_required_features(
             &service,
-            &["feature1".to_string(), "feature2".to_string()]
+            &[String::from("feature1"), String::from("feature2")]
         ));
         assert!(!ServiceRegistryDiscovery::supports_required_features(
             &service,
-            &["feature3".to_string()]
+            &[String::from("feature3")]
         ));
     }
 
@@ -343,8 +343,8 @@ mod tests {
         let _ = _discovery; // Suppress unused warning
 
         let service = RegistryService {
-            name: "test-service".to_string(),
-            endpoint: "http://test:8080".to_string(),
+            name: String::from("test-service"),
+            endpoint: String::from("http://test:8080"),
             protocol: Protocol::Http,
             features: vec![],
             metadata: HashMap::new(),
@@ -359,11 +359,11 @@ mod tests {
 
         let performance_score = ServiceRegistryDiscovery::calculate_preference_score(
             &service,
-            &["performance".to_string()],
+            &[String::from("performance")],
         );
         let throughput_score = ServiceRegistryDiscovery::calculate_preference_score(
             &service,
-            &["throughput".to_string()],
+            &[String::from("throughput")],
         );
 
         assert!(performance_score > 0.0);
@@ -438,7 +438,7 @@ mod tests {
     #[test]
     fn test_select_best_match_errors_when_required_features_unmet() {
         let discovery = ServiceRegistryDiscovery::new("http://localhost:8500");
-        let services = vec![sample_service("a", "http://a:1", vec!["x".to_string()])];
+        let services = vec![sample_service("a", "http://a:1", vec![String::from("x")])];
         let req = CapabilityRequest::new("compute").with_features(&["missing-feature"]);
         let err = discovery.select_best_match(&services, &req).expect_err("no feature match");
         assert!(matches!(err, SongbirdError::Discovery { .. }), "{err:?}");
@@ -491,8 +491,8 @@ mod tests {
     #[test]
     fn test_preference_scoring_reliability_and_cost_branches() {
         let svc = RegistryService {
-            name: "svc".to_string(),
-            endpoint: "http://svc:1".to_string(),
+            name: String::from("svc"),
+            endpoint: String::from("http://svc:1"),
             protocol: Protocol::Http,
             features: vec![],
             metadata: HashMap::new(),
@@ -506,10 +506,10 @@ mod tests {
         };
         let rel = ServiceRegistryDiscovery::calculate_preference_score(
             &svc,
-            &["reliability".to_string()],
+            &[String::from("reliability")],
         );
         let cost =
-            ServiceRegistryDiscovery::calculate_preference_score(&svc, &["cost".to_string()]);
+            ServiceRegistryDiscovery::calculate_preference_score(&svc, &[String::from("cost")]);
         assert!(rel > 0.0);
         assert!(cost > 0.0);
     }

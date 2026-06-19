@@ -186,10 +186,10 @@ fn resolve_self_socket_path() -> String {
     let family_id = songbird_process_env::var("FAMILY_ID")
         .or_else(|_| songbird_process_env::var("BIOMEOS_FAMILY_ID"))
         .or_else(|_| songbird_process_env::var("SONGBIRD_FAMILY_ID"))
-        .unwrap_or_else(|_| "ecoPrimal".to_string());
+        .unwrap_or_else(|_| String::from("ecoPrimal"));
 
     let sock_name = if family_id == "default" || family_id.is_empty() {
-        "songbird.sock".to_string()
+        String::from("songbird.sock")
     } else {
         format!("songbird-{family_id}.sock")
     };

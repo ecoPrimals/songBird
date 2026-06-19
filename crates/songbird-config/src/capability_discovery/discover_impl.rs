@@ -37,7 +37,7 @@ impl CapabilityDiscovery {
 
         Err(SongbirdError::Discovery {
             message: format!("Environment variable {env_var} not set"),
-            backend: Some("environment".to_string()),
+            backend: Some(String::from("environment")),
             retry_strategy: Some(format!("Set {env_var} environment variable")),
         })
     }
@@ -94,10 +94,10 @@ impl CapabilityDiscovery {
                 if endpoints.is_empty() {
                     Err(SongbirdError::Discovery {
                         message: format!("No DNS-SD records found for {service_name}"),
-                        backend: Some("dns-sd".to_string()),
-                        retry_strategy: Some(
-                            "Ensure service is advertising via DNS-SD".to_string(),
-                        ),
+                        backend: Some(String::from("dns-sd")),
+                        retry_strategy: Some(String::from(
+                            "Ensure service is advertising via DNS-SD",
+                        )),
                     })
                 } else {
                     info!(
@@ -112,10 +112,10 @@ impl CapabilityDiscovery {
                 debug!("DNS-SD lookup failed for {}: {}", service_name, e);
                 Err(SongbirdError::Discovery {
                     message: format!("DNS-SD lookup failed: {e}"),
-                    backend: Some("dns-sd".to_string()),
-                    retry_strategy: Some(
-                        "Check DNS configuration and service advertisement".to_string(),
-                    ),
+                    backend: Some(String::from("dns-sd")),
+                    retry_strategy: Some(String::from(
+                        "Check DNS configuration and service advertisement",
+                    )),
                 })
             }
         }
@@ -241,22 +241,24 @@ impl CapabilityDiscovery {
                         }
                         Err(e) => Err(SongbirdError::Discovery {
                             message: format!("Failed to parse registry response: {e}"),
-                            backend: Some("registry".to_string()),
-                            retry_strategy: Some("Check registry endpoint and format".to_string()),
+                            backend: Some(String::from("registry")),
+                            retry_strategy: Some(String::from(
+                                "Check registry endpoint and format",
+                            )),
                         }),
                     }
                 } else {
                     Err(SongbirdError::Discovery {
                         message: format!("Registry returned error: {}", response.status()),
-                        backend: Some("registry".to_string()),
-                        retry_strategy: Some("Check registry endpoint availability".to_string()),
+                        backend: Some(String::from("registry")),
+                        retry_strategy: Some(String::from("Check registry endpoint availability")),
                     })
                 }
             }
             Err(e) => Err(SongbirdError::Discovery {
                 message: format!("Failed to query registry: {e}"),
-                backend: Some("registry".to_string()),
-                retry_strategy: Some("Check network connectivity to registry".to_string()),
+                backend: Some(String::from("registry")),
+                retry_strategy: Some(String::from("Check network connectivity to registry")),
             }),
         }
     }
@@ -276,8 +278,8 @@ impl CapabilityDiscovery {
         let config_content =
             tokio::fs::read_to_string(config_path).await.map_err(|e| SongbirdError::Discovery {
                 message: format!("Failed to read config file: {e}"),
-                backend: Some("config_file".to_string()),
-                retry_strategy: Some("Check file path and permissions".to_string()),
+                backend: Some(String::from("config_file")),
+                retry_strategy: Some(String::from("Check file path and permissions")),
             })?;
 
         // Parse based on file extension using Path for case-insensitive comparison
@@ -294,8 +296,8 @@ impl CapabilityDiscovery {
         } else {
             return Err(SongbirdError::Discovery {
                 message: format!("Unsupported config file format: {config_path}"),
-                backend: Some("config_file".to_string()),
-                retry_strategy: Some("Use .toml, .json, or .yaml file".to_string()),
+                backend: Some(String::from("config_file")),
+                retry_strategy: Some(String::from("Use .toml, .json, or .yaml file")),
             });
         };
 
@@ -320,8 +322,8 @@ impl CapabilityDiscovery {
         let config: toml::Value =
             toml::from_str(content).map_err(|e| SongbirdError::Discovery {
                 message: format!("Failed to parse TOML: {e}"),
-                backend: Some("config_file".to_string()),
-                retry_strategy: Some("Check TOML syntax".to_string()),
+                backend: Some(String::from("config_file")),
+                retry_strategy: Some(String::from("Check TOML syntax")),
             })?;
 
         Ok(Self::extract_endpoints_from_config(&config, capability))
@@ -335,8 +337,8 @@ impl CapabilityDiscovery {
         let config: serde_json::Value =
             serde_json::from_str(content).map_err(|e| SongbirdError::Discovery {
                 message: format!("Failed to parse JSON: {e}"),
-                backend: Some("config_file".to_string()),
-                retry_strategy: Some("Check JSON syntax".to_string()),
+                backend: Some(String::from("config_file")),
+                retry_strategy: Some(String::from("Check JSON syntax")),
             })?;
 
         Ok(Self::extract_endpoints_from_json(&config, capability))
@@ -350,8 +352,8 @@ impl CapabilityDiscovery {
         let config: serde_yaml::Value =
             serde_yaml::from_str(content).map_err(|e| SongbirdError::Discovery {
                 message: format!("Failed to parse YAML: {e}"),
-                backend: Some("config_file".to_string()),
-                retry_strategy: Some("Check YAML syntax".to_string()),
+                backend: Some(String::from("config_file")),
+                retry_strategy: Some(String::from("Check YAML syntax")),
             })?;
 
         Ok(Self::extract_endpoints_from_yaml(&config, capability))
@@ -486,7 +488,7 @@ capabilities = ["compute", "batch"]
         let eps = CapabilityDiscovery::parse_toml_config(toml, "compute").expect("parse");
         assert_eq!(eps.len(), 1);
         assert_eq!(eps[0].url, "http://10.0.0.1:8000");
-        assert!(eps[0].capabilities.contains(&"compute".to_string()));
+        assert!(eps[0].capabilities.contains(&String::from("compute")));
     }
 
     #[test]
@@ -515,7 +517,7 @@ services:
         let disc =
             CapabilityDiscovery::with_methods_env_reader(vec![DiscoveryMethod::Environment], |k| {
                 if k == "WIDGET_ENDPOINT" {
-                    Ok("http://widget:1".to_string())
+                    Ok(String::from("http://widget:1"))
                 } else {
                     Err(std::env::VarError::NotPresent)
                 }

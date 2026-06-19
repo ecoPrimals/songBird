@@ -33,6 +33,7 @@ mod packet_handler;
 use crate::error::{LineageRelayError, Result};
 use crate::relay::RelayAuthority;
 use crate::types::{MaskingLevel, NodeId};
+use bytes::Bytes;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -241,11 +242,11 @@ impl RelayServer {
                     let authority = self.authority.clone();
                     let stats = self.stats.clone();
                     let bind_addr = self.bind_addr;
-                    let data = buf[..len].to_vec();
+                    let data = Bytes::copy_from_slice(&buf[..len]);
 
                     tokio::spawn(async move {
                         if let Err(e) = packet_handler::handle_packet(
-                            &socket, &sessions, &authority, &stats, bind_addr, &data, src_addr,
+                            &socket, &sessions, &authority, &stats, bind_addr, data, src_addr,
                         )
                         .await
                         {

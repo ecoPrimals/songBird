@@ -28,7 +28,7 @@ pub struct HttpRequestParams {
 }
 
 fn default_method() -> String {
-    "GET".to_string()
+    String::from("GET")
 }
 
 const fn default_timeout_ms() -> u64 {

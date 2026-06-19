@@ -202,7 +202,7 @@ mod tests {
     #[test]
     fn test_env_var_names() {
         let vars = env_var_for_primal(&CanonicalPrimalType::Security);
-        assert!(vars.contains(&"SECURITY_URL".to_string()));
-        assert!(vars.contains(&"SECURITY_PRIMAL_URL".to_string()));
+        assert!(vars.contains(&String::from("SECURITY_URL")));
+        assert!(vars.contains(&String::from("SECURITY_PRIMAL_URL")));
     }
 }

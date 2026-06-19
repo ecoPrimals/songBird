@@ -91,7 +91,7 @@ pub async fn deploy_binary(
     }
 
     let binary_data =
-        binary_data.ok_or_else(|| (StatusCode::BAD_REQUEST, "No binary provided".to_string()))?;
+        binary_data.ok_or_else(|| (StatusCode::BAD_REQUEST, String::from("No binary provided")))?;
 
     let (status, response) =
         deploy_binary_bytes(&state, binary_data, service_name, env_vars, auto_start).await?;
@@ -183,7 +183,7 @@ pub async fn deploy_binary_bytes(
 
     let response = DeploymentResponse {
         deployment_id,
-        status: "deployed".to_string(),
+        status: String::from("deployed"),
         message: format!("Service '{service_name}' deployed successfully"),
         service_url,
     };

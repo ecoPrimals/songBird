@@ -241,7 +241,7 @@ impl FederatedBtspConnection {
 /// RAII cleanup: Automatically close tunnel on drop
 impl Drop for FederatedBtspConnection {
     fn drop(&mut self) {
-        let tunnel_id = self.tunnel_id.clone();
+        let tunnel_id = Arc::clone(&self.tunnel_id);
         let btsp_client = Arc::clone(&self.btsp_client);
         let peer_id = self.peer_id.clone();
 
@@ -318,8 +318,8 @@ mod tests {
 
     #[test]
     fn test_explicit_deny_overrides_federation_style_allow() {
-        let allowed = vec!["federation/*".to_string(), "data/write".to_string()];
-        let denied = vec!["federation/block".to_string()];
+        let allowed = vec![String::from("federation/*"), String::from("data/write")];
+        let denied = vec![String::from("federation/block")];
 
         assert!(check_operation_allowed("federation/ok", &allowed, &denied));
         assert!(!check_operation_allowed("federation/block", &allowed, &denied));
@@ -334,8 +334,8 @@ mod tests {
 
     #[test]
     fn test_commands_sensitive_denied_when_commands_wildcard_allowed() {
-        let allowed = vec!["commands/*".to_string()];
-        let denied = vec!["commands/sensitive".to_string()];
+        let allowed = vec![String::from("commands/*")];
+        let denied = vec![String::from("commands/sensitive")];
 
         assert!(check_operation_allowed("commands/ok", &allowed, &denied));
         assert!(!check_operation_allowed("commands/sensitive", &allowed, &denied));

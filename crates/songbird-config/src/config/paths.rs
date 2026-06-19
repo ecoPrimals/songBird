@@ -95,9 +95,9 @@ impl PathConfig {
 
         // Use simple path implementation
         let home_dir = dirs::home_dir().ok_or_else(|| SongbirdError::Configuration {
-            message: "Unable to determine home directory".to_string(),
-            field: Some("home_dir".to_string()),
-            suggestion: Some("Check if HOME environment variable is set".to_string()),
+            message: String::from("Unable to determine home directory"),
+            field: Some(String::from("home_dir")),
+            suggestion: Some(String::from("Check if HOME environment variable is set")),
         })?;
 
         let config_dir = home_dir.join(".config").join(APP_DIR);
@@ -207,9 +207,9 @@ impl PathConfig {
 
         // Simple path implementation without substrate
         let home_dir = dirs::home_dir().ok_or_else(|| SongbirdError::Configuration {
-            message: "Unable to determine home directory".to_string(),
-            field: Some("home_dir".to_string()),
-            suggestion: Some("Check if HOME environment variable is set".to_string()),
+            message: String::from("Unable to determine home directory"),
+            field: Some(String::from("home_dir")),
+            suggestion: Some(String::from("Check if HOME environment variable is set")),
         })?;
 
         let config_dir = home_dir.join(".config").join(APP_DIR);
@@ -251,9 +251,11 @@ impl PathConfig {
                 dirs::home_dir().map_or_else(
                     || {
                         Err(SongbirdError::Configuration {
-                            message: "Unable to determine data directory".to_string(),
-                            field: Some("data_dir".to_string()),
-                            suggestion: Some("Set XDG_DATA_HOME environment variable".to_string()),
+                            message: String::from("Unable to determine data directory"),
+                            field: Some(String::from("data_dir")),
+                            suggestion: Some(String::from(
+                                "Set XDG_DATA_HOME environment variable",
+                            )),
                         })
                     },
                     |home_dir| Ok(home_dir.join(".local").join("share").join("songbird")),
@@ -277,11 +279,11 @@ impl PathConfig {
                 dirs::home_dir().map_or_else(
                     || {
                         Err(SongbirdError::Configuration {
-                            message: "Unable to determine config directory".to_string(),
-                            field: Some("config_dir".to_string()),
-                            suggestion: Some(
-                                "Set XDG_CONFIG_HOME environment variable".to_string(),
-                            ),
+                            message: String::from("Unable to determine config directory"),
+                            field: Some(String::from("config_dir")),
+                            suggestion: Some(String::from(
+                                "Set XDG_CONFIG_HOME environment variable",
+                            )),
                         })
                     },
                     |home_dir| Ok(home_dir.join(".config").join("songbird")),
@@ -348,10 +350,10 @@ impl PathConfig {
             {
                 return Err(SongbirdError::Configuration {
                     message: format!("Failed to create directory {}: {}", directory.display(), e),
-                    field: Some("directory_path".to_string()),
-                    suggestion: Some(
-                        "Check if you have write permissions for this directory".to_string(),
-                    ),
+                    field: Some(String::from("directory_path")),
+                    suggestion: Some(String::from(
+                        "Check if you have write permissions for this directory",
+                    )),
                 });
             }
         }
@@ -377,8 +379,8 @@ impl PathConfig {
             _ => {
                 return Err(SongbirdError::Configuration {
                     message: format!("Unknown path type: {path_type}"),
-                    field: Some("path_type".to_string()),
-                    suggestion: Some("Check if the path type is valid".to_string()),
+                    field: Some(String::from("path_type")),
+                    suggestion: Some(String::from("Check if the path type is valid")),
                 });
             }
         };
@@ -387,10 +389,10 @@ impl PathConfig {
         if !service_dir.exists() {
             fs::create_dir_all(&service_dir).map_err(|e| SongbirdError::Configuration {
                 message: format!("Failed to create service directory: {e}"),
-                field: Some("service_dir".to_string()),
-                suggestion: Some(
-                    "Check if you have write permissions for this directory".to_string(),
-                ),
+                field: Some(String::from("service_dir")),
+                suggestion: Some(String::from(
+                    "Check if you have write permissions for this directory",
+                )),
             })?;
         }
 
@@ -418,8 +420,8 @@ impl PathConfig {
             if !path.exists() {
                 return Err(SongbirdError::Configuration {
                     message: format!("Path does not exist: {}", path.display()),
-                    field: Some("path_validation".to_string()),
-                    suggestion: Some("Check if the path exists and is accessible".to_string()),
+                    field: Some(String::from("path_validation")),
+                    suggestion: Some(String::from("Check if the path exists and is accessible")),
                 });
             }
         }
@@ -441,10 +443,10 @@ impl PathConfig {
         if !temp_dir.exists() {
             fs::create_dir_all(&temp_dir).map_err(|e| SongbirdError::Configuration {
                 message: format!("Failed to create temp directory: {e}"),
-                field: Some("temp_dir".to_string()),
-                suggestion: Some(
-                    "Check if you have write permissions for this directory".to_string(),
-                ),
+                field: Some(String::from("temp_dir")),
+                suggestion: Some(String::from(
+                    "Check if you have write permissions for this directory",
+                )),
             })?;
         }
 
@@ -466,10 +468,10 @@ impl PathConfig {
         if !secure_dir.exists() {
             fs::create_dir_all(&secure_dir).map_err(|e| SongbirdError::Configuration {
                 message: format!("Failed to create secure directory: {e}"),
-                field: Some("secure_dir".to_string()),
-                suggestion: Some(
-                    "Check if you have write permissions for this directory".to_string(),
-                ),
+                field: Some(String::from("secure_dir")),
+                suggestion: Some(String::from(
+                    "Check if you have write permissions for this directory",
+                )),
             })?;
         }
 
@@ -505,8 +507,8 @@ impl PathConfig {
             if !dir.exists() {
                 std::fs::create_dir_all(dir).map_err(|e| SongbirdError::Configuration {
                     message: format!("Failed to create service directory: {e}"),
-                    field: Some("service_directory".to_string()),
-                    suggestion: Some("Check if you have write permissions".to_string()),
+                    field: Some(String::from("service_directory")),
+                    suggestion: Some(String::from("Check if you have write permissions")),
                 })?;
             }
         }
@@ -565,8 +567,8 @@ pub fn initialize_service_paths(service_name: &str) -> Result<ServiceDataDirs> {
         if !dir.exists() {
             std::fs::create_dir_all(dir).map_err(|e| SongbirdError::Configuration {
                 message: format!("Failed to create service directory: {e}"),
-                field: Some("service_directory".to_string()),
-                suggestion: Some("Check if you have write permissions".to_string()),
+                field: Some(String::from("service_directory")),
+                suggestion: Some(String::from("Check if you have write permissions")),
             })?;
         }
     }

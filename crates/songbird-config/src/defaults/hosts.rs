@@ -96,7 +96,8 @@ pub fn is_production() -> bool {
 /// `SONGBIRD_ENVIRONMENT` (default: "development")
 #[must_use]
 pub fn environment() -> String {
-    songbird_process_env::var("SONGBIRD_ENVIRONMENT").unwrap_or_else(|_| "development".to_string())
+    songbird_process_env::var("SONGBIRD_ENVIRONMENT")
+        .unwrap_or_else(|_| String::from("development"))
 }
 
 #[cfg(test)]

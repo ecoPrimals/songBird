@@ -89,7 +89,7 @@ mod tests {
     fn api_config_serde_roundtrip() {
         let c = ApiConfig {
             port: 9443,
-            host: "::1".to_string(),
+            host: String::from("::1"),
             enable_cors: false,
         };
         let json = serde_json::to_string(&c).unwrap();

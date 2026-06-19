@@ -369,7 +369,7 @@ impl Default for PrimalConfigurationTemplate {
             default_request_timeout: Duration::from_secs(60),
             default_auth_method: AuthenticationMethod::None,
             default_health_check: HealthCheckConfig::default(),
-            default_capabilities: vec!["basic".to_string()],
+            default_capabilities: vec![String::from("basic")],
         }
     }
 }
@@ -397,7 +397,7 @@ impl Default for AutoDiscoveryConfig {
                 DiscoveryMethod::Mdns,
             ],
             discovery_interval: Duration::from_secs(300),
-            scan_ranges: vec!["127.0.0.0/8".to_string(), "10.0.0.0/8".to_string()],
+            scan_ranges: vec![String::from("127.0.0.0/8"), String::from("10.0.0.0/8")],
             scan_ports: crate::defaults::ports::primal_scan_ports(),
             discovery_timeout: Duration::from_secs(10),
         }
@@ -443,14 +443,14 @@ impl PrimalRegistry {
             PrimalConfiguration::new_template("security", "Universal Security Provider");
         config.capabilities = vec![
             PrimalCapability {
-                capability_type: "authentication".to_string(),
-                version: "1.0".to_string(),
+                capability_type: String::from("authentication"),
+                version: String::from("1.0"),
                 parameters: HashMap::new(),
                 qos_metrics: QosMetrics::default(),
             },
             PrimalCapability {
-                capability_type: "authorization".to_string(),
-                version: "1.0".to_string(),
+                capability_type: String::from("authorization"),
+                version: String::from("1.0"),
                 parameters: HashMap::new(),
                 qos_metrics: QosMetrics::default(),
             },
@@ -463,8 +463,8 @@ impl PrimalRegistry {
     pub fn create_compute_primal_config() -> PrimalConfiguration {
         let mut config = PrimalConfiguration::new_template("compute", "Universal Compute Provider");
         config.capabilities = vec![PrimalCapability {
-            capability_type: "processing".to_string(),
-            version: "1.0".to_string(),
+            capability_type: String::from("processing"),
+            version: String::from("1.0"),
             parameters: HashMap::new(),
             qos_metrics: QosMetrics::default(),
         }];
@@ -563,8 +563,8 @@ impl LegacyConfigMigrator {
         let mut storage_config =
             PrimalConfiguration::new_template("storage", "Universal Storage Provider");
         storage_config.capabilities = vec![PrimalCapability {
-            capability_type: "persistence".to_string(),
-            version: "1.0".to_string(),
+            capability_type: String::from("persistence"),
+            version: String::from("1.0"),
             parameters: HashMap::new(),
             qos_metrics: QosMetrics::default(),
         }];

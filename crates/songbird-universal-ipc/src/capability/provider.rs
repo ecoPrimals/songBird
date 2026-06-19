@@ -116,10 +116,10 @@ impl Default for ProviderMetadata {
         Self {
             version: None,
             description: None,
-            protocols: vec!["json-rpc".to_string()], // Default protocol
+            protocols: vec![String::from("json-rpc")], // Default protocol
             custom: HashMap::new(),
             health: HealthStatus::Unknown,
-            discovery_method: "unknown".to_string(),
+            discovery_method: String::from("unknown"),
         }
     }
 }
@@ -131,9 +131,9 @@ mod tests {
     #[test]
     fn test_provider_creation() {
         let provider = Provider::new(
-            "test-provider".to_string(),
-            vec!["crypto".to_string(), "signing".to_string()],
-            "/primal/test-provider".to_string(),
+            String::from("test-provider"),
+            vec![String::from("crypto"), String::from("signing")],
+            String::from("/primal/test-provider"),
         );
 
         assert_eq!(provider.id, "test-provider");
@@ -144,9 +144,9 @@ mod tests {
     #[test]
     fn test_has_capability() {
         let provider = Provider::new(
-            "test".to_string(),
-            vec!["crypto".to_string(), "signing".to_string()],
-            "/primal/test".to_string(),
+            String::from("test"),
+            vec![String::from("crypto"), String::from("signing")],
+            String::from("/primal/test"),
         );
 
         assert!(provider.has_capability("crypto"));
@@ -157,21 +157,21 @@ mod tests {
     #[test]
     fn test_has_capabilities() {
         let provider = Provider::new(
-            "test".to_string(),
-            vec!["crypto".to_string(), "signing".to_string()],
-            "/primal/test".to_string(),
+            String::from("test"),
+            vec![String::from("crypto"), String::from("signing")],
+            String::from("/primal/test"),
         );
 
-        assert!(provider.has_capabilities(&["crypto".to_string(), "signing".to_string()]));
-        assert!(!provider.has_capabilities(&["crypto".to_string(), "storage".to_string()]));
+        assert!(provider.has_capabilities(&[String::from("crypto"), String::from("signing")]));
+        assert!(!provider.has_capabilities(&[String::from("crypto"), String::from("storage")]));
     }
 
     #[test]
     fn test_health_status() {
         let mut provider = Provider::new(
-            "test".to_string(),
-            vec!["crypto".to_string()],
-            "/primal/test".to_string(),
+            String::from("test"),
+            vec![String::from("crypto")],
+            String::from("/primal/test"),
         );
 
         assert_eq!(provider.metadata.health, HealthStatus::Unknown);

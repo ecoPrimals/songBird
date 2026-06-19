@@ -64,7 +64,7 @@ impl Default for DdnsConfig {
         Self {
             enabled: songbird_process_env::var("SONGBIRD_DDNS_ENABLED").is_ok(),
             provider: songbird_process_env::var("SONGBIRD_DDNS_PROVIDER")
-                .unwrap_or_else(|_| "noop".to_string()),
+                .unwrap_or_else(|_| String::from("noop")),
             hostname: songbird_process_env::var("SONGBIRD_DDNS_HOSTNAME").ok(),
             ttl: songbird_process_env::var("SONGBIRD_DDNS_TTL")
                 .ok()
@@ -155,7 +155,7 @@ mod tests {
     fn default_config_disabled() {
         let config = DdnsConfig {
             enabled: false,
-            provider: "noop".to_string(),
+            provider: String::from("noop"),
             hostname: None,
             ttl: 60,
             zone: None,
@@ -172,7 +172,7 @@ mod tests {
         let provider = NoopDdnsProvider;
         let config = DdnsConfig {
             enabled: false,
-            provider: "noop".to_string(),
+            provider: String::from("noop"),
             hostname: None,
             ttl: 60,
             zone: None,

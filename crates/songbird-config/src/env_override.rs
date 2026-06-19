@@ -92,8 +92,8 @@ mod tests {
         env1.set("TEST_VAR", "value1");
         env2.set("TEST_VAR", "value2");
 
-        assert_eq!(env1.get("TEST_VAR"), Some("value1".to_string()));
-        assert_eq!(env2.get("TEST_VAR"), Some("value2".to_string()));
+        assert_eq!(env1.get("TEST_VAR"), Some(String::from("value1")));
+        assert_eq!(env2.get("TEST_VAR"), Some(String::from("value2")));
     }
 
     #[test]

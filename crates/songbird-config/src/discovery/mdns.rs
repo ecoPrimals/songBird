@@ -120,9 +120,9 @@ impl MdnsDiscovery {
 
         // Validate service name (DNS label rules)
         if service_name.is_empty() || service_name.len() > 63 {
-            return Err(MdnsError::InvalidServiceName(
-                "Service name must be 1-63 characters".to_string(),
-            ));
+            return Err(MdnsError::InvalidServiceName(String::from(
+                "Service name must be 1-63 characters",
+            )));
         }
 
         // Initialize mDNS daemon if feature enabled
@@ -158,7 +158,7 @@ impl MdnsDiscovery {
     pub fn new() -> Result<Self, MdnsError> {
         let hostname = gethostname::gethostname()
             .into_string()
-            .unwrap_or_else(|_| "songbird-service".to_string());
+            .unwrap_or_else(|_| String::from("songbird-service"));
 
         Self::new_with_port(hostname, 0)
     }
@@ -196,9 +196,9 @@ impl MdnsDiscovery {
                 // Build TXT records with capabilities
                 let mut properties = HashMap::new();
                 for cap in capabilities {
-                    properties.insert("capability".to_string(), cap.to_string());
+                    properties.insert(String::from("capability"), cap.to_string());
                 }
-                properties.insert("version".to_string(), env!("CARGO_PKG_VERSION").to_string());
+                properties.insert(String::from("version"), env!("CARGO_PKG_VERSION").to_string());
 
                 // Create service info
                 let service_info = mdns_sd::ServiceInfo::new(
@@ -524,7 +524,7 @@ impl Default for MdnsDiscovery {
             warn!("Failed to create default mDNS discovery: {}", e);
             // Fallback with minimal config
             Self {
-                service_name: "songbird".to_string(),
+                service_name: String::from("songbird"),
                 advertised_capabilities: Arc::new(RwLock::new(Vec::new())),
                 listen_port: 0,
                 cache: Arc::new(RwLock::new(HashMap::new())),
@@ -569,8 +569,8 @@ mod tests {
 
         let caps = mdns.advertised_capabilities.read().await;
         assert_eq!(caps.len(), 2);
-        assert!(caps.contains(&"compute".to_string()));
-        assert!(caps.contains(&"storage".to_string()));
+        assert!(caps.contains(&String::from("compute")));
+        assert!(caps.contains(&String::from("storage")));
     }
 
     #[tokio::test]
@@ -620,10 +620,10 @@ mod tests {
             let mut cache = mdns.cache.write().await;
             let old_time = std::time::SystemTime::now() - Duration::from_secs(120);
             cache.insert(
-                "test".to_string(),
+                String::from("test"),
                 vec![MdnsServiceInfo {
                     address: "127.0.0.1:8080".parse().unwrap(),
-                    capabilities: vec!["test".to_string()],
+                    capabilities: vec![String::from("test")],
                     metadata: HashMap::new(),
                     discovered_at: old_time,
                 }],

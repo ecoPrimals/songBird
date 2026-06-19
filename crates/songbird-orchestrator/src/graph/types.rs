@@ -26,27 +26,27 @@ use std::collections::HashMap;
 /// use songbird_orchestrator::graph::{Graph, GraphNode, GraphEdge, GraphMetadata};
 ///
 /// let graph = Graph {
-///     id: "pipeline-1".to_string(),
-///     name: "Data Processing Pipeline".to_string(),
+///     id: String::from("pipeline-1"),
+///     name: String::from("Data Processing Pipeline"),
 ///     nodes: vec![
 ///         GraphNode {
-///             id: "encrypt".to_string(),
+///             id: String::from("encrypt"),
 ///             primal_name: None, // No hardcoding!
-///             capability: "encryption".to_string(),
-///             inputs: vec!["raw_data".to_string()],
-///             outputs: vec!["encrypted_data".to_string()],
+///             capability: String::from("encryption"),
+///             inputs: vec![String::from("raw_data")],
+///             outputs: vec![String::from("encrypted_data")],
 ///             config: serde_json::json!({}),
-///             preferred_protocol: Some("json-rpc".to_string()),
+///             preferred_protocol: Some(String::from("json-rpc")),
 ///             timeout_secs: Some(30),
 ///         },
 ///     ],
 ///     edges: vec![],
 ///     metadata: GraphMetadata {
-///         created_by: "user@example.com".to_string(),
-///         created_at: "2026-01-11T10:00:00Z".to_string(),
-///         description: Some("Encrypts and stores data".to_string()),
-///         tags: vec!["encryption".to_string(), "storage".to_string()],
-///         version: "1.0".to_string(),
+///         created_by: String::from("user@example.com"),
+///         created_at: String::from("2026-01-11T10:00:00Z"),
+///         description: Some(String::from("Encrypts and stores data")),
+///         tags: vec![String::from("encryption"), String::from("storage")],
+///         version: String::from("1.0"),
 ///     },
 /// };
 /// ```
@@ -77,8 +77,8 @@ impl Graph {
     /// use songbird_orchestrator::graph::{Graph, GraphNode, GraphMetadata};
     ///
     /// let graph = Graph::new(
-    ///     "my-graph".to_string(),
-    ///     "My Graph".to_string(),
+    ///     String::from("my-graph"),
+    ///     String::from("My Graph"),
     ///     vec![],
     ///     vec![],
     ///     GraphMetadata::default(),
@@ -237,11 +237,11 @@ pub struct GraphMetadata {
 impl Default for GraphMetadata {
     fn default() -> Self {
         Self {
-            created_by: "unknown".to_string(),
+            created_by: String::from("unknown"),
             created_at: chrono::Utc::now().to_rfc3339(),
             description: None,
             tags: vec![],
-            version: "1.0".to_string(),
+            version: String::from("1.0"),
         }
     }
 }
@@ -400,8 +400,8 @@ mod tests {
     #[test]
     fn test_graph_creation() {
         let graph = Graph::new(
-            "test-graph".to_string(),
-            "Test Graph".to_string(),
+            String::from("test-graph"),
+            String::from("Test Graph"),
             vec![],
             vec![],
             GraphMetadata::default(),
@@ -416,21 +416,21 @@ mod tests {
     #[test]
     fn test_entry_points() {
         let node1 = GraphNode {
-            id: "node-1".to_string(),
+            id: String::from("node-1"),
             primal_name: None,
-            capability: "encryption".to_string(),
+            capability: String::from("encryption"),
             inputs: vec![],
-            outputs: vec!["data".to_string()],
+            outputs: vec![String::from("data")],
             config: serde_json::json!({}),
             preferred_protocol: None,
             timeout_secs: None,
         };
 
         let node2 = GraphNode {
-            id: "node-2".to_string(),
+            id: String::from("node-2"),
             primal_name: None,
-            capability: "storage".to_string(),
-            inputs: vec!["data".to_string()],
+            capability: String::from("storage"),
+            inputs: vec![String::from("data")],
             outputs: vec![],
             config: serde_json::json!({}),
             preferred_protocol: None,
@@ -438,14 +438,14 @@ mod tests {
         };
 
         let edge = GraphEdge {
-            from: "node-1".to_string(),
-            to: "node-2".to_string(),
+            from: String::from("node-1"),
+            to: String::from("node-2"),
             data_mapping: None,
         };
 
         let graph = Graph::new(
-            "test".to_string(),
-            "Test".to_string(),
+            String::from("test"),
+            String::from("Test"),
             vec![node1, node2],
             vec![edge],
             GraphMetadata::default(),
@@ -459,21 +459,21 @@ mod tests {
     #[test]
     fn test_exit_points() {
         let node1 = GraphNode {
-            id: "node-1".to_string(),
+            id: String::from("node-1"),
             primal_name: None,
-            capability: "encryption".to_string(),
+            capability: String::from("encryption"),
             inputs: vec![],
-            outputs: vec!["data".to_string()],
+            outputs: vec![String::from("data")],
             config: serde_json::json!({}),
             preferred_protocol: None,
             timeout_secs: None,
         };
 
         let node2 = GraphNode {
-            id: "node-2".to_string(),
+            id: String::from("node-2"),
             primal_name: None,
-            capability: "storage".to_string(),
-            inputs: vec!["data".to_string()],
+            capability: String::from("storage"),
+            inputs: vec![String::from("data")],
             outputs: vec![],
             config: serde_json::json!({}),
             preferred_protocol: None,
@@ -481,14 +481,14 @@ mod tests {
         };
 
         let edge = GraphEdge {
-            from: "node-1".to_string(),
-            to: "node-2".to_string(),
+            from: String::from("node-1"),
+            to: String::from("node-2"),
             data_mapping: None,
         };
 
         let graph = Graph::new(
-            "test".to_string(),
-            "Test".to_string(),
+            String::from("test"),
+            String::from("Test"),
             vec![node1, node2],
             vec![edge],
             GraphMetadata::default(),
@@ -514,7 +514,7 @@ mod tests {
     #[test]
     fn test_validation_issue_creation() {
         let issue = ValidationIssue::error("CYCLE", "Cycle detected")
-            .with_nodes(vec!["node-1".to_string(), "node-2".to_string()]);
+            .with_nodes(vec![String::from("node-1"), String::from("node-2")]);
 
         assert_eq!(issue.severity, IssueSeverity::Error);
         assert_eq!(issue.code, "CYCLE");

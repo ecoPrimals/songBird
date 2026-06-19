@@ -123,7 +123,7 @@ impl Default for CanonicalSecurityConfig {
         Self {
             security_level,
             auth_method: songbird_process_env::var("SONGBIRD_AUTH_METHOD")
-                .unwrap_or_else(|_| "jwt".to_string()),
+                .unwrap_or_else(|_| String::from("jwt")),
             tls: TlsConfig::default(),
             initial_trust_level: TrustLevel::Anonymous,
         }

@@ -265,7 +265,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache() {
         let mut map = HashMap::new();
-        map.insert("TEST_PROVIDER_SOCKET".to_string(), "/tmp/test.sock".to_string());
+        map.insert(String::from("TEST_PROVIDER_SOCKET"), String::from("/tmp/test.sock"));
 
         let registry = registry_with_injected_env(map).with_cache_ttl(Duration::from_secs(10));
 
@@ -286,7 +286,7 @@ mod tests {
         const CAP: &str = "sbipc_registry_discover_all";
         const ENV: &str = "SBIPC_REGISTRY_DISCOVER_ALL_PROVIDER_SOCKET";
         let mut map = HashMap::new();
-        map.insert(ENV.to_string(), "/tmp/sbipc_registry_discover_all.sock".to_string());
+        map.insert(ENV.to_string(), String::from("/tmp/sbipc_registry_discover_all.sock"));
 
         let registry = registry_with_injected_env(map);
         let providers = registry.discover_all(CAP).await.unwrap();
@@ -306,7 +306,7 @@ mod tests {
         const CAP: &str = "sbipc_clear";
         const ENV: &str = "SBIPC_CLEAR_PROVIDER_SOCKET";
         let mut map = HashMap::new();
-        map.insert(ENV.to_string(), "/tmp/sbipc_clear.sock".to_string());
+        map.insert(ENV.to_string(), String::from("/tmp/sbipc_clear.sock"));
         let registry = registry_with_injected_env(map);
         let _ = registry.discover(CAP).await.unwrap();
         registry.clear_cache().await;
@@ -324,7 +324,7 @@ mod tests {
         const CAP: &str = "sbipc_health";
         const ENV: &str = "SBIPC_HEALTH_PROVIDER_SOCKET";
         let mut map = HashMap::new();
-        map.insert(ENV.to_string(), "/tmp/sbipc_health.sock".to_string());
+        map.insert(ENV.to_string(), String::from("/tmp/sbipc_health.sock"));
         let registry = registry_with_injected_env(map).with_cache_ttl(Duration::from_secs(3600));
         let p = registry.discover(CAP).await.unwrap();
         registry.update_health(CAP, &p.id, HealthStatus::Degraded).await;
@@ -338,7 +338,7 @@ mod tests {
         const CAP: &str = "sbipc_ttl0";
         const ENV: &str = "SBIPC_TTL0_PROVIDER_SOCKET";
         let mut map = HashMap::new();
-        map.insert(ENV.to_string(), "/tmp/sbipc_ttl0.sock".to_string());
+        map.insert(ENV.to_string(), String::from("/tmp/sbipc_ttl0.sock"));
         let registry = registry_with_injected_env(map).with_cache_ttl(Duration::from_secs(0));
         let _ = registry.discover(CAP).await.unwrap();
         let _ = registry.discover(CAP).await.unwrap();

@@ -57,7 +57,7 @@ impl Default for VirtualNetworkConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            subnet: "10.0.0.0/24".to_string(),
+            subnet: String::from("10.0.0.0/24"),
             interface: None,
         }
     }
@@ -80,7 +80,7 @@ impl Default for GamingBridgeConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            interface: "br-gaming".to_string(),
+            interface: String::from("br-gaming"),
             ip_address: None,
         }
     }
@@ -99,8 +99,8 @@ pub struct GamingProtocolConfig {
 impl Default for GamingProtocolConfig {
     fn default() -> Self {
         Self {
-            protocols: vec!["tcp".to_string(), "udp".to_string()],
-            default_protocol: "udp".to_string(),
+            protocols: vec![String::from("tcp"), String::from("udp")],
+            default_protocol: String::from("udp"),
         }
     }
 }
@@ -216,7 +216,7 @@ impl Default for ProductionLanConfig {
             game_port_range: (7000, 7999),
             packet_buffer_size: 8192,
             max_packet_size: 1500,
-            interface_preference: vec!["eth0".to_string(), "wlan0".to_string()],
+            interface_preference: vec![String::from("eth0"), String::from("wlan0")],
             max_sessions: 1000,
         }
     }

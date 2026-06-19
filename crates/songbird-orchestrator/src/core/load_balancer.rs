@@ -226,13 +226,13 @@ mod tests {
     fn test_load_balancing_strategy_serialization() -> Result<(), Box<dyn std::error::Error>> {
         let strategy = LoadBalancingStrategy::RoundRobin;
         let json = serde_json::to_string(&strategy).map_err(|e| SongbirdError::Serialization {
-            format: Some("JSON".to_string()),
+            format: Some(String::from("JSON")),
             message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
         let deserialized: LoadBalancingStrategy =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
-                format: Some("JSON".to_string()),
+                format: Some(String::from("JSON")),
                 message: format!("Parsing failed: {e}"),
                 debug_info: None,
             })?;
@@ -314,9 +314,9 @@ mod tests {
         assert!(
             health
                 .message
-                .ok_or_else(|| SongbirdError::configuration(
-                    "Failed to select service".to_string()
-                ))?
+                .ok_or_else(|| SongbirdError::configuration(String::from(
+                    "Failed to select service"
+                )))?
                 .contains("operational")
         );
         Ok(())

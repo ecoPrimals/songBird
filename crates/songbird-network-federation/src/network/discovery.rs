@@ -77,9 +77,9 @@ mod tests {
     #[test]
     fn discovered_node_serde_roundtrip() {
         let n = DiscoveredNode {
-            node_id: "n1".to_string(),
-            address: "10.0.0.1:8080".to_string(),
-            capabilities: vec!["a".to_string(), "b".to_string()],
+            node_id: String::from("n1"),
+            address: String::from("10.0.0.1:8080"),
+            capabilities: vec![String::from("a"), String::from("b")],
         };
         let json = serde_json::to_string(&n).unwrap();
         let back: DiscoveredNode = serde_json::from_str(&json).unwrap();
@@ -90,8 +90,8 @@ mod tests {
     #[test]
     fn discovered_node_empty_capabilities() {
         let n = DiscoveredNode {
-            node_id: "x".to_string(),
-            address: "h".to_string(),
+            node_id: String::from("x"),
+            address: String::from("h"),
             capabilities: vec![],
         };
         assert!(n.capabilities.is_empty());

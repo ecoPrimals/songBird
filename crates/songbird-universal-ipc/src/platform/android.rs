@@ -89,9 +89,9 @@ impl AndroidPlatformIPC {
                     inner: listener,
                 }))
             }
-            _ => Err(IpcError::PlatformError(
-                "AndroidIPC requires AbstractSocket endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError(String::from(
+                "AndroidIPC requires AbstractSocket endpoint",
+            ))),
         }
     }
 
@@ -111,9 +111,9 @@ impl AndroidPlatformIPC {
 
                 Ok(AsyncStreamImpl::Unix(stream))
             }
-            _ => Err(IpcError::PlatformError(
-                "AndroidIPC requires AbstractSocket endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError(String::from(
+                "AndroidIPC requires AbstractSocket endpoint",
+            ))),
         }
     }
 
@@ -126,9 +126,9 @@ impl AndroidPlatformIPC {
                 debug!("Abstract socket cleanup (automatic): {}", name);
                 Ok(())
             }
-            _ => Err(IpcError::PlatformError(
-                "AndroidIPC requires AbstractSocket endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError(String::from(
+                "AndroidIPC requires AbstractSocket endpoint",
+            ))),
         }
     }
 }

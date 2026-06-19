@@ -106,4 +106,6 @@ pub(super) type HandlerBundle = (
 );
 
 #[cfg(test)]
+mod capability_call_remote_tests;
+#[cfg(test)]
 mod service_tests;

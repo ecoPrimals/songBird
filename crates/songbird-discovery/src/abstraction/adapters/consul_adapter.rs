@@ -303,8 +303,18 @@ impl DiscoveryProvider for ConsulProviderAdapter {
     }
 
     async fn health_check(&self) -> Result<bool> {
-        // For now, assume healthy. In a real implementation, you'd ping Consul
-        Ok(true)
+        let url = format!("{}/v1/status/leader", self.consul_url);
+        match self.client.get(&url).await {
+            Ok(response) if response.is_success() => Ok(true),
+            Ok(response) => {
+                tracing::warn!("Consul health check failed with status: {}", response.status());
+                Ok(false)
+            }
+            Err(e) => {
+                tracing::warn!("Consul health check failed: {e}");
+                Ok(false)
+            }
+        }
     }
 
     async fn register(&self, service: ServiceInfo) -> Result<()> {

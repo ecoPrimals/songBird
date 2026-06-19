@@ -29,6 +29,7 @@ mod tests;
 
 use serde_json::{Value, json};
 use songbird_onion_relay::mesh::{BeaconMesh, EndpointType, RelayEndpoint};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
@@ -53,6 +54,8 @@ pub struct MeshHandler {
     start_time: Instant,
     /// Our node ID
     node_id: Arc<RwLock<Arc<str>>>,
+    /// Whether this node has announced relay capability to the mesh
+    relay_announced: Arc<RwLock<bool>>,
 }
 
 impl MeshHandler {
@@ -63,6 +66,7 @@ impl MeshHandler {
             mesh: Arc::new(RwLock::new(None::<Arc<BeaconMesh>>)),
             start_time: Instant::now(),
             node_id: Arc::new(RwLock::new(Arc::from(""))),
+            relay_announced: Arc::new(RwLock::new(false)),
         }
     }
 
@@ -77,6 +81,7 @@ impl MeshHandler {
             mesh: Arc::new(RwLock::new(Some(Arc::new(mesh)))),
             start_time: Instant::now(),
             node_id: Arc::new(RwLock::new(node_id.into())),
+            relay_announced: Arc::new(RwLock::new(false)),
         }
     }
 
@@ -141,7 +146,12 @@ impl MeshHandler {
         let mesh = BeaconMesh::new(node_id.as_ref().to_string(), bootstrap_onions);
         let mesh = Arc::new(mesh);
 
-        for (peer_id, addr) in &bootstrap_peers {
+        let mut deduped_peers: HashMap<String, std::net::SocketAddr> = HashMap::new();
+        for (peer_id, addr) in bootstrap_peers {
+            deduped_peers.insert(peer_id, addr);
+        }
+
+        for (peer_id, addr) in &deduped_peers {
             let endpoint = RelayEndpoint {
                 node_id: peer_id.clone(),
                 endpoint_type: EndpointType::Direct {
@@ -156,11 +166,12 @@ impl MeshHandler {
 
         *self.mesh.write().await = Some(mesh);
         *self.node_id.write().await = node_id.clone();
+        *self.relay_announced.write().await = false;
 
         Ok(json!({
             "initialized": true,
             "node_id": node_id.as_ref(),
-            "bootstrap_peers_added": bootstrap_peers.len()
+            "bootstrap_peers_added": deduped_peers.len()
         }))
     }
 
@@ -205,12 +216,14 @@ impl MeshHandler {
         }?;
 
         let node_id = self.node_id.read().await.clone();
+        let relay_capable = *self.relay_announced.read().await;
         let uptime = self.start_time.elapsed().as_secs();
 
         Ok(json!({
             "node_id": node_id.as_ref(),
             "reachable_peers": reachable.len(),
             "relay_enabled": true,
+            "relay_capable": relay_capable,
             "uptime_seconds": uptime,
             "paths": {
                 "local": local_count,
@@ -278,6 +291,8 @@ impl MeshHandler {
             Ok::<_, String>(())
         }?;
 
+        *self.relay_announced.write().await = true;
+
         let node_id = self.node_id.read().await.clone();
 
         info!("📢 Announced {} as relay to mesh", &node_id.as_ref()[..8.min(node_id.len())]);
@@ -291,10 +306,10 @@ impl MeshHandler {
 
     /// Handle `mesh.peers` method - List known peers
     pub async fn handle_peers(&self, params: Value) -> Result<Value, String> {
-        let _include_offline =
+        let include_offline =
             params.get("include_offline").and_then(serde_json::Value::as_bool).unwrap_or(false);
 
-        let (peers, relay_count) = {
+        let (peers, relay_count, online_count) = {
             let mesh = self
                 .mesh
                 .read()
@@ -303,17 +318,33 @@ impl MeshHandler {
                 .cloned()
                 .ok_or("Mesh not initialized (call mesh.init first)")?;
 
-            let reachable = mesh.get_reachable_nodes().await;
+            let node_ids = if include_offline {
+                mesh.get_known_nodes().await
+            } else {
+                mesh.get_reachable_nodes().await
+            };
 
             let mut peers = Vec::new();
             let mut relay_count = 0;
+            let mut online_count = 0;
 
-            for node_id in &reachable {
-                if let Some(path) = mesh.get_best_path(node_id).await {
+            for node_id in &node_ids {
+                let path = if let Some(path) = mesh.get_best_path(node_id).await {
+                    Some(path)
+                } else if include_offline {
+                    mesh.get_all_paths(node_id).await.into_iter().next()
+                } else {
+                    None
+                };
+
+                if let Some(path) = path {
                     let (path_type, address) = json::endpoint_to_strings(&path.endpoint_type);
                     let is_relay = matches!(path.endpoint_type, EndpointType::FamilyRelay { .. });
                     if is_relay {
                         relay_count += 1;
+                    }
+                    if path.reachable {
+                        online_count += 1;
                     }
 
                     let latency_ms =
@@ -331,13 +362,13 @@ impl MeshHandler {
                 }
             }
 
-            Ok::<_, String>((peers, relay_count))
+            Ok::<_, String>((peers, relay_count, online_count))
         }?;
 
         Ok(json!({
             "peers": peers,
             "total": peers.len(),
-            "online": peers.len(),
+            "online": online_count,
             "relays": relay_count
         }))
     }
@@ -637,5 +668,31 @@ impl MeshHandler {
     pub fn path_json_for_test(&self, path: &RelayEndpoint, found: bool) -> Value {
         let _ = self;
         json::path_to_json(path, found)
+    }
+
+    /// Initialize mesh state with explicit peer endpoints (remote-dispatch tests).
+    pub async fn test_init_with_peers(
+        &self,
+        node_id: &str,
+        peers: &[(String, std::net::SocketAddr, bool)],
+    ) {
+        let mesh = Arc::new(BeaconMesh::new(String::from(node_id), vec![]));
+        for (peer_id, addr, reachable) in peers {
+            mesh.add_endpoint(
+                peer_id.clone(),
+                RelayEndpoint {
+                    node_id: peer_id.clone(),
+                    endpoint_type: EndpointType::Direct {
+                        addr: *addr,
+                    },
+                    latency: None,
+                    last_seen: Instant::now(),
+                    reachable: *reachable,
+                },
+            )
+            .await;
+        }
+        *self.mesh.write().await = Some(mesh);
+        *self.node_id.write().await = Arc::from(node_id);
     }
 }

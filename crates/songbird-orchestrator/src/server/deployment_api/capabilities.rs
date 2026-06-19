@@ -38,7 +38,9 @@ pub async fn get_capabilities(
     let max_concurrent = calculate_max_concurrent(available_memory);
 
     let capabilities = DeploymentCapabilities {
-        node_id: gethostname::gethostname().into_string().unwrap_or_else(|_| "unknown".to_string()),
+        node_id: gethostname::gethostname()
+            .into_string()
+            .unwrap_or_else(|_| String::from("unknown")),
         timestamp: chrono::Utc::now().to_rfc3339(),
         network: NetworkCapabilities {
             network_type: network_type.clone(),
@@ -48,22 +50,22 @@ pub async fn get_capabilities(
             single: SingleUploadMethod {
                 enabled: true,
                 max_size_mb: 50,
-                compression_supported: vec!["gzip".to_string()],
-                recommended_for: "< 10MB".to_string(),
+                compression_supported: vec![String::from("gzip")],
+                recommended_for: String::from("< 10MB"),
             },
             chunked: ChunkedUploadMethod {
                 enabled: true,
                 max_total_size_mb: 1000,
                 chunk_size_mb: 10,
                 max_chunks: 100,
-                compression_supported: vec!["gzip".to_string()],
-                recommended_for: "2MB - 500MB".to_string(),
+                compression_supported: vec![String::from("gzip")],
+                recommended_for: String::from("2MB - 500MB"),
             },
             streaming: StreamingUploadMethod {
                 enabled: false,
                 unlimited: true,
-                compression_supported: vec!["gzip".to_string()],
-                recommended_for: "> 500MB".to_string(),
+                compression_supported: vec![String::from("gzip")],
+                recommended_for: String::from("> 500MB"),
             },
         },
         resources: ResourceInfo {
@@ -75,8 +77,8 @@ pub async fn get_capabilities(
             current_deployments,
         },
         preferences: DeploymentPreferences {
-            preferred_compression: "gzip".to_string(),
-            preferred_method: "single".to_string(),
+            preferred_compression: String::from("gzip"),
+            preferred_method: String::from("single"),
             encryption_required: false,
         },
     };
@@ -93,7 +95,7 @@ pub async fn get_capabilities(
 
 /// Detect network type (LAN, VPN, or Internet)
 pub fn detect_network_type() -> String {
-    "lan".to_string()
+    String::from("lan")
 }
 
 /// Estimate bandwidth based on network type
@@ -103,19 +105,19 @@ pub fn estimate_bandwidth(network_type: &str) -> BandwidthEstimate {
             download_mbps: 1000,
             upload_mbps: 1000,
             latency_ms: 1,
-            confidence: "high".to_string(),
+            confidence: String::from("high"),
         },
         "vpn" => BandwidthEstimate {
             download_mbps: 100,
             upload_mbps: 100,
             latency_ms: 10,
-            confidence: "medium".to_string(),
+            confidence: String::from("medium"),
         },
         _ => BandwidthEstimate {
             download_mbps: 50,
             upload_mbps: 20,
             latency_ms: 50,
-            confidence: "low".to_string(),
+            confidence: String::from("low"),
         },
     }
 }

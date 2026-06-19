@@ -36,8 +36,8 @@ fn parse_etcd_kv_entries(
         let value = String::from_utf8_lossy(&value_bytes);
         if let Ok(addr) = value.parse::<SocketAddr>() {
             let mut metadata = HashMap::new();
-            metadata.insert("source".to_string(), "etcd".to_string());
-            metadata.insert("etcd_endpoint".to_string(), etcd_endpoint.to_string());
+            metadata.insert(String::from("source"), String::from("etcd"));
+            metadata.insert(String::from("etcd_endpoint"), etcd_endpoint.to_string());
             discovered.push(DiscoveredService {
                 address: addr,
                 capabilities: vec![capability.to_string()],
@@ -152,6 +152,6 @@ mod tests {
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].address, addr_str.parse::<SocketAddr>().unwrap());
         assert_eq!(out[0].capabilities, vec!["cap1"]);
-        assert_eq!(out[0].metadata.get("source"), Some(&"etcd".to_string()));
+        assert_eq!(out[0].metadata.get("source"), Some(&String::from("etcd")));
     }
 }

@@ -19,19 +19,19 @@ use super::{
 pub fn protocol_port_mappings() -> HashMap<String, u16> {
     let mut mappings = HashMap::new();
     mappings.insert(
-        "udp".to_string(),
+        String::from("udp"),
         SafeEnv::get_port("SONGBIRD_PROTOCOL_UDP_PORT", FALLBACK_PROTOCOL_UDP_PORT),
     );
     mappings.insert(
-        "tcp".to_string(),
+        String::from("tcp"),
         SafeEnv::get_port("SONGBIRD_PROTOCOL_TCP_PORT", FALLBACK_PROTOCOL_TCP_PORT),
     );
     mappings.insert(
-        "websocket".to_string(),
+        String::from("websocket"),
         SafeEnv::get_port("SONGBIRD_PROTOCOL_WEBSOCKET_PORT", FALLBACK_PROTOCOL_WEBSOCKET_PORT),
     );
     mappings.insert(
-        "secure_websocket".to_string(),
+        String::from("secure_websocket"),
         SafeEnv::get_port(
             "SONGBIRD_PROTOCOL_SECURE_WEBSOCKET_PORT",
             FALLBACK_PROTOCOL_SECURE_WEBSOCKET_PORT,
@@ -49,7 +49,7 @@ pub fn external_address() -> String {
 /// Get default subnet configuration
 #[must_use]
 pub fn default_subnet() -> String {
-    SafeEnv::get_or_default("SONGBIRD_SUBNET", "10.0.0.0/24".to_string())
+    SafeEnv::get_or_default("SONGBIRD_SUBNET", String::from("10.0.0.0/24"))
 }
 
 /// Generate a unique node ID for this instance

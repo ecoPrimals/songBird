@@ -83,7 +83,7 @@ pub async fn federation_heartbeat(
             StatusCode::NOT_FOUND,
             Json(FederationHeartbeatResponse {
                 acknowledged: false,
-                federation_status: "node_not_registered".to_string(),
+                federation_status: String::from("node_not_registered"),
             }),
         );
     }
@@ -92,7 +92,7 @@ pub async fn federation_heartbeat(
         StatusCode::OK,
         Json(FederationHeartbeatResponse {
             acknowledged: true,
-            federation_status: heartbeat.status.unwrap_or_else(|| "active".to_string()),
+            federation_status: heartbeat.status.unwrap_or_else(|| String::from("active")),
         }),
     )
 }

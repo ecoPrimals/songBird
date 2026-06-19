@@ -202,7 +202,7 @@ impl FullTrustBtspConnection {
 /// RAII cleanup: Automatically close tunnel on drop
 impl Drop for FullTrustBtspConnection {
     fn drop(&mut self) {
-        let tunnel_id = self.tunnel_id.clone();
+        let tunnel_id = Arc::clone(&self.tunnel_id);
         let btsp_client = Arc::clone(&self.btsp_client);
         let peer_id = self.peer_id.clone();
 
@@ -234,7 +234,7 @@ mod tests {
         let allowed = TrustLevel::Highest.default_allowed_capabilities();
         let denied = TrustLevel::Highest.default_denied_capabilities();
 
-        assert_eq!(allowed, vec!["*".to_string()]);
+        assert_eq!(allowed, vec![String::from("*")]);
         assert!(denied.is_empty());
         assert!(check_operation_allowed("data/write", &allowed, &denied));
         assert!(check_operation_allowed("commands/sensitive/x", &allowed, &denied));
@@ -262,15 +262,15 @@ mod tests {
 
     #[test]
     fn test_check_operation_allowed_star_with_no_deny() {
-        let allowed = vec!["*".to_string()];
+        let allowed = vec![String::from("*")];
         let denied: Vec<String> = vec![];
         assert!(check_operation_allowed("any/operation/at/all", &allowed, &denied));
     }
 
     #[test]
     fn test_explicit_deny_still_overrides_star_allow() {
-        let allowed = vec!["*".to_string()];
-        let denied = vec!["data/secret".to_string()];
+        let allowed = vec![String::from("*")];
+        let denied = vec![String::from("data/secret")];
         assert!(!check_operation_allowed("data/secret", &allowed, &denied));
         assert!(check_operation_allowed("data/public", &allowed, &denied));
     }

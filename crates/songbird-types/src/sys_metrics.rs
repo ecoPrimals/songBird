@@ -259,7 +259,7 @@ Buffers:          500000 kB
     #[test]
     fn disk_info_total_gb_conversion() {
         let d = DiskInfo {
-            device: "sda".to_string(),
+            device: String::from("sda"),
             total_bytes: 500 * 1024 * 1024 * 1024,
         };
         assert!((d.total_gb() - 500.0).abs() < 0.01);

@@ -48,8 +48,8 @@ use crate::ipc::registry::ServiceRegistry;
 /// let validator = CoordinationValidator::new(registry);
 ///
 /// let graph = Graph::new(
-///     "workflow".to_string(),
-///     "Data Pipeline".to_string(),
+///     String::from("workflow"),
+///     String::from("Data Pipeline"),
 ///     vec![],
 ///     vec![],
 ///     GraphMetadata::default(),
@@ -96,8 +96,8 @@ mod tests {
 
     fn create_sequential_graph() -> Graph {
         Graph::new(
-            "sequential".to_string(),
-            "Sequential Test".to_string(),
+            String::from("sequential"),
+            String::from("Sequential Test"),
             vec![
                 create_test_node("node1", "capability1"),
                 create_test_node("node2", "capability2"),
@@ -105,13 +105,13 @@ mod tests {
             ],
             vec![
                 GraphEdge {
-                    from: "node1".to_string(),
-                    to: "node2".to_string(),
+                    from: String::from("node1"),
+                    to: String::from("node2"),
                     data_mapping: None,
                 },
                 GraphEdge {
-                    from: "node2".to_string(),
-                    to: "node3".to_string(),
+                    from: String::from("node2"),
+                    to: String::from("node3"),
                     data_mapping: None,
                 },
             ],
@@ -121,8 +121,8 @@ mod tests {
 
     fn create_parallel_graph() -> Graph {
         Graph::new(
-            "parallel".to_string(),
-            "Parallel Test".to_string(),
+            String::from("parallel"),
+            String::from("Parallel Test"),
             vec![
                 create_test_node("input", "input"),
                 create_test_node("parallel1", "compute"),
@@ -132,33 +132,33 @@ mod tests {
             ],
             vec![
                 GraphEdge {
-                    from: "input".to_string(),
-                    to: "parallel1".to_string(),
+                    from: String::from("input"),
+                    to: String::from("parallel1"),
                     data_mapping: None,
                 },
                 GraphEdge {
-                    from: "input".to_string(),
-                    to: "parallel2".to_string(),
+                    from: String::from("input"),
+                    to: String::from("parallel2"),
                     data_mapping: None,
                 },
                 GraphEdge {
-                    from: "input".to_string(),
-                    to: "parallel3".to_string(),
+                    from: String::from("input"),
+                    to: String::from("parallel3"),
                     data_mapping: None,
                 },
                 GraphEdge {
-                    from: "parallel1".to_string(),
-                    to: "output".to_string(),
+                    from: String::from("parallel1"),
+                    to: String::from("output"),
                     data_mapping: None,
                 },
                 GraphEdge {
-                    from: "parallel2".to_string(),
-                    to: "output".to_string(),
+                    from: String::from("parallel2"),
+                    to: String::from("output"),
                     data_mapping: None,
                 },
                 GraphEdge {
-                    from: "parallel3".to_string(),
-                    to: "output".to_string(),
+                    from: String::from("parallel3"),
+                    to: String::from("output"),
                     data_mapping: None,
                 },
             ],
@@ -252,8 +252,8 @@ mod tests {
         let validator = CoordinationValidator::new(registry);
         let graph = create_sequential_graph();
         let deps = validator.build_dependency_map(&graph);
-        assert_eq!(deps.get("node2").unwrap(), &vec!["node1".to_string()]);
-        assert_eq!(deps.get("node3").unwrap(), &vec!["node2".to_string()]);
+        assert_eq!(deps.get("node2").unwrap(), &vec![String::from("node1")]);
+        assert_eq!(deps.get("node3").unwrap(), &vec![String::from("node2")]);
         assert!(!deps.contains_key("node1"));
     }
 
@@ -354,7 +354,7 @@ mod tests {
         let stages = validator.identify_pipeline_stages(&graph).unwrap();
         assert!(stages.len() >= 2);
         // Input node is in first stage
-        assert!(stages[0].contains(&"input".to_string()));
+        assert!(stages[0].contains(&String::from("input")));
     }
 
     #[test]

@@ -192,8 +192,8 @@ mod tests {
 
     #[test]
     fn test_deny_overrides_allow() {
-        let allowed = vec!["data/*".to_string()];
-        let denied = vec!["data/sensitive".to_string()];
+        let allowed = vec![String::from("data/*")];
+        let denied = vec![String::from("data/sensitive")];
 
         assert!(check_operation_allowed("data/read", &allowed, &denied));
         assert!(check_operation_allowed("data/write", &allowed, &denied));
@@ -202,8 +202,8 @@ mod tests {
 
     #[test]
     fn test_no_match_denied() {
-        let allowed = vec!["birdsong/*".to_string()];
-        let denied = vec!["data/*".to_string()];
+        let allowed = vec![String::from("birdsong/*")];
+        let denied = vec![String::from("data/*")];
 
         assert!(!check_operation_allowed("commands/exec", &allowed, &denied));
         assert!(check_operation_allowed("birdsong/sync", &allowed, &denied));

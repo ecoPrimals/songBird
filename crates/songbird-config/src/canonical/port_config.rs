@@ -118,7 +118,7 @@ impl PortConfig {
             val.parse::<u16>().map_err(|e| SongbirdError::Configuration {
                 message: format!("Invalid port in {env_var}: {val} (error: {e})"),
                 field: Some(env_var.to_string()),
-                suggestion: Some("Ensure port is a valid number between 1 and 65535".to_string()),
+                suggestion: Some(String::from("Ensure port is a valid number between 1 and 65535")),
             })
         })
     }
@@ -155,7 +155,7 @@ impl PortConfig {
                 return Err(SongbirdError::Configuration {
                     message: format!("Port conflict: {existing} and {name} both use port {port}"),
                     field: Some(format!("port_{existing}_and_{name}")),
-                    suggestion: Some("Assign different ports to each service".to_string()),
+                    suggestion: Some(String::from("Assign different ports to each service")),
                 });
             }
         }
@@ -166,10 +166,10 @@ impl PortConfig {
                     "Invalid port range: {} >= {}",
                     self.dynamic_range_start, self.dynamic_range_end
                 ),
-                field: Some("dynamic_port_range".to_string()),
-                suggestion: Some(
-                    "Ensure SONGBIRD_PORT_RANGE_START < SONGBIRD_PORT_RANGE_END".to_string(),
-                ),
+                field: Some(String::from("dynamic_port_range")),
+                suggestion: Some(String::from(
+                    "Ensure SONGBIRD_PORT_RANGE_START < SONGBIRD_PORT_RANGE_END",
+                )),
             });
         }
 
@@ -259,67 +259,67 @@ impl PortConfig {
                 "orchestrator",
                 self.orchestrator,
                 PortSource::ConfigFile,
-                "Orchestrator service port".to_string(),
+                String::from("Orchestrator service port"),
             )
             .with_port_and_description(
                 "discovery",
                 self.discovery,
                 PortSource::ConfigFile,
-                "Discovery service port (mDNS, DNS-SD)".to_string(),
+                String::from("Discovery service port (mDNS, DNS-SD)"),
             )
             .with_port_and_description(
                 "registry",
                 self.registry,
                 PortSource::ConfigFile,
-                "Service registry port".to_string(),
+                String::from("Service registry port"),
             )
             .with_port_and_description(
                 "security",
                 self.security,
                 PortSource::ConfigFile,
-                "Security/authentication service port".to_string(),
+                String::from("Security/authentication service port"),
             )
             .with_port_and_description(
                 "storage",
                 self.storage,
                 PortSource::ConfigFile,
-                "Storage service port".to_string(),
+                String::from("Storage service port"),
             )
             .with_port_and_description(
                 "compute",
                 self.compute,
                 PortSource::ConfigFile,
-                "Compute/execution service port".to_string(),
+                String::from("Compute/execution service port"),
             )
             .with_port_and_description(
                 "ai",
                 self.ai,
                 PortSource::ConfigFile,
-                "AI service port".to_string(),
+                String::from("AI service port"),
             )
             .with_port_and_description(
                 "gaming",
                 self.gaming,
                 PortSource::ConfigFile,
-                "Gaming service port".to_string(),
+                String::from("Gaming service port"),
             )
             .with_port_and_description(
                 "dashboard",
                 self.dashboard,
                 PortSource::ConfigFile,
-                "Dashboard UI port".to_string(),
+                String::from("Dashboard UI port"),
             )
             .with_port_and_description(
                 "metrics",
                 self.metrics,
                 PortSource::ConfigFile,
-                "Metrics/Prometheus port".to_string(),
+                String::from("Metrics/Prometheus port"),
             )
             .with_port_and_description(
                 "health",
                 self.health,
                 PortSource::ConfigFile,
-                "Health check endpoint port".to_string(),
+                String::from("Health check endpoint port"),
             )
             .build()
     }
@@ -333,8 +333,8 @@ impl PortConfig {
         let addr = format!("{host}:{port}");
         addr.parse().map_err(|e| SongbirdError::Configuration {
             message: format!("Invalid socket address {addr}: {e}"),
-            field: Some("socket_address".to_string()),
-            suggestion: Some("Ensure host is a valid IP address or hostname".to_string()),
+            field: Some(String::from("socket_address")),
+            suggestion: Some(String::from("Ensure host is a valid IP address or hostname")),
         })
     }
 }

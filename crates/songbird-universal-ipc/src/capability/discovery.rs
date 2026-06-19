@@ -100,7 +100,7 @@ mod tests {
 
         let providers = EnvironmentStrategy::discover_with("test", |k| {
             if k == "TEST_PROVIDER_SOCKET" {
-                Ok("/tmp/test.sock".to_string())
+                Ok(String::from("/tmp/test.sock"))
             } else {
                 Err(std::env::VarError::NotPresent)
             }

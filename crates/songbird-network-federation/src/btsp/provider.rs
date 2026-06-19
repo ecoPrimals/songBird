@@ -65,7 +65,7 @@ impl Default for BtspConfig {
         Self {
             enabled: false, // Disabled by default, enable via env
             discovery_method: DiscoveryMethod::Capability,
-            security_capability: "enterprise-security".to_string(),
+            security_capability: String::from("enterprise-security"),
             local_fallback: true, // Graceful degradation
             genetic_auth: false,  // Requires security provider
             key_lineage: false,   // Requires security provider
@@ -399,7 +399,7 @@ impl BtspProviderFactory {
         info!("🔗 Connecting to security provider at {}", endpoint);
 
         // Extract provider name from UPA metadata if available, or default to "security-provider"
-        let provider_name = "security-provider".to_string();
+        let provider_name = String::from("security-provider");
 
         // Create HTTP provider
         let provider = HttpBtspProvider::new(endpoint.to_string(), provider_name)?;

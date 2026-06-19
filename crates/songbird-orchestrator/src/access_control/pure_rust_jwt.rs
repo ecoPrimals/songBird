@@ -60,8 +60,8 @@ struct JwtHeader {
 impl Default for JwtHeader {
     fn default() -> Self {
         Self {
-            alg: "HS256".to_string(),
-            typ: "JWT".to_string(),
+            alg: String::from("HS256"),
+            typ: String::from("JWT"),
         }
     }
 }
@@ -248,7 +248,7 @@ mod tests {
     fn test_pure_rust_jwt_encode_decode() {
         let secret = b"test-secret-for-jwt";
         let claims = TestClaims {
-            sub: "user-123".to_string(),
+            sub: String::from("user-123"),
             iat: 1234567890,
             exp: 1234571490,
         };
@@ -269,7 +269,7 @@ mod tests {
         let wrong_secret = b"wrong-secret";
 
         let claims = TestClaims {
-            sub: "user-123".to_string(),
+            sub: String::from("user-123"),
             iat: 1234567890,
             exp: 1234571490,
         };
@@ -302,7 +302,7 @@ mod tests {
         let secret2 = b"secret2";
 
         let claims = TestClaims {
-            sub: "user-123".to_string(),
+            sub: String::from("user-123"),
             iat: 1234567890,
             exp: 1234571490,
         };
@@ -328,7 +328,7 @@ mod tests {
     fn test_pure_rust_jwt_empty_secret() {
         let secret = b"";
         let claims = TestClaims {
-            sub: "user-123".to_string(),
+            sub: String::from("user-123"),
             iat: 1234567890,
             exp: 1234571490,
         };
@@ -352,14 +352,14 @@ mod tests {
 
         let secret = b"test-secret";
         let mut metadata = std::collections::HashMap::new();
-        metadata.insert("course_id".to_string(), "CSE-847".to_string());
-        metadata.insert("semester".to_string(), "Fall2024".to_string());
+        metadata.insert(String::from("course_id"), String::from("CSE-847"));
+        metadata.insert(String::from("semester"), String::from("Fall2024"));
 
         let claims = ComplexClaims {
-            sub: "student-123".to_string(),
+            sub: String::from("student-123"),
             iat: 1234567890,
             exp: 1234571490,
-            roles: vec!["student".to_string(), "ta".to_string()],
+            roles: vec![String::from("student"), String::from("ta")],
             metadata,
         };
 

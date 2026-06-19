@@ -72,7 +72,7 @@ pub async fn negotiate_chunked_upload(
 
     let response = NegotiationResponse {
         negotiation_id: negotiation_id.clone(),
-        accepted_method: "chunked".to_string(),
+        accepted_method: String::from("chunked"),
         chunk_size_mb,
         total_chunks,
         chunk_upload_path: format!("/api/deployment/chunk/{negotiation_id}/{{index}}"),
@@ -132,7 +132,7 @@ pub async fn upload_chunk(
 
     let chunk_data = chunk_data
         // Modern idiomatic: ok_or_else for lazy evaluation
-        .ok_or_else(|| (StatusCode::BAD_REQUEST, "No chunk data provided".to_string()))?;
+        .ok_or_else(|| (StatusCode::BAD_REQUEST, String::from("No chunk data provided")))?;
 
     // Write chunk to disk
     let chunk_path = format!("{}/chunk-{:04}", negotiation.temp_dir, chunk_index);
@@ -319,7 +319,7 @@ pub async fn finalize_chunked_upload(
 
     let response = DeploymentResponse {
         deployment_id,
-        status: "deployed".to_string(),
+        status: String::from("deployed"),
         message: format!(
             "Service '{}' deployed successfully via chunked upload",
             request.service_name
@@ -390,10 +390,10 @@ mod tests {
         use crate::server::deployment_api::FinalizeRequest;
 
         let mut env = std::collections::HashMap::new();
-        env.insert("PORT".to_string(), "8443".to_string());
-        env.insert("COMPUTE_HOST".to_string(), "127.0.0.1".to_string());
+        env.insert(String::from("PORT"), String::from("8443"));
+        env.insert(String::from("COMPUTE_HOST"), String::from("127.0.0.1"));
         let req = FinalizeRequest {
-            service_name: "my-svc".to_string(),
+            service_name: String::from("my-svc"),
             env_vars: env,
             auto_start: false,
         };
@@ -401,6 +401,6 @@ mod tests {
         let back: FinalizeRequest = serde_json::from_str(&json).unwrap();
         assert_eq!(back.service_name, req.service_name);
         assert!(!back.auto_start);
-        assert_eq!(back.env_vars.get("PORT"), Some(&"8443".to_string()));
+        assert_eq!(back.env_vars.get("PORT"), Some(&String::from("8443")));
     }
 }

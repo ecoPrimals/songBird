@@ -269,7 +269,7 @@ impl CoordinationValidator {
 
         Ok(ResourceCheck {
             feasible: true,
-            reason: "All capabilities available".to_string(),
+            reason: String::from("All capabilities available"),
         })
     }
 
@@ -310,7 +310,7 @@ impl CoordinationValidator {
 
         Ok(ResourceCheck {
             feasible: true,
-            reason: "Sufficient resources for parallel execution".to_string(),
+            reason: String::from("Sufficient resources for parallel execution"),
         })
     }
 

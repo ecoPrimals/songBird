@@ -77,27 +77,31 @@ impl Default for AvailableProtocols {
 
         Self {
             http: ProtocolInfo {
-                version: "1.1".to_string(),
+                version: String::from("1.1"),
                 endpoints: HashMap::from([
-                    ("federation".to_string(), format!("{base_url}/api/federation")),
-                    ("compute".to_string(), format!("{base_url}/api/compute")),
-                    ("deployment".to_string(), format!("{base_url}/api/deployment")),
-                    ("protocol".to_string(), format!("{base_url}/api/protocol")),
+                    (String::from("federation"), format!("{base_url}/api/federation")),
+                    (String::from("compute"), format!("{base_url}/api/compute")),
+                    (String::from("deployment"), format!("{base_url}/api/deployment")),
+                    (String::from("protocol"), format!("{base_url}/api/protocol")),
                 ]),
-                features: vec!["rest".to_string(), "streaming".to_string(), "chunked".to_string()],
+                features: vec![
+                    String::from("rest"),
+                    String::from("streaming"),
+                    String::from("chunked"),
+                ],
                 performance: None,
             },
             // json_rpc: Phase 2 COMPLETE! ✅ (Nov 11, 2025)
             json_rpc: Some(ProtocolInfo {
-                version: "2.0".to_string(),
+                version: String::from("2.0"),
                 endpoints: HashMap::from([
-                    ("rpc".to_string(), format!("{base_url}/jsonrpc")),
-                    ("alternate".to_string(), format!("{base_url}/jsonrpc/rpc")),
+                    (String::from("rpc"), format!("{base_url}/jsonrpc")),
+                    (String::from("alternate"), format!("{base_url}/jsonrpc/rpc")),
                 ]),
                 features: vec![
-                    "universal".to_string(),
-                    "language-agnostic".to_string(),
-                    "simple".to_string(),
+                    String::from("universal"),
+                    String::from("language-agnostic"),
+                    String::from("simple"),
                 ],
                 performance: Some(PerformanceInfo {
                     latency_us: 2000, // ~2ms
@@ -106,16 +110,16 @@ impl Default for AvailableProtocols {
             }),
             // tarpc: Phase 3 IMPLEMENTED! ✅ (Nov 11, 2025)
             tarpc: Some(ProtocolInfo {
-                version: "0.34".to_string(),
+                version: String::from("0.34"),
                 endpoints: HashMap::from([(
-                    "rpc".to_string(),
+                    String::from("rpc"),
                     format!("tarpc://[::]:{tarpc_port}"),
                 )]),
                 features: vec![
-                    "binary".to_string(),
-                    "high-performance".to_string(),
-                    "native-rust".to_string(),
-                    "type-safe".to_string(),
+                    String::from("binary"),
+                    String::from("high-performance"),
+                    String::from("native-rust"),
+                    String::from("type-safe"),
                 ],
                 performance: Some(PerformanceInfo {
                     latency_us: 50,         // ~50μs (100x faster than JSON-RPC!)
@@ -158,28 +162,28 @@ async fn get_capabilities(
     let mut protocols = HashMap::new();
 
     // HTTP is always available
-    protocols.insert("http".to_string(), state.available_protocols.http.clone());
+    protocols.insert(String::from("http"), state.available_protocols.http.clone());
 
     // Add tarpc if available
     if let Some(tarpc) = &state.available_protocols.tarpc {
-        protocols.insert("tarpc".to_string(), tarpc.clone());
+        protocols.insert(String::from("tarpc"), tarpc.clone());
     }
 
     // Add JSON-RPC if available
     if let Some(json_rpc) = &state.available_protocols.json_rpc {
-        protocols.insert("json-rpc".to_string(), json_rpc.clone());
+        protocols.insert(String::from("json-rpc"), json_rpc.clone());
     }
 
     // Add WebSocket if available
     if let Some(websocket) = &state.available_protocols.websocket {
-        protocols.insert("websocket".to_string(), websocket.clone());
+        protocols.insert(String::from("websocket"), websocket.clone());
     }
 
     let response = CapabilitiesResponse {
         songbird_version: env!("CARGO_PKG_VERSION").to_string(),
         protocols,
-        preferred_protocol: "tarpc".to_string(), // ✅ tarpc now available!
-        fallback_protocol: "http".to_string(),
+        preferred_protocol: String::from("tarpc"), // ✅ tarpc now available!
+        fallback_protocol: String::from("http"),
     };
 
     Ok(Json(response))
@@ -201,18 +205,18 @@ pub(crate) fn protocol_negotiate_result(
     request: &NegotiateRequest,
 ) -> NegotiateResponse {
     // Build list of available protocols
-    let mut available = vec!["http".to_string()];
+    let mut available = vec![String::from("http")];
 
     if state.available_protocols.json_rpc.is_some() {
-        available.push("json-rpc".to_string());
+        available.push(String::from("json-rpc"));
     }
 
     if state.available_protocols.tarpc.is_some() {
-        available.push("tarpc".to_string());
+        available.push(String::from("tarpc"));
     }
 
     if state.available_protocols.websocket.is_some() {
-        available.push("websocket".to_string());
+        available.push(String::from("websocket"));
     }
 
     // Select best protocol based on client preferences and server capabilities
@@ -241,7 +245,7 @@ pub(crate) fn protocol_negotiate_result(
     let message = if upgrade_available {
         Some(format!("✅ Protocol upgrade available! Switch to {selected} for better performance."))
     } else {
-        Some("Using HTTP (no upgrade available based on client capabilities).".to_string())
+        Some(String::from("Using HTTP (no upgrade available based on client capabilities)."))
     };
 
     NegotiateResponse {
@@ -262,7 +266,7 @@ pub(crate) fn protocol_negotiate_result(
             Some(ReinforcementConfig {
                 enabled: true,
                 protocols: available,
-                strategy: "progressive".to_string(),
+                strategy: String::from("progressive"),
             })
         } else {
             None
@@ -316,7 +320,7 @@ fn select_best_protocol(
     }
 
     // Default to HTTP if no common protocols
-    "http".to_string()
+    String::from("http")
 }
 
 /// Generate an upgrade token for protocol switching
@@ -400,7 +404,7 @@ async fn upgrade_connection(
     if request.upgrade_token.is_empty() {
         return Ok(Json(UpgradeResponse {
             success: false,
-            message: "Missing upgrade token".to_string(),
+            message: String::from("Missing upgrade token"),
             upgraded_endpoint: None,
         }));
     }
@@ -489,7 +493,7 @@ mod tests {
         // HTTP should always available
         assert_eq!(protocols.http.version, "1.1");
         assert!(protocols.http.endpoints.contains_key("federation"));
-        assert!(protocols.http.features.contains(&"rest".to_string()));
+        assert!(protocols.http.features.contains(&String::from("rest")));
 
         // TarPC and JSON-RPC are now available by default
         assert!(protocols.tarpc.is_some());
@@ -515,31 +519,31 @@ mod tests {
     #[test]
     fn test_select_best_protocol() {
         // Test preferred protocol selection when it's a high-performance option
-        let client = vec!["http".to_string(), "json-rpc".to_string(), "tarpc".to_string()];
-        let server = vec!["http".to_string(), "json-rpc".to_string(), "tarpc".to_string()];
+        let client = vec![String::from("http"), String::from("json-rpc"), String::from("tarpc")];
+        let server = vec![String::from("http"), String::from("json-rpc"), String::from("tarpc")];
         // When client prefers tarpc, use tarpc
-        assert_eq!(select_best_protocol(&client, &server, "tarpc"), "tarpc".to_string());
+        assert_eq!(select_best_protocol(&client, &server, "tarpc"), String::from("tarpc"));
 
         // Test json-rpc selection when tarpc not available
-        let client = vec!["http".to_string(), "json-rpc".to_string()];
-        let server = vec!["http".to_string(), "json-rpc".to_string()];
-        assert_eq!(select_best_protocol(&client, &server, "http"), "json-rpc".to_string());
+        let client = vec![String::from("http"), String::from("json-rpc")];
+        let server = vec![String::from("http"), String::from("json-rpc")];
+        assert_eq!(select_best_protocol(&client, &server, "http"), String::from("json-rpc"));
 
         // Test preferred protocol when it's available (json-rpc)
-        let client = vec!["http".to_string(), "json-rpc".to_string(), "tarpc".to_string()];
-        let server = vec!["http".to_string(), "json-rpc".to_string(), "tarpc".to_string()];
-        assert_eq!(select_best_protocol(&client, &server, "json-rpc"), "json-rpc".to_string());
+        let client = vec![String::from("http"), String::from("json-rpc"), String::from("tarpc")];
+        let server = vec![String::from("http"), String::from("json-rpc"), String::from("tarpc")];
+        assert_eq!(select_best_protocol(&client, &server, "json-rpc"), String::from("json-rpc"));
 
         // Test fallback to HTTP when client only supports HTTP
-        let client = vec!["http".to_string()];
-        let server = vec!["http".to_string(), "tarpc".to_string()];
-        assert_eq!(select_best_protocol(&client, &server, "http"), "http".to_string());
+        let client = vec![String::from("http")];
+        let server = vec![String::from("http"), String::from("tarpc")];
+        assert_eq!(select_best_protocol(&client, &server, "http"), String::from("http"));
 
         // Test priority: tarpc beats all when both client and server support it
-        let client = vec!["http".to_string(), "websocket".to_string(), "tarpc".to_string()];
-        let server = vec!["http".to_string(), "websocket".to_string(), "tarpc".to_string()];
+        let client = vec![String::from("http"), String::from("websocket"), String::from("tarpc")];
+        let server = vec![String::from("http"), String::from("websocket"), String::from("tarpc")];
         // Even if client prefers websocket, we select tarpc (highest priority)
-        assert_eq!(select_best_protocol(&client, &server, "websocket"), "tarpc".to_string());
+        assert_eq!(select_best_protocol(&client, &server, "websocket"), String::from("tarpc"));
     }
 
     #[test]
@@ -577,12 +581,12 @@ mod tests {
     #[test]
     fn capabilities_response_serializes_expected_keys() {
         let mut protocols = HashMap::new();
-        protocols.insert("http".to_string(), AvailableProtocols::default().http);
+        protocols.insert(String::from("http"), AvailableProtocols::default().http);
         let resp = CapabilitiesResponse {
-            songbird_version: "0.0.1".to_string(),
+            songbird_version: String::from("0.0.1"),
             protocols,
-            preferred_protocol: "tarpc".to_string(),
-            fallback_protocol: "http".to_string(),
+            preferred_protocol: String::from("tarpc"),
+            fallback_protocol: String::from("http"),
         };
         let v = serde_json::to_value(&resp).unwrap();
         assert_eq!(v["preferred_protocol"], "tarpc");
@@ -599,7 +603,7 @@ mod tests {
 
         let resp = UpgradeResponse {
             success: false,
-            message: "pending".to_string(),
+            message: String::from("pending"),
             upgraded_endpoint: None,
         };
         let s = serde_json::to_string(&resp).unwrap();
@@ -608,21 +612,21 @@ mod tests {
 
     #[test]
     fn select_best_protocol_empty_client_prefers_http() {
-        let server = vec!["http".to_string(), "tarpc".to_string()];
+        let server = vec![String::from("http"), String::from("tarpc")];
         assert_eq!(select_best_protocol(&[], &server, "tarpc"), "http");
     }
 
     #[test]
     fn select_best_protocol_websocket_only_when_both_support() {
-        let client = vec!["http".to_string(), "websocket".to_string()];
-        let server = vec!["http".to_string(), "websocket".to_string()];
+        let client = vec![String::from("http"), String::from("websocket")];
+        let server = vec![String::from("http"), String::from("websocket")];
         assert_eq!(select_best_protocol(&client, &server, "http"), "websocket");
     }
 
     #[test]
     fn select_best_protocol_preferred_json_rpc_must_be_in_client_list() {
-        let client = vec!["http".to_string(), "tarpc".to_string()];
-        let server = vec!["http".to_string(), "json-rpc".to_string(), "tarpc".to_string()];
+        let client = vec![String::from("http"), String::from("tarpc")];
+        let server = vec![String::from("http"), String::from("json-rpc"), String::from("tarpc")];
         // preferred json-rpc but client doesn't list it → fall through to tarpc
         assert_eq!(select_best_protocol(&client, &server, "json-rpc"), "tarpc");
     }
@@ -631,9 +635,9 @@ mod tests {
     fn protocol_negotiate_result_prefers_tarpc_when_available() {
         let state = ProtocolApiState::new();
         let req = NegotiateRequest {
-            client_id: "x".to_string(),
-            client_protocols: vec!["http".to_string(), "tarpc".to_string()],
-            preferred: "http".to_string(),
+            client_id: String::from("x"),
+            client_protocols: vec![String::from("http"), String::from("tarpc")],
+            preferred: String::from("http"),
             capabilities: ClientCapabilities::default(),
         };
         let out = protocol_negotiate_result(&state, &req);
@@ -648,9 +652,9 @@ mod tests {
     fn protocol_negotiate_result_http_only_when_no_high_perf_overlap() {
         let state = ProtocolApiState::new();
         let req = NegotiateRequest {
-            client_id: "x".to_string(),
-            client_protocols: vec!["http".to_string()],
-            preferred: "http".to_string(),
+            client_id: String::from("x"),
+            client_protocols: vec![String::from("http")],
+            preferred: String::from("http"),
             capabilities: ClientCapabilities::default(),
         };
         let out = protocol_negotiate_result(&state, &req);
@@ -663,9 +667,9 @@ mod tests {
     #[test]
     fn protocol_info_and_performance_serialize() {
         let p = ProtocolInfo {
-            version: "1".to_string(),
-            endpoints: HashMap::from([("a".to_string(), "b".to_string())]),
-            features: vec!["f".to_string()],
+            version: String::from("1"),
+            endpoints: HashMap::from([(String::from("a"), String::from("b"))]),
+            features: vec![String::from("f")],
             performance: Some(PerformanceInfo {
                 latency_us: 1,
                 throughput_mbps: 2,

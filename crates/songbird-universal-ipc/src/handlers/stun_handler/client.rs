@@ -72,7 +72,7 @@ impl StunHandler {
         };
 
         if servers.is_empty() {
-            return Err("No STUN servers provided".to_string());
+            return Err(String::from("No STUN servers provided"));
         }
 
         let client = StunClient::new();
@@ -192,7 +192,7 @@ impl StunHandler {
         };
 
         if servers.len() < 2 {
-            return Err("Need at least 2 STUN servers for NAT type detection".to_string());
+            return Err(String::from("Need at least 2 STUN servers for NAT type detection"));
         }
 
         info!("🔍 STUN: Detecting NAT type via {} servers (shared socket)", servers.len());

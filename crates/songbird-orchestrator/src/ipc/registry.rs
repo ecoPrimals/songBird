@@ -116,7 +116,7 @@ impl ServiceRegistry {
             health_check_interval,
             registered_at: now,
             last_health_check: now,
-            health_status: "unknown".to_string(), // Will be checked after registration
+            health_status: String::from("unknown"), // Will be checked after registration
         };
 
         services.insert(service_id.clone(), service);
@@ -189,7 +189,7 @@ impl ServiceRegistry {
         if let Some(service) = services.get(service_id) {
             Ok((service.health_status.clone(), None))
         } else {
-            Ok(("unknown".to_string(), Some(format!("Service '{service_id}' not found"))))
+            Ok((String::from("unknown"), Some(format!("Service '{service_id}' not found"))))
         }
     }
 
@@ -265,10 +265,10 @@ mod tests {
 
         let service_id = registry
             .register_service(
-                "security-provider".to_string(),
-                vec!["encryption".to_string(), "identity".to_string()],
-                "/tmp/security-provider.sock".to_string(),
-                "json-rpc".to_string(),
+                String::from("security-provider"),
+                vec![String::from("encryption"), String::from("identity")],
+                String::from("/tmp/security-provider.sock"),
+                String::from("json-rpc"),
                 30,
             )
             .await
@@ -283,10 +283,10 @@ mod tests {
 
         let service_id1 = registry
             .register_service(
-                "security-provider".to_string(),
-                vec!["encryption".to_string()],
-                "/tmp/security-provider.sock".to_string(),
-                "json-rpc".to_string(),
+                String::from("security-provider"),
+                vec![String::from("encryption")],
+                String::from("/tmp/security-provider.sock"),
+                String::from("json-rpc"),
                 30,
             )
             .await
@@ -294,10 +294,10 @@ mod tests {
 
         let service_id2 = registry
             .register_service(
-                "security-provider".to_string(),
-                vec!["encryption".to_string(), "identity".to_string()], // Updated capabilities
-                "/tmp/security-provider.sock".to_string(),              // Same endpoint
-                "json-rpc".to_string(),
+                String::from("security-provider"),
+                vec![String::from("encryption"), String::from("identity")], // Updated capabilities
+                String::from("/tmp/security-provider.sock"),                // Same endpoint
+                String::from("json-rpc"),
                 30,
             )
             .await
@@ -314,10 +314,10 @@ mod tests {
         // Register two services
         registry
             .register_service(
-                "security-provider".to_string(),
-                vec!["encryption".to_string(), "identity".to_string()],
-                "/tmp/security-provider.sock".to_string(),
-                "json-rpc".to_string(),
+                String::from("security-provider"),
+                vec![String::from("encryption"), String::from("identity")],
+                String::from("/tmp/security-provider.sock"),
+                String::from("json-rpc"),
                 30,
             )
             .await
@@ -325,10 +325,10 @@ mod tests {
 
         registry
             .register_service(
-                "compute-provider".to_string(),
-                vec!["compute".to_string()],
-                "/tmp/biomeos/compute.sock".to_string(),
-                "json-rpc".to_string(),
+                String::from("compute-provider"),
+                vec![String::from("compute")],
+                String::from("/tmp/biomeos/compute.sock"),
+                String::from("json-rpc"),
                 30,
             )
             .await
@@ -356,10 +356,10 @@ mod tests {
         // Register services with different protocols
         registry
             .register_service(
-                "security-provider".to_string(),
-                vec!["encryption".to_string()],
-                "/tmp/security-provider.sock".to_string(),
-                "json-rpc".to_string(),
+                String::from("security-provider"),
+                vec![String::from("encryption")],
+                String::from("/tmp/security-provider.sock"),
+                String::from("json-rpc"),
                 30,
             )
             .await
@@ -367,10 +367,10 @@ mod tests {
 
         registry
             .register_service(
-                "OldPrimal".to_string(),
-                vec!["encryption".to_string()],
-                "http://localhost:8080".to_string(),
-                "http".to_string(),
+                String::from("OldPrimal"),
+                vec![String::from("encryption")],
+                String::from("http://localhost:8080"),
+                String::from("http"),
                 30,
             )
             .await
@@ -389,10 +389,10 @@ mod tests {
 
         let service_id = registry
             .register_service(
-                "security-provider".to_string(),
-                vec!["encryption".to_string()],
-                "/tmp/security-provider.sock".to_string(),
-                "json-rpc".to_string(),
+                String::from("security-provider"),
+                vec![String::from("encryption")],
+                String::from("/tmp/security-provider.sock"),
+                String::from("json-rpc"),
                 30,
             )
             .await
@@ -403,7 +403,7 @@ mod tests {
         assert_eq!(status, "unknown");
 
         // Update health
-        registry.update_health(&service_id, "healthy".to_string()).await.unwrap();
+        registry.update_health(&service_id, String::from("healthy")).await.unwrap();
 
         let (status, _) = registry.get_service_health(&service_id).await.unwrap();
         assert_eq!(status, "healthy");
@@ -415,10 +415,10 @@ mod tests {
 
         let service_id = registry
             .register_service(
-                "security-provider".to_string(),
-                vec!["encryption".to_string()],
-                "/tmp/security-provider.sock".to_string(),
-                "json-rpc".to_string(),
+                String::from("security-provider"),
+                vec![String::from("encryption")],
+                String::from("/tmp/security-provider.sock"),
+                String::from("json-rpc"),
                 30,
             )
             .await
