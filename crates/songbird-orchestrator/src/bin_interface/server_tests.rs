@@ -2,6 +2,7 @@
 
 use crate::bin_interface::ServerArgs;
 use clap::Parser;
+use songbird_process_env::ScopedEnv;
 
 #[derive(Parser)]
 #[command(name = "songbird")]
@@ -10,8 +11,35 @@ struct Cli {
     args: ServerArgs,
 }
 
+fn env_mutex() -> std::sync::MutexGuard<'static, ()> {
+    crate::test_sync_env::env_lock()
+}
+
 fn effective_external_port(args: &ServerArgs) -> u16 {
     args.federation_port.unwrap_or(args.port)
+}
+
+fn resolve_actual_port(args: &ServerArgs) -> u16 {
+    args.federation_port.unwrap_or_else(|| {
+        songbird_process_env::var("SONGBIRD_FEDERATION_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(args.port)
+    })
+}
+
+fn resolve_effective_bind(args: &ServerArgs) -> String {
+    songbird_process_env::var("SONGBIRD_FEDERATION_BIND")
+        .or_else(|_| songbird_process_env::var("SONGBIRD_PRODUCTION_BIND_ADDRESS"))
+        .unwrap_or_else(|_| {
+            if args.federation_port.is_some()
+                || songbird_process_env::var("SONGBIRD_FEDERATION_PORT").is_ok()
+            {
+                songbird_types::constants::PRODUCTION_BIND_ADDRESS.to_string()
+            } else {
+                args.bind.clone()
+            }
+        })
 }
 
 #[test]
@@ -148,4 +176,99 @@ fn all_flags_combined() {
     assert_eq!(cli.args.pid_dir.as_deref(), Some("/run/songbird"));
     assert!(cli.args.verbose);
     assert!(cli.args.daemon);
+}
+
+#[test]
+fn federation_port_env_overrides_default_port() {
+    let _guard = env_mutex();
+    let _env = ScopedEnv::new("SONGBIRD_FEDERATION_PORT", "7700");
+    let cli = Cli::try_parse_from(["songbird", "--socket", "/tmp/songbird.sock"]).unwrap();
+    assert_eq!(resolve_actual_port(&cli.args), 7700);
+}
+
+#[test]
+fn cli_federation_port_overrides_env() {
+    let _guard = env_mutex();
+    let _env = ScopedEnv::new("SONGBIRD_FEDERATION_PORT", "7700");
+    let cli = Cli::try_parse_from([
+        "songbird",
+        "--socket",
+        "/tmp/songbird.sock",
+        "--federation-port",
+        "9000",
+    ])
+    .unwrap();
+    assert_eq!(resolve_actual_port(&cli.args), 9000);
+}
+
+#[test]
+fn federation_bind_env_overrides_default_bind() {
+    let _guard = env_mutex();
+    let _env = ScopedEnv::new("SONGBIRD_FEDERATION_BIND", "0.0.0.0");
+    let cli = Cli::try_parse_from(["songbird", "--socket", "/tmp/songbird.sock"]).unwrap();
+    assert_eq!(resolve_effective_bind(&cli.args), "0.0.0.0");
+}
+
+#[test]
+fn production_bind_address_used_as_fallback() {
+    let _guard = env_mutex();
+    let _env = ScopedEnv::new("SONGBIRD_PRODUCTION_BIND_ADDRESS", "0.0.0.0");
+    let cli = Cli::try_parse_from(["songbird"]).unwrap();
+    assert_eq!(resolve_effective_bind(&cli.args), "0.0.0.0");
+}
+
+#[test]
+fn federation_bind_takes_precedence_over_production_bind() {
+    let _guard = env_mutex();
+    let _fed = ScopedEnv::new("SONGBIRD_FEDERATION_BIND", "10.0.0.1");
+    let _prod = ScopedEnv::new("SONGBIRD_PRODUCTION_BIND_ADDRESS", "0.0.0.0");
+    let cli = Cli::try_parse_from(["songbird"]).unwrap();
+    assert_eq!(resolve_effective_bind(&cli.args), "10.0.0.1");
+}
+
+#[test]
+fn without_env_vars_port_defaults_to_cli_port() {
+    let _guard = env_mutex();
+    songbird_process_env::remove_var("SONGBIRD_FEDERATION_PORT");
+    let cli = Cli::try_parse_from(["songbird", "--port", "5555"]).unwrap();
+    assert_eq!(resolve_actual_port(&cli.args), 5555);
+}
+
+#[test]
+fn without_env_vars_bind_defaults_to_cli_bind() {
+    let _guard = env_mutex();
+    songbird_process_env::remove_var("SONGBIRD_FEDERATION_BIND");
+    songbird_process_env::remove_var("SONGBIRD_PRODUCTION_BIND_ADDRESS");
+    songbird_process_env::remove_var("SONGBIRD_FEDERATION_PORT");
+    let cli = Cli::try_parse_from(["songbird", "--bind", "192.168.1.1"]).unwrap();
+    assert_eq!(resolve_effective_bind(&cli.args), "192.168.1.1");
+}
+
+#[test]
+fn federation_port_env_implies_bind_all_interfaces() {
+    let _guard = env_mutex();
+    songbird_process_env::remove_var("SONGBIRD_FEDERATION_BIND");
+    songbird_process_env::remove_var("SONGBIRD_PRODUCTION_BIND_ADDRESS");
+    let _env = ScopedEnv::new("SONGBIRD_FEDERATION_PORT", "7700");
+    let cli = Cli::try_parse_from(["songbird", "--socket", "/tmp/songbird.sock"]).unwrap();
+    assert_eq!(resolve_effective_bind(&cli.args), "0.0.0.0");
+}
+
+#[test]
+fn federation_port_cli_implies_bind_all_interfaces() {
+    let _guard = env_mutex();
+    songbird_process_env::remove_var("SONGBIRD_FEDERATION_BIND");
+    songbird_process_env::remove_var("SONGBIRD_PRODUCTION_BIND_ADDRESS");
+    songbird_process_env::remove_var("SONGBIRD_FEDERATION_PORT");
+    let cli = Cli::try_parse_from(["songbird", "--federation-port", "7700"]).unwrap();
+    assert_eq!(resolve_effective_bind(&cli.args), "0.0.0.0");
+}
+
+#[test]
+fn explicit_bind_overrides_federation_port_auto_bind() {
+    let _guard = env_mutex();
+    let _env = ScopedEnv::new("SONGBIRD_FEDERATION_BIND", "192.168.1.5");
+    let _port = ScopedEnv::new("SONGBIRD_FEDERATION_PORT", "7700");
+    let cli = Cli::try_parse_from(["songbird", "--socket", "/tmp/songbird.sock"]).unwrap();
+    assert_eq!(resolve_effective_bind(&cli.args), "192.168.1.5");
 }

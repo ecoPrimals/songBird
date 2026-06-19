@@ -7,8 +7,9 @@
 //! Enables service discovery using standard DNS SRV and TXT records.
 
 use super::{CapabilityProvider, CapabilityRequest, Protocol};
-use hickory_resolver::TokioAsyncResolver;
-use hickory_resolver::config::{ResolverConfig, ResolverOpts};
+use hickory_resolver::TokioResolver;
+use hickory_resolver::config::ResolverConfig;
+use hickory_resolver::name_server::TokioConnectionProvider;
 use songbird_types::defaults::timeouts::DEFAULT_DNSSD_TIMEOUT;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
@@ -87,9 +88,11 @@ impl DnsSDDiscovery {
     ) -> SongbirdResult<CapabilityProvider> {
         debug!("Querying DNS-SD in domain {} for capability: {}", self.domain, request.capability);
 
-        // Create DNS resolver
-        let resolver =
-            TokioAsyncResolver::tokio(self.resolver_config.clone(), ResolverOpts::default());
+        let resolver = hickory_resolver::Resolver::builder_with_config(
+            self.resolver_config.clone(),
+            TokioConnectionProvider::default(),
+        )
+        .build();
 
         // Query for services advertising the capability
         let services = self.query_services(&resolver, request).await?;
@@ -115,7 +118,7 @@ impl DnsSDDiscovery {
     /// Query DNS for services
     async fn query_services(
         &self,
-        resolver: &TokioAsyncResolver,
+        resolver: &TokioResolver,
         request: &CapabilityRequest,
     ) -> SongbirdResult<Vec<DnsService>> {
         // Build service name: _<capability>._tcp.<domain>
@@ -136,10 +139,9 @@ impl DnsSDDiscovery {
             let txt_lookup =
                 match tokio::time::timeout(self.timeout, resolver.txt_lookup(&txt_name)).await {
                     Ok(Ok(lookup)) => Some(lookup),
-                    _ => None, // TXT records are optional
+                    _ => None,
                 };
 
-            // Parse service information
             let service = Self::parse_service(srv_record, txt_lookup, request);
             services.push(service);
         }
@@ -162,25 +164,23 @@ impl DnsSDDiscovery {
         if let Some(txt_lookup) = txt_lookup {
             for txt in txt_lookup.iter() {
                 for data in txt.iter() {
-                    if let Ok(record_str) = std::str::from_utf8(data) {
-                        // Parse key=value format
-                        if let Some((key, value)) = record_str.split_once('=') {
-                            match key {
-                                "features" => {
-                                    features =
-                                        value.split(',').map(|s| s.trim().to_string()).collect();
-                                }
-                                "protocol" => {
-                                    protocol = match value {
-                                        "https" => Protocol::Https,
-                                        "tarpc" => Protocol::Tarpc,
-                                        "ws" | "websocket" => Protocol::WebSocket,
-                                        _ => Protocol::Http,
-                                    };
-                                }
-                                _ => {
-                                    metadata.insert(key.to_string(), value.to_string());
-                                }
+                    if let Ok(record_str) = std::str::from_utf8(data)
+                        && let Some((key, value)) = record_str.split_once('=')
+                    {
+                        match key {
+                            "features" => {
+                                features = value.split(',').map(|s| s.trim().to_string()).collect();
+                            }
+                            "protocol" => {
+                                protocol = match value {
+                                    "https" => Protocol::Https,
+                                    "tarpc" => Protocol::Tarpc,
+                                    "ws" | "websocket" => Protocol::WebSocket,
+                                    _ => Protocol::Http,
+                                };
+                            }
+                            _ => {
+                                metadata.insert(key.to_string(), value.to_string());
                             }
                         }
                     }
@@ -281,7 +281,6 @@ mod tests {
 
     #[test]
     fn test_dnssd_from_env_default() {
-        // Should use default if env var not set
         let discovery = DnsSDDiscovery::from_env().unwrap();
         assert_eq!(discovery.domain, "songbird.local");
     }
@@ -297,7 +296,6 @@ mod tests {
         let discovery = DnsSDDiscovery::new("songbird.local");
         let request = CapabilityRequest::new("ai");
 
-        // Service name should be: _ai._tcp.songbird.local
         let expected = format!("_{}._tcp.{}", request.capability, discovery.domain);
         assert_eq!(expected, "_ai._tcp.songbird.local");
     }
@@ -325,7 +323,7 @@ mod tests {
     #[test]
     fn parse_service_applies_txt_features_protocol_and_metadata() {
         let target = Name::from_str("registry-host.local.").unwrap();
-        let srv = SRV::new(5, 50, 443, target.clone());
+        let srv = SRV::new(5, 50, 443, target);
         let txt = txt_lookup_fixture(vec![
             "features=kv,transactions".into(),
             "protocol=https".into(),

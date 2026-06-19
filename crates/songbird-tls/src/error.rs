@@ -200,4 +200,175 @@ mod tests {
         let tls_err: TlsError = io_err.into();
         assert!(matches!(tls_err, TlsError::IoError(_)));
     }
+
+    #[test]
+    fn test_all_display_variants() {
+        let cases: Vec<(TlsError, &str)> = vec![
+            (TlsError::ProtocolError("bad msg".to_string()), "Protocol error: bad msg"),
+            (TlsError::DecryptError, "Decryption failed"),
+            (TlsError::CertificateError("bad cert".to_string()), "Certificate error: bad cert"),
+            (TlsError::HandshakeFailure("hsk".to_string()), "Handshake failure: hsk"),
+            (TlsError::Unsupported("feat".to_string()), "Unsupported: feat"),
+            (TlsError::IoError("conn reset".to_string()), "IO error: conn reset"),
+            (TlsError::CryptoError("hmac fail".to_string()), "Crypto error: hmac fail"),
+            (
+                TlsError::CryptoUnavailable,
+                "Crypto unavailable: security provider backend not reachable",
+            ),
+            (TlsError::InternalError("bug".to_string()), "Internal error: bug"),
+            (
+                TlsError::BufferTooSmall {
+                    required: 64,
+                    available: 8,
+                },
+                "Buffer too small: required 64 bytes, available 8 bytes",
+            ),
+            (TlsError::InvalidParameter("bad len".to_string()), "Invalid parameter: bad len"),
+            (
+                TlsError::RecordTooLarge {
+                    size: 20_000,
+                },
+                "Record too large: 20000 bytes (max 16384)",
+            ),
+            (
+                TlsError::UnexpectedMessage {
+                    expected: "Finished".to_string(),
+                    got: "Alert".to_string(),
+                },
+                "Unexpected message: expected Finished, got Alert",
+            ),
+        ];
+        for (err, expected) in cases {
+            assert_eq!(err.to_string(), expected);
+        }
+    }
+
+    #[test]
+    fn test_from_io_error_preserves_kind_in_message() {
+        let kind_only: TlsError =
+            std::io::Error::from(std::io::ErrorKind::ConnectionRefused).into();
+        let TlsError::IoError(kind_msg) = kind_only else {
+            panic!("expected IoError variant");
+        };
+        assert!(kind_msg.contains("connection refused"));
+
+        let with_detail = std::io::Error::new(std::io::ErrorKind::TimedOut, "peer hung up");
+        let TlsError::IoError(detail_msg) = with_detail.into() else {
+            panic!("expected IoError variant");
+        };
+        assert!(detail_msg.contains("peer hung up"));
+    }
+
+    #[test]
+    fn test_error_clone_and_partial_eq() {
+        let original = TlsError::BufferTooSmall {
+            required: 10,
+            available: 3,
+        };
+        let cloned = original.clone();
+        assert_eq!(format!("{original}"), format!("{cloned}"));
+        assert!(matches!(
+            cloned,
+            TlsError::BufferTooSmall {
+                required: 10,
+                available: 3
+            }
+        ));
+    }
+
+    #[test]
+    fn test_error_matching_patterns_classify_by_alert() {
+        fn alert_bucket(err: &TlsError) -> u8 {
+            match err {
+                TlsError::DecryptError => 51,
+                TlsError::CertificateError(_) => 42,
+                TlsError::HandshakeFailure(_) => 40,
+                TlsError::Unsupported(_) => 70,
+                TlsError::ProtocolError(_)
+                | TlsError::UnexpectedMessage {
+                    ..
+                } => 10,
+                TlsError::InvalidParameter(_) => 47,
+                TlsError::RecordTooLarge {
+                    ..
+                } => 22,
+                TlsError::CryptoUnavailable
+                | TlsError::CryptoError(_)
+                | TlsError::IoError(_)
+                | TlsError::InternalError(_)
+                | TlsError::BufferTooSmall {
+                    ..
+                } => 80,
+            }
+        }
+
+        assert_eq!(alert_bucket(&TlsError::CryptoUnavailable), 80);
+        assert_eq!(
+            alert_bucket(&TlsError::UnexpectedMessage {
+                expected: "A".to_string(),
+                got: "B".to_string(),
+            }),
+            10
+        );
+        assert_eq!(
+            TlsError::RecordTooLarge {
+                size: 999
+            }
+            .to_alert_code(),
+            alert_bucket(&TlsError::RecordTooLarge {
+                size: 999
+            })
+        );
+    }
+
+    #[test]
+    fn test_std_error_trait_no_source_chain() {
+        use std::error::Error;
+
+        let err = TlsError::InternalError("nested".to_string());
+        let dyn_err: &dyn Error = &err;
+        assert!(dyn_err.source().is_none());
+    }
+
+    #[test]
+    fn test_all_alert_codes() {
+        assert_eq!(TlsError::Unsupported("v".to_string()).to_alert_code(), 70);
+        assert_eq!(TlsError::ProtocolError("p".to_string()).to_alert_code(), 10);
+        assert_eq!(TlsError::InvalidParameter("i".to_string()).to_alert_code(), 47);
+        assert_eq!(
+            TlsError::RecordTooLarge {
+                size: 20000
+            }
+            .to_alert_code(),
+            22
+        );
+        assert_eq!(TlsError::CryptoUnavailable.to_alert_code(), 80);
+        assert_eq!(TlsError::CryptoError("c".to_string()).to_alert_code(), 80);
+        assert_eq!(TlsError::IoError("i".to_string()).to_alert_code(), 80);
+        assert_eq!(TlsError::InternalError("i".to_string()).to_alert_code(), 80);
+        assert_eq!(
+            TlsError::BufferTooSmall {
+                required: 1,
+                available: 0
+            }
+            .to_alert_code(),
+            80
+        );
+        assert_eq!(
+            TlsError::UnexpectedMessage {
+                expected: "x".to_string(),
+                got: "y".to_string(),
+            }
+            .to_alert_code(),
+            10
+        );
+    }
+
+    #[test]
+    fn test_from_anyhow_error() {
+        let anyhow_err = anyhow::anyhow!("provider down");
+        let tls_err: TlsError = anyhow_err.into();
+        assert!(matches!(tls_err, TlsError::InternalError(_)));
+        assert!(tls_err.to_string().contains("provider down"));
+    }
 }

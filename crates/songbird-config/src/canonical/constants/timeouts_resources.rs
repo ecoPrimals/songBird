@@ -187,8 +187,7 @@ mod tests {
     #[test]
     fn get_connection_timeout_ms_with_tiered_defaults() {
         let ms = get_connection_timeout_ms_with(&|k| match k {
-            "SONGBIRD_CONNECTION_TIMEOUT_MS" => Err(std::env::VarError::NotPresent),
-            "SONGBIRD_ENV" => Ok(String::from("staging")),
+            "SONGBIRD_ENV" => Ok("staging".to_string()),
             _ => Err(std::env::VarError::NotPresent),
         });
         assert_eq!(ms, 45_000);
@@ -197,9 +196,7 @@ mod tests {
     #[test]
     fn get_connection_timeout_ms_with_cloud_fallback() {
         let ms = get_connection_timeout_ms_with(&|k| match k {
-            "SONGBIRD_CONNECTION_TIMEOUT_MS" => Err(std::env::VarError::NotPresent),
-            "SONGBIRD_ENV" => Err(std::env::VarError::NotPresent),
-            "KUBERNETES_SERVICE_HOST" => Ok(String::from("10.0.0.1")),
+            "KUBERNETES_SERVICE_HOST" => Ok("10.0.0.1".to_string()),
             _ => Err(std::env::VarError::NotPresent),
         });
         assert_eq!(ms, 15_000);
@@ -208,8 +205,7 @@ mod tests {
     #[test]
     fn get_max_connections_with_respects_environment_tier() {
         let n = get_max_connections_with(&|k| match k {
-            "SONGBIRD_MAX_CONNECTIONS" => Err(std::env::VarError::NotPresent),
-            "SONGBIRD_ENV" => Ok(String::from("testing")),
+            "SONGBIRD_ENV" => Ok("testing".to_string()),
             _ => Err(std::env::VarError::NotPresent),
         });
         assert_eq!(n, 1_000);
@@ -219,7 +215,7 @@ mod tests {
     fn get_worker_threads_with_parses_override() {
         let n = get_worker_threads_with(&|k| {
             if k == "SONGBIRD_WORKER_THREADS" {
-                Ok(String::from("8"))
+                Ok("8".to_string())
             } else {
                 Err(std::env::VarError::NotPresent)
             }
@@ -230,9 +226,8 @@ mod tests {
     #[test]
     fn get_buffer_pool_size_with_caps_against_memory_limit() {
         let n = get_buffer_pool_size_with(&|k| match k {
-            "SONGBIRD_BUFFER_POOL_SIZE" => Err(std::env::VarError::NotPresent),
-            "SONGBIRD_ENV" => Ok(String::from("production")),
-            "MEMORY_LIMIT" => Ok(String::from("2048")),
+            "SONGBIRD_ENV" => Ok("production".to_string()),
+            "MEMORY_LIMIT" => Ok("2048".to_string()),
             _ => Err(std::env::VarError::NotPresent),
         });
         assert_eq!(n, 20);
@@ -241,9 +236,7 @@ mod tests {
     #[test]
     fn get_batch_size_with_clamps_to_bounds() {
         let n = get_batch_size_with(&|k| match k {
-            "SONGBIRD_BATCH_SIZE" => Err(std::env::VarError::NotPresent),
-            "SONGBIRD_WORKER_THREADS" => Ok(String::from("1000")),
-            "MEMORY_LIMIT" => Err(std::env::VarError::NotPresent),
+            "SONGBIRD_WORKER_THREADS" => Ok("1000".to_string()),
             _ => Err(std::env::VarError::NotPresent),
         });
         assert_eq!(n, 5000);
@@ -253,7 +246,7 @@ mod tests {
     fn enable_zero_copy_with_reads_explicit_false() {
         let b = enable_zero_copy_with(&|k| {
             if k == "SONGBIRD_ENABLE_ZERO_COPY" {
-                Ok(String::from("false"))
+                Ok("false".to_string())
             } else {
                 Err(std::env::VarError::NotPresent)
             }
@@ -264,8 +257,7 @@ mod tests {
     #[test]
     fn enable_zero_copy_with_production_default_true() {
         let b = enable_zero_copy_with(&|k| match k {
-            "SONGBIRD_ENABLE_ZERO_COPY" => Err(std::env::VarError::NotPresent),
-            "SONGBIRD_ENV" => Ok(String::from("production")),
+            "SONGBIRD_ENV" => Ok("production".to_string()),
             _ => Err(std::env::VarError::NotPresent),
         });
         assert!(b);

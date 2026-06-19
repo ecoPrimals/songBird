@@ -381,9 +381,96 @@ pub struct PeerInfo {
 mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
 
-    use super::{NetworkContext, PeerInfo, PeerQuery};
+    use super::{NetworkContext, PeerInfo, PeerQuery, RendezvousClient};
+    use crate::state::NodeRegistration;
     use chrono::Utc;
     use serde_json::{from_value, to_value};
+    use songbird_process_env::ScopedEnv;
+    use std::path::PathBuf;
+    use std::sync::Mutex;
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    use tokio::net::UnixListener;
+
+    static ENV_LOCK: std::sync::OnceLock<Mutex<()>> = std::sync::OnceLock::new();
+    fn env_mutex() -> &'static Mutex<()> {
+        ENV_LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn sample_node_info() -> NodeRegistration {
+        NodeRegistration {
+            node_id: "node-test-1".into(),
+            node_name: "test-node".into(),
+            node_address: "127.0.0.1:8080".into(),
+            endpoints: None,
+            cpu_cores: 4,
+            memory_gb: 8,
+            gpu_model: None,
+            storage_gb: None,
+            capabilities: vec!["compute".into()],
+            status: crate::state::NodeStatus::Active,
+            joined_at: Utc::now(),
+            last_heartbeat: Utc::now(),
+        }
+    }
+
+    fn temp_rendezvous_socket(label: &str) -> PathBuf {
+        std::env::temp_dir().join(format!("songbird_rdzv_{label}_{}.sock", uuid::Uuid::new_v4()))
+    }
+
+    async fn spawn_mock_rendezvous_server(path: PathBuf) {
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+        tokio::spawn(async move {
+            let listener = UnixListener::bind(&path).unwrap();
+            let _ = ready_tx.send(());
+            while let Ok((stream, _)) = listener.accept().await {
+                tokio::spawn(async move {
+                    let mut reader = BufReader::new(stream);
+                    let mut line = String::new();
+                    if reader.read_line(&mut line).await.is_err() {
+                        return;
+                    }
+                    let request: serde_json::Value =
+                        serde_json::from_str(line.trim()).unwrap_or_default();
+                    let method = request["method"].as_str().unwrap_or("");
+                    let id = request["id"].as_u64().unwrap_or(1);
+                    let result = match method {
+                        "rendezvous.register" => serde_json::json!({
+                            "status": "ok",
+                            "session_id": "sess-test-abc123",
+                            "expires_at": (Utc::now() + chrono::Duration::hours(1)).to_rfc3339(),
+                            "rendezvous_endpoint": null
+                        }),
+                        "rendezvous.heartbeat" => serde_json::json!({ "status": "ok" }),
+                        "rendezvous.query" => serde_json::json!({
+                            "peers": [{
+                                "ephemeral_session_id": "peer-sess",
+                                "public_key_fingerprint": "hmac-sha256:abc",
+                                "capabilities": ["compute"],
+                                "protocols": ["https"],
+                                "network_context": {
+                                    "nat_type": "unknown",
+                                    "reachability": "unknown",
+                                    "connection_quality": "unknown"
+                                },
+                                "last_heartbeat": Utc::now().to_rfc3339()
+                            }],
+                            "total_matches": 1,
+                            "returned": 1
+                        }),
+                        _ => serde_json::json!({}),
+                    };
+                    let response = serde_json::json!({
+                        "jsonrpc": "2.0",
+                        "result": result,
+                        "id": id
+                    });
+                    let mut stream = reader.into_inner();
+                    let _ = stream.write_all(&serde_json::to_vec(&response).unwrap()).await;
+                });
+            }
+        });
+        ready_rx.await.unwrap();
+    }
 
     #[test]
     fn network_context_serde_roundtrip() {
@@ -449,5 +536,148 @@ mod tests {
         };
         let s = format!("{ctx:?}");
         assert!(s.contains('n') && s.contains('r') && s.contains('c'));
+    }
+
+    #[test]
+    fn rendezvous_client_new_uses_socket_env() {
+        let _guard = env_mutex().lock().unwrap();
+        let path = temp_rendezvous_socket("new");
+        let _ = std::fs::remove_file(&path);
+        let _env = ScopedEnv::new("RENDEZVOUS_SOCKET_PATH", &path);
+        assert!(RendezvousClient::new("ignored-url".into()).is_ok());
+    }
+
+    #[test]
+    fn set_node_info_accepts_registration_without_panic() {
+        let _guard = env_mutex().lock().unwrap();
+        let path = temp_rendezvous_socket("set_info");
+        let _ = std::fs::remove_file(&path);
+        let _env = ScopedEnv::new("RENDEZVOUS_SOCKET_PATH", &path);
+        let mut client = RendezvousClient::new("url".into()).unwrap();
+        client.set_node_info(sample_node_info());
+    }
+
+    #[tokio::test]
+    async fn register_presence_requires_node_info() {
+        let _guard = env_mutex().lock().unwrap();
+        let path = temp_rendezvous_socket("no_info");
+        let _ = std::fs::remove_file(&path);
+        let _env = ScopedEnv::new("RENDEZVOUS_SOCKET_PATH", &path);
+        let client = RendezvousClient::new("url".into()).unwrap();
+        let err = client.register_presence().await.unwrap_err();
+        assert!(err.to_string().contains("Node info not set"));
+    }
+
+    #[tokio::test]
+    async fn register_presence_returns_session_id() {
+        let _guard = env_mutex().lock().unwrap();
+        let path = temp_rendezvous_socket("register");
+        let _ = std::fs::remove_file(&path);
+        spawn_mock_rendezvous_server(path.clone()).await;
+        let _env = ScopedEnv::new("RENDEZVOUS_SOCKET_PATH", &path);
+        let mut client = RendezvousClient::new("url".into()).unwrap();
+        client.set_node_info(sample_node_info());
+        let session = client.register_presence().await.unwrap();
+        assert_eq!(session, "sess-test-abc123");
+        client.heartbeat().await.unwrap();
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[tokio::test]
+    async fn heartbeat_requires_registration() {
+        let _guard = env_mutex().lock().unwrap();
+        let path = temp_rendezvous_socket("hb_no_reg");
+        let _ = std::fs::remove_file(&path);
+        let _env = ScopedEnv::new("RENDEZVOUS_SOCKET_PATH", &path);
+        let client = RendezvousClient::new("url".into()).unwrap();
+        let err = client.heartbeat().await.unwrap_err();
+        assert!(err.to_string().contains("Not registered"));
+    }
+
+    #[tokio::test]
+    async fn heartbeat_succeeds_after_register() {
+        let _guard = env_mutex().lock().unwrap();
+        let path = temp_rendezvous_socket("hb_ok");
+        let _ = std::fs::remove_file(&path);
+        spawn_mock_rendezvous_server(path.clone()).await;
+        let _env = ScopedEnv::new("RENDEZVOUS_SOCKET_PATH", &path);
+        let mut client = RendezvousClient::new("url".into()).unwrap();
+        client.set_node_info(sample_node_info());
+        client.register_presence().await.unwrap();
+        client.heartbeat().await.unwrap();
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[tokio::test]
+    async fn query_peers_requires_registration() {
+        let _guard = env_mutex().lock().unwrap();
+        let path = temp_rendezvous_socket("query_no_reg");
+        let _ = std::fs::remove_file(&path);
+        let _env = ScopedEnv::new("RENDEZVOUS_SOCKET_PATH", &path);
+        let mut client = RendezvousClient::new("url".into()).unwrap();
+        client.set_node_info(sample_node_info());
+        let err = client.query_peers(vec!["compute".into()]).await.unwrap_err();
+        assert!(err.to_string().contains("Not registered"));
+    }
+
+    #[tokio::test]
+    async fn query_peers_returns_matching_peers() {
+        let _guard = env_mutex().lock().unwrap();
+        let path = temp_rendezvous_socket("query_ok");
+        let _ = std::fs::remove_file(&path);
+        spawn_mock_rendezvous_server(path.clone()).await;
+        let _env = ScopedEnv::new("RENDEZVOUS_SOCKET_PATH", &path);
+        let mut client = RendezvousClient::new("url".into()).unwrap();
+        client.set_node_info(sample_node_info());
+        client.register_presence().await.unwrap();
+        let peers = client.query_peers(vec!["compute".into()]).await.unwrap();
+        assert_eq!(peers.len(), 1);
+        assert_eq!(peers[0].ephemeral_session_id, "peer-sess");
+        assert_eq!(peers[0].capabilities, vec!["compute".to_string()]);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[tokio::test]
+    async fn register_uses_hmac_fingerprint_without_crypto_provider() {
+        let _guard = env_mutex().lock().unwrap();
+        let path = temp_rendezvous_socket("hmac_fp");
+        let _ = std::fs::remove_file(&path);
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+        tokio::spawn({
+            let path = path.clone();
+            async move {
+                let listener = UnixListener::bind(&path).unwrap();
+                let _ = ready_tx.send(());
+                if let Ok((stream, _)) = listener.accept().await {
+                    let mut reader = BufReader::new(stream);
+                    let mut line = String::new();
+                    let _ = reader.read_line(&mut line).await;
+                    let request: serde_json::Value = serde_json::from_str(&line).unwrap();
+                    let fp = request["params"]["node_identity"]["public_key_fingerprint"]
+                        .as_str()
+                        .unwrap_or("");
+                    assert!(fp.starts_with("hmac-sha256:"));
+                    let response = serde_json::json!({
+                        "jsonrpc": "2.0",
+                        "result": {
+                            "status": "ok",
+                            "session_id": "sess-hmac",
+                            "expires_at": (Utc::now() + chrono::Duration::hours(1)).to_rfc3339(),
+                            "rendezvous_endpoint": null
+                        },
+                        "id": request["id"]
+                    });
+                    let mut stream = reader.into_inner();
+                    let _ = stream.write_all(&serde_json::to_vec(&response).unwrap()).await;
+                }
+            }
+        });
+        ready_rx.await.unwrap();
+        let _env = ScopedEnv::new("RENDEZVOUS_SOCKET_PATH", &path);
+        let mut client = RendezvousClient::new("url".into()).unwrap();
+        client.set_node_info(sample_node_info());
+        let session = client.register_presence().await.unwrap();
+        assert_eq!(session, "sess-hmac");
+        let _ = std::fs::remove_file(&path);
     }
 }

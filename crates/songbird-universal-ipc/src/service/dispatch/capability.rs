@@ -19,6 +19,8 @@ pub(super) async fn dispatch_capability(
         JsonRpcMethod::Ipc(IpcMethod::Resolve) => handler.handle_resolve(params).await,
         JsonRpcMethod::Ipc(IpcMethod::Discover) => handler.handle_discover(params).await,
         JsonRpcMethod::Ipc(IpcMethod::List) => handler.handle_list(params).await,
+        JsonRpcMethod::Ipc(IpcMethod::Watch) => handler.handle_watch(params).await,
+        JsonRpcMethod::Ipc(IpcMethod::RelayStats) => handler.handle_relay_stats(params).await,
 
         JsonRpcMethod::Capabilities(CapabilitiesMethod::Resolve) => {
             handler.handle_capability_resolve(params).await

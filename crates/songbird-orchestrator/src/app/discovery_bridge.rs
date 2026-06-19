@@ -157,8 +157,8 @@ impl SongbirdOrchestrator {
                         info!("🔍 Processing {} discovered peers", peers.len());
 
                         for mut peer in peers {
-                            // Get HTTPS endpoint
-                            let endpoint = peer.https_endpoint();
+                            // Use plain HTTP for LAN peer probes (federation serves HTTP, not TLS)
+                            let endpoint = peer.http_endpoint();
 
                             // Extract identity based on protocol version
                             let (node_id, node_name) = if peer.version == "3.0" {
@@ -218,12 +218,9 @@ impl SongbirdOrchestrator {
                                 let connectivity_check = tokio::time::timeout(
                                 songbird_types::defaults::timeouts::DEFAULT_CONNECTIVITY_CHECK_TIMEOUT,
                                 async {
-                                    // ✅ TOWER ATOMIC: Pure Rust HTTP with security provider crypto
+                                    // For plain HTTP health checks, crypto provider is optional
                                     let crypto_socket = crate::primal_discovery::discover_crypto_provider().await
-                                        .map_err(|e| {
-                                            warn!("Failed to discover crypto provider for connectivity check: {}", e);
-                                            anyhow::anyhow!("Crypto discovery failed: {e}")
-                                        })?;
+                                        .unwrap_or_default();
 
                                     let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
 

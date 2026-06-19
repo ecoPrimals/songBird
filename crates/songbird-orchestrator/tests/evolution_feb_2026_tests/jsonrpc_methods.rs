@@ -8,18 +8,20 @@ fn test_health_response_structure() {
     // Verify health response matches expected schema
     let health_response = serde_json::json!({
         "status": "healthy",
+        "primal": "songbird",
         "version": env!("CARGO_PKG_VERSION"),
-        "uptime_seconds": 0,
+        "uptime_s": 0,
         "components": {
             "http_server": "running",
             "task_manager": "ready"
         }
     });
 
-    // Validate required fields exist
+    // Validate required HEALTH-01 fields exist
     assert!(health_response.get("status").is_some());
+    assert!(health_response.get("primal").is_some());
     assert!(health_response.get("version").is_some());
-    assert!(health_response.get("uptime_seconds").is_some());
+    assert!(health_response.get("uptime_s").is_some());
 }
 
 #[test]

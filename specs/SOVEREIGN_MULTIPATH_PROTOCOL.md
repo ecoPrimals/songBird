@@ -772,7 +772,7 @@ adb push target/aarch64-unknown-linux-gnu/release/songbird /data/local/tmp/prima
 
 **Effort**: 2-3 weeks (if needed)
 
-**Reference**: `crates/songbird-tor-protocol` (scaffolded with TODOs)
+**Reference**: `crates/songbird-tor-protocol` (implemented; zero TODOs remain)
 
 ---
 

@@ -393,8 +393,7 @@ getprop ro.build.version.sdk
 
 ## 📚 **Related Documentation**
 
-- [Cross-Compilation Progress](../../CROSS_COMPILATION_PROGRESS_JAN_31_2026.md)
-- [genomeBin Week 1 Victory](../../GENOMEBIN_WEEK1_VICTORY_JAN_31_2026.md)
+- [CHANGELOG](../../CHANGELOG.md) (cross-compilation + genomeBin history)
 - [systemd Deployment](../systemd/README.md)
 - [USB Live Spore](../usb-live-spore/README.md)
 

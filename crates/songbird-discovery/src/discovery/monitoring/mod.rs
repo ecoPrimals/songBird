@@ -252,4 +252,66 @@ mod tests {
         let back: MonitoringConfig = serde_json::from_str(&json).unwrap();
         assert_eq!(back.resource_update_interval_secs, c.resource_update_interval_secs);
     }
+
+    #[tokio::test]
+    async fn start_monitoring_stops_on_shutdown_signal() {
+        use std::time::Duration;
+
+        let (tx, rx) = tokio::sync::mpsc::channel(1);
+        let config = MonitoringConfig::default();
+        let handle = tokio::spawn(async move {
+            ResourceMonitor::start_monitoring("shutdown-node".into(), config, rx).await;
+        });
+
+        tx.send(()).await.expect("send shutdown");
+        tokio::time::timeout(Duration::from_secs(2), handle)
+            .await
+            .expect("monitoring should stop within timeout")
+            .expect("join");
+    }
+
+    #[tokio::test]
+    async fn collect_resource_update_includes_timestamp_and_node_id() {
+        let cfg = MonitoringConfig::default();
+        let update = ResourceMonitor::collect_resource_update("metrics-node", &cfg).await;
+
+        assert_eq!(update.node_id, "metrics-node");
+        assert!(update.timestamp <= chrono::Utc::now());
+        assert!(update.storage_usage.len() >= 1);
+    }
+
+    #[tokio::test]
+    async fn collect_cpu_usage_has_bounded_percent_and_load_average() {
+        let cpu = ResourceMonitor::collect_cpu_usage().await;
+        assert!(cpu.overall_percent >= 0.0 && cpu.overall_percent <= 100.0);
+        assert_eq!(cpu.load_average.len(), 3);
+    }
+
+    #[test]
+    fn collect_gpu_usage_returns_empty_by_default() {
+        assert!(ResourceMonitor::collect_gpu_usage().is_empty());
+    }
+
+    #[test]
+    fn monitoring_config_default_flags() {
+        let cfg = MonitoringConfig::default();
+        assert!(cfg.gpu_monitoring_enabled);
+        assert!(cfg.resource_update_interval_secs > 0);
+        assert!(cfg.process_scan_enabled);
+        assert!(cfg.detailed_cpu_monitoring);
+    }
+
+    #[test]
+    fn storage_usage_contains_io_metrics() {
+        let storage = ResourceMonitor::collect_storage_usage();
+        assert_eq!(storage[0].device_name, "sda");
+        assert!(storage[0].read_bytes_per_sec > 0);
+        assert!(storage[0].write_bytes_per_sec > 0);
+    }
+
+    #[tokio::test]
+    async fn collect_memory_usage_used_does_not_exceed_total() {
+        let mem = ResourceMonitor::collect_memory_usage().await;
+        assert!(mem.used_gb <= mem.total_gb);
+    }
 }

@@ -386,7 +386,6 @@ impl TurnSession {
     }
 }
 
-/// Decode a hex string to bytes.
 fn hex_decode(hex: &str) -> Result<Vec<u8>, String> {
     let hex = hex.trim();
     if !hex.len().is_multiple_of(2) {
@@ -403,41 +402,64 @@ fn hex_decode(hex: &str) -> Result<Vec<u8>, String> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn config_defaults() {
-        let config = TurnSessionConfig::new(
+    fn sample_config() -> TurnSessionConfig {
+        TurnSessionConfig::new(
             "192.0.2.1:3478".parse().unwrap(),
             StunCredentials {
                 username: "u".into(),
                 key: vec![1, 2, 3],
             },
             "10.0.0.5:9200".parse().unwrap(),
-        );
+        )
+    }
+
+    // ── Config ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn config_defaults() {
+        let config = sample_config();
         assert!(config.use_channel);
         assert_eq!(config.channel, 0x4000);
         assert_eq!(config.control_timeout, Duration::from_secs(5));
         assert_eq!(config.recv_timeout, Duration::from_secs(30));
+        assert_eq!(config.local_bind, SocketAddr::from(EPHEMERAL_BIND));
     }
 
     #[test]
     fn config_without_channel() {
-        let config = TurnSessionConfig::new(
-            "192.0.2.1:3478".parse().unwrap(),
-            StunCredentials {
-                username: "u".into(),
-                key: vec![],
-            },
-            "10.0.0.5:9200".parse().unwrap(),
-        )
-        .without_channel();
+        let config = sample_config().without_channel();
         assert!(!config.use_channel);
     }
+
+    #[test]
+    fn config_with_local_bind() {
+        let addr: SocketAddr = "127.0.0.1:5000".parse().unwrap();
+        let config = sample_config().with_local_bind(addr);
+        assert_eq!(config.local_bind, addr);
+    }
+
+    #[test]
+    fn config_with_recv_timeout() {
+        let config = sample_config().with_recv_timeout(Duration::from_millis(500));
+        assert_eq!(config.recv_timeout, Duration::from_millis(500));
+    }
+
+    #[test]
+    fn config_from_env_fails_when_server_unset() {
+        let peer: SocketAddr = "10.0.0.1:80".parse().unwrap();
+        let err = TurnSessionConfig::from_env(peer).unwrap_err();
+        match err {
+            TurnSessionError::Config(msg) => assert!(msg.contains("SONGBIRD_TURN_SERVER")),
+            other => panic!("expected Config error, got: {other}"),
+        }
+    }
+
+    // ── Channel Data Framing ────────────────────────────────────────────
 
     #[test]
     fn channel_data_roundtrip() {
         let payload = b"hello TURN relay";
         let frame = TurnSession::build_channel_data(0x4000, payload);
-
         assert!(TurnSession::is_channel_data(&frame));
 
         let mut buf = vec![0u8; 256];
@@ -446,24 +468,77 @@ mod tests {
     }
 
     #[test]
+    fn channel_data_multiple_channels() {
+        for channel in [0x4000u16, 0x4001, 0x5FFF, 0x7FFF] {
+            let frame = TurnSession::build_channel_data(channel, b"x");
+            assert!(TurnSession::is_channel_data(&frame));
+            let actual = u16::from_be_bytes([frame[0], frame[1]]);
+            assert_eq!(actual, channel);
+        }
+    }
+
+    #[test]
     fn channel_data_detection() {
         assert!(!TurnSession::is_channel_data(&[0x00, 0x01, 0x00, 0x00]));
         assert!(!TurnSession::is_channel_data(&[0x01, 0x01, 0x00, 0x00]));
+        assert!(!TurnSession::is_channel_data(&[0x3F, 0xFF, 0x00, 0x01, 0x00]));
+        assert!(!TurnSession::is_channel_data(&[0x80, 0x00, 0x00, 0x01, 0x00]));
         assert!(TurnSession::is_channel_data(&[0x40, 0x00, 0x00, 0x04, 0, 0, 0, 0]));
         assert!(TurnSession::is_channel_data(&[0x7F, 0xFF, 0x00, 0x01, 0]));
     }
 
     #[test]
+    fn channel_data_empty_payload() {
+        let frame = TurnSession::build_channel_data(0x4000, b"");
+        assert_eq!(frame.len(), 4);
+        let mut buf = [0u8; 32];
+        let n = TurnSession::parse_channel_data(&frame, &mut buf).unwrap();
+        assert_eq!(n, 0);
+    }
+
+    #[test]
+    fn channel_data_large_payload() {
+        let payload = vec![0xAB; 1400]; // typical MTU
+        let frame = TurnSession::build_channel_data(0x4000, &payload);
+        let mut buf = vec![0u8; 2048];
+        let n = TurnSession::parse_channel_data(&frame, &mut buf).unwrap();
+        assert_eq!(n, 1400);
+        assert_eq!(&buf[..n], &payload[..]);
+    }
+
+    #[test]
+    fn channel_data_parse_truncated_header() {
+        let too_short = [0x40, 0x00, 0x00];
+        let mut buf = [0u8; 32];
+        assert!(TurnSession::parse_channel_data(&too_short, &mut buf).is_err());
+    }
+
+    #[test]
+    fn channel_data_parse_buffer_smaller_than_payload() {
+        let payload = b"this payload is longer than the receiving buffer";
+        let frame = TurnSession::build_channel_data(0x4000, payload);
+        let mut buf = [0u8; 10];
+        let n = TurnSession::parse_channel_data(&frame, &mut buf).unwrap();
+        assert_eq!(n, 10);
+        assert_eq!(&buf[..n], &payload[..10]);
+    }
+
+    #[test]
+    fn channel_data_frame_structure_rfc5766() {
+        let payload = b"TURN relay";
+        let frame = TurnSession::build_channel_data(0x4000, payload);
+        assert_eq!(frame.len(), 4 + payload.len());
+        assert_eq!(frame[0], 0x40);
+        assert_eq!(frame[1], 0x00);
+        assert_eq!(u16::from_be_bytes([frame[2], frame[3]]) as usize, payload.len());
+        assert_eq!(&frame[4..], payload);
+    }
+
+    // ── Send Indication / Data Indication ───────────────────────────────
+
+    #[test]
     fn send_indication_framing() {
-        let config = TurnSessionConfig::new(
-            "192.0.2.1:3478".parse().unwrap(),
-            StunCredentials {
-                username: "test".into(),
-                key: b"key".to_vec(),
-            },
-            "10.0.0.5:9200".parse().unwrap(),
-        )
-        .without_channel();
+        let config = sample_config().without_channel();
 
         let frame = TurnSession::build_channel_data(0x4001, b"test data");
         assert_eq!(frame.len(), 4 + 9);
@@ -490,9 +565,133 @@ mod tests {
     fn data_indication_rejects_non_indication() {
         let msg = StunMessage::new_binding_request();
         let wire = msg.encode();
-
         let mut buf = vec![0u8; 256];
         let result = TurnSession::parse_data_indication(&wire, &mut buf);
+        assert!(matches!(result, Err(TurnSessionError::UnexpectedMessage(_))));
+    }
+
+    #[test]
+    fn data_indication_empty_data_attribute() {
+        let mut msg = StunMessage::new_binding_request();
+        msg.message_type = MessageType::DataIndication;
+        msg.attributes.push(StunAttribute::Unknown(0x0013, bytes::Bytes::new()));
+        let wire = msg.encode();
+
+        let mut buf = vec![0u8; 256];
+        let n = TurnSession::parse_data_indication(&wire, &mut buf).unwrap();
+        assert_eq!(n, 0);
+    }
+
+    #[test]
+    fn data_indication_without_data_attr_returns_zero() {
+        let mut msg = StunMessage::new_binding_request();
+        msg.message_type = MessageType::DataIndication;
+        msg.attributes.push(StunAttribute::Unknown(0x0012, bytes::Bytes::from_static(b"\x00\x01")));
+        let wire = msg.encode();
+
+        let mut buf = vec![0u8; 256];
+        let n = TurnSession::parse_data_indication(&wire, &mut buf).unwrap();
+        assert_eq!(n, 0);
+    }
+
+    // ── Connect Error Paths ─────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn connect_fails_against_unreachable_server() {
+        let config = TurnSessionConfig::new(
+            "192.0.2.1:3478".parse().unwrap(), // RFC 5737 test address — unreachable
+            StunCredentials {
+                username: "u".into(),
+                key: b"k".to_vec(),
+            },
+            "10.0.0.1:80".parse().unwrap(),
+        )
+        .with_local_bind("0.0.0.0:0".parse().unwrap());
+
+        let result = TurnSession::connect(config).await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn send_rejects_oversized_payload() {
+        let socket = UdpSocket::bind("0.0.0.0:0").await.unwrap();
+        let socket = Arc::new(socket);
+        let session = TurnSession {
+            client: songbird_stun::TurnClient::new(
+                "192.0.2.1:3478".parse().unwrap(),
+                StunCredentials {
+                    username: "u".into(),
+                    key: vec![],
+                },
+            ),
+            socket,
+            allocation: songbird_stun::TurnAllocation {
+                relay_addr: "192.0.2.100:49152".parse().unwrap(),
+                mapped_addr: "192.0.2.50:12345".parse().unwrap(),
+                lifetime_secs: 600,
+            },
+            peer_addr: "10.0.0.99:9200".parse().unwrap(),
+            channel: Some(0x4000),
+            recv_timeout: Duration::from_secs(1),
+            recv_buf: Mutex::new(vec![0u8; 4096]),
+        };
+
+        let oversized = vec![0u8; MAX_PAYLOAD + 1];
+        let result = session.send(&oversized).await;
+        assert!(matches!(result, Err(TurnSessionError::PayloadTooLarge(65536))));
+    }
+
+    // ── Hex Decode ──────────────────────────────────────────────────────
+
+    #[test]
+    fn hex_decode_valid() {
+        assert_eq!(hex_decode("deadbeef").unwrap(), vec![0xDE, 0xAD, 0xBE, 0xEF]);
+        assert_eq!(hex_decode("00ff").unwrap(), vec![0x00, 0xFF]);
+        assert_eq!(hex_decode("").unwrap(), Vec::<u8>::new());
+    }
+
+    #[test]
+    fn hex_decode_rejects_odd_length() {
+        assert!(hex_decode("abc").is_err());
+    }
+
+    #[test]
+    fn hex_decode_rejects_invalid_chars() {
+        assert!(hex_decode("gg").is_err());
+    }
+
+    #[test]
+    fn hex_decode_trims_whitespace() {
+        assert_eq!(hex_decode("  aabb  ").unwrap(), vec![0xAA, 0xBB]);
+    }
+
+    // ── Error Display ───────────────────────────────────────────────────
+
+    #[test]
+    fn error_display_variants() {
+        let err = TurnSessionError::NotConnected;
+        assert_eq!(err.to_string(), "session not connected");
+
+        let err = TurnSessionError::Timeout(Duration::from_secs(30));
+        assert!(err.to_string().contains("30"));
+
+        let err = TurnSessionError::PayloadTooLarge(70000);
+        assert!(err.to_string().contains("70000"));
+
+        let err = TurnSessionError::UnexpectedMessage(0x0101);
+        assert!(err.to_string().contains("0101"));
+
+        let err = TurnSessionError::Config("missing var".into());
+        assert!(err.to_string().contains("missing var"));
+    }
+
+    // ── Debug Impls ─────────────────────────────────────────────────────
+
+    #[test]
+    fn config_debug_output() {
+        let c = sample_config();
+        let s = format!("{c:?}");
+        assert!(s.contains("TurnSessionConfig"));
+        assert!(s.contains("192.0.2.1:3478"));
     }
 }

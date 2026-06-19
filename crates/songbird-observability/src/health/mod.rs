@@ -163,13 +163,48 @@ impl HealthChecker {
     }
 }
 
-/// Statically dispatched async health probe (extend with new variants as needed).
+/// Statically dispatched health probe for runtime subsystem checks.
 #[derive(Clone)]
 pub enum HealthProbe {
-    /// Always succeeds; useful as a placeholder until concrete probes are wired.
-    NoOp {
-        /// Display name for the probe row.
+    /// Verify a TCP endpoint accepts connections within a timeout.
+    TcpConnect {
+        /// Display name for this probe row.
         name: String,
+        /// Target address to connect to.
+        addr: std::net::SocketAddr,
+        /// Maximum time to wait for connection.
+        timeout: std::time::Duration,
+    },
+    /// Verify a Unix domain socket exists and is connectable.
+    #[cfg(unix)]
+    UnixSocket {
+        /// Display name for this probe row.
+        name: String,
+        /// Socket path to verify.
+        path: std::path::PathBuf,
+    },
+    /// Check filesystem accessibility (verifies a path is reachable and writable).
+    FilesystemAccess {
+        /// Display name for this probe row.
+        name: String,
+        /// Filesystem path to verify accessibility on.
+        path: std::path::PathBuf,
+    },
+    /// Custom probe via a user-supplied closure (captures arbitrary logic).
+    Custom {
+        /// Display name for this probe row.
+        name: String,
+        /// Closure that returns `Ok(message)` on success or `Err(message)` on failure.
+        check: std::sync::Arc<dyn Fn() -> std::result::Result<String, String> + Send + Sync>,
+    },
+    /// Passthrough probe for capability-discovered services: calls a JSON-RPC
+    /// `health.check` on the given Unix socket.
+    #[cfg(unix)]
+    JsonRpcHealth {
+        /// Display name for this probe row.
+        name: String,
+        /// Unix socket path of the service to health-check.
+        socket_path: std::path::PathBuf,
     },
 }
 
@@ -178,17 +213,270 @@ impl HealthProbe {
     ///
     /// # Errors
     ///
-    /// The [`HealthProbe::NoOp`] variant does not currently return an error.
+    /// Returns the probe result; internal failures are captured as `Unhealthy`.
     pub fn run(&self) -> Result<HealthCheckResult> {
-        match self {
-            Self::NoOp {
+        Ok(match self {
+            Self::TcpConnect {
                 name,
-            } => Ok(HealthCheckResult {
-                name: name.clone(),
-                status: HealthStatus::Healthy,
-                message: "noop".to_string(),
-                response_time_ms: 0,
+                addr,
+                timeout,
+            } => Self::timed_probe(name, || {
+                std::net::TcpStream::connect_timeout(addr, *timeout)
+                    .map(|_| "connected".to_string())
+                    .map_err(|e| format!("tcp connect failed: {e}"))
             }),
+            #[cfg(unix)]
+            Self::UnixSocket {
+                name,
+                path,
+            } => {
+                let p = path.clone();
+                Self::timed_probe(name, || {
+                    std::os::unix::net::UnixStream::connect(&p)
+                        .map(|_| "socket reachable".to_string())
+                        .map_err(|e| format!("socket unreachable: {e}"))
+                })
+            }
+            Self::FilesystemAccess {
+                name,
+                path,
+            } => {
+                let p = path.clone();
+                Self::timed_probe(name, || {
+                    let accessible = p.exists()
+                        && p.metadata().map(|m| !m.permissions().readonly()).unwrap_or(false);
+                    if accessible {
+                        Ok("path accessible and writable".to_string())
+                    } else {
+                        Err(format!("path not accessible: {}", p.display()))
+                    }
+                })
+            }
+            Self::Custom {
+                name,
+                check,
+            } => Self::timed_probe(name, || check()),
+            #[cfg(unix)]
+            Self::JsonRpcHealth {
+                name,
+                socket_path,
+            } => {
+                let sp = socket_path.clone();
+                Self::timed_probe(name, || Self::probe_json_rpc_health(&sp))
+            }
+        })
+    }
+
+    fn timed_probe(
+        name: &str,
+        f: impl FnOnce() -> std::result::Result<String, String>,
+    ) -> HealthCheckResult {
+        let start = std::time::Instant::now();
+        let result = f();
+        let elapsed = start.elapsed().as_millis().try_into().unwrap_or(u64::MAX);
+        match result {
+            Ok(msg) => HealthCheckResult {
+                name: name.to_owned(),
+                status: HealthStatus::Healthy,
+                message: format!("{msg} ({elapsed}ms)"),
+                response_time_ms: elapsed,
+            },
+            Err(msg) => HealthCheckResult {
+                name: name.to_owned(),
+                status: HealthStatus::Unhealthy,
+                message: msg,
+                response_time_ms: elapsed,
+            },
         }
+    }
+
+    #[cfg(unix)]
+    fn probe_json_rpc_health(socket_path: &std::path::Path) -> std::result::Result<String, String> {
+        use std::io::{Read, Write};
+        let mut stream = std::os::unix::net::UnixStream::connect(socket_path)
+            .map_err(|e| format!("connect: {e}"))?;
+        stream.set_read_timeout(Some(std::time::Duration::from_secs(2))).ok();
+        let req = r#"{"jsonrpc":"2.0","method":"health.check","params":{},"id":1}"#;
+        stream.write_all(format!("{req}\n").as_bytes()).map_err(|e| format!("write: {e}"))?;
+        let mut buf = vec![0u8; 2048];
+        let n = stream.read(&mut buf).map_err(|e| format!("read: {e}"))?;
+        let resp: serde_json::Value =
+            serde_json::from_slice(&buf[..n]).map_err(|e| format!("parse: {e}"))?;
+        if let Some(status) = resp["result"]["status"].as_str() {
+            Ok(status.to_string())
+        } else if let Some(err) = resp["error"]["message"].as_str() {
+            Err(err.to_string())
+        } else {
+            Ok("ok".to_string())
+        }
+    }
+}
+
+#[cfg(test)]
+mod probe_tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
+    use super::*;
+    use std::sync::Arc;
+
+    #[test]
+    fn tcp_connect_probe_healthy() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let probe = HealthProbe::TcpConnect {
+            name: "test-tcp".to_string(),
+            addr,
+            timeout: std::time::Duration::from_secs(1),
+        };
+
+        let result = probe.run().unwrap();
+        assert_eq!(result.status, HealthStatus::Healthy);
+        assert!(result.message.contains("connected"));
+    }
+
+    #[test]
+    fn tcp_connect_probe_unhealthy() {
+        let addr: std::net::SocketAddr = "127.0.0.1:1".parse().unwrap();
+
+        let probe = HealthProbe::TcpConnect {
+            name: "test-tcp-fail".to_string(),
+            addr,
+            timeout: std::time::Duration::from_millis(50),
+        };
+
+        let result = probe.run().unwrap();
+        assert_eq!(result.status, HealthStatus::Unhealthy);
+        assert!(result.message.contains("tcp connect failed"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unix_socket_probe_healthy() {
+        let dir = tempfile::tempdir().unwrap();
+        let sock_path = dir.path().join("test.sock");
+        let _listener = std::os::unix::net::UnixListener::bind(&sock_path).unwrap();
+
+        let probe = HealthProbe::UnixSocket {
+            name: "test-uds".to_string(),
+            path: sock_path,
+        };
+
+        let result = probe.run().unwrap();
+        assert_eq!(result.status, HealthStatus::Healthy);
+        assert!(result.message.contains("socket reachable"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unix_socket_probe_unhealthy() {
+        let probe = HealthProbe::UnixSocket {
+            name: "test-uds-fail".to_string(),
+            path: std::path::PathBuf::from("/tmp/nonexistent-songbird-test-probe.sock"),
+        };
+
+        let result = probe.run().unwrap();
+        assert_eq!(result.status, HealthStatus::Unhealthy);
+        assert!(result.message.contains("socket unreachable"));
+    }
+
+    #[test]
+    fn filesystem_access_probe_healthy() {
+        let dir = tempfile::tempdir().unwrap();
+        let probe = HealthProbe::FilesystemAccess {
+            name: "test-fs".to_string(),
+            path: dir.path().to_path_buf(),
+        };
+
+        let result = probe.run().unwrap();
+        assert_eq!(result.status, HealthStatus::Healthy);
+    }
+
+    #[test]
+    fn filesystem_access_probe_missing_path() {
+        let probe = HealthProbe::FilesystemAccess {
+            name: "test-fs-missing".to_string(),
+            path: std::path::PathBuf::from("/nonexistent/songbird/test/path"),
+        };
+
+        let result = probe.run().unwrap();
+        assert_eq!(result.status, HealthStatus::Unhealthy);
+    }
+
+    #[test]
+    fn custom_probe_healthy() {
+        let probe = HealthProbe::Custom {
+            name: "custom-ok".to_string(),
+            check: Arc::new(|| Ok("all good".to_string())),
+        };
+
+        let result = probe.run().unwrap();
+        assert_eq!(result.status, HealthStatus::Healthy);
+        assert!(result.message.contains("all good"));
+    }
+
+    #[test]
+    fn custom_probe_unhealthy() {
+        let probe = HealthProbe::Custom {
+            name: "custom-fail".to_string(),
+            check: Arc::new(|| Err("something broke".to_string())),
+        };
+
+        let result = probe.run().unwrap();
+        assert_eq!(result.status, HealthStatus::Unhealthy);
+        assert_eq!(result.message, "something broke");
+    }
+
+    #[test]
+    fn health_checker_aggregates_all_probes() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let mut checker = HealthChecker::new();
+        checker.add_check(HealthProbe::TcpConnect {
+            name: "tcp".to_string(),
+            addr,
+            timeout: std::time::Duration::from_secs(1),
+        });
+        checker.add_check(HealthProbe::Custom {
+            name: "custom".to_string(),
+            check: Arc::new(|| Ok("ok".to_string())),
+        });
+
+        let results = checker.check_all();
+        assert_eq!(results.len(), 2);
+        assert!(results.iter().all(|r| r.status == HealthStatus::Healthy));
+    }
+
+    #[test]
+    fn health_checker_captures_failures() {
+        let mut checker = HealthChecker::new();
+        checker.add_check(HealthProbe::Custom {
+            name: "pass".to_string(),
+            check: Arc::new(|| Ok("fine".to_string())),
+        });
+        checker.add_check(HealthProbe::Custom {
+            name: "fail".to_string(),
+            check: Arc::new(|| Err("broken".to_string())),
+        });
+
+        let results = checker.check_all();
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].status, HealthStatus::Healthy);
+        assert_eq!(results[1].status, HealthStatus::Unhealthy);
+    }
+
+    #[test]
+    fn probe_measures_response_time() {
+        let probe = HealthProbe::Custom {
+            name: "timed".to_string(),
+            check: Arc::new(|| {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+                Ok("done".to_string())
+            }),
+        };
+
+        let result = probe.run().unwrap();
+        assert!(result.response_time_ms >= 10);
     }
 }

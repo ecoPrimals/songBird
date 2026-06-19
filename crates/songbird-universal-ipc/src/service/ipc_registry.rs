@@ -2,14 +2,15 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 use super::{
-    CapabilityResolveParams, CapabilityResolveResult, CompositionPrimalInfo, CompositionState,
-    DiscoverParams, DiscoverResult, IpcServiceHandler, ListResult, ProviderInfo, RegisterParams,
-    RegisterResult, ResolveParams, ResolveResult, ServiceInfo, ValidateConsumedResult,
+    CompositionPrimalInfo, CompositionState, DiscoverParams, DiscoverResult, IpcServiceHandler,
+    ListResult, ProviderInfo, RegisterParams, RegisterResult, ResolveParams, ResolveResult,
+    ServiceInfo, TransportEndpoint, ValidateConsumedResult,
 };
 use crate::endpoint::NativeEndpoint;
 use crate::introspection::CONSUMED_CAPABILITIES;
 use serde_json::Value;
 use songbird_types::defaults::timeouts::DEFAULT_SOCKET_IO_TIMEOUT;
+use std::sync::Arc;
 use tracing::debug;
 
 /// Build a deterministic canonical JSON payload for signing.
@@ -76,7 +77,24 @@ impl IpcServiceHandler {
         // Sign via BearDog if crypto provider is available
         let (signature, signed_payload) = self.sign_payload(&canonical).await;
 
+        // Build structured transport before register() consumes native_endpoint
+        let transport = match &native_endpoint {
+            NativeEndpoint::UnixSocket(path) => Some(TransportEndpoint::Uds {
+                path: path.to_string_lossy().to_string(),
+            }),
+            NativeEndpoint::AbstractSocket(name) => Some(TransportEndpoint::Uds {
+                path: format!("@{name}"),
+            }),
+            NativeEndpoint::TcpLocal(port) => Some(TransportEndpoint::Tcp {
+                host: songbird_types::constants::LOCALHOST.to_string(),
+                port: *port,
+            }),
+            _ => None,
+        };
+
         // Register in registry (`register` takes `&self` and uses its own inner lock)
+        let native_socket = native_endpoint.socket_path();
+        let has_capabilities = !params.capabilities.is_empty();
         let virtual_endpoint = self
             .registry
             .read()
@@ -91,9 +109,30 @@ impl IpcServiceHandler {
             .await
             .map_err(|e| format!("Registration failed: {e}"))?;
 
+        // Phase 1 (shadow mode): spawn virtual relay listener alongside native endpoint
+        if let Some(ref socket_path) = native_socket
+            && let Err(e) = self.virtual_relay.start_relay(&params.primal_id, socket_path).await
+        {
+            tracing::warn!(
+                primal = %params.primal_id,
+                error = %e,
+                "Virtual relay start failed (non-blocking)"
+            );
+        }
+
+        // Propagate capabilities to mesh peers (push model for cross-gate discovery)
+        if has_capabilities {
+            let all_capabilities = self.collect_all_local_capabilities().await;
+            let mesh = Arc::clone(&self.mesh_handler);
+            tokio::spawn(async move {
+                mesh.announce_capabilities_to_peers(all_capabilities).await;
+            });
+        }
+
         let result = RegisterResult {
             virtual_endpoint: virtual_endpoint.path,
             registered_at,
+            transport,
             signature,
             signed_payload,
         };
@@ -131,6 +170,18 @@ impl IpcServiceHandler {
                 (None, None)
             }
         }
+    }
+
+    /// Collect all capabilities from all locally registered primals.
+    ///
+    /// Used to build the aggregate capability set announced to mesh peers.
+    async fn collect_all_local_capabilities(&self) -> Vec<String> {
+        let registry = self.registry.read().await;
+        let metadata = registry.get_all_metadata().await;
+        let mut all_caps: Vec<String> = metadata.into_iter().flat_map(|m| m.capabilities).collect();
+        all_caps.sort();
+        all_caps.dedup();
+        all_caps
     }
 
     /// Verify a registering primal's identity by probing its endpoint with `identity.get`.
@@ -260,6 +311,34 @@ impl IpcServiceHandler {
                 );
                 (capability.clone(), entry)
             } else {
+                drop(registry);
+                // Mesh fallback: check if a remote peer advertises this capability
+                if let Some((peer_id, peer_caps)) =
+                    self.mesh_handler.find_peer_with_capability(capability).await
+                {
+                    debug!(
+                        capability = %capability,
+                        peer = %peer_id,
+                        "Resolved capability via mesh peer (topology-aware routing)"
+                    );
+                    let native_endpoint = format!("mesh://{peer_id}");
+                    let result = ResolveResult {
+                        socket: None,
+                        virtual_endpoint: String::new(),
+                        native_endpoint,
+                        endpoint: TransportEndpoint::MeshRelay {
+                            peer_id,
+                            capability: capability.clone(),
+                        },
+                        capabilities: peer_caps,
+                        relay: true,
+                        relay_socket: None,
+                        signature: None,
+                        signed_payload: None,
+                    };
+                    return serde_json::to_value(result)
+                        .map_err(|e| format!("Serialization error: {e}"));
+                }
                 return Err(format!("No provider found for capability: {capability}"));
             }
         } else if let Some(ref primal_id) = params.primal_id {
@@ -275,17 +354,49 @@ impl IpcServiceHandler {
             );
         };
 
-        let result = ResolveResult {
-            socket: entry.native_endpoint.socket_path(),
-            virtual_endpoint: entry.virtual_endpoint.path,
-            native_endpoint: entry.native_endpoint.display(),
-            capabilities: entry.capabilities,
-            signature: entry.signature,
-            signed_payload: entry.signed_payload,
+        let native_transport = transport_endpoint_from_native(&entry.native_endpoint);
+        let native_socket = entry.native_endpoint.socket_path();
+        let native_display = entry.native_endpoint.display();
+        let resolved_capability = params.capability.clone().unwrap_or_default();
+        let capabilities = entry.capabilities;
+        let signature = entry.signature;
+        let signed_payload = entry.signed_payload;
+        let virtual_path = entry.virtual_endpoint.path;
+        drop(registry);
+
+        // Determine relay availability and whether to use it
+        let relay_path = self.virtual_relay.get_relay_path(&resolved_name).await;
+        let use_relay = params.prefer_virtual && !params.native && relay_path.is_some();
+
+        let socket = if use_relay {
+            relay_path.as_ref().map(|p| p.display().to_string())
+        } else {
+            native_socket
         };
 
-        drop(registry);
-        debug!("Resolved to: {resolved_name}");
+        // Build transport-qualified endpoint (Phase 2)
+        let endpoint = if use_relay {
+            TransportEndpoint::MeshRelay {
+                peer_id: resolved_name.clone(),
+                capability: resolved_capability,
+            }
+        } else {
+            native_transport
+        };
+
+        let result = ResolveResult {
+            socket,
+            virtual_endpoint: virtual_path,
+            native_endpoint: native_display,
+            endpoint,
+            capabilities,
+            relay: use_relay,
+            relay_socket: relay_path.map(|p| p.display().to_string()),
+            signature,
+            signed_payload,
+        };
+
+        debug!("Resolved to: {resolved_name} (relay={})", result.relay);
 
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
@@ -352,145 +463,70 @@ impl IpcServiceHandler {
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
 
-    /// Handle `capability.resolve` — single-step routing by capability.
+    /// Handle `ipc.relay_stats` — return virtual relay performance metrics.
     ///
-    /// Returns the best provider endpoint for the requested capability (most
-    /// recently seen wins). This is the IPC equivalent of DNS resolution:
-    /// springs call `capability.resolve("crypto.sign")` and get back a single
-    /// socket/endpoint instead of iterating a list.
-    pub(super) async fn handle_capability_resolve(&self, params: Value) -> Result<Value, String> {
-        let params: CapabilityResolveParams =
-            serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
+    /// ## Response
+    /// ```json
+    /// { "active_relays": 3, "total_requests": 1024, "avg_overhead_us": 342 }
+    /// ```
+    pub(super) async fn handle_relay_stats(&self, _params: Value) -> Result<Value, String> {
+        let relays = self.virtual_relay.list_relays().await;
+        let metrics = self.virtual_relay.metrics();
 
-        debug!("Resolving best provider for capability: {}", params.capability);
-
-        let registry = self.registry.read().await;
-        let (name, entry) = registry
-            .resolve_by_capability(&params.capability)
-            .await
-            .ok_or_else(|| format!("No provider found for capability: {}", params.capability))?;
-
-        let result = CapabilityResolveResult {
-            primal_id: name,
-            socket: entry.native_endpoint.socket_path(),
-            virtual_endpoint: entry.virtual_endpoint.path,
-            native_endpoint: entry.native_endpoint.display(),
-            capabilities: entry.capabilities,
-            signature: entry.signature,
-            signed_payload: entry.signed_payload,
-        };
-
-        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+        Ok(serde_json::json!({
+            "active_relays": relays.len(),
+            "relays": relays.iter().map(|(name, path)| {
+                serde_json::json!({"primal": name, "socket": path.display().to_string()})
+            }).collect::<Vec<_>>(),
+            "total_requests": metrics.requests.load(std::sync::atomic::Ordering::Relaxed),
+            "avg_overhead_us": metrics.avg_overhead_us(),
+            "total_overhead_us": metrics.overhead_us.load(std::sync::atomic::Ordering::Relaxed),
+        }))
     }
 
-    /// Handle `capability.call` — cross-gate capability dispatch.
+    /// Handle `ipc.watch` — poll for registry changes since a given revision.
     ///
-    /// 1. Resolves the capability to a local provider (via registry)
-    /// 2. If local: connects to the provider's UDS socket and forwards the operation
-    /// 3. If not local and routing is `"any"`: attempts remote dispatch via mesh peer
+    /// Enables consuming primals (e.g. toadStool) to detect when new providers
+    /// register capabilities they depend on. Returns events since `since_revision`,
+    /// optionally filtered by capability names.
     ///
-    /// This is the routing glue that enables biomeOS multi-gate compositions via
-    /// Songbird's relay infrastructure (CG-8).
-    pub(super) async fn handle_capability_call(&self, params: Value) -> Result<Value, String> {
-        let call: super::CapabilityCallParams =
+    /// ## Params
+    /// ```json
+    /// { "since_revision": 0, "capabilities": ["shader", "compile"] }
+    /// ```
+    ///
+    /// ## Response
+    /// ```json
+    /// {
+    ///   "revision": 5,
+    ///   "events": [
+    ///     { "revision": 3, "kind": "registered", "primal": "coralReef",
+    ///       "capabilities": ["shader", "compile", "visualization"],
+    ///       "endpoint": "unix:///run/user/1000/biomeos/coralreef-nucleus01.sock" }
+    ///   ]
+    /// }
+    /// ```
+    pub(super) async fn handle_watch(&self, params: Value) -> Result<Value, String> {
+        #[derive(serde::Deserialize)]
+        struct WatchParams {
+            #[serde(default)]
+            since_revision: u64,
+            #[serde(default)]
+            capabilities: Option<Vec<String>>,
+        }
+
+        let params: WatchParams =
             serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
 
-        debug!(
-            capability = %call.capability,
-            operation = %call.operation,
-            routing = %call.routing,
-            "capability.call dispatch"
-        );
-
-        // Phase 1: Try local resolution
         let registry = self.registry.read().await;
-        if let Some((primal_id, entry)) = registry.resolve_by_capability(&call.capability).await {
-            let socket_path = entry.native_endpoint.socket_path();
-            drop(registry);
+        let (current_rev, events) =
+            registry.events_since(params.since_revision, params.capabilities.as_deref()).await;
 
-            if let Some(ref path) = socket_path {
-                let result =
-                    self.forward_to_local_provider(path, &call.operation, &call.params).await?;
-
-                let response = super::CapabilityCallResult {
-                    provider: primal_id,
-                    gate: String::from("local"),
-                    result,
-                };
-                return serde_json::to_value(response)
-                    .map_err(|e| format!("Serialization error: {e}"));
-            }
-
-            return Err(format!(
-                "Provider '{}' registered for '{}' but has no connectable socket",
-                primal_id, call.capability
-            ));
-        }
-        drop(registry);
-
-        // Phase 2: Remote dispatch via mesh (if routing allows)
-        if call.routing == "local" {
-            return Err(format!(
-                "No local provider for capability '{}' (routing=local, remote dispatch disabled)",
-                call.capability
-            ));
-        }
-
-        self.forward_to_remote_gate(&call).await
-    }
-
-    /// Forward an operation to a local provider via its UDS socket.
-    pub(super) async fn forward_to_local_provider(
-        &self,
-        socket_path: &str,
-        operation: &str,
-        params: &Value,
-    ) -> Result<Value, String> {
-        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-        use tokio::net::UnixStream;
-
-        let stream =
-            tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, UnixStream::connect(socket_path))
-                .await
-                .map_err(|_| format!("Timeout connecting to provider at {socket_path}"))?
-                .map_err(|e| format!("Cannot connect to provider at {socket_path}: {e}"))?;
-
-        let request = serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": operation,
-            "params": params,
-            "id": 1
-        });
-
-        let mut request_bytes = serde_json::to_vec(&request)
-            .map_err(|e| format!("Failed to serialize request: {e}"))?;
-        request_bytes.push(b'\n');
-
-        let (reader, mut writer) = stream.into_split();
-
-        tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, writer.write_all(&request_bytes))
-            .await
-            .map_err(|_| format!("Timeout writing to provider at {socket_path}"))?
-            .map_err(|e| format!("Write error to provider: {e}"))?;
-
-        let mut buf_reader = BufReader::new(reader);
-        let mut response_line = String::new();
-        tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, buf_reader.read_line(&mut response_line))
-            .await
-            .map_err(|_| format!("Timeout reading from provider at {socket_path}"))?
-            .map_err(|e| format!("Read error from provider: {e}"))?;
-
-        let response: Value = serde_json::from_str(response_line.trim())
-            .map_err(|e| format!("Invalid JSON response from provider: {e}"))?;
-
-        if let Some(error) = response.get("error") {
-            return Err(format!(
-                "Provider error: {}",
-                error.get("message").and_then(Value::as_str).unwrap_or("unknown")
-            ));
-        }
-
-        Ok(response.get("result").cloned().unwrap_or(Value::Null))
+        serde_json::to_value(serde_json::json!({
+            "revision": current_rev,
+            "events": events,
+        }))
+        .map_err(|e| format!("Serialization error: {e}"))
     }
 
     /// Handle `lifecycle.composition` — returns current composition state for dashboards.
@@ -555,6 +591,35 @@ impl IpcServiceHandler {
     }
 }
 
+/// Convert a `NativeEndpoint` to the Phase 2 `TransportEndpoint` wire type.
+pub(super) fn transport_endpoint_from_native(ep: &NativeEndpoint) -> TransportEndpoint {
+    match ep {
+        NativeEndpoint::UnixSocket(path) => TransportEndpoint::Uds {
+            path: path.display().to_string(),
+        },
+        NativeEndpoint::AbstractSocket(name) => TransportEndpoint::Uds {
+            path: format!("@{name}"),
+        },
+        NativeEndpoint::TcpLocal(port) => TransportEndpoint::Tcp {
+            host: songbird_types::constants::LOCALHOST.to_string(),
+            port: *port,
+        },
+        NativeEndpoint::NamedPipe(name) => TransportEndpoint::Uds {
+            path: name.clone(),
+        },
+        NativeEndpoint::XPC(service) => TransportEndpoint::Uds {
+            path: service.clone(),
+        },
+        NativeEndpoint::InProcess(id) => TransportEndpoint::Tcp {
+            host: songbird_types::constants::LOCALHOST.to_string(),
+            port: *id,
+        },
+        NativeEndpoint::SharedMemory(region) => TransportEndpoint::Uds {
+            path: region.clone(),
+        },
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
@@ -610,5 +675,55 @@ mod tests {
             let result = songbird_turn_client::TurnSessionConfig::from_env(peer_addr);
             assert!(result.is_err(), "Should fail when TURN env vars are absent");
         }
+    }
+
+    #[test]
+    fn transport_endpoint_from_unix_socket() {
+        let ep = NativeEndpoint::UnixSocket("/run/membrane/beardog.sock".into());
+        let te = transport_endpoint_from_native(&ep);
+        assert_eq!(
+            te,
+            TransportEndpoint::Uds {
+                path: "/run/membrane/beardog.sock".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn transport_endpoint_from_abstract_socket() {
+        let ep = NativeEndpoint::AbstractSocket("biomeos_security".into());
+        let te = transport_endpoint_from_native(&ep);
+        assert_eq!(
+            te,
+            TransportEndpoint::Uds {
+                path: "@biomeos_security".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn transport_endpoint_from_tcp_local() {
+        let ep = NativeEndpoint::TcpLocal(7700);
+        let te = transport_endpoint_from_native(&ep);
+        assert_eq!(
+            te,
+            TransportEndpoint::Tcp {
+                host: "127.0.0.1".to_string(),
+                port: 7700
+            }
+        );
+    }
+
+    #[test]
+    fn transport_endpoint_from_in_process() {
+        let ep = NativeEndpoint::InProcess(42);
+        let te = transport_endpoint_from_native(&ep);
+        assert_eq!(
+            te,
+            TransportEndpoint::Tcp {
+                host: "127.0.0.1".to_string(),
+                port: 42
+            }
+        );
     }
 }

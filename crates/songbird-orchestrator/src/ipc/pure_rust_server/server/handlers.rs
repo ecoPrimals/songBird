@@ -7,27 +7,23 @@ use songbird_types::json_rpc_method::{
     CapabilitiesMethod, DiscoveryMethod, HealthMethod, HttpMethod, IpcMethod, PrimalMethod,
 };
 use songbird_types::{JsonRpcMethod, normalize_json_rpc_method_name};
-use songbird_universal_ipc::tower_atomic::JsonRpcRequestWire;
 
 use super::super::coordination_handlers;
 use super::super::method_gate::{CallerContext, dispatch_auth_method, extract_bearer_token};
-use super::super::protocol::{JsonRpcError, JsonRpcResponse};
+use super::super::protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 use super::UnixSocketServer;
 
 impl UnixSocketServer {
-    /// Handle a JSON-RPC 2.0 request and route to appropriate API handler.
-    ///
-    /// Accepts the borrowing wire type to avoid allocating `String` for
-    /// `method` and `jsonrpc` on the IPC hot path.
+    /// Handle a JSON-RPC 2.0 request and route to appropriate API handler
     #[expect(clippy::too_many_lines, reason = "IPC JSON-RPC handler dispatch")]
     pub(crate) async fn handle_jsonrpc_request(
         &self,
-        mut request: JsonRpcRequestWire<'_>,
+        mut request: JsonRpcRequest,
         caller: &CallerContext,
     ) -> JsonRpcResponse {
         let id = request.id.clone().unwrap_or(serde_json::Value::Null);
 
-        if *request.jsonrpc != *"2.0" {
+        if request.jsonrpc != "2.0" {
             return JsonRpcResponse::error(
                 JsonRpcError::invalid_request(r#"Invalid Request: jsonrpc must be "2.0""#),
                 id,
@@ -149,7 +145,7 @@ impl UnixSocketServer {
                         .http_delete(request.params.unwrap_or_else(|| serde_json::json!({})))
                         .await
                 }
-                _ => Err(JsonRpcError::method_not_found(&*request.method)),
+                _ => Err(JsonRpcError::method_not_found(&request.method)),
             },
         };
 

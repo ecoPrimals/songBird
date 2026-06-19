@@ -218,7 +218,52 @@ impl From<AlertDescription> for u8 {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
+    use crate::error::TlsError;
+
+    /// TLS 1.3 alert fatality follows alert level (fatal vs warning).
+    const fn alert_is_fatal(alert: &Alert) -> bool {
+        matches!(alert.level, AlertLevel::Fatal)
+    }
+
+    fn alert_wire_roundtrip(alert: Alert) -> Alert {
+        let wire = [u8::from(alert.level), u8::from(alert.description)];
+        Alert::new(AlertLevel::from(wire[0]), AlertDescription::from(wire[1]))
+    }
+
+    fn all_alert_descriptions() -> [AlertDescription; 27] {
+        [
+            AlertDescription::CloseNotify,
+            AlertDescription::UnexpectedMessage,
+            AlertDescription::BadRecordMac,
+            AlertDescription::RecordOverflow,
+            AlertDescription::HandshakeFailure,
+            AlertDescription::BadCertificate,
+            AlertDescription::UnsupportedCertificate,
+            AlertDescription::CertificateRevoked,
+            AlertDescription::CertificateExpired,
+            AlertDescription::CertificateUnknown,
+            AlertDescription::IllegalParameter,
+            AlertDescription::UnknownCa,
+            AlertDescription::AccessDenied,
+            AlertDescription::DecodeError,
+            AlertDescription::DecryptError,
+            AlertDescription::ProtocolVersion,
+            AlertDescription::InsufficientSecurity,
+            AlertDescription::InternalError,
+            AlertDescription::InappropriateFallback,
+            AlertDescription::UserCanceled,
+            AlertDescription::MissingExtension,
+            AlertDescription::UnsupportedExtension,
+            AlertDescription::UnrecognizedName,
+            AlertDescription::BadCertificateStatusResponse,
+            AlertDescription::UnknownPskIdentity,
+            AlertDescription::CertificateRequired,
+            AlertDescription::NoApplicationProtocol,
+        ]
+    }
 
     #[test]
     fn test_alert_new() {
@@ -287,5 +332,91 @@ mod tests {
 
         // Unknown alert description defaults to InternalError
         assert_eq!(AlertDescription::from(255), AlertDescription::InternalError);
+    }
+
+    #[test]
+    fn all_alert_description_variants_roundtrip_u8() {
+        for desc in all_alert_descriptions() {
+            let byte = u8::from(desc);
+            assert_eq!(AlertDescription::from(byte), desc, "roundtrip failed for {desc:?}");
+        }
+    }
+
+    #[test]
+    fn alert_wire_encode_decode_roundtrip_all_descriptions() {
+        for desc in all_alert_descriptions() {
+            let alert = Alert::fatal(desc);
+            let roundtripped = alert_wire_roundtrip(alert);
+            assert_eq!(roundtripped.level, AlertLevel::Fatal);
+            assert_eq!(roundtripped.description, desc);
+        }
+    }
+
+    #[test]
+    fn alert_warning_level_is_not_fatal() {
+        let alert = Alert::warning(AlertDescription::CloseNotify);
+        assert_eq!(alert.level, AlertLevel::Warning);
+        assert!(!alert_is_fatal(&alert));
+    }
+
+    #[test]
+    fn alert_fatal_level_is_fatal() {
+        let alert = Alert::fatal(AlertDescription::HandshakeFailure);
+        assert_eq!(alert.level, AlertLevel::Fatal);
+        assert!(alert_is_fatal(&alert));
+    }
+
+    #[test]
+    fn alert_from_error_always_produces_fatal_alerts() {
+        let errors = [
+            TlsError::DecryptError,
+            TlsError::CertificateError("bad".to_string()),
+            TlsError::HandshakeFailure("fail".to_string()),
+            TlsError::Unsupported("old tls".to_string()),
+            TlsError::ProtocolError("bad msg".to_string()),
+            TlsError::UnexpectedMessage {
+                expected: "A".to_string(),
+                got: "B".to_string(),
+            },
+            TlsError::InvalidParameter("x".to_string()),
+            TlsError::RecordTooLarge {
+                size: 99999,
+            },
+            TlsError::InternalError("boom".to_string()),
+        ];
+        for err in errors {
+            let alert = Alert::from_error(&err);
+            assert!(alert_is_fatal(&alert), "expected fatal for {err:?}");
+        }
+    }
+
+    #[test]
+    fn alert_close_notify_is_warning_and_not_fatal() {
+        let alert = Alert::close_notify();
+        assert_eq!(alert.level, AlertLevel::Warning);
+        assert!(!alert_is_fatal(&alert));
+        assert!(alert.is_close_notify());
+    }
+
+    #[test]
+    fn alert_level_classification_unknown_defaults_to_fatal() {
+        assert_eq!(AlertLevel::from(99), AlertLevel::Fatal);
+        assert!(alert_is_fatal(&Alert::new(AlertLevel::from(99), AlertDescription::InternalError)));
+    }
+
+    #[test]
+    fn alert_from_error_maps_tls_errors_to_expected_descriptions() {
+        assert_eq!(
+            Alert::from_error(&TlsError::DecryptError).description,
+            AlertDescription::DecryptError
+        );
+        assert_eq!(
+            Alert::from_error(&TlsError::HandshakeFailure("x".into())).description,
+            AlertDescription::HandshakeFailure
+        );
+        assert_eq!(
+            Alert::from_error(&TlsError::Unsupported("v".into())).description,
+            AlertDescription::ProtocolVersion
+        );
     }
 }

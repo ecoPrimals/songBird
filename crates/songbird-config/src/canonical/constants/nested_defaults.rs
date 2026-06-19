@@ -20,7 +20,10 @@ pub mod network {
 
     use crate::canonical::constants::{get_bind_address, get_port_range_start};
 
-    /// Get default host for current environment
+    /// Default host identifier (`"localhost"`).
+    pub const DEFAULT_HOST: &str = "localhost";
+
+    /// Get default host for current environment (may differ from const in production).
     #[must_use]
     pub fn default_host() -> String {
         get_bind_address()
@@ -40,17 +43,6 @@ pub mod network {
 
     /// Default retry delay (kept as const - no sovereignty issue)
     pub const DEFAULT_RETRY_DELAY: Duration = Duration::from_millis(1000);
-
-    // DEPRECATED MIGRATION HELPERS (will be removed in v0.3.0)
-    // These return function calls for backwards compatibility
-
-    /// DEPRECATED: Use `network::default_host()` instead
-    #[deprecated(since = "0.2.0", note = "Use network::default_host() function instead")]
-    pub const DEFAULT_HOST: &str = "localhost";
-
-    /// DEPRECATED: Use `get_bind_address()` instead
-    #[deprecated(since = "0.2.0", note = "Use get_bind_address() function instead")]
-    pub const DEFAULT_HOST_V4: &str = "127.0.0.1";
 }
 
 /// Health check related constants

@@ -55,6 +55,7 @@ async fn test_handle_list_peers_with_mock_registry() {
             quality: Some(0.95),
             node_name: Some("alpha-tower".to_string()),
             protocols: vec!["birdsong".to_string()],
+            latency_ms: None,
         },
         DiscoveredPeerInfo {
             node_id: "node-beta".to_string(),
@@ -66,6 +67,7 @@ async fn test_handle_list_peers_with_mock_registry() {
             quality: Some(0.88),
             node_name: Some("beta-tower".to_string()),
             protocols: vec!["birdsong".to_string()],
+            latency_ms: None,
         },
     ];
 
@@ -94,6 +96,7 @@ async fn test_handle_get_peer_by_id() {
         quality: Some(0.95),
         node_name: Some("gamma-tower".to_string()),
         protocols: vec!["birdsong".to_string(), "tarpc".to_string()],
+        latency_ms: None,
     }];
 
     let registry = Arc::new(MockPeerRegistry {
@@ -129,6 +132,7 @@ async fn test_discovered_peer_info_serialization() {
         quality: Some(0.99),
         node_name: Some("test-tower".to_string()),
         protocols: vec!["test-protocol".to_string()],
+        latency_ms: Some(42),
     };
 
     let json = serde_json::to_value(&peer).expect("Should serialize");
@@ -242,6 +246,7 @@ fn peer(id: &str, family: &str, caps: &[&str]) -> DiscoveredPeerInfo {
         quality: None,
         node_name: None,
         protocols: vec![],
+        latency_ms: None,
     }
 }
 
@@ -513,4 +518,46 @@ fn content_announcement_store_query_excludes_expired() {
             .expect("system clock should allow subtracting 1s"),
     });
     assert!(store.query("content:old").is_empty(), "expired entries filtered out");
+}
+
+#[tokio::test]
+async fn collect_mesh_peers_returns_announced_capabilities() {
+    use crate::handlers::mesh_handler::MeshHandler;
+    use songbird_onion_relay::mesh::{BeaconMesh, EndpointType, RelayEndpoint};
+
+    let mesh = BeaconMesh::new("local-node".into(), vec![]);
+    mesh.add_endpoint(
+        "east-gate".into(),
+        RelayEndpoint {
+            node_id: "east-gate".into(),
+            endpoint_type: EndpointType::Direct {
+                addr: "192.168.1.50:7700".parse().unwrap(),
+            },
+            latency: None,
+            last_seen: Instant::now(),
+            reachable: true,
+        },
+    )
+    .await;
+
+    let handler = MeshHandler::with_mesh(mesh, "local-node");
+
+    // Simulate receiving a capabilities announcement from east-gate
+    handler
+        .handle_capabilities_announce(serde_json::json!({
+            "node_id": "east-gate",
+            "capabilities": ["security", "crypto", "mesh"]
+        }))
+        .await
+        .unwrap();
+
+    let discovery = DiscoveryHandler::new();
+    let mut discovery = discovery;
+    discovery.set_mesh_handler(std::sync::Arc::new(handler));
+
+    let result = discovery.handle_list_peers(serde_json::json!({})).await.unwrap();
+
+    assert_eq!(result.total_count, 1);
+    assert_eq!(result.peers[0].node_id, "east-gate");
+    assert_eq!(result.peers[0].capabilities, vec!["security", "crypto", "mesh"]);
 }

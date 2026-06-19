@@ -47,6 +47,22 @@ impl SecurityCryptoProvider {
         use super::socket_discovery;
         use tracing::info;
 
+        // CLI --security-socket sets SECURITY_PROVIDER_ENDPOINT — honor it
+        // unconditionally so the http_client TLS path respects the flag.
+        if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
+            && !socket.is_empty()
+        {
+            info!(
+                "🔧 Security provider: CLI/env override (SECURITY_PROVIDER_ENDPOINT) → {}",
+                socket
+            );
+            return Self {
+                socket_path: socket,
+                request_id: AtomicU64::new(1),
+                mode: RoutingMode::Direct,
+            };
+        }
+
         let mode = songbird_process_env::var("SECURITY_PROVIDER_MODE")
             .or_else(|_| {
                 songbird_process_env::var("BEARDOG_MODE").inspect(|_| {
@@ -55,7 +71,7 @@ impl SecurityCryptoProvider {
                     );
                 })
             })
-            .unwrap_or_else(|_| "neural".to_string());
+            .unwrap_or_else(|_| "api".to_string());
 
         if mode.as_str() == "direct" {
             let socket = socket_discovery::discover_security_socket();

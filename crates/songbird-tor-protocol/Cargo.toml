@@ -36,7 +36,7 @@ serde_json = { workspace = true }
 # HTTP client for directory fetching (pure Rust, zero ring)
 # Tor directory authorities serve plain HTTP - no TLS needed
 hyper = { workspace = true }
-hyper-util = { version = "0.1", features = ["client", "client-legacy", "tokio", "http1"] }
+hyper-util = { workspace = true, features = ["client"] }
 http-body-util = { workspace = true }
 bytes = { workspace = true }
 

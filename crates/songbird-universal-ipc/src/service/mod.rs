@@ -45,19 +45,24 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+mod btsp_validation;
+mod capability_dispatch;
 mod construction;
 mod dispatch;
 mod http;
 mod ipc_registry;
 mod meta;
+pub mod relay_security;
 mod remote_dispatch;
 mod util;
+pub mod virtual_relay;
 
 pub use crate::service_types::{
     CapabilityCallParams, CapabilityCallResult, CapabilityResolveParams, CapabilityResolveResult,
     CompositionPrimalInfo, CompositionState, DiscoverParams, DiscoverResult,
     FederationPeersResponse, FederationStatusResponse, ListResult, ProviderInfo, RegisterParams,
-    RegisterResult, ResolveParams, ResolveResult, ServiceInfo, ValidateConsumedResult,
+    RegisterResult, ResolveParams, ResolveResult, ServiceInfo, TransportEndpoint,
+    ValidateConsumedResult,
 };
 
 /// Songbird IPC Service Handler
@@ -89,6 +94,16 @@ pub struct IpcServiceHandler {
     start_time: Arc<RwLock<std::time::Instant>>,
     /// When set, `federation.*` methods reflect live [`FederationState`].
     federation_state: Option<Arc<FederationState>>,
+    /// Virtual endpoint relay manager (Phase 1: shadow mode).
+    virtual_relay: Arc<virtual_relay::VirtualRelayManager>,
+}
+
+impl IpcServiceHandler {
+    /// Access the mesh handler (for startup auto-seeding from `SONGBIRD_PEERS`).
+    #[must_use]
+    pub fn mesh_handler(&self) -> &Arc<MeshHandler> {
+        &self.mesh_handler
+    }
 }
 
 /// All handler instances built by `build_handlers()`.

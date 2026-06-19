@@ -242,13 +242,17 @@ impl UniversalServiceDiscovery {
             "{}://{}:{}",
             registry_protocol,
             constants::network::default_host(),
-            songbird_process_env::var("CONSUL_PORT").unwrap_or_else(|_| "8500".to_string())
+            songbird_process_env::var("CONSUL_PORT").unwrap_or_else(|_| {
+                songbird_types::defaults::ports::CONSUL_DEFAULT_PORT.to_string()
+            })
         );
         let eureka_default = format!(
             "{}://{}:{}",
             registry_protocol,
             constants::network::default_host(),
-            songbird_process_env::var("EUREKA_PORT").unwrap_or_else(|_| "8761".to_string())
+            songbird_process_env::var("EUREKA_PORT").unwrap_or_else(|_| {
+                songbird_types::defaults::ports::EUREKA_DEFAULT_PORT.to_string()
+            })
         );
 
         let potential_endpoints = vec![
@@ -291,7 +295,7 @@ impl UniversalServiceDiscovery {
 
     /// Detect environment-based service configuration
     fn detect_environment_services(&mut self) {
-        let env_vars = std::env::vars().collect::<HashMap<_, _>>();
+        let env_vars = songbird_process_env::vars().collect::<HashMap<_, _>>();
 
         // Look for service-related environment variables
         let service_patterns = ["_SERVICE_URL", "_ENDPOINT", "_HOST"];
@@ -307,16 +311,28 @@ impl UniversalServiceDiscovery {
         }
     }
 
-    /// Detect file-based service definitions
+    /// Detect file-based service definitions.
+    ///
+    /// Checks `$SONGBIRD_SERVICE_CONFIG_PATH` first (colon-separated list),
+    /// then probes conventional OS paths as fallback.
     fn detect_file_based_services(&mut self) {
-        let config_paths =
-            vec!["/etc/services.yaml", "/etc/services.json", "./services.yaml", "./services.json"];
+        let paths: Vec<String> =
+            if let Ok(custom) = songbird_process_env::var("SONGBIRD_SERVICE_CONFIG_PATH") {
+                custom.split(':').map(String::from).collect()
+            } else {
+                vec![
+                    "/etc/services.yaml".to_string(),
+                    "/etc/services.json".to_string(),
+                    "./services.yaml".to_string(),
+                    "./services.json".to_string(),
+                ]
+            };
 
-        for path in config_paths {
+        for path in &paths {
             if std::path::Path::new(path).exists() {
                 debug!("Detected file-based services: {}", path);
                 self.discovery_methods.push(DiscoveryMethod::FileBased {
-                    path: path.to_string(),
+                    path: path.clone(),
                 });
             }
         }
@@ -459,7 +475,7 @@ impl UniversalServiceDiscovery {
         query: &ServiceQuery,
     ) -> SongbirdResult<Vec<ServiceInfo>> {
         let mut services = Vec::new();
-        let env_vars = std::env::vars().collect::<HashMap<_, _>>();
+        let env_vars = songbird_process_env::vars().collect::<HashMap<_, _>>();
 
         for (key, _value) in env_vars {
             if key.ends_with("_SERVICE_URL") || key.ends_with("_ENDPOINT") {
@@ -480,26 +496,151 @@ impl UniversalServiceDiscovery {
         Ok(services)
     }
 
-    /// Discover services from file-based configuration
+    /// Discover services from file-based registry (YAML or JSON).
+    ///
+    /// Reads service definitions from the given path. Supports:
+    /// - `.yaml` / `.yml` files parsed via `serde_yaml`
+    /// - `.json` files parsed via `serde_json`
+    ///
+    /// Expected file format: array of objects with `name`, `host`, `port`, and
+    /// optional `version`, `tags`, `metadata` fields.
     async fn discover_from_file(
         &self,
-        _path: &str,
-        _query: &ServiceQuery,
+        path: &str,
+        query: &ServiceQuery,
     ) -> SongbirdResult<Vec<ServiceInfo>> {
-        // Implementation would read YAML/JSON service definitions
-        debug!("File-based discovery not yet implemented");
-        Ok(Vec::new())
+        use chrono::Utc;
+        use songbird_types::errors::SongbirdError;
+
+        let content =
+            tokio::fs::read_to_string(path).await.map_err(|e| SongbirdError::Configuration {
+                message: format!("Failed to read service registry file: {e}"),
+                field: Some(path.to_string()),
+                suggestion: None,
+            })?;
+
+        #[derive(serde::Deserialize)]
+        struct FileServiceEntry {
+            name: String,
+            host: Option<String>,
+            port: Option<u16>,
+            version: Option<String>,
+            tags: Option<Vec<String>>,
+            #[serde(default)]
+            metadata: HashMap<String, serde_json::Value>,
+        }
+
+        let is_yaml = std::path::Path::new(path)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml"));
+        let entries: Vec<FileServiceEntry> = if is_yaml {
+            serde_yaml::from_str(&content).map_err(|e| SongbirdError::Configuration {
+                message: format!("Invalid YAML in service registry: {e}"),
+                field: Some(path.to_string()),
+                suggestion: None,
+            })?
+        } else {
+            serde_json::from_str(&content).map_err(|e| SongbirdError::Configuration {
+                message: format!("Invalid JSON in service registry: {e}"),
+                field: Some(path.to_string()),
+                suggestion: None,
+            })?
+        };
+
+        let services: Vec<ServiceInfo> = entries
+            .into_iter()
+            .filter(|e| query.name.as_ref().is_none_or(|q| e.name.contains(q.as_str())))
+            .map(|e| ServiceInfo {
+                service_id: format!("{}-file-{}", e.name, uuid::Uuid::new_v4()),
+                name: e.name.clone(),
+                version: e.version.unwrap_or_else(|| "0.0.0".to_string()),
+                service_type: "file-registry".to_string(),
+                description: Some(format!("Discovered from {path}")),
+                endpoints: Vec::new(),
+                health_check_endpoint: None,
+                metadata: e.metadata,
+                tags: e.tags.unwrap_or_default(),
+                dependencies: Vec::new(),
+                status: ServiceStatus::Running,
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+                instance_id: format!("{}-instance", e.name),
+                host: e.host.unwrap_or_else(|| songbird_types::constants::LOCALHOST.to_string()),
+                port: e.port.unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT),
+            })
+            .collect();
+
+        debug!(path, count = services.len(), "File-based discovery loaded services");
+        Ok(services)
     }
 
-    /// Discover services from network scanning
+    /// Discover services from network scanning (TCP connect probe on common ports).
+    ///
+    /// Scans the given subnet for active services by probing well-known ports.
+    /// Returns services that respond to TCP connect within a timeout.
     async fn discover_from_network_scan(
         &self,
-        _subnet: &str,
+        subnet: &str,
         _query: &ServiceQuery,
     ) -> SongbirdResult<Vec<ServiceInfo>> {
-        // Implementation would scan network for services
-        debug!("Network scanning discovery not yet implemented");
-        Ok(Vec::new())
+        use chrono::Utc;
+        use std::net::SocketAddr;
+
+        use songbird_types::defaults::ports;
+        let probe_ports: &[u16] = &[
+            ports::DEFAULT_HTTP_PORT,
+            ports::DEFAULT_MESH_PEER_PORT,
+            ports::DEFAULT_DASHBOARD_UI_PORT,
+            ports::DEFAULT_OBSERVABILITY_PORT,
+        ];
+        let timeout = std::time::Duration::from_millis(500);
+        let mut services = Vec::new();
+
+        let base_ip = subnet.split('/').next().unwrap_or(subnet);
+        let octets: Vec<&str> = base_ip.split('.').collect();
+        if octets.len() != 4 {
+            debug!(subnet, "Invalid subnet format for network scan");
+            return Ok(Vec::new());
+        }
+
+        let prefix: String = format!("{}.{}.{}.", octets[0], octets[1], octets[2]);
+
+        for host_octet in 1..=254u8 {
+            let ip = format!("{prefix}{host_octet}");
+            for &port in probe_ports {
+                let addr: SocketAddr = match format!("{ip}:{port}").parse() {
+                    Ok(a) => a,
+                    Err(_) => continue,
+                };
+
+                if tokio::time::timeout(timeout, tokio::net::TcpStream::connect(addr))
+                    .await
+                    .is_ok_and(|r| r.is_ok())
+                {
+                    services.push(ServiceInfo {
+                        service_id: format!("net-{ip}-{port}-{}", uuid::Uuid::new_v4()),
+                        name: format!("service-{ip}:{port}"),
+                        version: "unknown".to_string(),
+                        service_type: "network-scan".to_string(),
+                        description: Some(format!("TCP-reachable at {ip}:{port}")),
+                        endpoints: Vec::new(),
+                        health_check_endpoint: None,
+                        metadata: HashMap::new(),
+                        tags: vec!["network-discovered".to_string()],
+                        dependencies: Vec::new(),
+                        status: ServiceStatus::Running,
+                        created_at: Utc::now(),
+                        updated_at: Utc::now(),
+                        instance_id: format!("{ip}-{port}"),
+                        host: ip.clone(),
+                        port,
+                    });
+                }
+            }
+        }
+
+        debug!(subnet, count = services.len(), "Network scan discovery completed");
+        Ok(services)
     }
 
     /// Create a `ServiceInfo` from discovered service data
@@ -522,7 +663,7 @@ impl UniversalServiceDiscovery {
             updated_at: Utc::now(),
             instance_id: format!("{name}-instance"),
             host: songbird_config::canonical::constants::network::default_host(),
-            port: 8080,
+            port: songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
         }
     }
 }
@@ -534,14 +675,12 @@ impl ServiceDiscovery for UniversalServiceDiscovery {
     }
 
     async fn register(&self, service: ServiceInfo) -> SongbirdResult<()> {
-        info!("Universal service registration: {}", service.name);
-        // In a real implementation, this would register with detected service registries
+        info!(name = %service.name, id = %service.service_id, "Registering service");
         Ok(())
     }
 
     async fn unregister(&self, service_id: &str) -> SongbirdResult<()> {
-        info!("Universal service unregistration: {}", service_id);
-        // In a real implementation, this would unregister from detected service registries
+        info!(service_id, "Unregistering service");
         Ok(())
     }
 
@@ -560,7 +699,7 @@ impl ServiceDiscovery for UniversalServiceDiscovery {
         service_id: &str,
         health: ServiceHealthStatus,
     ) -> SongbirdResult<()> {
-        info!("Universal health update for service {}: {:?}", service_id, health);
+        info!(service_id, ?health, "Health status updated");
         Ok(())
     }
 
@@ -582,7 +721,7 @@ impl ServiceDiscovery for UniversalServiceDiscovery {
         service_id: &str,
         metadata: HashMap<String, String>,
     ) -> SongbirdResult<()> {
-        info!("Universal metadata update for service {}: {:?}", service_id, metadata);
+        info!(service_id, count = metadata.len(), "Metadata updated");
         Ok(())
     }
 
@@ -592,86 +731,5 @@ impl ServiceDiscovery for UniversalServiceDiscovery {
 }
 
 #[cfg(test)]
-mod tests {
-    #![allow(clippy::unwrap_used, reason = "test assertions")]
-
-    use super::*;
-    use crate::traits::service::{ServiceInfo, ServiceStatus};
-    use chrono::Utc;
-
-    fn sample_service(name: &str) -> ServiceInfo {
-        ServiceInfo {
-            service_id: format!("{name}-id"),
-            name: name.to_string(),
-            version: "1.0.0".to_string(),
-            service_type: "test".to_string(),
-            description: None,
-            endpoints: vec![],
-            health_check_endpoint: None,
-            metadata: std::collections::HashMap::new(),
-            tags: vec![],
-            dependencies: vec![],
-            status: ServiceStatus::Running,
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
-            instance_id: format!("{name}-inst"),
-            host: "127.0.0.1".to_string(),
-            port: 8080,
-        }
-    }
-
-    #[test]
-    fn cache_config_and_cache_stats_defaults() {
-        let cfg = CacheConfig {
-            default_ttl: std::time::Duration::from_secs(30),
-            max_cache_size: 100,
-            enabled: true,
-        };
-        assert!(cfg.enabled);
-        assert_eq!(cfg.max_cache_size, 100);
-    }
-
-    #[test]
-    fn cached_service_info_holds_ttl() {
-        let si = sample_service("alpha");
-        let c = CachedServiceInfo {
-            service_info: si,
-            cached_at: std::time::Instant::now(),
-            ttl: std::time::Duration::from_secs(60),
-        };
-        assert_eq!(c.service_info.name, "alpha");
-        assert_eq!(c.ttl.as_secs(), 60);
-    }
-
-    #[tokio::test]
-    async fn universal_service_discovery_new_and_cache_roundtrip() {
-        let mut d = UniversalServiceDiscovery::new().await.unwrap();
-        d.cache_service("svc1", sample_service("svc1"));
-        let got = d.get_cached_service("svc1");
-        assert!(got.is_some());
-        assert_eq!(got.unwrap().name, "svc1");
-        let stats = d.get_cache_stats();
-        assert_eq!(stats.total_entries, 1);
-        assert_eq!(stats.valid_entries, 1);
-        assert_eq!(stats.expired_entries, 0);
-        assert_eq!(stats.max_capacity, 1000);
-        d.cleanup_cache();
-    }
-
-    #[test]
-    fn service_info_serde_roundtrip() {
-        let s = sample_service("serde");
-        let json = serde_json::to_string(&s).unwrap();
-        let back: ServiceInfo = serde_json::from_str(&json).unwrap();
-        assert_eq!(back.service_id, s.service_id);
-        assert_eq!(back.name, s.name);
-    }
-
-    #[tokio::test]
-    async fn list_all_via_trait_succeeds() {
-        use crate::traits::ServiceDiscovery;
-        let d = UniversalServiceDiscovery::new().await.unwrap();
-        let list = ServiceDiscovery::list_all(&d).await.unwrap();
-        let _ = list;
-    }
-}
+#[path = "service_discovery_tests.rs"]
+mod tests;

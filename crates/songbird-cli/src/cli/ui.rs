@@ -9,7 +9,6 @@ use dialoguer::{Confirm, Input, Select, theme::ColorfulTheme};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::fmt::Display;
 use std::time::Duration;
-use terminal_size::{Height, Width, terminal_size};
 
 /// Create a styled progress bar with enhanced formatting
 #[must_use]
@@ -256,13 +255,13 @@ pub fn title(message: &str) -> ColoredString {
 /// Get terminal width safely
 #[must_use]
 pub fn terminal_width() -> usize {
-    terminal_size().map_or(80, |(Width(w), _)| usize::from(w))
+    terminal_size::terminal_size().map_or(80, |(w, _)| w.0 as usize)
 }
 
 /// Get terminal height safely
 #[must_use]
 pub fn terminal_height() -> usize {
-    terminal_size().map_or(24, |(_, Height(h))| usize::from(h))
+    terminal_size::terminal_size().map_or(24, |(_, h)| h.0 as usize)
 }
 
 /// Create a table-like output with enhanced formatting

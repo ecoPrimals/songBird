@@ -22,6 +22,13 @@
 
 use songbird_http_client::security_rpc_client::SecurityRpcClient;
 
+fn e2e_security_socket() -> String {
+    std::env::var("NEURAL_API_SOCKET")
+        .or_else(|_| std::env::var("BEARDOG_SOCKET"))
+        .or_else(|_| std::env::var("SECURITY_PROVIDER_SOCKET"))
+        .unwrap_or_else(|_| songbird_http_client::discover_neural_api_socket())
+}
+
 // ====================================================================
 // E2E TESTS - Full RPC Flow (marked `#[ignore = "..."]` - require Neural API)
 // ====================================================================
@@ -29,7 +36,7 @@ use songbird_http_client::security_rpc_client::SecurityRpcClient;
 #[tokio::test]
 #[ignore = "requires Neural API and security provider"]
 async fn test_e2e_tls_derive_application_secrets() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     // Test vectors (32 bytes each for ChaCha20)
     let pre_master_secret = vec![0u8; 32];
@@ -66,7 +73,7 @@ async fn test_e2e_tls_derive_application_secrets() {
 #[tokio::test]
 #[ignore = "requires Neural API and security provider"]
 async fn test_e2e_encrypt_decrypt_roundtrip() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     // Generate key and nonce
     let key = vec![0x42u8; 32]; // ChaCha20 key
@@ -97,7 +104,7 @@ async fn test_e2e_encrypt_decrypt_roundtrip() {
 #[tokio::test]
 #[ignore = "requires Neural API and security provider"]
 async fn test_e2e_generate_keypair() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     let result = client.generate_keypair().await;
     assert!(result.is_ok(), "Failed to generate keypair: {:?}", result.err());
@@ -116,7 +123,7 @@ async fn test_e2e_generate_keypair() {
 #[tokio::test]
 #[ignore = "requires Neural API and security provider"]
 async fn test_e2e_ecdh_derive() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     // Generate two keypairs
     let (_public_a, private_a) = client.generate_keypair().await.unwrap();
@@ -138,7 +145,7 @@ async fn test_e2e_ecdh_derive() {
 #[tokio::test]
 #[ignore = "requires Neural API and security provider"]
 async fn test_e2e_multiple_sequential_calls() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     // Make multiple calls to verify request ID increment and no interference
     for i in 0..10 {
@@ -152,7 +159,7 @@ async fn test_e2e_multiple_sequential_calls() {
 async fn test_e2e_concurrent_calls() {
     use tokio::task::JoinSet;
 
-    let client = std::sync::Arc::new(SecurityRpcClient::new("/tmp/neural-api-nat0.sock"));
+    let client = std::sync::Arc::new(SecurityRpcClient::new(e2e_security_socket()));
 
     let mut set = JoinSet::new();
 
@@ -176,7 +183,7 @@ async fn test_e2e_concurrent_calls() {
 #[tokio::test]
 #[ignore = "requires Neural API and security provider"]
 async fn test_e2e_large_plaintext() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     let key = vec![0x42u8; 32];
     let nonce = vec![0x01u8; 12];
@@ -201,7 +208,7 @@ async fn test_e2e_large_plaintext() {
 #[tokio::test]
 #[ignore = "requires Neural API and security provider"]
 async fn test_e2e_empty_plaintext() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     let key = vec![0x42u8; 32];
     let nonce = vec![0x01u8; 12];
@@ -226,7 +233,7 @@ async fn test_e2e_empty_plaintext() {
 #[tokio::test]
 #[ignore = "requires Neural API and security provider"]
 async fn test_e2e_decrypt_authentication_failure() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     let key = vec![0x42u8; 32];
     let nonce = vec![0x01u8; 12];
@@ -248,7 +255,7 @@ async fn test_e2e_decrypt_authentication_failure() {
 #[tokio::test]
 #[ignore = "requires Neural API and security provider"]
 async fn test_e2e_decrypt_wrong_aad() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     let key = vec![0x42u8; 32];
     let nonce = vec![0x01u8; 12];
@@ -269,9 +276,9 @@ async fn test_e2e_decrypt_wrong_aad() {
 // ====================================================================
 
 #[tokio::test]
-#[ignore = "Chaos E2E: requires Neural API + security provider at /tmp/neural-api-nat0.sock"]
+#[ignore = "Chaos E2E: requires Neural API + security provider (set BEARDOG_SOCKET or NEURAL_API_SOCKET)"]
 async fn test_chaos_e2e_rapid_fire_requests() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     // Make 100 requests as fast as possible
     for _ in 0..100 {
@@ -281,9 +288,9 @@ async fn test_chaos_e2e_rapid_fire_requests() {
 }
 
 #[tokio::test]
-#[ignore = "Chaos E2E: requires Neural API + security provider at /tmp/neural-api-nat0.sock"]
+#[ignore = "Chaos E2E: requires Neural API + security provider (set BEARDOG_SOCKET or NEURAL_API_SOCKET)"]
 async fn test_chaos_e2e_alternating_operations() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     let key = vec![0x42u8; 32];
     let nonce = vec![0x01u8; 12];
@@ -313,9 +320,9 @@ async fn test_chaos_e2e_alternating_operations() {
 }
 
 #[tokio::test]
-#[ignore = "Chaos E2E: requires Neural API + security provider at /tmp/neural-api-nat0.sock"]
+#[ignore = "Chaos E2E: requires Neural API + security provider (set BEARDOG_SOCKET or NEURAL_API_SOCKET)"]
 async fn test_chaos_e2e_varying_sizes() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     let key = vec![0x42u8; 32];
     let nonce = vec![0x01u8; 12];
@@ -353,7 +360,7 @@ async fn test_fault_e2e_empty_socket_path() {
 #[tokio::test]
 #[ignore = "requires Neural API"]
 async fn test_fault_e2e_short_ciphertext() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     let key = vec![0x42u8; 32];
     let nonce = vec![0x01u8; 12];
@@ -368,7 +375,7 @@ async fn test_fault_e2e_short_ciphertext() {
 #[tokio::test]
 #[ignore = "requires Neural API"]
 async fn test_fault_e2e_wrong_key_size() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     // Wrong key size (ChaCha20 needs 32 bytes)
     let wrong_key = vec![0x42u8; 16];
@@ -382,7 +389,7 @@ async fn test_fault_e2e_wrong_key_size() {
 #[tokio::test]
 #[ignore = "requires Neural API"]
 async fn test_fault_e2e_wrong_nonce_size() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     let key = vec![0x42u8; 32];
     // Wrong nonce size (ChaCha20 needs 12 bytes)
@@ -396,7 +403,7 @@ async fn test_fault_e2e_wrong_nonce_size() {
 #[tokio::test]
 #[ignore = "requires Neural API"]
 async fn test_fault_e2e_wrong_secret_size() {
-    let client = SecurityRpcClient::new("/tmp/neural-api-nat0.sock");
+    let client = SecurityRpcClient::new(e2e_security_socket());
 
     // Wrong sizes for TLS derivation (need 32 bytes each)
     let short_secret = vec![0u8; 16];

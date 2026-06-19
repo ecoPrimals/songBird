@@ -32,7 +32,7 @@ fn primal_capabilities_is_array_of_objects() {
 #[test]
 fn health_includes_uptime_and_services() {
     let v = health(42, 7);
-    assert_eq!(v["uptime_seconds"], 42);
+    assert_eq!(v["uptime_s"], 42);
     assert_eq!(v["services"], 7);
     assert_eq!(v["status"], "healthy");
 }
@@ -41,7 +41,7 @@ fn health_includes_uptime_and_services() {
 fn health_liveness_is_minimal() {
     let v = health_liveness();
     assert_eq!(v, serde_json::json!({ "status": "alive" }));
-    assert!(v.get("uptime_seconds").is_none());
+    assert!(v.get("uptime_s").is_none());
 }
 
 #[test]
@@ -216,7 +216,7 @@ fn identity_lists_ipc_methods_in_capabilities() {
 #[test]
 fn health_zero_uptime_and_zero_services() {
     let v = health(0, 0);
-    assert_eq!(v["uptime_seconds"], 0);
+    assert_eq!(v["uptime_s"], 0);
     assert_eq!(v["services"], 0);
     assert_eq!(v["primal"], "songbird");
 }
@@ -273,7 +273,7 @@ fn health_check_includes_primal_and_version() {
     assert_eq!(v["primal"], "songbird");
     assert!(v.get("version").is_some());
     assert!(v.get("subsystems").is_some());
-    assert!(v["uptime_seconds"].is_null());
+    assert!(v["uptime_s"].is_null());
 }
 
 #[test]

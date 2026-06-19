@@ -16,6 +16,7 @@ use songbird_types::TrustLevel;
 
 pub mod federated;
 pub mod full_trust;
+pub mod http_remote;
 pub mod limited;
 
 pub mod federated_btsp;
@@ -24,6 +25,7 @@ pub mod limited_btsp;
 
 pub use federated::FederatedConnection;
 pub use full_trust::FullTrustConnection;
+pub use http_remote::HttpRemoteConnection;
 pub use limited::LimitedConnection;
 
 pub use federated_btsp::FederatedBtspConnection;
@@ -52,8 +54,9 @@ pub trait PeerConnection: Send + Sync {
 /// Enum wrapping all connection types
 ///
 /// v3.18.0: Added BTSP variants for port-free, encrypted P2P communication
+/// v3.22.0: Added HttpRemote for LAN peers when BTSP/crypto is unavailable
 pub enum Connection {
-    // HTTPS connections (v3.0+)
+    // Local UDS connections (v3.0+)
     Limited(LimitedConnection),
     Federated(FederatedConnection),
     FullTrust(FullTrustConnection),
@@ -62,6 +65,9 @@ pub enum Connection {
     LimitedBtsp(LimitedBtspConnection),
     FederatedBtsp(FederatedBtspConnection),
     FullTrustBtsp(FullTrustBtspConnection),
+
+    // HTTP remote connections (v3.22.0) - Plain HTTP for LAN peers
+    HttpRemote(HttpRemoteConnection),
 }
 
 /// Dispatch macro — forwards a method call to the inner connection type.
@@ -74,6 +80,7 @@ macro_rules! dispatch {
             Self::LimitedBtsp(c) => c.$method($($arg),*),
             Self::FederatedBtsp(c) => c.$method($($arg),*),
             Self::FullTrustBtsp(c) => c.$method($($arg),*),
+            Self::HttpRemote(c) => c.$method($($arg),*),
         }
     };
 }
@@ -120,6 +127,7 @@ impl Connection {
             Self::LimitedBtsp(c) => c.call(operation, request).await,
             Self::FederatedBtsp(c) => c.call(operation, request).await,
             Self::FullTrustBtsp(c) => c.call(operation, request).await,
+            Self::HttpRemote(c) => c.call(operation, request).await,
         }
     }
 
@@ -134,6 +142,7 @@ impl Connection {
             Self::LimitedBtsp(c) => c.close().await,
             Self::FederatedBtsp(c) => c.close().await,
             Self::FullTrustBtsp(c) => c.close().await,
+            Self::HttpRemote(c) => c.close().await,
         }
     }
 }

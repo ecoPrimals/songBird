@@ -1,10 +1,10 @@
 # Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v0.2.1  
+**Version**: v0.2.1-wave113  
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: Jun 19, 2026
+**Last Updated**: June 19, 2026
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
@@ -15,27 +15,28 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across all 31 crates; zero `unsafe` blocks) |
 | Pure Rust | 100% — native QUIC engine with security provider crypto delegation; `rcgen` eliminated (pure Rust test cert gen via `ed25519-dalek` + DER); `ring-crypto` feature removed Wave 135 (SB-02 resolved) |
 | Crypto Delegation | Security provider via JSON-RPC IPC — TLS record layer, JWT, checkpoints, discovery, rendezvous all delegate via `CryptoProvider::call()`; graceful local fallback + `tracing::warn!` |
-| Runtime Discovery | All config: env → XDG → smart defaults; capability-based biomeos socket probing via `BIOMEOS_RUNTIME_SUBDIR` constant; **LD-08 socket auto-discovery** seeds `ipc.resolve` registry at startup and **self-heals every 30s** (Wave 139) by scanning `$XDG_RUNTIME_DIR/biomeos/*.sock` and probing with `identity.get` + `capabilities.list` (Wire Standard L3); netdev-based IP detection; all ports env-configurable; XDG-compliant socket paths; mDNS via `MDNS_MULTICAST_GROUP` constant; **DH-1 compliant** (Wave 60): zero `/tmp` writes — data→`$XDG_DATA_HOME/songbird`, cache→`$XDG_CACHE_HOME/songbird`, VPS→`/var/lib/songbird` |
+| Runtime Discovery | All config: env → XDG → smart defaults; capability-based biomeos socket probing via `BIOMEOS_RUNTIME_SUBDIR` constant; **LD-08 socket auto-discovery** seeds `ipc.resolve` registry at startup and **self-heals every 30s** (Wave 139) by scanning `$XDG_RUNTIME_DIR/biomeos/*.sock` and probing with `identity.get` + `capabilities.list` (Wire Standard L3); netdev-based IP detection; all ports env-configurable; XDG-compliant socket paths; mDNS via `MDNS_MULTICAST_GROUP` constant; **DH-1 compliant** (Wave 60+67): zero `/tmp` writes — security socket honors `--security-socket`/`BEARDOG_SOCKET`/`SECURITY_PROVIDER_SOCKET` → XDG → `/var/run/biomeos/`; data→`$XDG_DATA_HOME/songbird`, cache→`$XDG_CACHE_HOME/songbird`, VPS→`/var/lib/songbird` |
 | Production panics | Zero `panic!()` / `todo!()` in production; 2 provably-unreachable `unreachable!()` in QUIC VarInt (2-bit prefix exhaustive match, documented) |
 | Production `.unwrap()` | Zero unguarded — `.unwrap()` in production only under `#[expect(clippy::unwrap_used, reason = "...")]` for provably infallible operations (e.g. `write!` to `String`); all others in `#[cfg(test)]` or doc examples |
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[allow(reason)]` / `#[expect(reason)]` throughout — Wave 58: 146 item-level suppressions evolved to `#[expect(clippy::...)]` (warns if lint stops firing); module-level `unwrap_used`/`expect_used` blanket suppressions remain `#[allow]` (correct for module scope); Wave 149: blanket `#![allow(clippy::all, pedantic, nursery)]` removed from 11 files; zero reasonless suppressions, zero blanket suppressions remain |
-| Concurrent Tests | Injectable env via `songbird-process-env` overlay (all ~48 production env sites migrated Wave 58); all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
-| Tests | 8,226 lib passed, 0 failures, 23 ignored |
+| Concurrent Tests | Injectable env via `songbird-process-env` overlay (all production env sites migrated — zero `std::env` in production); all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
+| Tests | 8,929 lib tests passed, 0 failures, 0 flaky (Wave 113; June 13, 2026) |
 | Line Coverage | **73.41%** (`llvm-cov --workspace --lib`, Apr 27 2026; target 90%; Wave 53: +74 tests across pure-logic modules) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all dispatch handlers |
-| JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (56+ methods, 34 domain sub-enums including `Btsp`, `Lifecycle` and `Inference`) — zero string matching in dispatch; `birdsong.schema` introspection; `normalize_json_rpc_method_name()` absorbs `discovery.find_by_capability`, `net.discovery.find_by_capability`, `model.*`, `ai.*` aliases; Wave 60: `mesh.discover_remotes`, `mesh.mirror`, `mesh.publish` |
+| JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (58+ methods, 34 domain sub-enums including `Btsp`, `Lifecycle` and `Inference`) — zero string matching in dispatch; `birdsong.schema` introspection; `normalize_json_rpc_method_name()` absorbs `discovery.find_by_capability`, `net.discovery.find_by_capability`, `model.*`, `ai.*` aliases; Wave 60: `mesh.discover_remotes`, `mesh.mirror`, `mesh.publish`; Wave 70: `mesh.probe_latency`; Wave 74: `ipc.relay_stats`; Wave 75: `mesh.capabilities_announce` |
 | Clippy Pedantic | All 31 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets --all-features`; May 27 verified) |
 | Build | Clean (zero errors, zero warnings) |
 | Formatting | Clean (`cargo fmt --check`; May 27 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >800 lines | **0** — largest module `multi_tier_coordinator/mod.rs` 385L (refactored from 800L monolith Jun 2026); `dispatch/` module 111L max (refactored from 754L); Wave 51: `ipc_registry.rs` (906→614L via `remote_dispatch.rs` extraction) |
+| Files >800 lines | **0** — Wave 111: `connection.rs` (815→472L via `session_protocol.rs` SRP extraction), `hardcoded_elimination.rs` (872→689L via `hardcoded_replace.rs` extraction); Wave 76: `mesh_handler/mod.rs` (1004→783L via `capability_propagation.rs` extraction); Wave 74: `multi_tier_coordinator.rs` (799→655L); Wave 209: `state.rs` (877→459L) |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 33 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, lifecycle, inference, etc.) |
 | Wire Standard L3 | `capabilities.list` returns L3 envelope: `{primal, version, methods, provided_capabilities, consumed_capabilities, protocol, transport}`; `identity.get` returns `{primal, version, domain, license}`; `capabilities.methods` token→method map |
-| BTSP Phase 2 | ClientHello/ChallengeResponse handshake client + server; `perform_server_handshake` (length-prefix) + `perform_server_handshake_ndjson` (JSON-line) on UDS accept when `FAMILY_ID` set; first-line auto-detect: `"protocol":"btsp"` → NDJSON BTSP, plain `{` → JSON-RPC, other → binary BTSP; BIOMEOS_INSECURE guard; domain-based socket naming (`network.sock`); domain symlink `network.sock` → `songbird.sock` |
+| riboCipher (Stream 7) | Transport signal detection in all 3 accept loops (`pure_rust_server`, `bin_interface`, `http_server`). Signal bytes: `0xEC` (clear), `0xED` (mito/federation), `0xEE` (nuclear). Deterministic routing before protocol detection. Deprecation: WARN (111-112) → ERROR (112) → REJECT (113) → REMOVE (114) |
+| BTSP Phase 2 | ClientHello/ChallengeResponse handshake client + server; `perform_server_handshake` (length-prefix) + `perform_server_handshake_ndjson` (JSON-line) on UDS accept when `FAMILY_ID` set; first-line auto-detect: riboCipher signal → tier routing, `"protocol":"btsp"` → NDJSON BTSP, plain `{` → JSON-RPC, other → binary BTSP; BIOMEOS_INSECURE guard; domain-based socket naming (`network.sock`); domain symlink `network.sock` → `songbird.sock` |
 | BTSP Phase 3 (FULL) | `btsp.negotiate` server-side handler — ChaCha20-Poly1305 encrypted framing post-handshake; HKDF-SHA256 session key derivation (directional c2s/s2c keys); graceful NULL cipher fallback; `btsp.server.export_keys` delegation to security provider; length-prefixed encrypted frames `[4B len][12B nonce][ciphertext + Poly1305 tag]`; 16 MiB max frame; `BondingPolicy` cipher floor enforcement; negotiate dispatch wired on all 3 transport paths (NDJSON session, binary-framed BTSP, bin_interface) |
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
 | Lint Inheritance | 30/30 crates inherit workspace lints; 2 with justified custom tables |

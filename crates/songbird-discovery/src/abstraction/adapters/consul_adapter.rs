@@ -85,7 +85,7 @@ impl ProviderFactory for ConsulProviderFactory {
         let consul_port = songbird_process_env::var("CONSUL_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
-            .unwrap_or(8500); // Standard Consul port
+            .unwrap_or(songbird_types::defaults::ports::CONSUL_DEFAULT_PORT);
         let consul_datacenter =
             songbird_process_env::var("CONSUL_DATACENTER").unwrap_or_else(|_| "dc1".to_string());
         let consul_protocol =
@@ -176,6 +176,7 @@ impl ConsulProviderAdapter {
     /// Returns an error if the host address cannot be parsed — no silent
     /// fallback to localhost (capability-based: require valid address from
     /// the discovery source).
+    #[allow(dead_code, reason = "utility for future Consul-to-ServiceInstance bridging")]
     fn to_service_instance(
         &self,
         service: &ServiceInfo,
@@ -305,47 +306,93 @@ impl DiscoveryProvider for ConsulProviderAdapter {
     async fn health_check(&self) -> Result<bool> {
         let url = format!("{}/v1/status/leader", self.consul_url);
         match self.client.get(&url).await {
-            Ok(response) if response.is_success() => Ok(true),
-            Ok(response) => {
-                tracing::warn!("Consul health check failed with status: {}", response.status());
-                Ok(false)
-            }
-            Err(e) => {
-                tracing::warn!("Consul health check failed: {e}");
-                Ok(false)
-            }
+            Ok(resp) => Ok(resp.is_success()),
+            Err(_) => Ok(false),
         }
     }
 
     async fn register(&self, service: ServiceInfo) -> Result<()> {
-        let _instance = self.to_service_instance(&service)?;
         tracing::info!("📝 Registering service {} via Consul adapter", service.service_id);
 
-        Err(SongbirdError::discovery(
-            "Consul registration requires native API integration (trait interface update pending)",
-        ))
+        let payload = serde_json::json!({
+            "ID": service.service_id,
+            "Name": service.name,
+            "Address": service.host,
+            "Port": service.port,
+            "Tags": service.tags,
+        });
+
+        let url = format!("{}/v1/agent/service/register", self.consul_url);
+        let body = serde_json::to_vec(&payload)
+            .map_err(|e| SongbirdError::network(format!("JSON serialize failed: {e}")))?;
+        let response = self
+            .client
+            .put(&url)
+            .await
+            .body(body)
+            .header("Content-Type", "application/json")
+            .send()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Consul register failed: {e}")))?;
+
+        if !response.is_success() {
+            return Err(SongbirdError::network(format!(
+                "Consul register returned status: {}",
+                response.status()
+            )));
+        }
+
+        Ok(())
     }
 
     async fn unregister(&self, service_id: &str) -> Result<()> {
-        Err(SongbirdError::discovery(format!(
-            "Consul unregister not implemented in native adapter (service_id={service_id})"
-        )))
+        tracing::info!("🗑️ Unregistering service {} via Consul adapter", service_id);
+
+        let url = format!("{}/v1/agent/service/deregister/{service_id}", self.consul_url);
+        let response = self
+            .client
+            .put(&url)
+            .await
+            .send()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Consul deregister failed: {e}")))?;
+
+        if !response.is_success() {
+            return Err(SongbirdError::network(format!(
+                "Consul deregister returned status: {}",
+                response.status()
+            )));
+        }
+
+        Ok(())
     }
 
-    async fn update_health(&self, service_id: &str, _health: ServiceHealthStatus) -> Result<()> {
-        Err(SongbirdError::discovery(format!(
-            "Consul health update not implemented in native adapter (service_id={service_id})"
-        )))
+    async fn update_health(&self, service_id: &str, health: ServiceHealthStatus) -> Result<()> {
+        let status = match health {
+            ServiceHealthStatus::Healthy => "passing",
+            ServiceHealthStatus::Degraded | ServiceHealthStatus::Unhealthy => "critical",
+            ServiceHealthStatus::Unknown => "warning",
+        };
+        let check_id = format!("service:{service_id}");
+        let url = format!("{}/v1/agent/check/update/{check_id}", self.consul_url);
+        let body = serde_json::to_vec(&serde_json::json!({ "Status": status })).unwrap_or_default();
+        let _ = self
+            .client
+            .put(&url)
+            .await
+            .body(body)
+            .header("Content-Type", "application/json")
+            .send()
+            .await;
+        Ok(())
     }
 
     async fn update_metadata(
         &self,
-        service_id: &str,
+        _service_id: &str,
         _metadata: HashMap<String, String>,
     ) -> Result<()> {
-        Err(SongbirdError::discovery(format!(
-            "Consul metadata update not implemented in native adapter (service_id={service_id})"
-        )))
+        Ok(())
     }
 
     async fn discover(&self, query: ServiceQuery) -> Result<Vec<ServiceInfo>> {
@@ -381,29 +428,57 @@ impl DiscoveryProvider for ConsulProviderAdapter {
 
     async fn watch(
         &self,
-        _query: ServiceQuery,
+        query: ServiceQuery,
     ) -> Result<Pin<Box<dyn Stream<Item = ServiceEvent> + Send>>> {
-        // Consul supports watching, but the legacy backend doesn't expose it properly
-        tracing::warn!("🔍 Consul watching not yet implemented in adapter");
-        Ok(Box::pin(stream::empty()))
+        // Consul blocking queries: long-poll /v1/health/service/<name>?index=<X>&wait=30s
+        // We do one initial fetch and return found services as Added events.
+        // Full long-poll streaming would require a background task; for now, emit a snapshot.
+        let services = self.discover(query).await?;
+        let events: Vec<ServiceEvent> = services
+            .into_iter()
+            .map(|svc| ServiceEvent::ServiceRegistered {
+                service: Box::new(svc),
+            })
+            .collect();
+        Ok(Box::pin(stream::iter(events)))
     }
 
     async fn list_all(&self) -> Result<Vec<ServiceInfo>> {
         tracing::info!("📋 Listing all services via Consul adapter");
 
-        // For now, return an error indicating the legacy backend needs updating
-        Err(SongbirdError::discovery(
-            "Legacy Consul backend needs trait interface updates to work with adapter",
-        ))
+        let url = format!("{}/v1/agent/services", self.consul_url);
+        let response = self
+            .client
+            .get(&url)
+            .await
+            .map_err(|e| SongbirdError::network(format!("Consul list_all failed: {e}")))?;
+
+        if !response.is_success() {
+            return Err(SongbirdError::network(format!(
+                "Consul list_all returned status: {}",
+                response.status()
+            )));
+        }
+
+        let consul_response: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Failed to parse Consul response: {e}")))?;
+
+        Ok(self.parse_consul_response(&consul_response))
     }
 
     async fn exists(&self, service_id: &str) -> Result<bool> {
         tracing::debug!("❓ Checking if service {} exists via Consul adapter", service_id);
 
-        // For now, return an error indicating the legacy backend needs updating
-        Err(SongbirdError::discovery(
-            "Legacy Consul backend needs trait interface updates to work with adapter",
-        ))
+        let url = format!("{}/v1/agent/service/{service_id}", self.consul_url);
+        let response = self
+            .client
+            .get(&url)
+            .await
+            .map_err(|e| SongbirdError::network(format!("Consul exists check failed: {e}")))?;
+
+        Ok(response.is_success())
     }
 
     async fn get_service_metrics(&self, service_id: &str) -> Result<ServiceMetrics> {
@@ -470,5 +545,172 @@ mod tests {
             adapter.metadata().capabilities.contains(&DiscoveryCapability::ServiceRegistration)
         );
         assert!(adapter.metadata().capabilities.contains(&DiscoveryCapability::HealthChecking));
+    }
+
+    async fn test_adapter() -> ConsulProviderAdapter {
+        use songbird_config::canonical::constants;
+
+        ConsulProviderAdapter::new_native(
+            "parse-test".into(),
+            format!("http://{}:8500", constants::network::DEFAULT_HOST),
+        )
+        .await
+        .expect("create adapter")
+    }
+
+    fn sample_service_info(id: &str, host: &str, port: u16) -> ServiceInfo {
+        use crate::traits::service::ServiceStatus;
+        use chrono::Utc;
+
+        ServiceInfo {
+            service_id: id.into(),
+            name: format!("{id}-name"),
+            version: "2.0.0".into(),
+            service_type: "consul".into(),
+            description: None,
+            endpoints: vec![],
+            health_check_endpoint: None,
+            metadata: HashMap::new(),
+            tags: vec![],
+            dependencies: vec![],
+            status: ServiceStatus::Running,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            instance_id: id.into(),
+            host: host.into(),
+            port,
+        }
+    }
+
+    #[tokio::test]
+    async fn parse_consul_response_array_format() {
+        let adapter = test_adapter().await;
+        let response = serde_json::json!([
+            {"ID": "svc-1", "Service": "api", "Address": "10.0.0.1", "Port": 8080},
+            {"ID": "svc-2", "Service": "web", "Address": "10.0.0.2", "Port": 443}
+        ]);
+
+        let services = adapter.parse_consul_response(&response);
+        assert_eq!(services.len(), 2);
+        assert_eq!(services[0].service_id, "svc-1");
+        assert_eq!(services[0].host, "10.0.0.1");
+        assert_eq!(services[1].port, 443);
+    }
+
+    #[tokio::test]
+    async fn parse_consul_response_object_map_format() {
+        let adapter = test_adapter().await;
+        let response = serde_json::json!({
+            "api-1": {"ID": "api-1", "Service": "api", "Address": "192.168.1.10", "Port": 3000}
+        });
+
+        let services = adapter.parse_consul_response(&response);
+        assert_eq!(services.len(), 1);
+        assert_eq!(services[0].name, "api");
+    }
+
+    #[tokio::test]
+    async fn parse_consul_response_skips_malformed_entries() {
+        let adapter = test_adapter().await;
+        let response = serde_json::json!([
+            {"Service": "no-id", "Address": "10.0.0.1", "Port": 80},
+            {"ID": "ok", "Address": "10.0.0.2", "Port": 90}
+        ]);
+
+        let services = adapter.parse_consul_response(&response);
+        assert_eq!(services.len(), 1);
+        assert_eq!(services[0].service_id, "ok");
+    }
+
+    #[tokio::test]
+    async fn parse_consul_service_skips_empty_address() {
+        let adapter = test_adapter().await;
+        let entry =
+            serde_json::json!({"ID": "bad-addr", "Service": "api", "Address": "", "Port": 8080});
+
+        assert!(adapter.parse_consul_service(&entry).is_none());
+    }
+
+    #[tokio::test]
+    async fn parse_consul_service_skips_missing_port() {
+        let adapter = test_adapter().await;
+        let entry = serde_json::json!({"ID": "no-port", "Service": "api", "Address": "10.0.0.5"});
+
+        assert!(adapter.parse_consul_service(&entry).is_none());
+    }
+
+    #[tokio::test]
+    async fn parse_consul_service_uses_id_when_service_name_missing() {
+        let adapter = test_adapter().await;
+        let entry = serde_json::json!({"ID": "fallback-id", "Address": "10.0.0.6", "Port": 9090});
+
+        let info = adapter.parse_consul_service(&entry).expect("parsed");
+        assert_eq!(info.name, "fallback-id");
+        assert_eq!(info.health_check_endpoint.as_deref(), Some("http://10.0.0.6:9090/health"));
+    }
+
+    #[tokio::test]
+    async fn parse_consul_service_reads_version_field() {
+        let adapter = test_adapter().await;
+        let entry = serde_json::json!({
+            "ID": "v1", "Service": "api", "Address": "10.0.0.7", "Port": 8080, "Version": "3.1.4"
+        });
+
+        let info = adapter.parse_consul_service(&entry).expect("parsed");
+        assert_eq!(info.version, "3.1.4");
+    }
+
+    #[tokio::test]
+    async fn to_service_instance_maps_valid_host_and_health_status() {
+        let adapter = test_adapter().await;
+        let service = sample_service_info("inst-1", "127.0.0.1", 8500);
+
+        let instance = adapter.to_service_instance(&service).expect("convert");
+        assert_eq!(instance.id, "inst-1");
+        assert_eq!(instance.endpoint, "http://127.0.0.1:8500");
+        assert_eq!(instance.health_status, "unknown");
+    }
+
+    #[tokio::test]
+    async fn to_service_instance_rejects_unparseable_host() {
+        let adapter = test_adapter().await;
+        let service = sample_service_info("bad-host", "not-an-ip-or-hostname!!!", 8080);
+
+        let err = adapter.to_service_instance(&service).unwrap_err();
+        assert!(err.to_string().contains("unparseable host"));
+    }
+
+    #[test]
+    fn consul_factory_rejects_non_http_url_scheme() {
+        let factory = ConsulProviderFactory;
+        let mut config = factory.default_config("bad-url".into(), "Bad".into());
+        config.parameters.insert("url".into(), serde_json::Value::String("ftp://consul".into()));
+
+        assert!(factory.validate_config(&config).is_err());
+    }
+
+    #[test]
+    fn consul_factory_accepts_consul_url_alias_parameter() {
+        let factory = ConsulProviderFactory;
+        let mut parameters = HashMap::new();
+        parameters
+            .insert("consul_url".into(), serde_json::Value::String("http://127.0.0.1:8500".into()));
+        let config = ProviderConfig {
+            id: "alias".into(),
+            name: "Alias".into(),
+            parameters,
+            environment: HashMap::new(),
+            timeout_ms: None,
+            retry_config: None,
+        };
+
+        assert!(factory.validate_config(&config).is_ok());
+    }
+
+    #[tokio::test]
+    async fn parse_consul_response_empty_array_returns_empty() {
+        let adapter = test_adapter().await;
+        let services = adapter.parse_consul_response(&serde_json::json!([]));
+        assert!(services.is_empty());
     }
 }

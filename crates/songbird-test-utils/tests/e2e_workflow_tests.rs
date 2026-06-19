@@ -88,7 +88,7 @@ mod e2e_workflow_tests {
         let service_name = "test-service";
         let _service_endpoint = &format!(
             "http://{}:{}",
-            songbird_config::canonical::constants::network::DEFAULT_HOST,
+            songbird_config::canonical::constants::network::default_host(),
             songbird_config::canonical::constants::network::default_orchestrator_port()
         );
 

@@ -361,33 +361,30 @@ impl AccessControl {
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
+    use crate::test_sync_env::{VarGuard, env_lock};
 
     #[tokio::test]
     async fn test_anonymous_access() {
-        let ac = AccessControl::new(AuthMode::Standalone);
+        let _serial = env_lock();
+        let _jwt = VarGuard::set("SONGBIRD_JWT_SECRET", "test-access-control-secret");
 
+        let ac = AccessControl::new(AuthMode::Standalone);
         let token = AccessToken::anonymous();
 
-        // Anonymous can view public info
         assert!(ac.check_access(&token, &Capability::ViewPublicInfo).await.unwrap());
-
-        // Anonymous cannot submit tasks
         assert!(!ac.check_access(&token, &Capability::SubmitTask).await.unwrap());
     }
 
     #[tokio::test]
     async fn test_student_access() {
-        let ac = AccessControl::new(AuthMode::Standalone);
+        let _serial = env_lock();
+        let _jwt = VarGuard::set("SONGBIRD_JWT_SECRET", "test-access-control-secret");
 
+        let ac = AccessControl::new(AuthMode::Standalone);
         let token = AccessToken::student("student-123", "CSE-847");
 
-        // Student can view educational info
         assert!(ac.check_access(&token, &Capability::ViewEducationalInfo).await.unwrap());
-
-        // Student can submit tasks
         assert!(ac.check_access(&token, &Capability::SubmitTask).await.unwrap());
-
-        // Student cannot view infrastructure
         assert!(!ac.check_access(&token, &Capability::ViewInfrastructureInfo).await.unwrap());
     }
 

@@ -483,7 +483,7 @@ async fn test_concurrent_requests() {
     let futures =
         vec![adapter.collect_metrics(), adapter.collect_metrics(), adapter.collect_metrics()];
 
-    let results = futures::future::join_all(futures).await;
+    let results = futures_util::future::join_all(futures).await;
 
     // All should succeed
     for result in results {

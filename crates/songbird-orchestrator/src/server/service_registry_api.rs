@@ -178,9 +178,11 @@ async fn query_by_capability(
 
 /// GET /api/v1/info
 async fn get_orchestrator_info() -> Json<serde_json::Value> {
-    // ✅ MIGRATED: Use environment-based configuration
     let base_url = songbird_process_env::var("SONGBIRD_BASE_URL").unwrap_or_else(|_| {
-        let port = songbird_config::defaults::ports::orchestrator_port();
+        let port = songbird_process_env::var("SONGBIRD_PORT")
+            .ok()
+            .and_then(|p| p.parse::<u16>().ok())
+            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
         format!("https://[::]:{port}")
     });
 

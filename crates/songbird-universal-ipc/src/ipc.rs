@@ -47,7 +47,7 @@ impl UniversalIPC {
     /// Register this primal
     ///
     /// # Arguments
-    /// * `name` - Primal or provider registration name (e.g. security provider id; legacy: `"beardog"`)
+    /// * `name` - Primal or provider registration name (capability-based, e.g. `"security"`)
     /// * `capabilities` - List of capabilities this primal provides
     ///
     /// # Returns

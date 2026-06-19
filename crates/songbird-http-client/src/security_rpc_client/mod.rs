@@ -25,14 +25,14 @@
 //! ```rust,ignore
 //! use songbird_http_client::SecurityRpcClient;
 //!
-//! // Production: Use Neural API mode (TRUE PRIMAL pattern)
-//! let client = SecurityRpcClient::new_neural_api("/tmp/neural-api.sock");
+//! // From environment (recommended — honors --security-socket / BEARDOG_SOCKET)
+//! let client = SecurityRpcClient::from_env();
+//!
+//! // Explicit Neural API mode
+//! let client = SecurityRpcClient::new_neural_api("/run/user/1000/biomeos/neural-api.sock");
 //!
 //! // Testing: Use Direct mode
-//! let client = SecurityRpcClient::new_direct("/tmp/security-provider.sock");
-//!
-//! // From environment (recommended)
-//! let client = SecurityRpcClient::from_env();
+//! let client = SecurityRpcClient::new_direct("/run/user/1000/biomeos/security.sock");
 //!
 //! // Generate keypair
 //! let (public_key, private_key) = client.generate_keypair().await?;
@@ -63,7 +63,7 @@ pub use types::TlsSecrets;
 //   Set: SECURITY_PROVIDER_MODE=direct (or BEARDOG_MODE=direct), SECURITY_PROVIDER_SOCKET or BEARDOG_SOCKET
 //
 // - Neural API mode: Route through Neural API (production)
-//   Set: SECURITY_PROVIDER_MODE=neural (or BEARDOG_MODE=neural), NEURAL_API_SOCKET=/tmp/neural-api.sock
+//   Set: SECURITY_PROVIDER_MODE=neural (or BEARDOG_MODE=neural), NEURAL_API_SOCKET or BEARDOG_SOCKET
 //
 // The client automatically uses semantic method names when in Neural API mode.
 // See `SecurityRpcClient::from_env()` for automatic mode detection.

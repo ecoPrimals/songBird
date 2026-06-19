@@ -83,14 +83,16 @@ pub async fn discover_security_endpoint(
 ) -> Result<String> {
     // Priority 1: NEW - Generic capability env var (v3.15.0)
     if let Ok(endpoint) = songbird_process_env::var("SONGBIRD_SECURITY_PROVIDER") {
-        info!("🔐 Security provider: {} (via SONGBIRD_SECURITY_PROVIDER)", endpoint);
-        return Ok(endpoint);
+        let resolved = resolve_bare_name_to_endpoint(&endpoint);
+        info!("🔐 Security provider: {} (via SONGBIRD_SECURITY_PROVIDER)", resolved);
+        return Ok(resolved);
     }
 
     // Priority 2: EXISTING - Generic security endpoint
     if let Ok(endpoint) = songbird_process_env::var("SECURITY_ENDPOINT") {
-        info!("🔐 Security provider: {} (via SECURITY_ENDPOINT)", endpoint);
-        return Ok(endpoint);
+        let resolved = resolve_bare_name_to_endpoint(&endpoint);
+        info!("🔐 Security provider: {} (via SECURITY_ENDPOINT)", resolved);
+        return Ok(resolved);
     }
 
     // Priority 3: FALLBACK - Discover via Universal Adapter
@@ -111,11 +113,18 @@ pub async fn discover_security_endpoint(
         }
     }
 
+    // Priority 4: UDS socket auto-discovery from XDG runtime dir
+    if let Some(socket_path) = discover_security_socket_from_xdg() {
+        info!("🔐 Security provider discovered via XDG runtime: {}", socket_path);
+        return Ok(socket_path);
+    }
+
     // Priority 5: Legacy fallback (for backward compat)
     if let Ok(endpoint) = songbird_process_env::var("CAPABILITY_SECURITY_ENDPOINT") {
         warn!("⚠️  Using legacy CAPABILITY_SECURITY_ENDPOINT");
         warn!("   Please use SONGBIRD_SECURITY_PROVIDER instead");
-        return Ok(endpoint);
+        let resolved = resolve_bare_name_to_endpoint(&endpoint);
+        return Ok(resolved);
     }
 
     Err(anyhow::anyhow!(
@@ -125,6 +134,103 @@ pub async fn discover_security_endpoint(
          - SECURITY_ENDPOINT (alternative - generic)\n\
          - Or configure Universal Adapter for automatic discovery"
     ))
+}
+
+/// Resolve a bare primal name or incomplete endpoint to a proper transport URL.
+///
+/// If the endpoint already has a scheme (http://, https://, unix://, tarpc://),
+/// it's returned as-is. Otherwise, it's treated as a primal name and resolved
+/// to the UDS socket path under XDG_RUNTIME_DIR/biomeos/.
+fn resolve_bare_name_to_endpoint(endpoint: &str) -> String {
+    if endpoint.contains("://") || endpoint.starts_with('/') {
+        return endpoint.to_string();
+    }
+
+    // Bare name (e.g. legacy primal name) — resolve to UDS socket path
+    let socket_name = if endpoint.contains('.') {
+        endpoint.to_string()
+    } else {
+        format!("{endpoint}.sock")
+    };
+
+    if let Ok(runtime_dir) = songbird_process_env::var("XDG_RUNTIME_DIR") {
+        let socket_path = std::path::PathBuf::from(&runtime_dir)
+            .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR)
+            .join(&socket_name);
+        if socket_path.exists() {
+            return format!("unix://{}", socket_path.display());
+        }
+        // Try with wildcard pattern (beardog-*.sock)
+        let dir = std::path::PathBuf::from(&runtime_dir)
+            .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR);
+        if let Ok(entries) = std::fs::read_dir(&dir) {
+            for entry in entries.flatten() {
+                let name = entry.file_name();
+                let name_str = name.to_string_lossy();
+                if name_str.starts_with(endpoint) && name_str.ends_with(".sock") {
+                    return format!("unix://{}", entry.path().display());
+                }
+            }
+        }
+    }
+
+    // System-wide fallback
+    let system_path =
+        std::path::PathBuf::from(songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR)
+            .join(&socket_name);
+    if system_path.exists() {
+        return format!("unix://{}", system_path.display());
+    }
+
+    warn!(
+        "Bare endpoint '{}' could not be resolved to a socket path; \
+         passing through (will likely fail)",
+        endpoint
+    );
+    endpoint.to_string()
+}
+
+/// Discover security provider socket from XDG runtime directory.
+///
+/// Scans `$XDG_RUNTIME_DIR/biomeos/` using capability-based socket names.
+/// Falls back to legacy `beardog.sock` if capability names not found.
+fn discover_security_socket_from_xdg() -> Option<String> {
+    let runtime_dir = songbird_process_env::var("XDG_RUNTIME_DIR").ok()?;
+    let biomeos_dir = std::path::PathBuf::from(&runtime_dir)
+        .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR);
+
+    if !biomeos_dir.is_dir() {
+        return None;
+    }
+
+    // Capability-first discovery (no primal identity knowledge)
+    for candidate in songbird_types::defaults::paths::CRYPTO_PROVIDER_SOCKET_FILENAMES_XDG {
+        let path = biomeos_dir.join(candidate);
+        if path.exists() {
+            return Some(format!("unix://{}", path.display()));
+        }
+    }
+
+    // Family-scoped security socket (capability-named)
+    if let Ok(entries) = std::fs::read_dir(&biomeos_dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if name_str.starts_with("security") && name_str.ends_with(".sock") {
+                return Some(format!("unix://{}", entry.path().display()));
+            }
+        }
+    }
+
+    // Legacy fallback (deprecated — will be removed Wave 114)
+    #[allow(deprecated, reason = "backward-compat: legacy socket name still on disk")]
+    let legacy = biomeos_dir.join(songbird_types::defaults::paths::LEGACY_SECURITY_SOCKET_FILENAME);
+    if legacy.exists() {
+        warn!("Found legacy 'beardog.sock' — migrate to capability-based 'security.sock'");
+        return Some(format!("unix://{}", legacy.display()));
+    }
+
+    None
 }
 
 /// Setup security integration using capability-based discovery

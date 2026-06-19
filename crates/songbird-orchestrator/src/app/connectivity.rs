@@ -104,7 +104,10 @@ pub(crate) async fn verify_external_connectivity() -> Result<()> {
     warn!("Quick Fixes:");
     warn!("  1. Allow port {} in firewall:", port);
     warn!("     sudo iptables -I INPUT -p tcp --dport {} -j ACCEPT", port);
-    warn!("     sudo iptables -I INPUT -p udp --dport 2300 -j ACCEPT");
+    warn!(
+        "     sudo iptables -I INPUT -p udp --dport {} -j ACCEPT",
+        songbird_types::defaults::ports::DEFAULT_BROADCAST_DISCOVERY_PORT
+    );
     warn!("");
     warn!("  2. Save iptables rules (persist across reboots):");
     warn!("     sudo iptables-save > /etc/iptables/rules.v4");

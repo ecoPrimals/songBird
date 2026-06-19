@@ -719,4 +719,93 @@ mod tests {
         let state = coord.state();
         assert!(state.nodes.read().await.contains_key("id-peer"));
     }
+
+    #[tokio::test]
+    async fn join_federation_errors_without_self_registration() {
+        let coord = FederationCoordinator::new().await.unwrap();
+        let config = FederationConfig {
+            enabled: true,
+            self_registration: None,
+            ..FederationConfig::default()
+        };
+
+        let result = coord.join_federation("192.168.1.1:8080", &config).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        let err_str = err.to_string();
+        assert!(
+            err_str.contains("self registration"),
+            "Expected 'self registration' in error, got: {err_str}"
+        );
+    }
+
+    #[tokio::test]
+    async fn ingest_peers_skips_self_in_nodes_array() {
+        let coord = FederationCoordinator::new().await.unwrap();
+        let self_reg = sample_registration("self-id", "Me");
+        let peer = sample_registration("other-id", "Other");
+
+        let v = serde_json::json!({
+            "nodes": [
+                serde_json::to_value(&self_reg).unwrap(),
+                serde_json::to_value(&peer).unwrap(),
+            ],
+        });
+        coord.ingest_peers_from_join_response(&v, &self_reg).await;
+
+        let state = coord.state();
+        let nodes = state.nodes.read().await;
+        assert!(!nodes.contains_key("self-id"), "should skip self");
+        assert!(nodes.contains_key("other-id"), "should ingest peer");
+    }
+
+    #[tokio::test]
+    async fn ingest_peers_handles_malformed_entries_gracefully() {
+        let coord = FederationCoordinator::new().await.unwrap();
+        let self_reg = sample_registration("self-x", "Self");
+        let good_peer = sample_registration("good-peer", "Good");
+
+        let v = serde_json::json!({
+            "nodes": [
+                { "invalid": "not a NodeRegistration" },
+                serde_json::to_value(&good_peer).unwrap(),
+                "just a string",
+            ],
+        });
+        coord.ingest_peers_from_join_response(&v, &self_reg).await;
+
+        let state = coord.state();
+        let nodes = state.nodes.read().await;
+        assert!(
+            nodes.contains_key("good-peer"),
+            "valid peer should still be registered despite malformed siblings"
+        );
+    }
+
+    #[tokio::test]
+    async fn ingest_peers_empty_response_no_panic() {
+        let coord = FederationCoordinator::new().await.unwrap();
+        let self_reg = sample_registration("s", "S");
+
+        coord.ingest_peers_from_join_response(&serde_json::json!({}), &self_reg).await;
+        coord.ingest_peers_from_join_response(&serde_json::json!(null), &self_reg).await;
+        coord
+            .ingest_peers_from_join_response(&serde_json::json!({"nodes": []}), &self_reg)
+            .await;
+        coord
+            .ingest_peers_from_join_response(&serde_json::json!({"peers": []}), &self_reg)
+            .await;
+
+        let state = coord.state();
+        assert_eq!(state.nodes.read().await.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn discovery_mode_enum_serde_all_variants() {
+        for mode in [DiscoveryMode::Plaintext, DiscoveryMode::BirdSong] {
+            let json = serde_json::to_string(&mode).unwrap();
+            let back: DiscoveryMode = serde_json::from_str(&json).unwrap();
+            assert_eq!(back, mode);
+        }
+    }
 }

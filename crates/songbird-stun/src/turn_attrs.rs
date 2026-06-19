@@ -277,4 +277,114 @@ mod tests {
         assert_eq!(MessageType::from_u16(0x0118).unwrap(), MessageType::CreatePermissionError);
         assert_eq!(MessageType::from_u16(0x0119).unwrap(), MessageType::ChannelBindError);
     }
+
+    fn parse_error_code(attr: &StunAttribute) -> Option<(u16, String)> {
+        if let StunAttribute::Unknown(attr_type::ERROR_CODE, data) = attr {
+            (data.len() >= 4).then(|| {
+                let code = u16::from(data[2]) * 100 + u16::from(data[3]);
+                let reason = String::from_utf8_lossy(&data[4..]).into_owned();
+                (code, reason)
+            })
+        } else {
+            None
+        }
+    }
+
+    fn parse_channel_data(frame: &[u8]) -> Result<(u16, &[u8]), &'static str> {
+        if frame.len() < 4 {
+            return Err("frame too short");
+        }
+        let channel = u16::from_be_bytes([frame[0], frame[1]]);
+        let length = u16::from_be_bytes([frame[2], frame[3]]) as usize;
+        if frame.len() < 4 + length {
+            return Err("truncated payload");
+        }
+        Ok((channel, &frame[4..4 + length]))
+    }
+
+    #[test]
+    fn build_lifetime_response_carries_lifetime_and_type() {
+        let req = StunMessage::new_binding_request();
+        let resp = TurnAttrs::build_lifetime_response(&req, MessageType::RefreshSuccess, 120);
+
+        assert_eq!(resp.message_type, MessageType::RefreshSuccess);
+        assert_eq!(resp.transaction_id, req.transaction_id);
+        assert_eq!(TurnAttrs::parse_lifetime(&resp), Some(120));
+        assert_eq!(resp.attributes.len(), 1);
+    }
+
+    #[test]
+    fn build_lifetime_response_refresh_error_variant() {
+        let req = StunMessage::new_binding_request();
+        let resp = TurnAttrs::build_lifetime_response(&req, MessageType::RefreshError, 0);
+        assert_eq!(resp.message_type, MessageType::RefreshError);
+        assert_eq!(TurnAttrs::parse_lifetime(&resp), Some(0));
+    }
+
+    #[test]
+    fn parse_channel_data_minimum_empty_payload() {
+        let frame = TurnAttrs::build_channel_data(0x4000, b"");
+        let (channel, payload) = parse_channel_data(&frame).unwrap();
+        assert_eq!(channel, 0x4000);
+        assert!(payload.is_empty());
+        assert_eq!(frame.len(), 4);
+    }
+
+    #[test]
+    fn parse_channel_data_rejects_too_short() {
+        assert!(parse_channel_data(&[0x40, 0x00]).is_err());
+        assert!(parse_channel_data(&[0x40, 0x00, 0x00, 0x05, 0x01]).is_err());
+    }
+
+    #[test]
+    fn parse_channel_data_large_payload() {
+        let data = vec![0xABu8; 1400];
+        let frame = TurnAttrs::build_channel_data(0x4001, &data);
+        let (channel, payload) = parse_channel_data(&frame).unwrap();
+        assert_eq!(channel, 0x4001);
+        assert_eq!(payload, data.as_slice());
+    }
+
+    #[test]
+    fn build_data_indication_empty_payload() {
+        let peer: SocketAddr = "192.0.2.1:9000".parse().unwrap();
+        let wire = TurnAttrs::build_data_indication(peer, b"");
+        let msg = StunMessage::decode(&wire).unwrap();
+        assert_eq!(msg.message_type, MessageType::DataIndication);
+        assert_eq!(TurnAttrs::parse_data(&msg).unwrap(), b"".as_slice());
+        assert_eq!(TurnAttrs::parse_peer_addr(&msg).unwrap(), peer);
+    }
+
+    #[test]
+    fn build_data_indication_large_payload() {
+        let peer: SocketAddr = "10.1.2.3:5000".parse().unwrap();
+        let payload: Vec<u8> = (0..2048).map(|i| (i % 256) as u8).collect();
+        let wire = TurnAttrs::build_data_indication(peer, &payload);
+        let msg = StunMessage::decode(&wire).unwrap();
+        assert_eq!(TurnAttrs::parse_data(&msg).unwrap(), payload.as_slice());
+    }
+
+    #[test]
+    fn turn_error_codes_roundtrip() {
+        for (code, reason) in [
+            (403, "Forbidden"),
+            (437, "Allocation Mismatch"),
+            (438, "Stale Nonce"),
+            (486, "Allocation Expired"),
+            (508, "Insufficient Capacity"),
+        ] {
+            let attr = TurnAttrs::build_error_code(code, reason);
+            let (parsed_code, parsed_reason) = parse_error_code(&attr).unwrap();
+            assert_eq!(parsed_code, code);
+            assert_eq!(parsed_reason, reason);
+        }
+    }
+
+    #[test]
+    fn build_error_code_empty_reason() {
+        let attr = TurnAttrs::build_error_code(300, "");
+        let (code, reason) = parse_error_code(&attr).unwrap();
+        assert_eq!(code, 300);
+        assert!(reason.is_empty());
+    }
 }

@@ -137,7 +137,7 @@ pub fn get_configured_primal_names_in_env(env: &HashMap<String, String>) -> Vec<
 /// Get all configured primal names from environment
 #[must_use]
 pub fn get_configured_primal_names() -> Vec<String> {
-    let map: HashMap<String, String> = std::env::vars().collect();
+    let map: HashMap<String, String> = songbird_process_env::vars().collect();
     get_configured_primal_names_in_env(&map)
 }
 
@@ -145,7 +145,7 @@ pub fn get_configured_primal_names() -> Vec<String> {
 /// rather than hardcoding specific primal names.
 #[must_use]
 pub fn get_common_primal_ports() -> Vec<u16> {
-    let map: HashMap<String, String> = std::env::vars().collect();
+    let map: HashMap<String, String> = songbird_process_env::vars().collect();
     get_common_primal_ports_from_env_map(&map)
 }
 
@@ -246,7 +246,7 @@ pub fn find_primals_with_capability_in_env(
 /// Filters by capability from the live process environment.
 #[must_use]
 pub fn find_primals_with_capability(capability: &str) -> Vec<String> {
-    let map: HashMap<String, String> = std::env::vars().collect();
+    let map: HashMap<String, String> = songbird_process_env::vars().collect();
     find_primals_with_capability_in_env(capability, &map)
 }
 

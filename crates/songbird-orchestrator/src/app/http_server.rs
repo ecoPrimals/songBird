@@ -29,12 +29,14 @@ pub async fn start_http_server(
     federated_service_registry: Arc<FederatedServiceRegistry>,
     service_registry: Arc<crate::service_registry::ServiceRegistry>,
     bind_addr: SocketAddr,
+    shared_ipc_handler: Option<Arc<songbird_universal_ipc::service::IpcServiceHandler>>,
 ) -> Result<u16> {
     // Build the app with all API routes
     let app = build_router(
         Arc::clone(&federation_state),
         Arc::clone(&federated_service_registry),
         Arc::clone(&service_registry),
+        shared_ipc_handler,
     )
     .await?;
 
@@ -90,6 +92,7 @@ async fn build_router(
     federation_state: Arc<FederationState>,
     federated_service_registry: Arc<FederatedServiceRegistry>,
     service_registry: Arc<crate::service_registry::ServiceRegistry>,
+    shared_ipc_handler: Option<Arc<songbird_universal_ipc::service::IpcServiceHandler>>,
 ) -> Result<Router> {
     // Build the app with federation and deployment routes
     let deployment_state = crate::server::deployment_api::DeploymentState::new();
@@ -121,17 +124,20 @@ async fn build_router(
     );
     let consent_manager = Arc::new(crate::consent_management::ConsentManager::new());
 
-    // Create JSON-RPC API state for universal gateway
-    // ✅ EVOLUTION (Feb 9, 2026): Wire IpcServiceHandler for full method forwarding on TCP
-    // This makes TCP /jsonrpc equivalent to Unix socket for inter-gate mesh communication
-    let ipc_registry = Arc::new(tokio::sync::RwLock::new(
-        songbird_universal_ipc::registry::ServiceRegistry::new(),
-    ));
-    let ipc_handler =
-        Arc::new(songbird_universal_ipc::service::IpcServiceHandler::with_federation_state(
-            ipc_registry,
-            Arc::clone(&federation_state),
-        ));
+    // ✅ EVOLUTION (Wave 75): HTTP/UDS state unification — shared handler makes
+    // TCP /jsonrpc identical to Unix socket for ipc.register, mesh.init, capability.call
+    let ipc_handler: Arc<songbird_universal_ipc::service::IpcServiceHandler> =
+        if let Some(handler) = shared_ipc_handler {
+            handler
+        } else {
+            let ipc_registry = Arc::new(tokio::sync::RwLock::new(
+                songbird_universal_ipc::registry::ServiceRegistry::new(),
+            ));
+            Arc::new(songbird_universal_ipc::service::IpcServiceHandler::with_federation_state(
+                ipc_registry,
+                Arc::clone(&federation_state),
+            ))
+        };
 
     let jsonrpc_state = crate::server::jsonrpc_api::JsonRpcState::with_ipc_handler(
         Arc::clone(&federation_state),
@@ -339,18 +345,99 @@ async fn start_https_server(
                 let mut peek_buf = [0u8; 1];
                 let peek_result = tcp_stream.peek(&mut peek_buf).await;
 
-                let is_tls = match peek_result {
-                    Ok(1) => peek_buf[0] == 0x16, // TLS Handshake content type
+                let first_byte = match peek_result {
+                    Ok(1) => peek_buf[0],
                     Ok(0) => {
                         tracing::debug!("Empty connection from {}, closing", remote_addr);
                         return;
                     }
-                    Ok(_) => false, // Shouldn't happen with 1-byte buffer
+                    Ok(_) => return, // Shouldn't happen with 1-byte buffer
                     Err(e) => {
                         error!("Failed to peek connection from {}: {}", remote_addr, e);
                         return;
                     }
                 };
+
+                // riboCipher transport signal detection (federation-facing)
+                if songbird_types::constants::ribocipher::is_signal_byte(first_byte) {
+                    use songbird_types::constants::ribocipher;
+                    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+                    let tier = ribocipher::tier_name(first_byte);
+                    tracing::info!(
+                        "riboCipher {tier} signal from {} on federation port",
+                        remote_addr
+                    );
+
+                    // Consume signal + version bytes, then serve as NDJSON JSON-RPC
+                    let (reader, mut writer) = tcp_stream.into_split();
+                    let mut reader = BufReader::new(reader);
+
+                    // Consume the 2-byte signal prefix (peeked byte + version)
+                    let mut prefix = [0u8; 2];
+                    if tokio::io::AsyncReadExt::read_exact(&mut reader, &mut prefix).await.is_err()
+                    {
+                        tracing::warn!(
+                            "riboCipher {tier}: failed to read prefix from {}",
+                            remote_addr
+                        );
+                        return;
+                    }
+
+                    if prefix[1] != ribocipher::VERSION_1 {
+                        tracing::warn!(
+                            "riboCipher {tier}: unsupported version 0x{:02X} from {}",
+                            prefix[1],
+                            remote_addr
+                        );
+                        return;
+                    }
+
+                    // After signal prefix: NDJSON JSON-RPC session (federation)
+                    let mut line = String::new();
+                    while let Ok(n) = reader.read_line(&mut line).await {
+                        if n == 0 {
+                            break;
+                        }
+                        let trimmed = line.trim();
+                        if trimmed.is_empty() {
+                            line.clear();
+                            continue;
+                        }
+                        let response = match serde_json::from_str::<serde_json::Value>(trimmed) {
+                            Ok(req) => {
+                                let method = req["method"].as_str().unwrap_or("").to_string();
+                                let id = req["id"].clone();
+                                tracing::debug!(
+                                    "riboCipher {tier} RPC from {}: {}",
+                                    remote_addr,
+                                    method
+                                );
+                                dispatch_federation_rpc(&method, id, tier)
+                            }
+                            Err(e) => serde_json::json!({
+                                "jsonrpc": "2.0",
+                                "error": {"code": -32700, "message": format!("Parse error: {e}")},
+                                "id": null
+                            }),
+                        };
+                        let mut resp_bytes = serde_json::to_vec(&response).unwrap_or_default();
+                        resp_bytes.push(b'\n');
+                        if writer.write_all(&resp_bytes).await.is_err() {
+                            break;
+                        }
+                        line.clear();
+                    }
+                    return;
+                }
+
+                // Wave 112: ERROR on unsignalled connections (deprecation escalation)
+                tracing::error!(
+                    "Federation connection from {} without riboCipher signal (0x{first_byte:02X}) — legacy path (deprecated Wave 112, reject Wave 113)",
+                    remote_addr
+                );
+
+                let is_tls = first_byte == 0x16; // TLS Handshake content type
 
                 // Import shared dependencies
                 use hyper::body::Incoming;
@@ -410,6 +497,57 @@ async fn start_https_server(
     });
 
     Ok(())
+}
+
+/// Dispatch a JSON-RPC method received over a riboCipher-signalled federation connection.
+///
+/// Handles health/liveness probes natively; other methods get a generic ack.
+fn dispatch_federation_rpc(
+    method: &str,
+    id: serde_json::Value,
+    tier: &str,
+) -> serde_json::Value {
+    match method {
+        "health.liveness" | "health" | "ping" => {
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "result": {
+                    "status": "healthy",
+                    "primal": "songbird",
+                    "version": env!("CARGO_PKG_VERSION"),
+                    "tier": tier,
+                    "uptime_secs": std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_secs())
+                        .unwrap_or(0),
+                },
+                "id": id
+            })
+        }
+        "system.capabilities" | "capabilities" => {
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "result": {
+                    "capabilities": [
+                        "mesh.relay",
+                        "federation.peer",
+                        "health.liveness",
+                        "birdsong.broadcast",
+                    ],
+                    "primal": "songbird",
+                    "tier": tier,
+                },
+                "id": id
+            })
+        }
+        _ => {
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "result": {"status": "ok", "tier": tier, "method": method},
+                "id": id
+            })
+        }
+    }
 }
 
 /// Smart port binding with automatic fallback using Sovereign Socket
@@ -548,4 +686,52 @@ pub async fn start_tarpc_server(
     });
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dispatch_health_liveness_returns_healthy() {
+        let resp = dispatch_federation_rpc("health.liveness", serde_json::json!(1), "clear");
+        assert_eq!(resp["jsonrpc"], "2.0");
+        assert_eq!(resp["id"], 1);
+        assert_eq!(resp["result"]["status"], "healthy");
+        assert_eq!(resp["result"]["primal"], "songbird");
+        assert_eq!(resp["result"]["tier"], "clear");
+        assert!(resp["result"]["version"].as_str().is_some());
+    }
+
+    #[test]
+    fn dispatch_health_alias_returns_healthy() {
+        let resp = dispatch_federation_rpc("health", serde_json::json!("abc"), "mito");
+        assert_eq!(resp["result"]["status"], "healthy");
+        assert_eq!(resp["result"]["tier"], "mito");
+    }
+
+    #[test]
+    fn dispatch_ping_returns_healthy() {
+        let resp = dispatch_federation_rpc("ping", serde_json::json!(42), "clear");
+        assert_eq!(resp["result"]["status"], "healthy");
+        assert_eq!(resp["id"], 42);
+    }
+
+    #[test]
+    fn dispatch_capabilities_returns_list() {
+        let resp = dispatch_federation_rpc("system.capabilities", serde_json::json!(2), "clear");
+        let caps = resp["result"]["capabilities"].as_array().unwrap();
+        assert!(caps.iter().any(|c| c == "health.liveness"));
+        assert!(caps.iter().any(|c| c == "mesh.relay"));
+        assert_eq!(resp["result"]["primal"], "songbird");
+    }
+
+    #[test]
+    fn dispatch_unknown_method_returns_generic_ok() {
+        let resp = dispatch_federation_rpc("custom.method", serde_json::json!(99), "nuclear");
+        assert_eq!(resp["result"]["status"], "ok");
+        assert_eq!(resp["result"]["method"], "custom.method");
+        assert_eq!(resp["result"]["tier"], "nuclear");
+        assert_eq!(resp["id"], 99);
+    }
 }

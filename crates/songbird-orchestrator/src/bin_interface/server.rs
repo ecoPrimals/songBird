@@ -39,11 +39,33 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     if args.dark_forest {
         songbird_process_env::set_var("SONGBIRD_DARK_FOREST", "true");
     }
+    if let Some(ref state_dir) = args.state_dir {
+        songbird_process_env::set_var("SONGBIRD_STATE_DIR", state_dir);
+    }
     if let Some(ref pid_dir) = args.pid_dir {
         songbird_process_env::set_var("SONGBIRD_PID_DIR", pid_dir);
     }
 
-    let actual_port = args.federation_port.unwrap_or(args.port);
+    let actual_port = args.federation_port.unwrap_or_else(|| {
+        songbird_process_env::var("SONGBIRD_FEDERATION_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(args.port)
+    });
+
+    let effective_bind = songbird_process_env::var("SONGBIRD_FEDERATION_BIND")
+        .or_else(|_| songbird_process_env::var("SONGBIRD_PRODUCTION_BIND_ADDRESS"))
+        .unwrap_or_else(|_| {
+            // When federation port is explicitly set (env or CLI), cross-gate intent is
+            // clear — default to all-interfaces so remote peers can connect.
+            if args.federation_port.is_some()
+                || songbird_process_env::var("SONGBIRD_FEDERATION_PORT").is_ok()
+            {
+                songbird_types::constants::PRODUCTION_BIND_ADDRESS.to_string()
+            } else {
+                args.bind.clone()
+            }
+        });
 
     tracing::info!("🚀 Songbird v{} - Server Mode", env!("CARGO_PKG_VERSION"));
     tracing::info!(
@@ -54,7 +76,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
             "(foreground)"
         }
     );
-    tracing::info!("   HTTP Bind: {}:{}", args.bind, actual_port);
+    tracing::info!("   Federation Bind: {}:{}", effective_bind, actual_port);
     if args.dark_forest {
         tracing::info!("   Dark Forest: ✅ Enabled (encrypted beacons only)");
     }
@@ -96,7 +118,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     }
     let mut config = CanonicalSongbirdConfig::from_env()?;
 
-    let (bind_host, bind_port_override) = parse_bind_flag(&args.bind);
+    let (bind_host, bind_port_override) = parse_bind_flag(&effective_bind);
     config.network.bind_host = bind_host.to_string();
     if let Some(bp) = bind_port_override {
         config.network.base_port = bp;
@@ -249,7 +271,10 @@ fn spawn_ipc_listener(
         tracing::info!("");
         tracing::info!("💡 Tip: Use --socket or --listen to enable IPC");
         tracing::info!("   Unix: --socket /run/user/$(id -u)/biomeos/songbird.sock");
-        tracing::info!("   TCP:  --listen 127.0.0.1:9901 (Android/Universal)");
+        tracing::info!(
+            "   TCP:  --listen 127.0.0.1:{} (Android/Universal)",
+            songbird_types::defaults::ports::DEFAULT_IPC_LISTEN_PORT
+        );
         None
     }
 }

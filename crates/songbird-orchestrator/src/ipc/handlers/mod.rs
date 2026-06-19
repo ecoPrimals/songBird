@@ -497,6 +497,7 @@ impl IpcHandlers {
                             .and_then(|a| a.as_str())
                             .and_then(|a| a.parse::<std::net::SocketAddr>().ok())
                             .map(|a| a.port()),
+                        "latency_ms": mp.get("latency_ms").unwrap_or(&serde_json::Value::Null),
                         "source": "mesh",
                         "reachable": mp.get("reachable").and_then(serde_json::Value::as_bool).unwrap_or(true),
                         "protocols": ["tcp"]
@@ -564,6 +565,10 @@ impl IpcHandlers {
             MeshMethod::DiscoverRemotes => self.mesh_handler.handle_discover_remotes(params).await,
             MeshMethod::Mirror => self.mesh_handler.handle_mirror(params).await,
             MeshMethod::Publish => self.mesh_handler.handle_publish(params).await,
+            MeshMethod::ProbeLatency => self.mesh_handler.handle_probe_latency(params).await,
+            MeshMethod::CapabilitiesAnnounce => {
+                self.mesh_handler.handle_capabilities_announce(params).await
+            }
         };
         result.map_err(|e| crate::ipc::pure_rust_server::JsonRpcError::internal_error(e))
     }

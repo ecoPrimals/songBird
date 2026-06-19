@@ -333,4 +333,90 @@ mod tests {
         let back: GenesisWitness = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back.metadata.get("k"), Some(&"v".to_string()));
     }
+
+    #[tokio::test]
+    async fn witness_sign_errors_when_provider_rpc_unreachable() {
+        let mut witness =
+            GenesisWitness::new("rpc-dev".into(), vec![1], PhysicalChannelType::HardwareKey);
+        let err = witness
+            .sign(b"genesis-data")
+            .await
+            .expect_err("debug builds discover localhost provider; RPC should fail");
+        match err {
+            GenesisError::SigningFailed(msg) => {
+                assert!(
+                    msg.contains("sign") || msg.contains("security provider"),
+                    "expected signing failure message, got {msg}"
+                );
+            }
+            other => panic!("expected SigningFailed, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn witness_sign_different_payloads_hit_same_rpc_error_path() {
+        let mut w1 = GenesisWitness::new("d".into(), vec![], PhysicalChannelType::HardwareKey);
+        let mut w2 = GenesisWitness::new("d".into(), vec![], PhysicalChannelType::HardwareKey);
+        assert!(w1.sign(b"x").await.is_err(), "short payload should fail at security provider RPC");
+        assert!(
+            w2.sign(b"xxxx").await.is_err(),
+            "long payload should fail at security provider RPC"
+        );
+    }
+
+    #[tokio::test]
+    async fn verify_signature_nonempty_errors_when_provider_rpc_unreachable() {
+        let mut witness =
+            GenesisWitness::new("dev".into(), vec![], PhysicalChannelType::HardwareKey);
+        witness.signature = b"offline-sig".to_vec();
+        let err = witness
+            .verify_signature(b"payload")
+            .await
+            .expect_err("verify RPC should fail when provider is unreachable");
+        match err {
+            GenesisError::SignatureVerificationFailed(msg) => {
+                assert!(
+                    msg.contains("verify") || msg.contains("security provider"),
+                    "expected verification failure message, got {msg}"
+                );
+            }
+            other => panic!("expected SignatureVerificationFailed, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn has_hardware_attestation_per_channel() {
+        assert!(
+            GenesisWitness::new("h".into(), vec![], PhysicalChannelType::HardwareKey)
+                .has_hardware_attestation()
+        );
+        assert!(
+            GenesisWitness::new("n".into(), vec![], PhysicalChannelType::Nfc)
+                .has_hardware_attestation()
+        );
+        assert!(
+            !GenesisWitness::new("b".into(), vec![], PhysicalChannelType::Bluetooth)
+                .has_hardware_attestation()
+        );
+        assert!(
+            !GenesisWitness::new("q".into(), vec![], PhysicalChannelType::QrCodeWithOob)
+                .has_hardware_attestation()
+        );
+    }
+
+    #[test]
+    fn trust_level_from_nfc_is_high() {
+        let witness = GenesisWitness::new("nfc".into(), vec![], PhysicalChannelType::Nfc);
+        assert_eq!(witness.trust_level(), TrustLevel::High);
+        assert!(witness.has_hardware_attestation());
+    }
+
+    #[test]
+    fn witness_signature_field_defaults_mutable_for_manual_injection() {
+        let mut witness =
+            GenesisWitness::new("manual".into(), vec![], PhysicalChannelType::Bluetooth);
+        assert!(witness.signature.is_empty());
+        witness.signature = b"injected".to_vec();
+        assert_eq!(witness.signature, b"injected");
+    }
 }

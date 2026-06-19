@@ -16,7 +16,7 @@ songbird-process-env.workspace = true
 songbird-types = { path = "../songbird-types" }
 # HTTP protocol (Pure Rust)
 hyper = { workspace = true }
-hyper-util = { version = "0.1", features = ["client", "client-legacy", "tokio"] }
+hyper-util = { workspace = true, features = ["client"] }
 http = "1.0"
 http-body-util = { workspace = true }
 
@@ -30,12 +30,12 @@ serde_json = { workspace = true }
 # Utilities
 tracing = { workspace = true }
 thiserror = { workspace = true }
-base64 = "0.22"
+base64 = { workspace = true }
 bytes = { workspace = true }
 anyhow = { workspace = true }
 # Cryptography (Pure Rust)
-sha2 = "0.10"
-hex = "0.4"
+sha2 = { workspace = true }
+hex = { workspace = true }
 
 # Secure random number generation (Pure Rust)
 getrandom = { workspace = true }  # OS-provided CSPRNG

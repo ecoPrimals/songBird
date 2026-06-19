@@ -49,8 +49,8 @@ songbird-types = { path = "../songbird-types", optional = true }
 songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rust!
 
 # Cryptography
-sha2 = "0.10"
-hex = "0.4"
+sha2 = { workspace = true }
+hex = { workspace = true }
 
 [lints]
 workspace = true

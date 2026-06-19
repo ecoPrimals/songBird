@@ -61,34 +61,23 @@ impl SimulatedTower {
     }
 
     async fn start_with_fallback(&mut self) -> Result<()> {
-        // Try to bind to configured port
         let bind_result =
             tokio::net::TcpListener::bind(format!("127.0.0.1:{}", self.configured_port)).await;
 
         match bind_result {
             Ok(listener) => {
-                // Got configured port
-                self.actual_port = Some(self.configured_port);
-                self.discovery_broadcast_port = Some(self.configured_port);
-                // Keep listener alive so port stays bound
+                let port = listener.local_addr()?.port();
+                self.actual_port = Some(port);
+                self.discovery_broadcast_port = Some(port);
                 std::mem::forget(listener);
             }
             Err(_) => {
-                // Port conflict, try fallback ports
-                for fallback_offset in 1..=10 {
-                    let fallback_port = self.configured_port + fallback_offset;
-                    if let Ok(fallback_listener) =
-                        tokio::net::TcpListener::bind(format!("127.0.0.1:{fallback_port}")).await
-                    {
-                        self.actual_port = Some(fallback_port);
-
-                        // THE FIX: Discovery uses actual port (not configured)
-                        self.discovery_broadcast_port = Some(fallback_port);
-
-                        // Keep listener alive
-                        std::mem::forget(fallback_listener);
-                        break;
-                    }
+                // Port conflict — bind to ephemeral port (OS-assigned)
+                if let Ok(fallback_listener) = tokio::net::TcpListener::bind("127.0.0.1:0").await {
+                    let port = fallback_listener.local_addr()?.port();
+                    self.actual_port = Some(port);
+                    self.discovery_broadcast_port = Some(port);
+                    std::mem::forget(fallback_listener);
                 }
             }
         }
@@ -112,20 +101,29 @@ impl SimulatedTower {
 
 #[tokio::test]
 async fn test_e2e_port_fallback_discovery() {
-    // Scenario: Two towers, one has port conflict
+    // Scenario: Two towers configured for same port — one must fall back
 
-    let mut tower_a = SimulatedTower::new("tower-a", 9000);
-    let mut tower_b = SimulatedTower::new("tower-b", 9000); // Same port!
+    // Allocate a port, then have both towers try to use it
+    let scout = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let shared_port = scout.local_addr().unwrap().port();
+    drop(scout);
 
-    // Tower A starts first, gets 9000
+    let mut tower_a = SimulatedTower::new("tower-a", shared_port);
+    let mut tower_b = SimulatedTower::new("tower-b", shared_port); // Same port!
+
+    // Tower A starts first, gets the port
     tower_a.start_with_fallback().await.unwrap();
-    assert_eq!(tower_a.actual_port, Some(9000), "Tower A should get configured port");
-    assert_eq!(tower_a.discovery_broadcast_port, Some(9000), "Tower A should broadcast 9000");
+    assert_eq!(tower_a.actual_port, Some(shared_port), "Tower A should get configured port");
+    assert_eq!(
+        tower_a.discovery_broadcast_port,
+        Some(shared_port),
+        "Tower A should broadcast configured port"
+    );
 
-    // Tower B starts, port conflict, falls back
+    // Tower B starts, port conflict, falls back to ephemeral
     tower_b.start_with_fallback().await.unwrap();
     assert!(tower_b.actual_port.is_some(), "Tower B should have bound");
-    assert!(tower_b.actual_port.unwrap() > 9000, "Tower B should have fallen back");
+    assert_ne!(tower_b.actual_port.unwrap(), shared_port, "Tower B should have fallen back");
     assert_eq!(
         tower_b.discovery_broadcast_port, tower_b.actual_port,
         "Tower B should broadcast fallback port"
@@ -145,25 +143,35 @@ async fn test_e2e_port_fallback_discovery() {
 #[tokio::test]
 async fn test_e2e_eastgate_westgate_scenario() {
     // Reproduce the exact Eastgate scenario:
-    // - Eastgate: Port 8080 occupied by Cursor IDE
-    // - Westgate: Port 8080 free
+    // - Eastgate: configured port occupied by another process
+    // - Westgate: different configured port (free)
 
-    // Simulate Cursor IDE occupying port 8080 on Eastgate
-    let _cursor_ide = TcpListener::bind("127.0.0.1:8080").ok();
+    // Allocate a port to simulate "Cursor IDE" occupying it
+    let cursor_ide = TcpListener::bind("127.0.0.1:0").unwrap();
+    let occupied_port = cursor_ide.local_addr().unwrap().port();
 
-    let mut eastgate = SimulatedTower::new("eastgate", 8080);
-    let mut westgate = SimulatedTower::new("westgate", 8081);
+    // Eastgate configured for the now-occupied port
+    let mut eastgate = SimulatedTower::new("eastgate", occupied_port);
+    // Westgate configured for a different ephemeral port (will succeed)
+    let westgate_listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let westgate_port = westgate_listener.local_addr().unwrap().port();
+    drop(westgate_listener); // Free it so SimulatedTower can grab it
+    let mut westgate = SimulatedTower::new("westgate", westgate_port);
 
-    // Eastgate starts, port conflict, falls back
+    // Eastgate starts, port conflict (cursor_ide holds it), falls back to ephemeral
     eastgate.start_with_fallback().await.unwrap();
     assert!(eastgate.actual_port.is_some(), "Eastgate should have bound");
-    assert!(eastgate.actual_port.unwrap() > 8080, "Eastgate should have fallen back");
+    assert_ne!(
+        eastgate.actual_port.unwrap(),
+        occupied_port,
+        "Eastgate should have fallen back to a different port"
+    );
     assert_eq!(
         eastgate.discovery_broadcast_port, eastgate.actual_port,
         "Eastgate should broadcast actual port"
     );
 
-    // Westgate starts on 8081 (may or may not conflict)
+    // Westgate starts on its configured port (should succeed since we freed it)
     westgate.start_with_fallback().await.unwrap();
     assert!(westgate.actual_port.is_some(), "Westgate should have bound");
 
@@ -183,11 +191,11 @@ async fn test_e2e_eastgate_westgate_scenario() {
 
 #[tokio::test]
 async fn test_e2e_three_tower_federation() {
-    // Simulate Eastgate, Westgate, Strandgate
+    // Simulate Eastgate, Westgate, Strandgate — each on unique ephemeral ports
 
-    let mut eastgate = SimulatedTower::new("eastgate", 9100);
-    let mut westgate = SimulatedTower::new("westgate", 9101);
-    let mut strandgate = SimulatedTower::new("strandgate", 9102);
+    let mut eastgate = SimulatedTower::new("eastgate", 0);
+    let mut westgate = SimulatedTower::new("westgate", 0);
+    let mut strandgate = SimulatedTower::new("strandgate", 0);
 
     // All start successfully
     eastgate.start_with_fallback().await.unwrap();
@@ -220,8 +228,8 @@ async fn test_e2e_discovery_broadcast_actual_port() {
     }
 
     // Simulate tower with port conflict
-    let configured_port = 8080u16;
-    let actual_port = 8082u16; // After fallback
+    let configured_port = 44000u16;
+    let actual_port = 44002u16; // After fallback
 
     // Create discovery message
     let discovery_msg = DiscoveryMessage {
@@ -229,7 +237,6 @@ async fn test_e2e_discovery_broadcast_actual_port() {
         advertised_port: actual_port, // THE FIX: Use actual, not configured
     };
 
-    // Assertions
     assert_eq!(
         discovery_msg.advertised_port, actual_port,
         "Discovery should advertise actual port"
@@ -239,9 +246,8 @@ async fn test_e2e_discovery_broadcast_actual_port() {
         "Discovery should NOT advertise configured port after fallback"
     );
 
-    // Simulate another tower receiving this message
     let connect_url = format!("https://test-tower:{}", discovery_msg.advertised_port);
-    assert!(connect_url.contains(":8082"), "Connect URL should use actual port");
+    assert!(connect_url.contains(&actual_port.to_string()), "Connect URL should use actual port");
 }
 
 #[tokio::test(start_paused = true)]

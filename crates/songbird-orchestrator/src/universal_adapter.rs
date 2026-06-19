@@ -265,19 +265,43 @@ impl UniversalAdapter {
         Ok(providers)
     }
 
-    /// Discover providers from mDNS
-    #[expect(
-        clippy::unused_async,
-        reason = "async signature required by Axum, trait objects, or future I/O"
-    )]
+    /// Discover providers from mDNS via `songbird-config` RFC 6762 backend.
     async fn discover_from_mdns(&self, capability: &str) -> Result<Vec<DiscoveredProvider>> {
-        // NOTE: For production mDNS discovery, integrate with songbird-config::discovery::MdnsDiscovery
-        // which provides full RFC 6762 compliant capability-based mDNS discovery.
-        debug!(
-            "mDNS discovery for '{}' - use songbird-config::capability_discovery for production",
-            capability
-        );
-        Ok(vec![])
+        let mdns = match songbird_config::discovery::MdnsDiscovery::new() {
+            Ok(m) => m,
+            Err(e) => {
+                debug!("mDNS discovery unavailable: {e}");
+                return Ok(vec![]);
+            }
+        };
+        let timeout = songbird_types::defaults::timeouts::DEFAULT_MDNS_TIMEOUT;
+
+        let services =
+            mdns.discover_by_capability(capability, Some(timeout)).await.unwrap_or_else(|e| {
+                debug!("mDNS discovery for '{}' unavailable: {}", capability, e);
+                Vec::new()
+            });
+
+        let providers = services
+            .into_iter()
+            .map(|svc| {
+                let endpoint = format!("http://{}", svc.address);
+                DiscoveredProvider {
+                    provider_id: format!("mdns-{}-{}", capability, svc.address),
+                    capabilities: svc.capabilities,
+                    endpoint,
+                    protocol: "http".to_string(),
+                    metadata: {
+                        let mut m = svc.metadata;
+                        m.insert("source".to_string(), "mdns".to_string());
+                        m
+                    },
+                    discovered_at: Instant::now(),
+                }
+            })
+            .collect();
+
+        Ok(providers)
     }
 
     /// Call a provider's API

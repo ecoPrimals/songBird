@@ -105,5 +105,8 @@ pub const DEFAULT_HOLE_PUNCH_ATTEMPT_DELAY: Duration = Duration::from_millis(50)
 /// Default relay service wait cycle cap.
 pub const DEFAULT_RELAY_WAIT_CYCLE: Duration = Duration::from_secs(300);
 
+/// Default timeout for mesh peer latency probes.
+pub const DEFAULT_MESH_PROBE_TIMEOUT: Duration = Duration::from_millis(5000);
+
 /// Default container runtime API probe timeout.
 pub const DEFAULT_CONTAINER_API_TIMEOUT: Duration = Duration::from_secs(10);

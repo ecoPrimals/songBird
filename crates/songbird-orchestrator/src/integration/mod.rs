@@ -216,49 +216,95 @@ impl IntegrationManager {
         Ok(core_available && gaming_available && federation_available)
     }
 
-    /// Check core services
-    #[expect(
-        clippy::unused_async,
-        reason = "async signature required by Axum, trait objects, or future I/O"
-    )]
+    /// Check core services by probing for the songbird orchestrator UDS socket.
     async fn check_core_services(&self) -> Result<bool> {
         tracing::debug!("Checking core services availability...");
-        Ok(true)
+
+        let socket_path = songbird_types::defaults::paths::network_socket_candidates()
+            .into_iter()
+            .find(|p| p.exists());
+
+        if let Some(path) = socket_path {
+            match tokio::net::UnixStream::connect(&path).await {
+                Ok(_) => {
+                    tracing::debug!("Core service reachable at {}", path.display());
+                    Ok(true)
+                }
+                Err(e) => {
+                    warn!(
+                        "Core service socket exists but not connectable: {} ({})",
+                        path.display(),
+                        e
+                    );
+                    Ok(false)
+                }
+            }
+        } else {
+            tracing::debug!("No orchestrator socket found — core services not yet started");
+            Ok(false)
+        }
     }
 
-    /// Check gaming services
-    #[expect(
-        clippy::unused_async,
-        reason = "async signature required by Axum, trait objects, or future I/O"
-    )]
+    /// Check gaming services — verifies the configured port is bindable/reachable.
     async fn check_gaming_services(&self) -> Result<bool> {
-        tracing::debug!("Gaming services availability check completed");
-        Ok(true)
+        let Ok(port_str) = songbird_process_env::var("SONGBIRD_GAMING_PORT") else {
+            tracing::debug!("Gaming services not configured — skipping");
+            return Ok(true);
+        };
+
+        let port: u16 = port_str.parse().unwrap_or(0);
+        if port == 0 {
+            tracing::warn!("SONGBIRD_GAMING_PORT invalid: {port_str}");
+            return Ok(false);
+        }
+
+        let addr: std::net::SocketAddr = (std::net::Ipv4Addr::LOCALHOST, port).into();
+        let reachable = tokio::net::TcpStream::connect(addr).await.is_ok();
+        if reachable {
+            tracing::debug!(port, "Gaming services reachable");
+        } else {
+            tracing::debug!(port, "Gaming services not yet listening (may still be starting)");
+        }
+        Ok(reachable)
     }
 
-    /// Check federation services
-    #[expect(
-        clippy::unused_async,
-        reason = "async signature required by Axum, trait objects, or future I/O"
-    )]
+    /// Check federation services — verifies bind address is reachable locally.
     async fn check_federation_services(&self) -> Result<bool> {
-        tracing::debug!("Federation services availability check completed");
-        Ok(true)
+        let federation_mode =
+            songbird_process_env::var("SONGBIRD_FEDERATION_MODE").unwrap_or_default();
+        if federation_mode.is_empty() || federation_mode == "disabled" {
+            tracing::debug!("Federation disabled — skipping check");
+            return Ok(true);
+        }
+
+        let bind_addr =
+            songbird_process_env::var("SONGBIRD_PRODUCTION_BIND_ADDRESS").unwrap_or_default();
+        if bind_addr.is_empty() {
+            warn!("Federation enabled but SONGBIRD_PRODUCTION_BIND_ADDRESS not set");
+            return Ok(false);
+        }
+
+        let addr: std::net::SocketAddr = match bind_addr.parse() {
+            Ok(a) => a,
+            Err(e) => {
+                warn!("SONGBIRD_PRODUCTION_BIND_ADDRESS unparseable: {e}");
+                return Ok(false);
+            }
+        };
+
+        let reachable = tokio::net::TcpStream::connect(addr).await.is_ok();
+        tracing::debug!(
+            mode = %federation_mode,
+            addr = %addr,
+            reachable,
+            "Federation services check"
+        );
+        Ok(reachable)
     }
 }
 
 #[cfg(test)]
-#[expect(clippy::uninlined_format_args, reason = "test module: clippy noise in integration tests")]
-#[expect(clippy::float_cmp, reason = "test module: clippy noise in integration tests")]
-#[expect(clippy::useless_vec, reason = "test module: clippy noise in integration tests")]
-#[expect(clippy::unreadable_literal, reason = "test module: clippy noise in integration tests")]
-#[expect(clippy::items_after_statements, reason = "test module: clippy noise in integration tests")]
-#[expect(clippy::cast_precision_loss, reason = "test module: clippy noise in integration tests")]
-#[allow(
-    clippy::cast_possible_truncation,
-    reason = "test module: clippy noise in integration tests"
-)]
-#[expect(clippy::cast_sign_loss, reason = "test module: clippy noise in integration tests")]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     #![allow(clippy::all, reason = "test module: broad clippy suppression for assertions")]
     #![allow(unused, reason = "test module: unused imports/bindings in tests")]

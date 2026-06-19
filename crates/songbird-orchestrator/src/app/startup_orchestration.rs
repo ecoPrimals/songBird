@@ -203,10 +203,19 @@ impl<'a> StartupOrchestrator<'a> {
     ///
     /// **Returns**: Actual HTTPS port (may differ from configured if fallback occurs)
     async fn stage_2_start_servers(&mut self) -> Result<u16> {
-        // ✅ DEPLOYMENT FIX (Dec 20, 2025): Start HTTP server FIRST to get actual port
-        // This ensures discovery broadcasts the correct port even if fallback occurs
-        // ✅ DISCOVERY FIX (Jan 28, 2026): Call actual HTTP server module (not stub)
-        // The stub start_http_server() returns 0, which breaks discovery beacons
+        // ✅ Wave 75: Create shared IpcServiceHandler BEFORE starting any server.
+        // Both HTTP and UDS broker share this instance for state unification.
+        let shared_registry = Arc::new(tokio::sync::RwLock::new(
+            songbird_universal_ipc::registry::ServiceRegistry::new(),
+        ));
+        let shared_ipc_handler =
+            Arc::new(songbird_universal_ipc::service::IpcServiceHandler::with_federation_state(
+                Arc::clone(&shared_registry),
+                Arc::clone(&self.orchestrator.federation_state),
+            ));
+        info!("✅ Shared IPC handler created (HTTP/UDS unified state)");
+
+        // Start HTTP server with shared handler (needs to start first for port binding)
         info!("🌐 Starting HTTP server...");
         let bind_address = http_bind_socket_addr(
             &self.orchestrator._config.network.bind_host,
@@ -218,31 +227,31 @@ impl<'a> StartupOrchestrator<'a> {
             Arc::clone(&self.orchestrator.federated_service_registry),
             Arc::clone(&self.orchestrator.service_registry),
             bind_address,
+            Some(Arc::clone(&shared_ipc_handler)),
         )
         .await?;
         info!("✅ HTTP server started on port {}", actual_https_port);
 
-        // 🎧 NEW (Jan 4, 2026): Start IPC Server for inter-primal communication
-        // Unix: Unix domain sockets, Windows: TCP fallback
+        // 🎧 Start IPC Server for inter-primal communication
         info!("🎧 Starting IPC server...");
         self.orchestrator.start_ipc_server().await?;
         info!("✅ IPC server started");
 
-        // 🌍 NEW (Jan 19, 2026): Start Universal IPC Broker for service-based inter-primal IPC
-        // ✅ EVOLUTION (Jan 29, 2026): Wire up discovery listener for runtime peer discovery
-        // ✅ LD-08 (Apr 12, 2026): Capture broker registry for socket auto-discovery seeding
+        // 🌍 Start Universal IPC Broker with the SAME shared handler (state unification)
         info!("🌍 Starting Universal IPC Broker...");
-        match crate::ipc::universal_broker::start_broker_with_discovery(
-            self.orchestrator.discovery_listener.clone(),
+        match crate::ipc::universal_broker::start_broker_with_shared_handler(
+            Arc::clone(&shared_ipc_handler),
+            Arc::clone(&shared_registry),
         )
         .await
         {
-            Ok(registry) => {
-                info!("✅ Universal IPC Broker started");
-                self.orchestrator.broker_registry = Some(registry);
-                if self.orchestrator.discovery_listener.is_some() {
-                    info!("   🌉 Discovery bridge: ENABLED (real-time peer discovery)");
-                }
+            Ok(handle) => {
+                info!("✅ Universal IPC Broker started (unified with HTTP)");
+                self.orchestrator.broker_registry = Some(handle.registry);
+                self.orchestrator.broker_mesh_handler = Some(Arc::clone(&handle.mesh_handler));
+
+                // Auto-seed mesh from SONGBIRD_PEERS (Wave 73: no manual mesh.init required)
+                crate::mesh_seed::spawn_mesh_seed(handle.mesh_handler);
             }
             Err(e) => {
                 warn!("⚠️  Universal IPC Broker failed to start: {}", e);
@@ -251,7 +260,7 @@ impl<'a> StartupOrchestrator<'a> {
             }
         }
 
-        // 🚀 NEW (Jan 6, 2026): Start tarpc Server for high-performance primal-to-primal RPC
+        // 🚀 Start tarpc Server for high-performance primal-to-primal RPC
         info!("🚀 Starting tarpc server...");
         self.orchestrator.start_tarpc_server().await?;
         info!("✅ tarpc server started");
@@ -397,7 +406,7 @@ impl<'a> StartupOrchestrator<'a> {
                 node_id: node_identity.node_id.to_string(),
                 node_name: node_identity.node_name.clone(),
                 node_address: format!(
-                    "https://{}:{}",
+                    "http://{}:{}",
                     detect_primary_ip()
                         .unwrap_or_else(|| songbird_types::constants::LOCALHOST.to_string()),
                     actual_https_port

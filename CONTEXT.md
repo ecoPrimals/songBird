@@ -2,10 +2,10 @@
 
 **Primal**: Songbird
 **Role**: Network Orchestration & Discovery Primal
-**Phase**: 1 (Foundation)
-**Version**: 0.2.1
+**Phase**: Stadial (S1-S4 graduated, 4-gate mesh collective LIVE)
+**Version**: 0.2.1-wave113
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: Jun 19, 2026
+**Last Updated**: June 19, 2026
 
 ## What It Does
 
@@ -35,16 +35,16 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 31 workspace members |
-| Tests | 8,226 lib passed (0 failures, 23 ignored) |
+| Tests | 8,929 lib tests passed (0 failures, 0 flaky; Wave 113 verified June 13, 2026) |
 | Coverage | Line coverage **73.41%** (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | Edition | Rust 2024 |
-| Clippy | pedantic + nursery, zero warnings (`-D warnings`; May 27 verified) |
-| Files >800 LOC | **0** — largest module: `multi_tier_coordinator/mod.rs` 385L (refactored Jun 2026); `dispatch/` 111L max |
-| Unsafe blocks | 0 (`songbird-process-env` uses in-memory overlay; `forbid(unsafe_code)` all 31 crates) |
-| C dependencies | Zero in default build; `sled` removed (Wave 135, SB-03 resolved — IPC `storage.*` capability is production path); `ring-crypto` feature removed (Wave 135, SB-02 resolved); `ring` in Cargo.lock is uncompiled optional dep (banned in `deny.toml`); Bluetooth native deps only with `bluetooth` feature; 5 stale feature flags removed Wave 137c |
-| Hardcoded primal names | 0 in production discovery (capability-first across 11+ crates); legacy socket filenames centralized as constants (`LEGACY_SECURITY_SOCKET_FILENAME`, `LEGACY_AI_SOCKET_FILENAME`, `LEGACY_COMPUTE_SOCKET_FILENAME`); all `/tmp/` paths evolved to `std::env::temp_dir()`; `cors_origins()` env-overridable, `data_dir()` XDG-compliant; legacy env vars (`BEARDOG_*`) deprecated with `tracing::warn!` |
+| Clippy | pedantic + nursery, zero warnings (`-D warnings`; Jun 13 verified) |
+| Files >800 LOC | **0** — all production code below threshold |
+| Unsafe blocks | 0 (`forbid(unsafe_code)` all 31 crates) |
+| C dependencies | Zero in default build; `ring` in Cargo.lock is uncompiled lockfile artifact (banned in `deny.toml`); Bluetooth native deps only with `bluetooth` feature |
+| Hardcoded primal names | 0 in production discovery (capability-first); all paths env-driven or XDG-compliant; zero `/tmp/` writes |
 | Resolver / DNS probes | No fixed `8.8.8.8` in production paths — netdev-based discovery |
-| Production panics/unwrap/todo | 0 unguarded (`panic!`, `todo!`); `.unwrap()` only under `#[expect(reason)]` for infallible ops; 2 provably-unreachable QUIC VarInt arms documented |
+| Production panics/unwrap/todo | 0 unguarded; `.unwrap()` only under `#[expect(reason)]` for infallible ops |
 
 ## IPC Surface
 

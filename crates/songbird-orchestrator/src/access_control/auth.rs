@@ -37,8 +37,13 @@ where
 
         // Decode and validate JWT using production-ready implementation
         let validator = crate::access_control::tokens::TokenValidator::new();
-        let secret = songbird_process_env::var("SONGBIRD_JWT_SECRET")
-            .unwrap_or_else(|_| String::from("songbird-dev-secret-change-in-production"));
+        let secret = songbird_process_env::var("SONGBIRD_JWT_SECRET").map_err(|_| {
+            tracing::error!(
+                "SONGBIRD_JWT_SECRET not set — JWT authentication disabled; \
+                 configure via environment or delegate to security provider"
+            );
+            AuthError::InvalidToken
+        })?;
 
         let token = AccessToken::decode(token_str, secret.as_bytes())
             .map_err(|_| AuthError::InvalidToken)?;
@@ -140,14 +145,14 @@ pub async fn login(Json(req): Json<LoginRequest>) -> Result<Json<LoginResponse>,
         }
     };
 
-    // Encode token with production secret
-    let secret = songbird_process_env::var("SONGBIRD_JWT_SECRET").unwrap_or_else(|_| {
-        tracing::warn!(
-            "SONGBIRD_JWT_SECRET not set. Using development secret. \
-                 DO NOT USE IN PRODUCTION."
+    // Encode token — requires explicit secret (no dev fallback in production)
+    let secret = songbird_process_env::var("SONGBIRD_JWT_SECRET").map_err(|_| {
+        tracing::error!(
+            "SONGBIRD_JWT_SECRET not set — cannot issue tokens; \
+             configure via environment or delegate to security provider"
         );
-        String::from("songbird-dev-secret-change-in-production")
-    });
+        AuthError::InvalidToken
+    })?;
 
     let token_str = token.encode(secret.as_bytes()).map_err(|_| AuthError::InvalidToken)?;
 
@@ -291,79 +296,33 @@ async fn validate_db_credential(
 }
 
 /// Validate credential via `PostgreSQL` database
-fn validate_db_postgres(user_id: &str, credential: &str, _db_url: &str) -> Result<(), AuthError> {
-    // NOTE: Full PostgreSQL implementation would use sqlx or tokio-postgres
-    // For now, this is a framework for the implementation
-    tracing::info!(
-        "PostgreSQL authentication for user '{}' (implementation pending: requires sqlx dependency)",
+fn validate_db_postgres(user_id: &str, _credential: &str, _db_url: &str) -> Result<(), AuthError> {
+    tracing::error!(
+        "PostgreSQL authentication rejected for '{}': delegate to security provider via \
+         capability.call(security, verify_credential)",
         user_id
     );
-
-    // Expected implementation:
-    // 1. Connect to PostgreSQL using sqlx
-    // 2. Query: SELECT password_hash FROM users WHERE user_id = $1
-    // 3. Verify hash using bcrypt::verify(credential, &stored_hash)
-    // 4. Return Ok(()) if valid, Err(AuthError::InvalidToken) if not
-
-    // For now, accept any non-empty credential but log warning
-    if credential.is_empty() {
-        Err(AuthError::InvalidToken)
-    } else {
-        tracing::warn!(
-            "PostgreSQL authentication not fully implemented - accepting credential (add sqlx dependency)"
-        );
-        Ok(())
-    }
+    Err(AuthError::InvalidToken)
 }
 
 /// Validate credential via `SQLite` database
-fn validate_db_sqlite(user_id: &str, credential: &str, _db_path: &str) -> Result<(), AuthError> {
-    // NOTE: Full SQLite implementation would use rusqlite or sqlx
-    tracing::info!(
-        "SQLite authentication for user '{}' (implementation pending: requires rusqlite dependency)",
+fn validate_db_sqlite(user_id: &str, _credential: &str, _db_path: &str) -> Result<(), AuthError> {
+    tracing::error!(
+        "SQLite authentication rejected for '{}': delegate to security provider via \
+         capability.call(security, verify_credential)",
         user_id
     );
-
-    // Expected implementation:
-    // 1. Open SQLite database
-    // 2. Query: SELECT password_hash FROM users WHERE user_id = ?
-    // 3. Verify hash using bcrypt::verify(credential, &stored_hash)
-    // 4. Return Ok(()) if valid, Err(AuthError::InvalidToken) if not
-
-    // For now, accept any non-empty credential but log warning
-    if credential.is_empty() {
-        Err(AuthError::InvalidToken)
-    } else {
-        tracing::warn!(
-            "SQLite authentication not fully implemented - accepting credential (add rusqlite dependency)"
-        );
-        Ok(())
-    }
+    Err(AuthError::InvalidToken)
 }
 
 /// Validate credential via Redis (for cached auth tokens)
-fn validate_db_redis(user_id: &str, credential: &str, _redis_url: &str) -> Result<(), AuthError> {
-    // NOTE: Full Redis implementation would use redis-rs
-    tracing::info!(
-        "Redis authentication for user '{}' (implementation pending: requires redis dependency)",
+fn validate_db_redis(user_id: &str, _credential: &str, _redis_url: &str) -> Result<(), AuthError> {
+    tracing::error!(
+        "Redis authentication rejected for '{}': delegate to security provider via \
+         capability.call(security, verify_credential)",
         user_id
     );
-
-    // Expected implementation:
-    // 1. Connect to Redis
-    // 2. GET auth:user:{user_id}:token
-    // 3. Compare stored token with credential
-    // 4. Return Ok(()) if valid, Err(AuthError::InvalidToken) if not
-
-    // For now, accept any non-empty credential but log warning
-    if credential.is_empty() {
-        Err(AuthError::InvalidToken)
-    } else {
-        tracing::warn!(
-            "Redis authentication not fully implemented - accepting credential (add redis dependency)"
-        );
-        Ok(())
-    }
+    Err(AuthError::InvalidToken)
 }
 
 /// Validate two-factor authentication token
@@ -410,29 +369,79 @@ async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), Aut
 
 /// Validate TOTP token (Time-based One-Time Password - RFC 6238)
 fn validate_totp_token(user_id: &str, token: &str, totp_secret: &str) -> Result<(), AuthError> {
-    // NOTE: Full TOTP implementation would use totp-rs crate
-    // For now, this is a framework for the implementation
-    tracing::info!(
-        "TOTP validation for user '{}' (implementation pending: requires totp-rs dependency)",
-        user_id
-    );
-
-    // Expected implementation:
-    // 1. Parse TOTP secret (base32)
-    // 2. Generate current TOTP code using TOTP::new(secret, 30, 0, 6, Sha1)
-    // 3. Compare with provided token (with time window tolerance)
-    // 4. Return Ok(()) if valid, Err(AuthError::InvalidToken) if not
-
-    // For now, accept 6-digit codes that match expected format
-    if token.len() == 6 && token.chars().all(|c| c.is_ascii_digit()) && !totp_secret.is_empty() {
-        tracing::warn!(
-            "TOTP validation not fully implemented - accepting well-formed code (add totp-rs dependency)"
-        );
-        Ok(())
-    } else {
+    if token.len() != 6 || !token.chars().all(|c| c.is_ascii_digit()) || totp_secret.is_empty() {
         tracing::warn!("TOTP token validation failed for user '{}': invalid format", user_id);
-        Err(AuthError::InvalidToken)
+        return Err(AuthError::InvalidToken);
     }
+
+    // RFC 6238 TOTP: HMAC-SHA1(secret, floor(time / 30))
+    let secret_bytes = base32_decode(totp_secret);
+    if secret_bytes.is_empty() {
+        tracing::error!("TOTP secret decode failed for user '{}'", user_id);
+        return Err(AuthError::InvalidToken);
+    }
+
+    let time_step = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() / 30);
+
+    // Check current and adjacent time windows (±1 step tolerance)
+    for offset in [0i64, -1, 1] {
+        let counter = (time_step as i64 + offset) as u64;
+        let code = compute_totp(&secret_bytes, counter);
+        if code == token {
+            tracing::info!("TOTP validation successful for user '{}'", user_id);
+            return Ok(());
+        }
+    }
+
+    tracing::warn!("TOTP code mismatch for user '{}'", user_id);
+    Err(AuthError::InvalidToken)
+}
+
+fn base32_decode(input: &str) -> Vec<u8> {
+    let alphabet = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    let input = input.trim_end_matches('=').as_bytes();
+    let mut bits = 0u64;
+    let mut bit_count = 0u8;
+    let mut output = Vec::with_capacity(input.len() * 5 / 8);
+
+    for &ch in input {
+        let val = alphabet.iter().position(|&c| c == ch.to_ascii_uppercase());
+        let Some(val) = val else {
+            continue;
+        };
+        bits = (bits << 5) | val as u64;
+        bit_count += 5;
+        if bit_count >= 8 {
+            bit_count -= 8;
+            output.push((bits >> bit_count) as u8);
+            bits &= (1 << bit_count) - 1;
+        }
+    }
+    output
+}
+
+fn compute_totp(secret: &[u8], counter: u64) -> String {
+    use hmac::{Hmac, Mac};
+    use sha1::Sha1;
+
+    let counter_bytes = counter.to_be_bytes();
+    let Ok(mut mac) = Hmac::<Sha1>::new_from_slice(secret) else {
+        return "000000".to_string();
+    };
+    mac.update(&counter_bytes);
+    let result = mac.finalize().into_bytes();
+
+    let offset = (result[19] & 0x0f) as usize;
+    let code = u32::from_be_bytes([
+        result[offset] & 0x7f,
+        result[offset + 1],
+        result[offset + 2],
+        result[offset + 3],
+    ]) % 1_000_000;
+
+    format!("{code:06}")
 }
 
 /// Validate 2FA via external service (SMS, Email, etc.)
@@ -522,6 +531,9 @@ mod tests {
     async fn login_dev_mode_accepts_student_without_backend() {
         let _serial = env_lock();
         let _dev = VarGuard::set("SONGBIRD_DEV_MODE", "1");
+        let _jwt = VarGuard::set("SONGBIRD_JWT_SECRET", "test-secret-for-dev-mode");
+        let _no_db = VarGuard::remove("SONGBIRD_AUTH_DB");
+        let _no_sso = VarGuard::remove("SONGBIRD_SSO_ENDPOINT");
         let req = LoginRequest {
             user_id: "stu".into(),
             role: "student".into(),
@@ -540,6 +552,8 @@ mod tests {
     async fn login_unknown_role_rejected() {
         let _serial = env_lock();
         let _dev = VarGuard::set("SONGBIRD_DEV_MODE", "1");
+        let _no_db = VarGuard::remove("SONGBIRD_AUTH_DB");
+        let _no_sso = VarGuard::remove("SONGBIRD_SSO_ENDPOINT");
         let req = LoginRequest {
             user_id: "u".into(),
             role: "not-a-real-role".into(),
@@ -571,7 +585,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn login_admin_with_sqlite_and_totp_succeeds() {
+    async fn login_admin_with_sqlite_rejected_delegates_to_security_provider() {
         let _serial = env_lock();
         let _auth_db = VarGuard::set("SONGBIRD_AUTH_DB", "sqlite::memory:");
         let _totp = VarGuard::set("SONGBIRD_TOTP_SECRET_alice", "notemptysecret");
@@ -583,10 +597,10 @@ mod tests {
             credential: Some("password".into()),
             two_factor_token: Some("123456".into()),
         };
-        let Ok(Json(resp)) = login(Json(req)).await else {
-            panic!("admin login");
-        };
-        assert!(!resp.token.is_empty());
+        match login(Json(req)).await {
+            Err(e) => assert!(matches!(e, AuthError::InvalidToken)),
+            Ok(_) => panic!("expected rejection: SQLite auth delegates to security provider"),
+        }
     }
 
     #[tokio::test]
@@ -615,9 +629,12 @@ mod tests {
 
     #[tokio::test]
     async fn authenticated_user_accepts_valid_jwt() {
-        let secret = b"songbird-dev-secret-change-in-production";
+        let _guard = crate::test_sync_env::env_lock();
+        let test_secret = "test-jwt-secret-for-unit-tests";
+        songbird_process_env::set_var("SONGBIRD_JWT_SECRET", test_secret);
+
         let token = super::super::AccessToken::student("s1", "c1");
-        let jwt = token.encode(secret).expect("encode");
+        let jwt = token.encode(test_secret.as_bytes()).expect("encode");
         let req = Request::builder()
             .uri("/x")
             .header(AUTHORIZATION, format!("Bearer {jwt}"))
@@ -628,5 +645,7 @@ mod tests {
             panic!("expected valid jwt");
         };
         assert_eq!(user.token.sub, "s1");
+
+        songbird_process_env::remove_var("SONGBIRD_JWT_SECRET");
     }
 }

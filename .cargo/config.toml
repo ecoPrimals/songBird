@@ -1,2 +1,22 @@
+# Cross-compilation targets for projectNUCLEUS multi-arch deployment
+# Install toolchains: rustup target add <triple>
+
 [target.aarch64-unknown-linux-gnu]
 linker = "aarch64-linux-gnu-gcc"
+
+[target.aarch64-unknown-linux-musl]
+linker = "aarch64-linux-gnu-gcc"
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.riscv64gc-unknown-linux-gnu]
+linker = "riscv64-linux-gnu-gcc"
+
+[target.riscv64gc-unknown-linux-musl]
+linker = "riscv64-linux-gnu-gcc"
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-linux-android]
+linker = "aarch64-linux-android21-clang"
+
+[target.x86_64-unknown-linux-musl]
+rustflags = ["-C", "target-feature=+crt-static"]

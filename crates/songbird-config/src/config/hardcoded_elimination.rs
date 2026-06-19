@@ -300,13 +300,19 @@ impl Default for PrimalConfig {
             &["SONGBIRD_COMPUTE_PROVIDER_ENDPOINT", "SONGBIRD_COMPUTE_ENDPOINT"],
             "SONGBIRD_TOADSTOOL_ENDPOINT",
             "SONGBIRD_COMPUTE_PROVIDER_ENDPOINT",
-            &format!("http://{base_ip}:8082"),
+            &format!(
+                "http://{base_ip}:{}",
+                songbird_types::defaults::ports::DEFAULT_FEDERATION_COORDINATION_PORT
+            ),
         ));
         let ai_provider_endpoint: Arc<str> = Arc::from(env_capability_first_then_legacy_warn(
             &["SONGBIRD_AI_PROVIDER_ENDPOINT", "SONGBIRD_AI_ENDPOINT"],
             "SONGBIRD_SQUIRREL_ENDPOINT",
             "SONGBIRD_AI_PROVIDER_ENDPOINT",
-            &format!("http://{base_ip}:8083"),
+            &format!(
+                "http://{base_ip}:{}",
+                songbird_types::defaults::ports::DEFAULT_AI_PROVIDER_PORT
+            ),
         ));
 
         let security_provider_endpoint: Arc<str> =
@@ -314,7 +320,10 @@ impl Default for PrimalConfig {
                 &["SONGBIRD_SECURITY_PROVIDER_ENDPOINT", "SONGBIRD_SECURITY_ENDPOINT"],
                 "SONGBIRD_BEARDOG_ENDPOINT",
                 "SONGBIRD_SECURITY_PROVIDER_ENDPOINT",
-                &format!("https://{base_ip}:8443"),
+                &format!(
+                    "https://{base_ip}:{}",
+                    songbird_types::defaults::ports::DEFAULT_HTTPS_PORT
+                ),
             ));
 
         Self {
@@ -331,7 +340,10 @@ impl Default for PrimalConfig {
                 ),
                 env_or_default(
                     "SONGBIRD_DISCOVERY_ENDPOINT_2",
-                    &format!("http://{base_ip}:8081/discovery"),
+                    &format!(
+                        "http://{base_ip}:{}/discovery",
+                        songbird_types::defaults::ports::DEFAULT_DISCOVERY_SERVICE_PORT
+                    ),
                 ),
             ],
             base_port,
@@ -370,14 +382,30 @@ impl Default for FederationConfig {
                     "SONGBIRD_CLUSTER_ENDPOINT_1",
                     &format!("http://{base_ip}:{base_port}"),
                 ),
-                env_or_default("SONGBIRD_CLUSTER_ENDPOINT_2", &format!("http://{base_ip}:8081")),
+                env_or_default(
+                    "SONGBIRD_CLUSTER_ENDPOINT_2",
+                    &format!(
+                        "http://{base_ip}:{}",
+                        songbird_types::defaults::ports::DEFAULT_METRICS_PORT
+                    ),
+                ),
             ],
             heartbeat_endpoint: env_or_default(
                 "SONGBIRD_HEARTBEAT_ENDPOINT",
                 &format!("http://{base_ip}:{base_port}/federation/heartbeat"),
             ),
-            broadcast_ports: vec![8080, 8081, 8082, 8090],
-            discovery_ports: vec![8080, 8000, 3000, 5000],
+            broadcast_ports: vec![
+                songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
+                songbird_types::defaults::ports::DEFAULT_METRICS_PORT,
+                songbird_types::defaults::ports::DEFAULT_FEDERATION_COORDINATION_PORT,
+                songbird_types::defaults::ports::DEFAULT_FEDERATION_BROADCAST_PORT,
+            ],
+            discovery_ports: vec![
+                songbird_types::defaults::ports::DEFAULT_HTTP_PORT,
+                songbird_types::defaults::ports::DEFAULT_FEDERATION_PORT,
+                songbird_types::defaults::ports::DEFAULT_DASHBOARD_UI_PORT,
+                5000,
+            ],
             default_cluster_id: env_or_default("SONGBIRD_CLUSTER_ID", "songbird-cluster"),
             auto_discovery_enabled: env_or_default("SONGBIRD_AUTO_DISCOVERY", "true") == "true",
         }
@@ -494,196 +522,168 @@ where
         })
 }
 
-/// Thread-safe global configuration using `OnceLock` (idiomatic Rust,
+/// Thread-safe global configuration using `OnceLock` (idiomatic Rust).
 use std::sync::OnceLock;
 static GLOBAL_CONFIG: OnceLock<HardcodingEliminationConfig> = OnceLock::new();
 
-/// Get global configuration (thread-safe, idiomatic)
+/// Get global configuration (thread-safe, idiomatic).
 #[must_use]
 pub fn get_config() -> &'static HardcodingEliminationConfig {
     GLOBAL_CONFIG.get_or_init(HardcodingEliminationConfig::default)
 }
 
-/// Convenience functions for replacing hardcoded values
-pub mod replace {
-    use super::{Duration, IpAddr, get_config};
-    use std::sync::Arc;
+#[path = "hardcoded_replace.rs"]
+pub mod replace;
 
-    /// Replace hardcoded &`crate::constants::network::DEFAULT_HOST`
-    #[must_use]
-    pub fn bind_address() -> IpAddr {
-        get_config().network.bind_address
-    }
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use std::env::VarError;
 
-    /// Replace hardcoded &format!("{}:{}", `crate::constants::network::DEFAULT_HOST`, `crate::constants::network::DEFAULT_ORCHESTRATOR_PORT`);
-    #[must_use]
-    pub fn orchestrator_endpoint() -> Arc<str> {
-        Arc::clone(&get_config().network.orchestrator_endpoint)
-    }
-
-    /// Replace hardcoded "`crate::constants::network::DEFAULT_HOST:8081`"
-    #[must_use]
-    pub fn gaming_endpoint() -> Arc<str> {
-        Arc::clone(&get_config().network.gaming_endpoint)
-    }
-
-    /// Replace hardcoded "`crate::constants::network::DEFAULT_HOST:8443`"
-    #[must_use]
-    pub fn security_provider_endpoint() -> Arc<str> {
-        Arc::clone(&get_config().primals.security_provider_endpoint)
-    }
-
-    /// Replace hardcoded "`crate::constants::network::DEFAULT_HOST:8080/storage`"
-    #[must_use]
-    pub fn storage_provider_endpoint() -> Arc<str> {
-        Arc::clone(&get_config().primals.storage_provider_endpoint)
-    }
-
-    /// Replace hardcoded `Duration::from_secs(30)`
-    #[must_use]
-    pub fn connection_timeout() -> Duration {
-        get_config().timeouts.connection_timeout
-    }
-
-    /// Replace hardcoded `Duration::from_secs(60)`
-    #[must_use]
-    pub fn request_timeout() -> Duration {
-        get_config().timeouts.request_timeout
-    }
-
-    /// Replace hardcoded `Duration::from_secs(5)`
-    #[must_use]
-    pub fn health_check_timeout() -> Duration {
-        get_config().timeouts.health_check_timeout
-    }
-
-    /// Replace hardcoded 8192
-    #[must_use]
-    pub fn large_buffer_size() -> usize {
-        get_config().performance.large_buffer_size
-    }
-
-    /// Replace hardcoded STUN servers
-    #[must_use]
-    pub fn stun_servers() -> Vec<String> {
-        get_config().network.stun_servers.clone()
-    }
-
-    /// Replace hardcoded federation endpoints
-    #[must_use]
-    pub fn federation_endpoints() -> Vec<String> {
-        get_config().federation.cluster_endpoints.clone()
-    }
-
-    /// Replace hardcoded compute capability endpoint.
-    #[must_use]
-    pub fn compute_provider_endpoint() -> Arc<str> {
-        Arc::clone(&get_config().primals.compute_provider_endpoint)
-    }
-
-    /// Replace hardcoded AI / neural capability endpoint.
-    #[must_use]
-    pub fn ai_provider_endpoint() -> Arc<str> {
-        Arc::clone(&get_config().primals.ai_provider_endpoint)
-    }
-
-    /// Replace hardcoded capability-discovery endpoint list
-    #[must_use]
-    pub fn primal_discovery_endpoints() -> Vec<String> {
-        get_config().primals.discovery_endpoints.clone()
-    }
-
-    /// Replace hardcoded broadcast ports
-    #[must_use]
-    pub fn federation_broadcast_ports() -> Vec<u16> {
-        get_config().federation.broadcast_ports.clone()
-    }
-
-    /// Replace hardcoded discovery ports
-    #[must_use]
-    pub fn federation_discovery_ports() -> Vec<u16> {
-        get_config().federation.discovery_ports.clone()
-    }
-
-    /// Get production-ready bind address (0.0.0.0 vs `crate::constants::network::DEFAULT_HOST`)
-    #[must_use]
-    pub fn production_bind_address() -> IpAddr {
-        if songbird_process_env::var("SONGBIRD_ENVIRONMENT").unwrap_or_default() == "production" {
-            get_config().network.production_bind_address
-        } else {
-            get_config().network.bind_address
+    fn mock_env<'a>(
+        vars: &'a [(&'a str, &'a str)],
+    ) -> impl Fn(&str) -> Result<String, VarError> + 'a {
+        move |key: &str| {
+            for (k, v) in vars {
+                if *k == key {
+                    return Ok((*v).to_string());
+                }
+            }
+            Err(VarError::NotPresent)
         }
     }
 
-    /// Format endpoint with configurable IP and port
-    ///
-    /// **EVOLVED**: Uses environment variables and capability discovery
-    /// instead of hardcoded provider codenames.
-    ///
-    /// Discovery order:
-    /// 1. `{CAPABILITY}_ENDPOINT` environment variable
-    /// 2. `{CAPABILITY}_PORT` environment variable + bind address
-    /// 3. Auto-select port (0) for dynamic allocation
-    ///
-    /// # Examples
-    /// ```ignore
-    /// // For security capability:
-    /// // Set SECURITY_ENDPOINT=https://security-provider:8443
-    /// // OR set SECURITY_PORT=8443
-    /// let endpoint = format_endpoint("security", None);
-    /// ```
-    #[must_use]
-    pub fn format_endpoint(capability: &str, port_override: Option<u16>) -> Arc<str> {
-        // Check for full endpoint override first
-        let env_key_endpoint = format!("{}_ENDPOINT", capability.to_uppercase());
-        if let Ok(endpoint) = songbird_process_env::var(&env_key_endpoint) {
-            return Arc::from(endpoint);
-        }
-
-        // Otherwise construct from IP and port
-        let config = get_config();
-        let ip = if songbird_process_env::var("SONGBIRD_ENVIRONMENT").unwrap_or_default()
-            == "production"
-        {
-            config.network.production_bind_address
-        } else {
-            config.network.bind_address
-        };
-
-        // Get port from environment or use override or auto-select
-        let env_key_port = format!("{}_PORT", capability.to_uppercase());
-        let port = port_override
-            .or_else(|| songbird_process_env::var(&env_key_port).ok().and_then(|p| p.parse().ok()))
-            .unwrap_or(0); // 0 = auto-select dynamic port
-
-        let protocol = if port == 8443 || capability == "security" {
-            "https"
-        } else {
-            "http"
-        };
-        Arc::from(format!("{protocol}://{ip}:{port}"))
+    #[test]
+    fn capability_first_returns_first_match() {
+        let env = mock_env(&[("SECURITY_ENDPOINT", "https://sec:443")]);
+        let result = env_capability_first_then_legacy_warn_with(
+            &["SECURITY_ENDPOINT"],
+            "OLD_SEC",
+            "SECURITY_ENDPOINT",
+            "default",
+            env,
+        );
+        assert_eq!(result, "https://sec:443");
     }
 
-    /// Format service endpoint with path
-    #[must_use]
-    pub fn format_service_endpoint(
-        service: &str,
-        path: &str,
-        port_override: Option<u16>,
-    ) -> String {
-        let base = format_endpoint(service, port_override);
-        format!("{}/{}", base.trim_end_matches('/'), path.trim_start_matches('/'))
+    #[test]
+    fn capability_first_falls_through_to_legacy() {
+        let env = mock_env(&[("OLD_SEC", "https://legacy:443")]);
+        let result = env_capability_first_then_legacy_warn_with(
+            &["SECURITY_ENDPOINT"],
+            "OLD_SEC",
+            "SECURITY_ENDPOINT",
+            "default",
+            env,
+        );
+        assert_eq!(result, "https://legacy:443");
     }
 
-    /// Replace hardcoded gaming port
-    #[must_use]
-    pub fn gaming_port() -> u16 {
-        get_config().network.gaming_port_range.start
+    #[test]
+    fn capability_first_returns_default_when_nothing_set() {
+        let env = mock_env(&[]);
+        let result = env_capability_first_then_legacy_warn_with(
+            &["MISSING_A", "MISSING_B"],
+            "ALSO_MISSING",
+            "MISSING_A",
+            "https://fallback:8080",
+            env,
+        );
+        assert_eq!(result, "https://fallback:8080");
     }
 
-    /// Replace hardcoded timeout configuration
-    #[must_use]
-    pub fn timeout_config() -> super::TimeoutConfig {
-        get_config().timeouts.clone()
+    #[test]
+    fn capability_first_skips_empty_values() {
+        let env = mock_env(&[("CAP_A", ""), ("CAP_B", "real")]);
+        let result = env_capability_first_then_legacy_warn_with(
+            &["CAP_A", "CAP_B"],
+            "LEGACY",
+            "CAP_A",
+            "default",
+            env,
+        );
+        assert_eq!(result, "real");
+    }
+
+    #[test]
+    fn resolve_storage_uses_capability_key() {
+        let env = mock_env(&[("SONGBIRD_STORAGE_PROVIDER_ENDPOINT", "http://store:9000")]);
+        let result = resolve_storage_provider_endpoint_with("127.0.0.1", 8080, env);
+        assert_eq!(result, "http://store:9000");
+    }
+
+    #[test]
+    fn resolve_storage_uses_legacy_nestgate_key() {
+        let env = mock_env(&[("SONGBIRD_NESTGATE_ENDPOINT", "http://nest:9001")]);
+        let result = resolve_storage_provider_endpoint_with("127.0.0.1", 8080, env);
+        assert_eq!(result, "http://nest:9001");
+    }
+
+    #[test]
+    fn resolve_storage_falls_back_to_constructed_url() {
+        let env = mock_env(&[]);
+        let result = resolve_storage_provider_endpoint_with("10.0.0.1", 9200, env);
+        assert_eq!(result, "http://10.0.0.1:9200/storage");
+    }
+
+    #[test]
+    fn tls_cert_path_from_explicit_env() {
+        let env = mock_env(&[("SONGBIRD_TLS_CERT", "/opt/certs/custom.crt")]);
+        let result = default_tls_cert_path_with(env);
+        assert_eq!(result, "/opt/certs/custom.crt");
+    }
+
+    #[test]
+    fn tls_cert_path_from_ssl_cert_file() {
+        let env = mock_env(&[("SSL_CERT_FILE", "/etc/ssl/songbird.crt")]);
+        let result = default_tls_cert_path_with(env);
+        assert_eq!(result, "/etc/ssl/songbird.crt");
+    }
+
+    #[test]
+    fn tls_cert_path_from_home() {
+        let env = mock_env(&[("HOME", "/home/testuser")]);
+        let result = default_tls_cert_path_with(env);
+        assert_eq!(result, "/home/testuser/.songbird/certs/songbird.crt");
+    }
+
+    #[test]
+    fn tls_cert_path_fallback_to_temp() {
+        let env = mock_env(&[]);
+        let result = default_tls_cert_path_with(env);
+        assert!(
+            result.contains("songbird")
+                && result.contains("certs")
+                && result.ends_with("songbird.crt"),
+            "unexpected fallback path: {result}"
+        );
+    }
+
+    #[test]
+    fn format_service_endpoint_joins_correctly() {
+        use super::replace::format_service_endpoint;
+        songbird_process_env::set_var("TESTCAP_ENDPOINT", "http://test:9000");
+        let result = format_service_endpoint("testcap", "/api/v1/health", None);
+        songbird_process_env::remove_var("TESTCAP_ENDPOINT");
+        assert_eq!(result, "http://test:9000/api/v1/health");
+    }
+
+    #[test]
+    fn format_service_endpoint_trims_slashes() {
+        use super::replace::format_service_endpoint;
+        songbird_process_env::set_var("TRIMTEST_ENDPOINT", "http://host:8080/");
+        let result = format_service_endpoint("trimtest", "/path", None);
+        songbird_process_env::remove_var("TRIMTEST_ENDPOINT");
+        assert_eq!(result, "http://host:8080/path");
+    }
+
+    #[test]
+    fn format_endpoint_with_env_override() {
+        use super::replace::format_endpoint;
+        songbird_process_env::set_var("OVERRIDDEN_ENDPOINT", "https://custom:443");
+        let result = format_endpoint("overridden", Some(9999));
+        songbird_process_env::remove_var("OVERRIDDEN_ENDPOINT");
+        assert_eq!(&*result, "https://custom:443");
     }
 }

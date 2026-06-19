@@ -433,10 +433,11 @@ mod tests {
 
     #[test]
     fn test_stable_id_generation() {
+        let _env_lock = crate::test_sync_env::env_lock();
+        let _guard = songbird_process_env::ScopedEnv::new("SONGBIRD_NODE_ID", "test-stable");
         let id1 = NodeIdentity::generate_stable_id().unwrap();
         let id2 = NodeIdentity::generate_stable_id().unwrap();
 
-        // Should generate same ID on same machine
         assert_eq!(id1, id2, "Stable ID should be consistent");
     }
 
@@ -587,19 +588,15 @@ mod tests {
 
     #[test]
     fn new_or_load_uses_custom_data_dir_and_is_stable() {
-        use std::sync::{Mutex, OnceLock};
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        let _guard = LOCK.get_or_init(|| Mutex::new(())).lock().expect("lock");
-
+        let _env_lock = crate::test_sync_env::env_lock();
         let dir = tempfile::tempdir().expect("tempdir");
-        let prev_data = songbird_process_env::var("SONGBIRD_DATA_DIR").ok();
-        let prev_node = songbird_process_env::var("SONGBIRD_NODE_ID").ok();
 
-        songbird_process_env::set_var(
+        let _data_guard = songbird_process_env::ScopedEnv::new(
             "SONGBIRD_DATA_DIR",
             dir.path().to_str().expect("utf8 temp path"),
         );
-        songbird_process_env::remove_var("SONGBIRD_NODE_ID");
+        let _node_guard =
+            songbird_process_env::ScopedEnv::new("SONGBIRD_NODE_ID", "new-or-load-test");
 
         let path = dir.path().join("songbird").join("node_identity.json");
         let _ = std::fs::remove_file(&path);
@@ -610,14 +607,5 @@ mod tests {
         assert_eq!(first.node_id, second.node_id);
         assert_eq!(first.node_name, "persisted-name");
         assert_eq!(second.node_name, "persisted-name");
-
-        match prev_data {
-            Some(ref v) => songbird_process_env::set_var("SONGBIRD_DATA_DIR", v),
-            None => songbird_process_env::remove_var("SONGBIRD_DATA_DIR"),
-        }
-        match prev_node {
-            Some(ref v) => songbird_process_env::set_var("SONGBIRD_NODE_ID", v),
-            None => songbird_process_env::remove_var("SONGBIRD_NODE_ID"),
-        }
     }
 }

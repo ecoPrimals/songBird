@@ -353,7 +353,30 @@ impl Decode for ServerHello {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+
     use super::*;
+    use crate::codec::bytes::{write_u16, write_vec8};
+    use crate::messages::certificate::CertificateEntry;
+    use crate::messages::{Certificate, CertificateVerify, Finished, HandshakeType};
+
+    fn roundtrip_client_hello(hello: &ClientHello) -> ClientHello {
+        let mut buf = Vec::new();
+        hello.encode(&mut buf).unwrap();
+        assert_eq!(hello.encoded_size(), buf.len());
+        let (decoded, bytes_read) = ClientHello::decode(&buf).unwrap();
+        assert_eq!(bytes_read, buf.len());
+        decoded
+    }
+
+    fn roundtrip_server_hello(hello: &ServerHello) -> ServerHello {
+        let mut buf = Vec::new();
+        hello.encode(&mut buf).unwrap();
+        assert_eq!(hello.encoded_size(), buf.len());
+        let (decoded, bytes_read) = ServerHello::decode(&buf).unwrap();
+        assert_eq!(bytes_read, buf.len());
+        decoded
+    }
 
     #[test]
     fn test_client_hello_encode_decode() {
@@ -483,5 +506,203 @@ mod tests {
 
         // Verify encoded_size() matches actual encoded length
         assert_eq!(ext.encoded_size(), buf.len());
+    }
+
+    #[test]
+    fn client_hello_empty_extensions_list_roundtrip() {
+        let hello = ClientHello {
+            legacy_version: 0x0303,
+            random: [7u8; 32],
+            legacy_session_id: vec![],
+            cipher_suites: vec![0x1303],
+            legacy_compression_methods: vec![0],
+            extensions: vec![],
+        };
+        let decoded = roundtrip_client_hello(&hello);
+        assert!(decoded.extensions.is_empty());
+    }
+
+    #[test]
+    fn client_hello_multiple_extensions_roundtrip() {
+        let hello = ClientHello::new(
+            [1u8; 32],
+            vec![0x1301, 0x1302, 0x1303],
+            vec![
+                Extension::SupportedVersions(vec![0x0303, 0x0304]),
+                Extension::KeyShare(vec![0xAB; 32]),
+                Extension::ServerName("tls.example".to_string()),
+                Extension::SignatureAlgorithms(vec![0x0807]),
+                Extension::SupportedGroups(vec![0x001d]),
+                Extension::Unknown {
+                    extension_type: 0xBEEF,
+                    data: vec![9, 8, 7],
+                },
+            ],
+        );
+        let decoded = roundtrip_client_hello(&hello);
+        assert_eq!(decoded.cipher_suites.len(), 3);
+        assert_eq!(decoded.extensions.len(), 6);
+        assert_eq!(decoded.get_key_share(), Some([0xAB; 32].as_slice()));
+    }
+
+    #[test]
+    fn client_hello_max_session_id_and_cipher_suites_roundtrip() {
+        let hello = ClientHello {
+            legacy_version: 0x0303,
+            random: [0xCC; 32],
+            legacy_session_id: vec![0xDD; 32],
+            cipher_suites: vec![0x1303; 100],
+            legacy_compression_methods: vec![0],
+            extensions: vec![
+                Extension::SupportedVersions(vec![0x0304]),
+                Extension::KeyShare(vec![1, 2, 3, 4]),
+            ],
+        };
+        let decoded = roundtrip_client_hello(&hello);
+        assert_eq!(decoded.legacy_session_id.len(), 32);
+        assert_eq!(decoded.cipher_suites.len(), 100);
+    }
+
+    #[test]
+    fn client_hello_decode_truncated_before_random() {
+        let mut buf = Vec::new();
+        write_u16(&mut buf, 0x0303);
+        buf.push(0x01);
+        let err = ClientHello::decode(&buf).unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+    }
+
+    #[test]
+    fn client_hello_decode_odd_cipher_suites_length() {
+        let mut buf = Vec::new();
+        write_u16(&mut buf, 0x0303);
+        buf.extend_from_slice(&[0u8; 32]);
+        write_vec8(&mut buf, &[]).unwrap();
+        write_u16(&mut buf, 3); // odd length — invalid
+        buf.extend_from_slice(&[0x13, 0x03, 0x13]);
+        let err = ClientHello::decode(&buf).unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+    }
+
+    #[test]
+    fn client_hello_decode_truncated_extensions_block() {
+        let hello = ClientHello::new(
+            [2u8; 32],
+            vec![0x1303],
+            vec![Extension::SupportedVersions(vec![0x0304]), Extension::KeyShare(vec![1, 2, 3, 4])],
+        );
+        let mut buf = Vec::new();
+        hello.encode(&mut buf).unwrap();
+        buf.truncate(buf.len() - 2);
+        assert!(ClientHello::decode(&buf).is_err());
+    }
+
+    #[test]
+    fn server_hello_session_id_echo_and_unknown_extension_roundtrip() {
+        let hello = ServerHello::new(
+            [0xEE; 32],
+            vec![1, 2, 3, 4, 5],
+            0x1302,
+            vec![
+                Extension::SupportedVersions(vec![0x0304]),
+                Extension::KeyShare(vec![0x11; 32]),
+                Extension::Unknown {
+                    extension_type: 0x1234,
+                    data: vec![0xAA, 0xBB],
+                },
+            ],
+        );
+        let decoded = roundtrip_server_hello(&hello);
+        assert_eq!(decoded.legacy_session_id_echo, vec![1, 2, 3, 4, 5]);
+        assert_eq!(decoded.cipher_suite, 0x1302);
+        assert!(decoded.extensions.iter().any(|e| {
+            matches!(
+                e,
+                Extension::Unknown {
+                    extension_type: 0x1234,
+                    ..
+                }
+            )
+        }));
+    }
+
+    #[test]
+    fn server_hello_encrypted_extensions_style_empty_extension_data_roundtrip() {
+        // EncryptedExtensions body is an extensions block; model via ServerHello extensions.
+        let hello = ServerHello::new(
+            [0x55; 32],
+            vec![],
+            0x1303,
+            vec![Extension::SupportedVersions(vec![0x0304]), Extension::KeyShare(vec![0x22; 32])],
+        );
+        let decoded = roundtrip_server_hello(&hello);
+        assert_eq!(decoded.extensions.len(), 2);
+    }
+
+    #[test]
+    fn handshake_type_byte_roundtrips_for_all_handshake_messages() {
+        let cases = [
+            (HandshakeType::ClientHello, 1u8),
+            (HandshakeType::ServerHello, 2),
+            (HandshakeType::EncryptedExtensions, 8),
+            (HandshakeType::Certificate, 11),
+            (HandshakeType::CertificateVerify, 15),
+            (HandshakeType::Finished, 20),
+        ];
+        for (ht, byte) in cases {
+            assert_eq!(u8::from(ht), byte);
+            assert_eq!(HandshakeType::try_from(byte).unwrap(), ht);
+        }
+    }
+
+    #[test]
+    fn handshake_type_invalid_byte_returns_protocol_error() {
+        let err = HandshakeType::try_from(0xFF).unwrap_err();
+        assert!(
+            matches!(err, TlsError::ProtocolError(msg) if msg.contains("Invalid handshake type"))
+        );
+    }
+
+    #[test]
+    fn handshake_message_types_have_distinct_type_bytes() {
+        // Domain types without wire codecs yet — ensure type discriminants stay stable.
+        let _cert = Certificate::new(vec![CertificateEntry::new(vec![1, 2, 3])]);
+        let _verify = CertificateVerify::new(0x0807, vec![0u8; 64]);
+        let _finished = Finished::new(vec![0u8; 32]);
+        assert_ne!(u8::from(HandshakeType::Certificate), u8::from(HandshakeType::Finished));
+        assert_ne!(
+            u8::from(HandshakeType::CertificateVerify),
+            u8::from(HandshakeType::EncryptedExtensions)
+        );
+    }
+
+    #[test]
+    fn extension_signature_algorithms_encode_decode_via_client_hello() {
+        let hello = ClientHello::new(
+            [3u8; 32],
+            vec![0x1303],
+            vec![
+                Extension::SupportedVersions(vec![0x0304]),
+                Extension::KeyShare(vec![1, 2, 3, 4]),
+                Extension::SignatureAlgorithms(vec![0x0807, 0x0403]),
+            ],
+        );
+        let decoded = roundtrip_client_hello(&hello);
+        assert_eq!(decoded.extensions.len(), 3);
+    }
+
+    #[test]
+    fn extension_supported_groups_encode_decode_via_client_hello() {
+        let hello = ClientHello::new(
+            [4u8; 32],
+            vec![0x1303],
+            vec![
+                Extension::SupportedVersions(vec![0x0304]),
+                Extension::KeyShare(vec![1, 2, 3, 4]),
+                Extension::SupportedGroups(vec![0x001d, 0x0017]),
+            ],
+        );
+        let decoded = roundtrip_client_hello(&hello);
+        assert_eq!(decoded.extensions.len(), 3);
     }
 }

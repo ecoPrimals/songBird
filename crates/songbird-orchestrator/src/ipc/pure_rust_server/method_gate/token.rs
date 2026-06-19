@@ -6,7 +6,7 @@
 //! Defines the [`TokenVerifier`] trait and concrete implementations:
 //! - [`NoopVerifier`]: returns `NotConfigured` — for tests and when no security
 //!   provider is available.
-//! - [`BearDogVerifier`]: calls `auth.verify_ionic` via IPC to verify ionic tokens.
+//! - [`SecurityProviderVerifier`]: calls `auth.verify_ionic` via IPC to verify ionic tokens.
 
 use std::sync::Arc;
 
@@ -36,8 +36,8 @@ pub enum TokenVerifyError {
 
 /// Abstraction over ionic token verification.
 ///
-/// Production deployments wire [`BearDogVerifier`] which calls
-/// `auth.verify_ionic` on the security provider. Tests use `NoopVerifier`.
+/// Production deployments wire [`SecurityProviderVerifier`] which calls
+/// `auth.verify_ionic` on the security provider. Tests use [`NoopVerifier`].
 pub trait TokenVerifier: Send + Sync {
     /// Verify an ionic token and extract its claims.
     fn verify(
@@ -61,21 +61,24 @@ impl TokenVerifier for NoopVerifier {
     }
 }
 
-/// Verifier that calls BearDog's `auth.verify_ionic` via IPC.
+/// Verifier that calls the security provider's `auth.verify_ionic` via IPC.
 ///
-/// Sends the token to the security provider for cryptographic verification
-/// and extracts subject, scopes, and expiration from the response.
+/// Sends the token to whichever primal provides the `security` capability
+/// for cryptographic verification, extracting subject, scopes, and expiration.
 ///
-/// Expected BearDog response shape:
+/// Expected response shape:
 /// ```json
 /// { "subject": "primal-name", "scopes": ["domain.*"], "expires_at": 1717000000 }
 /// ```
 #[derive(Debug, Clone)]
-pub struct BearDogVerifier {
+pub struct SecurityProviderVerifier {
     security_client: Arc<songbird_http_client::SecurityRpcClient>,
 }
 
-impl BearDogVerifier {
+/// Legacy alias retained for downstream compatibility.
+pub type BearDogVerifier = SecurityProviderVerifier;
+
+impl SecurityProviderVerifier {
     /// Create a verifier backed by the given security provider client.
     #[must_use]
     pub fn new(client: Arc<songbird_http_client::SecurityRpcClient>) -> Self {
@@ -85,7 +88,7 @@ impl BearDogVerifier {
     }
 }
 
-impl TokenVerifier for BearDogVerifier {
+impl TokenVerifier for SecurityProviderVerifier {
     async fn verify(&self, token: &str) -> Result<TokenClaims, TokenVerifyError> {
         let result = self
             .security_client

@@ -359,4 +359,132 @@ mod tests {
 
         assert!(factory.validate_configs(&configs).await.is_ok());
     }
+
+    #[tokio::test]
+    async fn create_from_config_registers_static_provider() {
+        let factory = ModernizedDiscoveryFactory::new().await.expect("create factory");
+        let configs =
+            DiscoveryConfigBuilder::new().add_static("static-test".into(), vec![]).build();
+
+        let delegator = factory.create_from_config(configs).await.expect("create delegator");
+        assert_eq!(delegator.strategy(), &DelegationStrategy::BestMatch);
+
+        let providers = factory.registry().list_providers().await;
+        assert_eq!(providers.len(), 1);
+        assert_eq!(providers[0].id, "static-test");
+    }
+
+    #[tokio::test]
+    async fn create_with_strategy_applies_delegation_strategy() {
+        let factory = ModernizedDiscoveryFactory::new().await.expect("create factory");
+        let configs = DiscoveryConfigBuilder::new().add_static("s1".into(), vec![]).build();
+
+        let delegator = factory
+            .create_with_strategy(configs, DelegationStrategy::FirstAvailable)
+            .await
+            .expect("create with strategy");
+        assert_eq!(delegator.strategy(), &DelegationStrategy::FirstAvailable);
+    }
+
+    #[tokio::test]
+    async fn validate_configs_rejects_unknown_provider_type() {
+        let factory = ModernizedDiscoveryFactory::new().await.expect("create factory");
+        let mut parameters = HashMap::new();
+        parameters.insert("type".into(), serde_json::Value::String("unknown-backend".into()));
+        let bad = ProviderConfig {
+            id: "bad".into(),
+            name: "Bad".into(),
+            parameters,
+            environment: HashMap::new(),
+            timeout_ms: None,
+            retry_config: None,
+        };
+
+        let err = factory.validate_configs(&[bad]).await.unwrap_err();
+        assert!(err.to_string().contains("Unknown provider type"));
+    }
+
+    #[tokio::test]
+    async fn validate_configs_rejects_consul_without_url() {
+        let factory = ModernizedDiscoveryFactory::new().await.expect("create factory");
+        let mut parameters = HashMap::new();
+        parameters.insert("type".into(), serde_json::Value::String("consul".into()));
+        let bad = ProviderConfig {
+            id: "consul-bad".into(),
+            name: "Consul".into(),
+            parameters,
+            environment: HashMap::new(),
+            timeout_ms: None,
+            retry_config: None,
+        };
+
+        assert!(factory.validate_configs(&[bad]).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn validate_configs_accepts_kubernetes_provider() {
+        let factory = ModernizedDiscoveryFactory::new().await.expect("create factory");
+        let configs =
+            DiscoveryConfigBuilder::new().add_kubernetes("k8s-1".into(), "staging".into()).build();
+
+        assert!(factory.validate_configs(&configs).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn default_factory_has_empty_registry() {
+        let factory = ModernizedDiscoveryFactory::default();
+        assert!(factory.registry().list_providers().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn with_registry_uses_provided_registry() {
+        let registry = ProviderRegistry::new();
+        let factory = ModernizedDiscoveryFactory::with_registry(registry);
+        assert!(factory.registry().list_providers().await.is_empty());
+    }
+
+    #[test]
+    fn config_builder_kubernetes_produces_valid_config() {
+        let configs = DiscoveryConfigBuilder::new()
+            .add_kubernetes("k8s-env".into(), "production".into())
+            .build();
+
+        assert_eq!(configs.len(), 1);
+        assert_eq!(configs[0].parameters.get("type").and_then(|v| v.as_str()), Some("kubernetes"));
+        assert_eq!(
+            configs[0].parameters.get("namespace").and_then(|v| v.as_str()),
+            Some("production")
+        );
+    }
+
+    #[tokio::test]
+    async fn create_from_config_multiple_backends() {
+        use songbird_config::canonical::constants;
+
+        let factory = ModernizedDiscoveryFactory::new().await.expect("create factory");
+        let consul_url = format!("http://{}:8500", constants::network::DEFAULT_HOST);
+        let configs = DiscoveryConfigBuilder::new()
+            .add_static("s".into(), vec![])
+            .add_consul("c".into(), consul_url)
+            .add_kubernetes("k".into(), "default".into())
+            .build();
+
+        factory.create_from_config(configs).await.expect("create multi-backend delegator");
+        assert_eq!(factory.registry().list_providers().await.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn create_from_file_json_config() {
+        let factory = ModernizedDiscoveryFactory::new().await.expect("create factory");
+        let dir =
+            std::env::temp_dir().join(format!("songbird-factory-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("create temp dir");
+        let path = dir.join("providers.json");
+        let json = r#"[{"id":"file-static","name":"From File","parameters":{"type":"static","services":[]},"environment":{},"timeout_ms":1000,"retry_config":null}]"#;
+        std::fs::write(&path, json).expect("write config");
+
+        let delegator = factory.create_from_file(path.to_str().unwrap()).await.expect("from file");
+        assert_eq!(delegator.strategy(), &DelegationStrategy::BestMatch);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

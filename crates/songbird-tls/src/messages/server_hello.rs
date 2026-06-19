@@ -192,4 +192,109 @@ mod tests {
         let hello = ServerHello::new(random, vec![], 0x1303, extensions);
         assert_eq!(hello.get_supported_version(), Some(0x0304));
     }
+
+    /// RFC 8446 Section 4.1.3 — fixed random value marks HelloRetryRequest.
+    const HELLO_RETRY_REQUEST_RANDOM: [u8; 32] = [
+        0xCF, 0x21, 0xAD, 0x74, 0xE5, 0x9A, 0x61, 0x11, 0xBE, 0x1B, 0x8B, 0x88, 0x9A, 0x82, 0x41,
+        0xAC, 0xF2, 0xC1, 0x9F, 0x22, 0x57, 0xA3, 0x8B, 0x92, 0xC1, 0xDD, 0x8C, 0x90, 0x55, 0x40,
+        0xC4, 0x70,
+    ];
+
+    fn is_hello_retry_request(hello: &ServerHello) -> bool {
+        hello.random == HELLO_RETRY_REQUEST_RANDOM
+    }
+
+    #[test]
+    fn test_cipher_suite_selection_echo() {
+        for suite in [0x1301, 0x1302, 0x1303] {
+            let hello = ServerHello::new(
+                [1u8; 32],
+                vec![],
+                suite,
+                vec![
+                    Extension::SupportedVersions(vec![0x0304]),
+                    Extension::KeyShare(vec![0x11; 32]),
+                ],
+            );
+            assert_eq!(hello.cipher_suite, suite);
+            assert!(hello.validate().is_ok());
+        }
+    }
+
+    #[test]
+    fn test_random_bytes_preserved() {
+        let random: [u8; 32] = core::array::from_fn(|i| u8::try_from(i).unwrap());
+        let hello = ServerHello::new(
+            random,
+            vec![],
+            0x1303,
+            vec![Extension::SupportedVersions(vec![0x0304]), Extension::KeyShare(vec![0x22; 32])],
+        );
+        assert_eq!(hello.random, random);
+        assert_ne!(hello.random, [0u8; 32]);
+    }
+
+    #[test]
+    fn test_server_extensions_key_share_and_supported_versions() {
+        let key_share = vec![0x33; 32];
+        let hello = ServerHello::new(
+            [2u8; 32],
+            vec![],
+            0x1303,
+            vec![
+                Extension::SupportedVersions(vec![0x0304]),
+                Extension::KeyShare(key_share.clone()),
+            ],
+        );
+        assert_eq!(hello.get_supported_version(), Some(0x0304));
+        assert_eq!(hello.get_key_share(), Some(key_share.as_slice()));
+    }
+
+    #[test]
+    fn test_hello_retry_request_magic_random_detected() {
+        let hrr = ServerHello::new(
+            HELLO_RETRY_REQUEST_RANDOM,
+            vec![],
+            0x1303,
+            vec![Extension::SupportedVersions(vec![0x0304]), Extension::KeyShare(vec![0x44; 32])],
+        );
+        assert!(is_hello_retry_request(&hrr));
+    }
+
+    #[test]
+    fn test_normal_server_hello_is_not_hello_retry_request() {
+        let hello = ServerHello::new(
+            [0x77; 32],
+            vec![],
+            0x1303,
+            vec![Extension::SupportedVersions(vec![0x0304]), Extension::KeyShare(vec![0x55; 32])],
+        );
+        assert!(!is_hello_retry_request(&hello));
+    }
+
+    #[test]
+    fn test_max_session_id_echo_validates() {
+        let session_echo = vec![0xEE; 32];
+        let hello = ServerHello::new(
+            [3u8; 32],
+            session_echo.clone(),
+            0x1303,
+            vec![Extension::SupportedVersions(vec![0x0304]), Extension::KeyShare(vec![0x66; 32])],
+        );
+        assert_eq!(hello.legacy_session_id_echo, session_echo);
+        assert!(hello.validate().is_ok());
+    }
+
+    #[test]
+    fn test_session_id_echo_over_32_bytes_rejected() {
+        let hello = ServerHello::new(
+            [4u8; 32],
+            vec![0xFF; 33],
+            0x1303,
+            vec![Extension::SupportedVersions(vec![0x0304]), Extension::KeyShare(vec![0x77; 32])],
+        );
+        let err = hello.validate().unwrap_err();
+        assert!(matches!(err, TlsError::ProtocolError(_)));
+        assert!(err.to_string().contains("Legacy session ID echo"));
+    }
 }

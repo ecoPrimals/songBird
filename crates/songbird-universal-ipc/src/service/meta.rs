@@ -4,6 +4,17 @@
 use super::{FederationPeersResponse, FederationStatusResponse, IpcServiceHandler};
 use serde_json::Value;
 
+/// Check if federation is configured via environment variables (fallback when
+/// `FederationState` is not injected into the handler — e.g. standalone IPC path).
+fn federation_configured_via_env() -> bool {
+    songbird_process_env::var("SONGBIRD_FEDERATION_ENABLED")
+        .or_else(|_| songbird_process_env::var("FEDERATION_ENABLED"))
+        .map(|v| matches!(v.to_lowercase().as_str(), "true" | "1" | "yes" | "on"))
+        .unwrap_or(false)
+        || songbird_process_env::var("SONGBIRD_PEERS").is_ok()
+        || songbird_process_env::var("SONGBIRD_FEDERATION_PORT").is_ok()
+}
+
 impl IpcServiceHandler {
     /// Handle `birdsong.advertise` method
     ///
@@ -88,7 +99,7 @@ impl IpcServiceHandler {
             return serde_json::to_value(FederationPeersResponse {
                 peers: vec![],
                 total_count: 0,
-                federation_enabled: false,
+                federation_enabled: federation_configured_via_env(),
             })
             .map_err(|e| format!("Serialization error: {e}"));
         };
@@ -96,23 +107,24 @@ impl IpcServiceHandler {
         let mut peers: Vec<String> =
             state.active_nodes().await.into_iter().map(|n| n.node_id).collect();
         peers.sort();
-        let federation_stats = state.get_stats().await;
         let total_count = peers.len();
-        let federation_enabled = federation_stats.total_nodes > 0;
 
         serde_json::to_value(FederationPeersResponse {
             peers,
             total_count,
-            federation_enabled,
+            federation_enabled: true,
         })
         .map_err(|e| format!("Serialization error: {e}"))
     }
 
     /// `songbird.federation.status` / `federation.status`
+    ///
+    /// `enabled` reflects whether federation was configured (state injected OR env vars set),
+    /// NOT whether remote peers are connected. Use `active_connections` for connectivity.
     pub(super) async fn handle_federation_status_rpc(&self) -> Result<Value, String> {
         let Some(ref state) = self.federation_state else {
             return serde_json::to_value(FederationStatusResponse {
-                enabled: false,
+                enabled: federation_configured_via_env(),
                 active_connections: 0,
             })
             .map_err(|e| format!("Serialization error: {e}"));
@@ -120,7 +132,7 @@ impl IpcServiceHandler {
 
         let fed_stats = state.get_stats().await;
         serde_json::to_value(FederationStatusResponse {
-            enabled: fed_stats.total_nodes > 0,
+            enabled: true,
             active_connections: fed_stats.active_nodes,
         })
         .map_err(|e| format!("Serialization error: {e}"))
@@ -157,11 +169,11 @@ mod tests {
     #[tokio::test]
     async fn health_check_includes_uptime_and_registry_service_count() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(Arc::clone(&registry));
+        let handler = IpcServiceHandler::new_isolated(Arc::clone(&registry));
 
         let v = handler.handle("health.check", json!({})).await.expect("health.check");
         assert_eq!(v["status"], "healthy");
-        assert!(v["uptime_seconds"].as_u64().is_some());
+        assert!(v["uptime_s"].as_u64().is_some());
         assert_eq!(v["services"], json!(0));
 
         handler
@@ -178,7 +190,7 @@ mod tests {
 
         let v2 = handler.handle("health.check", json!({})).await.expect("health.check 2");
         assert_eq!(v2["services"], json!(1));
-        assert!(v2["uptime_seconds"].as_u64().unwrap() >= v["uptime_seconds"].as_u64().unwrap());
+        assert!(v2["uptime_s"].as_u64().unwrap() >= v["uptime_s"].as_u64().unwrap());
     }
 
     #[tokio::test]
@@ -208,7 +220,7 @@ mod tests {
     #[tokio::test]
     async fn birdsong_advertise_errors_when_node_id_missing() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(registry);
+        let handler = IpcServiceHandler::new_isolated(registry);
         let err = handler
             .handle("birdsong.advertise", json!({ "capabilities": [] }))
             .await
@@ -219,7 +231,7 @@ mod tests {
     #[tokio::test]
     async fn birdsong_advertise_errors_when_node_id_not_a_string() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(registry);
+        let handler = IpcServiceHandler::new_isolated(registry);
         let err = handler
             .handle("birdsong.advertise", json!({ "node_id": 12345 }))
             .await
@@ -230,7 +242,7 @@ mod tests {
     #[tokio::test]
     async fn birdsong_advertise_capabilities_non_array_becomes_empty() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(registry);
+        let handler = IpcServiceHandler::new_isolated(registry);
         let params = json!({
             "node_id": "n1",
             "capabilities": "not-an-array",
@@ -250,7 +262,7 @@ mod tests {
     #[tokio::test]
     async fn birdsong_advertise_capabilities_filters_non_string_entries() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(registry);
+        let handler = IpcServiceHandler::new_isolated(registry);
         let params = json!({
             "node_id": "n2",
             "capabilities": ["keep", 99, "also-keep", {"x": 1}]
@@ -268,7 +280,7 @@ mod tests {
     #[tokio::test]
     async fn birdsong_advertise_preserves_endpoint_hints_metadata() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(registry);
+        let handler = IpcServiceHandler::new_isolated(registry);
         let hints = json!({ "lan": "192.168.0.10:0", "note": "port 0 hint" });
         let params = json!({
             "node_id": "n-hints",
@@ -288,7 +300,7 @@ mod tests {
     #[tokio::test]
     async fn birdsong_advertise_onion_not_running_sets_onion_fields() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(registry);
+        let handler = IpcServiceHandler::new_isolated(registry);
         let r = handler
             .handle("birdsong.advertise", json!({ "node_id": "n-onion", "capabilities": [] }))
             .await;
@@ -370,7 +382,7 @@ mod tests {
     #[tokio::test]
     async fn federation_peers_empty_state_serializes_like_meta_defaults() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-        let handler = IpcServiceHandler::new(registry);
+        let handler = IpcServiceHandler::new_isolated(registry);
 
         let p = handler.handle("songbird.federation.peers", json!({})).await.expect("peers");
         let expected = serde_json::to_value(FederationPeersResponse {
@@ -388,5 +400,31 @@ mod tests {
         })
         .expect("to_value status");
         assert_eq!(st, expected_st);
+    }
+
+    #[tokio::test]
+    async fn federation_status_reads_env_var_when_state_not_injected() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new_isolated(registry);
+
+        let _env = songbird_process_env::ScopedEnv::new("SONGBIRD_FEDERATION_ENABLED", "true");
+
+        let st = handler.handle("federation.status", json!({})).await.expect("status");
+        assert_eq!(st["enabled"], json!(true), "env var should wire into response");
+        assert_eq!(st["active_connections"], json!(0));
+
+        let p = handler.handle("federation.peers", json!({})).await.expect("peers");
+        assert_eq!(p["federation_enabled"], json!(true));
+    }
+
+    #[tokio::test]
+    async fn federation_status_reads_peers_env_as_implicit_enabled() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new_isolated(registry);
+
+        let _env = songbird_process_env::ScopedEnv::new("SONGBIRD_PEERS", "157.230.3.183:7700");
+
+        let st = handler.handle("federation.status", json!({})).await.expect("status");
+        assert_eq!(st["enabled"], json!(true), "SONGBIRD_PEERS implies federation enabled");
     }
 }

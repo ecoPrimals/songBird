@@ -64,7 +64,7 @@ mod tests {
     fn mock_env<'a>(
         map: &'a HashMap<&str, &str>,
     ) -> impl Fn(&str) -> Result<String, std::env::VarError> + 'a {
-        move |key| map.get(key).map(|v| v.to_string()).ok_or(std::env::VarError::NotPresent)
+        move |key| map.get(key).map(ToString::to_string).ok_or(std::env::VarError::NotPresent)
     }
 
     #[test]
@@ -78,7 +78,9 @@ mod tests {
     fn env_parse_with_parses_valid_f64() {
         let map = HashMap::from([("RATIO", "3.14")]);
         let env = mock_env(&map);
-        assert!((env_parse_with(&env, "RATIO", 0.0f64) - 3.14).abs() < f64::EPSILON);
+        #[allow(clippy::approx_constant)]
+        let expected = 3.14;
+        assert!((env_parse_with(&env, "RATIO", 0.0f64) - expected).abs() < f64::EPSILON);
     }
 
     #[test]

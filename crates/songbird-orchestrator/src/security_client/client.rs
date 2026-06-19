@@ -17,9 +17,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
+#[cfg(test)]
+use super::types::ApiResponseWrapper;
 use super::types::{
-    ApiResponseWrapper, ConnectionInfo, CurrentLineageInfo, IdentityResponse,
-    TrustEvaluationRequest, TrustEvaluationResponse, VerificationResult,
+    ConnectionInfo, CurrentLineageInfo, IdentityResponse, TrustEvaluationRequest,
+    TrustEvaluationResponse, VerificationResult,
 };
 use crate::trust::universal_trust_api::{
     IdentityAttestation as UniversalIdentityAttestation, UniversalTrustRequest,
@@ -114,14 +116,7 @@ impl SecurityCapabilityClient {
     }
 
     /// Parse response gracefully (agnostic to wrapped/unwrapped format)
-    ///
-    /// **Modern Idiomatic Pattern** (Jan 3, 2026):
-    /// - HTTP status codes indicate success/failure (REST standard)
-    /// - Try unwrapped format first (idiomatic, clean)
-    /// - Fall back to wrapped format (backward compatibility)
-    /// - Works with any security provider during transition
-    ///
-    /// **✅ PURE RUST** (Jan 21, 2026): Now uses songbird-http-client responses
+    #[cfg(test)]
     fn parse_response_body<T>(&self, status: u16, body: &str) -> Result<T>
     where
         T: serde::de::DeserializeOwned + std::fmt::Debug,
@@ -146,7 +141,7 @@ impl SecurityCapabilityClient {
             }
             anyhow::bail!(
                 "Security provider returned success=false: {}",
-                wrapped.error.unwrap_or_else(|| String::from("Unknown error"))
+                wrapped.error.unwrap_or_else(|| "Unknown error".to_string())
             );
         }
 
@@ -203,8 +198,8 @@ impl SecurityCapabilityClient {
         // Convert to universal format
         let connection_info_map = request.connection_info.as_ref().map(|info| {
             let mut map = HashMap::new();
-            map.insert(String::from("endpoint"), info.endpoint.clone());
-            map.insert(String::from("protocol"), info.protocol.clone());
+            map.insert("endpoint".to_string(), info.endpoint.clone());
+            map.insert("protocol".to_string(), info.protocol.clone());
             map
         });
 
@@ -242,8 +237,8 @@ impl SecurityCapabilityClient {
 
                 // Return reject decision on error (fail-safe)
                 TrustEvaluationResponse {
-                    decision: String::from("reject"),
-                    trust_level: String::from("none"),
+                    decision: "reject".to_string(),
+                    trust_level: "none".to_string(),
                     confidence: 0.0,
                     reason: format!("Security provider error: {e}"),
                     encryption_tag: None,
@@ -297,6 +292,61 @@ impl SecurityCapabilityClient {
         self.adapter.endpoint()
     }
 
+    /// Whether this client's endpoint is UDS-based (not HTTP).
+    fn is_uds_endpoint(&self) -> bool {
+        let ep = self.adapter.endpoint();
+        ep.starts_with("unix://") || ep.starts_with('/') || ep.contains(".sock")
+    }
+
+    /// Route a GET request through the adapter (UDS JSON-RPC) or http_client (HTTP).
+    async fn adapter_get(&self, path: &str) -> Result<serde_json::Value> {
+        if self.is_uds_endpoint() {
+            self.adapter.transport_get(path).await.map_err(|e| anyhow::anyhow!("{e}"))
+        } else {
+            let url = format!(
+                "{}/{}",
+                self.adapter.endpoint().trim_end_matches('/'),
+                path.trim_start_matches('/')
+            );
+            let response = self
+                .http_client
+                .request("GET", &url, HashMap::new(), None)
+                .await
+                .context("HTTP GET failed")?;
+            if response.status == 404 {
+                return Ok(serde_json::Value::Null);
+            }
+            if !(200..300).contains(&(response.status as usize)) {
+                anyhow::bail!("Security provider returned HTTP {}", response.status);
+            }
+            serde_json::from_str(&response.body.to_string())
+                .context("Failed to parse response JSON")
+        }
+    }
+
+    /// Route a POST request through the adapter (UDS JSON-RPC) or http_client (HTTP).
+    async fn adapter_post(&self, path: &str, body: serde_json::Value) -> Result<serde_json::Value> {
+        if self.is_uds_endpoint() {
+            self.adapter.transport_post(path, body).await.map_err(|e| anyhow::anyhow!("{e}"))
+        } else {
+            let url = format!(
+                "{}/{}",
+                self.adapter.endpoint().trim_end_matches('/'),
+                path.trim_start_matches('/')
+            );
+            let response = self
+                .http_client
+                .request("POST", &url, HashMap::new(), Some(body))
+                .await
+                .context("HTTP POST failed")?;
+            if !(200..300).contains(&(response.status as usize)) {
+                anyhow::bail!("Security provider returned HTTP {}", response.status);
+            }
+            serde_json::from_str(&response.body.to_string())
+                .context("Failed to parse response JSON")
+        }
+    }
+
     /// Test hook for [`parse_response_body`](Self::parse_response_body) (no network I/O).
     #[cfg(test)]
     pub(crate) fn test_parse_response_body<T>(&self, status: u16, body: &str) -> anyhow::Result<T>
@@ -325,8 +375,8 @@ impl SecurityCapabilityClient {
             }
 
             attestations.push(UniversalIdentityAttestation {
-                provider: Some(String::from("security/identity")),
-                format: String::from("tag_list"),
+                provider: Some("security/identity".to_string()),
+                format: "tag_list".to_string(),
                 data,
             });
         }
@@ -353,8 +403,8 @@ impl SecurityCapabilityClient {
             }
 
             attestations.push(songbird_discovery::IdentityAttestation {
-                provider_capability: String::from("security/identity"),
-                format: String::from("tag_list"),
+                provider_capability: "security/identity".to_string(),
+                format: "tag_list".to_string(),
                 data,
             });
         }
@@ -370,25 +420,18 @@ impl SecurityCapabilityClient {
         &self,
         request: &UniversalTrustRequest,
     ) -> Result<UniversalTrustResponse> {
-        let url = format!("{}/api/v1/trust/evaluate", self.adapter.endpoint());
-        debug!("Evaluating trust (universal API): {}", url);
+        debug!("Evaluating trust (universal API) via {}", self.adapter.endpoint());
 
-        // ✅ PURE RUST: Using songbird-http-client
         let request_json = serde_json::to_value(request)?;
-        let http_response = self
-            .http_client
-            .request("POST", &url, HashMap::new(), Some(request_json))
+        let result = self
+            .adapter_post("api/v1/trust/evaluate", request_json)
             .await
             .context("Failed to connect to security provider for trust evaluation")?;
 
-        // ✅ AGNOSTIC: Gracefully handles wrapped or unwrapped format
-        let body_str = http_response.body.to_string();
-        let trust_response = match self
-            .parse_response_body::<UniversalTrustResponse>(http_response.status, &body_str)
-        {
+        let trust_response: UniversalTrustResponse = match serde_json::from_value(result) {
             Ok(response) => response,
             Err(e) => {
-                warn!("Universal trust evaluation failed: {}. Trying legacy fallback...", e);
+                warn!("Universal trust evaluation parse failed: {}. Trying legacy fallback...", e);
                 self.evaluate_trust_legacy_fallback(request).await?
             }
         };
@@ -429,7 +472,7 @@ impl SecurityCapabilityClient {
             peer_tags: tags,
             connection_info: Some(ConnectionInfo {
                 endpoint: universal_request.context.endpoint.clone(),
-                protocol: String::from("tarpc"),
+                protocol: "tarpc".to_string(),
             }),
             context: None,
         };
@@ -447,7 +490,7 @@ impl SecurityCapabilityClient {
         };
 
         Ok(UniversalTrustResponse {
-            response_format: String::from("universal_trust_v1"),
+            response_format: "universal_trust_v1".to_string(),
             decision,
             confidence: legacy_response.confidence,
             reason: legacy_response.reason.clone(),
@@ -463,25 +506,19 @@ impl SecurityCapabilityClient {
     ///
     /// Returns an error if the operation fails.
     pub async fn get_current_lineage(&self) -> Result<Option<CurrentLineageInfo>> {
-        let url = format!("{}/api/v1/lineage/current", self.adapter.endpoint());
-        debug!("Querying security provider for current lineage: {}", url);
+        debug!("Querying security provider for current lineage via {}", self.adapter.endpoint());
 
-        // ✅ PURE RUST: Using songbird-http-client
-        let response = self
-            .http_client
-            .request("GET", &url, HashMap::new(), None)
+        let result = self
+            .adapter_get("api/v1/lineage/current")
             .await
             .context("Failed to connect to security provider for lineage query")?;
 
-        // If not found, return None (no lineage configured)
-        if response.status == 404 {
+        if result.is_null() {
             return Ok(None);
         }
 
-        // Parse response using our agnostic parser
-        let body_str = response.body.to_string();
-        let lineage_info =
-            self.parse_response_body::<CurrentLineageInfo>(response.status, &body_str)?;
+        let lineage_info: CurrentLineageInfo =
+            serde_json::from_value(result).context("Failed to parse lineage response")?;
 
         info!("✅ Retrieved current lineage from security provider: {}", lineage_info.lineage_id);
         Ok(Some(lineage_info))
@@ -492,44 +529,33 @@ impl SecurityCapabilityClient {
     ///
     /// Returns an error if the operation fails.
     pub async fn verify_lineage(&self, proof: &LineageProof) -> Result<VerificationResult> {
-        let url = format!("{}/api/v1/lineage/verify", self.adapter.endpoint());
-        debug!("Verifying lineage proof with security provider: {}", url);
+        debug!("Verifying lineage proof via {}", self.adapter.endpoint());
 
-        // ✅ PURE RUST: Using songbird-http-client
         let proof_json = serde_json::to_value(proof)?;
-        let response = self
-            .http_client
-            .request("POST", &url, HashMap::new(), Some(proof_json))
-            .await
-            .context("Failed to connect to security provider for lineage verification")?;
+        let result = match self.adapter_post("api/v1/lineage/verify", proof_json).await {
+            Ok(v) => v,
+            Err(e) => {
+                error!("Security provider lineage verification failed: {}", e);
+                let invalid_lineage = LineageId::new("error-invalid".to_string());
+                return Ok(VerificationResult {
+                    valid: false,
+                    same_genesis: false,
+                    lineage_id: invalid_lineage,
+                    messages: vec![format!("Security provider error: {e}")],
+                });
+            }
+        };
 
-        // Return invalid verification result on error
-        if response.status < 200 || response.status >= 300 {
-            error!(
-                "Security provider lineage verification failed: {} - {}",
-                response.status, response.body
-            );
-            let invalid_lineage = LineageId::new(String::from("error-invalid"));
-            return Ok(VerificationResult {
-                valid: false,
-                same_genesis: false,
-                lineage_id: invalid_lineage,
-                messages: vec![format!("Security provider error: {}", response.status)],
-            });
-        }
-
-        let body_str = response.body.to_string();
-        let result = self
-            .parse_response_body::<VerificationResult>(response.status, &body_str)
+        let verification: VerificationResult = serde_json::from_value(result)
             .context("Failed to parse security provider verification response")?;
 
-        if result.valid {
+        if verification.valid {
             info!("✅ Lineage proof verified by security provider");
         } else {
-            warn!("❌ Lineage proof rejected by security provider: {:?}", result.messages);
+            warn!("❌ Lineage proof rejected by security provider: {:?}", verification.messages);
         }
 
-        Ok(result)
+        Ok(verification)
     }
 
     /// Check if two lineages are from the same genetic family
@@ -537,7 +563,6 @@ impl SecurityCapabilityClient {
     ///
     /// Returns an error if the operation fails.
     pub async fn same_family(&self, lineage_a: &LineageId, lineage_b: &LineageId) -> Result<bool> {
-        let url = format!("{}/api/v1/lineage/same_family", self.adapter.endpoint());
         debug!("Checking if lineages are from same family: {} vs {}", lineage_a, lineage_b);
 
         #[derive(serde::Serialize)]
@@ -557,35 +582,28 @@ impl SecurityCapabilityClient {
             lineage_b: lineage_b.to_string(),
         };
 
-        // ✅ PURE RUST: Using songbird-http-client
         let request_json = serde_json::to_value(&request)?;
-        let response = self
-            .http_client
-            .request("POST", &url, HashMap::new(), Some(request_json))
-            .await
-            .context("Failed to connect to security provider for family check")?;
+        let result = match self.adapter_post("api/v1/lineage/same_family", request_json).await {
+            Ok(v) => v,
+            Err(e) => {
+                warn!("Security provider family check failed: {}", e);
+                return Ok(false);
+            }
+        };
 
-        // Conservative: assume different families on error
-        if response.status < 200 || response.status >= 300 {
-            warn!("Security provider family check failed: {} - {}", response.status, response.body);
-            return Ok(false);
-        }
-
-        let body_str = response.body.to_string();
-        let result = self
-            .parse_response_body::<SameFamilyResponse>(response.status, &body_str)
+        let response: SameFamilyResponse = serde_json::from_value(result)
             .context("Failed to parse security provider family check response")?;
 
-        if result.same_family {
+        if response.same_family {
             info!(
                 "✅ Lineages are from same genetic family (confidence: {:.2})",
-                result.confidence
+                response.confidence
             );
         } else {
             debug!("Different genetic families");
         }
 
-        Ok(result.same_family)
+        Ok(response.same_family)
     }
 }
 

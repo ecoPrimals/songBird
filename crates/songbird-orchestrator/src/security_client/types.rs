@@ -14,6 +14,7 @@ use std::collections::HashMap;
 /// Some security providers wrap their responses in `{"success": true, "data": {...}}`.
 /// This allows graceful handling of both wrapped and unwrapped formats during transition.
 #[derive(Debug, Clone, Deserialize)]
+#[cfg(test)]
 pub(super) struct ApiResponseWrapper<T> {
     pub success: bool,
     pub data: T,

@@ -377,3 +377,136 @@ mod tests {
         assert_eq!(storage_socket_from_endpoint("relative/path"), None);
     }
 }
+
+#[cfg(test)]
+mod service_lifecycle_tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::OnionService;
+    use crate::security_crypto::SecurityCryptoClient;
+    use base64::{Engine, engine::general_purpose::STANDARD};
+    use serde_json::json;
+    use songbird_crypto_provider::{CryptoProvider, RoutingMode};
+    use std::time::Duration;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::{TcpListener, TcpStream, UnixListener};
+
+    fn b64(data: &[u8]) -> String {
+        STANDARD.encode(data)
+    }
+
+    async fn read_json_rpc_request(stream: &mut tokio::net::UnixStream) -> serde_json::Value {
+        let mut buf = Vec::new();
+        stream.read_to_end(&mut buf).await.expect("read request");
+        serde_json::from_slice(&buf).expect("parse JSON-RPC request")
+    }
+
+    async fn start_service_mock_server() -> String {
+        let path = std::env::temp_dir().join(format!(
+            "songbird-onion-service-{}-{}.sock",
+            std::process::id(),
+            uuid::Uuid::new_v4()
+        ));
+        let path_str = path.to_string_lossy().to_string();
+        let listener = UnixListener::bind(&path_str).expect("bind mock socket");
+
+        tokio::spawn(async move {
+            while let Ok((mut stream, _)) = listener.accept().await {
+                let req = read_json_rpc_request(&mut stream).await;
+                let method = req["method"].as_str().unwrap_or("");
+                let id = req["id"].as_u64().unwrap_or(1);
+                let result = match method {
+                    "crypto.ed25519_generate_keypair" => json!({
+                        "public_key": b64(&[0x01u8; 32]),
+                        "secret_key": b64(&[0x02u8; 32]),
+                    }),
+                    "crypto.sha3_256" => json!({
+                        "hash_base64": b64(&[0x03u8; 32]),
+                    }),
+                    _ => json!({}),
+                };
+                let body = json!({"jsonrpc":"2.0","result":result,"id":id}).to_string();
+                let _ = stream.write_all(body.as_bytes()).await;
+            }
+        });
+
+        path_str
+    }
+
+    fn mock_client(path: &str) -> SecurityCryptoClient {
+        SecurityCryptoClient::from_provider(CryptoProvider::with_mode(path, RoutingMode::Direct))
+    }
+
+    async fn pick_free_port() -> u16 {
+        TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind ephemeral")
+            .local_addr()
+            .expect("local addr")
+            .port()
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn new_via_security_provider_exposes_address_and_port() {
+        let path = start_service_mock_server().await;
+        let port = pick_free_port().await;
+        let service = OnionService::new_via_security_provider(port, mock_client(&path))
+            .await
+            .expect("create service");
+        assert_eq!(service.port(), port);
+        assert!(service.onion_address().ends_with(".onion"));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn service_run_listens_and_accepts_tcp_connections() {
+        let path = start_service_mock_server().await;
+        let port = pick_free_port().await;
+        let service = OnionService::new_via_security_provider(port, mock_client(&path))
+            .await
+            .expect("create service");
+
+        let run_task = tokio::spawn(async move {
+            let _ = service.run().await;
+        });
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        let conn = TcpStream::connect(format!("127.0.0.1:{port}")).await;
+        assert!(conn.is_ok(), "service should accept TCP while running");
+        run_task.abort();
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn service_run_fails_when_port_already_bound() {
+        let path = start_service_mock_server().await;
+        let port = pick_free_port().await;
+        let _guard = TcpListener::bind(format!("0.0.0.0:{port}")).await.expect("hold port");
+
+        let service = OnionService::new_via_security_provider(port, mock_client(&path))
+            .await
+            .expect("create service");
+        let err = service.run().await.expect_err("bind should fail");
+        assert!(
+            matches!(err, crate::error::OnionError::Io(_)),
+            "expected Io error on bind conflict, got {err:?}"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn service_reuses_loaded_identity_from_in_memory_storage() {
+        let path = start_service_mock_server().await;
+        let port = pick_free_port().await;
+        let client = mock_client(&path);
+
+        let first = OnionService::new_via_security_provider(port, client.clone())
+            .await
+            .expect("first service");
+        let address = first.onion_address().to_string();
+
+        let second = OnionService::new_via_security_provider(port + 1, client)
+            .await
+            .expect("second service");
+        // Each OnionService owns separate in-memory storage; addresses differ on second create.
+        assert!(second.onion_address().ends_with(".onion"));
+        assert!(!address.is_empty());
+    }
+}

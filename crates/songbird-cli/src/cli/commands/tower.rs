@@ -21,7 +21,7 @@ fn tower_bind_from_env_or_default() -> String {
 }
 
 fn resolve_bind_address(env_value: Option<String>) -> String {
-    env_value.unwrap_or_else(|| String::from(songbird_types::constants::PRODUCTION_BIND_ADDRESS))
+    env_value.unwrap_or_else(|| songbird_types::constants::PRODUCTION_BIND_ADDRESS.to_string())
 }
 
 /// Tower management commands
@@ -162,7 +162,7 @@ async fn start_tower(args: &TowerStartArgs) -> SongbirdResult<()> {
     }
 
     if args.federation {
-        songbird_process_env::set_var("FEDERATION_ENABLED", "true");
+        songbird_process_env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
     }
 
     if args.dark_forest {
@@ -568,22 +568,22 @@ mod tests {
     }
 
     #[test]
-    fn resolve_bind_address_reads_provided_value() {
-        assert_eq!(super::resolve_bind_address(Some(String::from("192.168.99.7"))), "192.168.99.7");
+    fn resolve_bind_address_with_value() {
+        assert_eq!(super::resolve_bind_address(Some("192.168.99.7".into())), "192.168.99.7");
     }
 
     #[test]
-    fn resolve_bind_address_accepts_ipv6_literal() {
-        assert_eq!(super::resolve_bind_address(Some(String::from("::1"))), "::1");
+    fn resolve_bind_address_ipv6_literal() {
+        assert_eq!(super::resolve_bind_address(Some("::1".into())), "::1");
     }
 
     #[test]
-    fn resolve_bind_address_preserves_literal_value() {
-        assert_eq!(super::resolve_bind_address(Some(String::from(" 127.0.0.1 "))), " 127.0.0.1 ");
+    fn resolve_bind_address_preserves_whitespace() {
+        assert_eq!(super::resolve_bind_address(Some(" 127.0.0.1 ".into())), " 127.0.0.1 ");
     }
 
     #[test]
-    fn resolve_bind_address_none_returns_production_default() {
+    fn resolve_bind_address_none_returns_default() {
         assert_eq!(
             super::resolve_bind_address(None),
             songbird_types::constants::PRODUCTION_BIND_ADDRESS

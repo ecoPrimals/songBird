@@ -392,7 +392,10 @@ mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
 
     use super::*;
-    use crate::abstraction::adapters::{DiscoveryProviderImpl, StaticProviderAdapter};
+    use crate::abstraction::adapters::{
+        ConsulProviderAdapter, DiscoveryProviderImpl, StaticProviderAdapter,
+    };
+    use std::collections::HashMap;
 
     #[tokio::test]
     async fn test_delegation_strategy() {
@@ -519,5 +522,163 @@ mod tests {
         assert!(err1.to_string().contains("rr-a") || err1.to_string().contains("rr-b"));
         assert!(err2.to_string().contains("rr-a") || err2.to_string().contains("rr-b"));
         assert_ne!(err1.to_string(), err2.to_string());
+    }
+
+    async fn registry_with_static_and_consul() -> ProviderRegistry {
+        let registry = ProviderRegistry::new();
+        registry
+            .register_provider(DiscoveryProviderImpl::Static(StaticProviderAdapter::new_native(
+                "static-low-load".into(),
+                vec![],
+            )))
+            .await
+            .unwrap();
+        let consul = ConsulProviderAdapter::new_native(
+            "consul-high-load".into(),
+            "http://127.0.0.1:8500".into(),
+        )
+        .await
+        .expect("create consul adapter");
+        registry.register_provider(DiscoveryProviderImpl::Consul(consul)).await.unwrap();
+        registry
+    }
+
+    #[tokio::test]
+    async fn default_strategy_is_best_match() {
+        let delegator = DiscoveryDelegator::new(ProviderRegistry::new());
+        assert_eq!(delegator.strategy(), &DelegationStrategy::BestMatch);
+    }
+
+    #[tokio::test]
+    async fn first_available_selects_a_registered_provider() {
+        let registry = ProviderRegistry::new();
+        registry
+            .register_provider(DiscoveryProviderImpl::Static(StaticProviderAdapter::new_native(
+                "first-pick".into(),
+                vec![],
+            )))
+            .await
+            .unwrap();
+
+        let delegator =
+            DiscoveryDelegator::new(registry).with_strategy(DelegationStrategy::FirstAvailable);
+        let err = delegator.discover(ServiceQuery::new()).await.unwrap_err();
+        assert!(err.to_string().contains("first-pick"));
+    }
+
+    #[tokio::test]
+    async fn least_load_prefers_static_over_consul() {
+        let registry = registry_with_static_and_consul().await;
+        let delegator =
+            DiscoveryDelegator::new(registry).with_strategy(DelegationStrategy::LeastLoad);
+        let err = delegator.discover(ServiceQuery::new()).await.unwrap_err();
+        assert!(err.to_string().contains("static-low-load"));
+    }
+
+    #[tokio::test]
+    async fn register_fails_when_registry_empty() {
+        let delegator = DiscoveryDelegator::new(ProviderRegistry::new());
+        let service = ServiceInfo {
+            service_id: "svc".into(),
+            name: "Test".into(),
+            version: "1".into(),
+            service_type: "api".into(),
+            description: None,
+            endpoints: vec![],
+            health_check_endpoint: None,
+            metadata: HashMap::new(),
+            tags: vec![],
+            dependencies: vec![],
+            status: crate::traits::service::ServiceStatus::Running,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+            instance_id: "svc-1".into(),
+            host: "127.0.0.1".into(),
+            port: 8080,
+        };
+        let err = delegator.register(service).await.unwrap_err();
+        assert!(err.to_string().contains("providers") || err.to_string().contains("Providers"));
+    }
+
+    #[tokio::test]
+    async fn list_all_fails_when_registry_empty() {
+        let delegator = DiscoveryDelegator::new(ProviderRegistry::new());
+        let err = delegator.list_all().await.unwrap_err();
+        assert!(err.to_string().contains("providers") || err.to_string().contains("Providers"));
+    }
+
+    #[tokio::test]
+    async fn exists_returns_deprecated_error_when_provider_registered() {
+        let registry = ProviderRegistry::new();
+        registry
+            .register_provider(DiscoveryProviderImpl::Static(StaticProviderAdapter::new_native(
+                "exists-provider".into(),
+                vec![],
+            )))
+            .await
+            .unwrap();
+
+        let delegator = DiscoveryDelegator::new(registry);
+        let err = delegator.exists("any-id").await.unwrap_err();
+        assert!(err.to_string().contains("UniversalCapabilityAdapter"));
+    }
+
+    #[tokio::test]
+    async fn specific_strategy_accepts_provider_with_discovery_capability() {
+        let registry = ProviderRegistry::new();
+        registry
+            .register_provider(DiscoveryProviderImpl::Static(StaticProviderAdapter::new_native(
+                "capable".into(),
+                vec![],
+            )))
+            .await
+            .unwrap();
+
+        let delegator = DiscoveryDelegator::new(registry)
+            .with_strategy(DelegationStrategy::Specific("capable".into()));
+        let err = delegator.discover(ServiceQuery::new()).await.unwrap_err();
+        assert!(err.to_string().contains("capable"));
+    }
+
+    #[tokio::test]
+    async fn get_metrics_fails_when_all_providers_missing_capability() {
+        let registry = ProviderRegistry::new();
+        registry
+            .register_provider(DiscoveryProviderImpl::Static(StaticProviderAdapter::new_native(
+                "no-metrics".into(),
+                vec![],
+            )))
+            .await
+            .unwrap();
+
+        let delegator = DiscoveryDelegator::new(registry);
+        let err = delegator.get_service_metrics("svc").await.unwrap_err();
+        assert!(
+            err.to_string().contains("ServiceMetrics")
+                || err.to_string().contains("capabilities")
+                || err.to_string().contains("providers")
+        );
+    }
+
+    #[tokio::test]
+    async fn round_robin_three_providers_produces_three_distinct_errors() {
+        let registry = ProviderRegistry::new();
+        for id in ["rr-x", "rr-y", "rr-z"] {
+            registry
+                .register_provider(DiscoveryProviderImpl::Static(
+                    StaticProviderAdapter::new_native(id.into(), vec![]),
+                ))
+                .await
+                .unwrap();
+        }
+
+        let delegator =
+            DiscoveryDelegator::new(registry).with_strategy(DelegationStrategy::RoundRobin);
+        let mut messages = Vec::new();
+        for _ in 0..3 {
+            messages.push(delegator.discover(ServiceQuery::new()).await.unwrap_err().to_string());
+        }
+        assert_ne!(messages[0], messages[1]);
+        assert_ne!(messages[1], messages[2]);
     }
 }

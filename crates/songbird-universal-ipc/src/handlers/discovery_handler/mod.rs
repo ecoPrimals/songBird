@@ -79,7 +79,7 @@ impl DiscoveryHandler {
         }
     }
 
-    /// Inject a custom registry slot (e.g. `PeerRegistrySlot::Mock` in unit tests).
+    /// Inject a custom registry slot (e.g. [`PeerRegistrySlot::Mock`] in unit tests).
     #[must_use]
     pub fn with_peer_registry(slot: PeerRegistrySlot) -> Self {
         Self {
@@ -172,6 +172,9 @@ impl DiscoveryHandler {
     }
 
     /// Collect peers from the beacon mesh as [`DiscoveredPeerInfo`] entries.
+    ///
+    /// Capabilities are populated from `mesh.capabilities_announce` data received
+    /// from remote peers (push/gossip propagation model).
     async fn collect_mesh_peers(&self, mesh: &MeshHandler) -> Vec<DiscoveredPeerInfo> {
         use songbird_onion_relay::EndpointType;
 
@@ -184,8 +187,9 @@ impl DiscoveryHandler {
         let mut result = Vec::new();
 
         for node_id in &reachable {
-            let address = if let Some(path) = beacon_mesh.get_best_path(node_id).await {
-                match &path.endpoint_type {
+            let (address, latency_ms) = if let Some(path) = beacon_mesh.get_best_path(node_id).await
+            {
+                let addr = match &path.endpoint_type {
                     EndpointType::Direct {
                         addr,
                     }
@@ -198,23 +202,27 @@ impl DiscoveryHandler {
                     EndpointType::TorOnion {
                         onion_addr,
                     } => onion_addr.clone(),
-                }
+                };
+                let ms = path.latency.map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
+                (addr, ms)
             } else {
-                String::new()
+                (String::new(), None)
             };
 
             let tcp_port = address.parse::<std::net::SocketAddr>().ok().map(|a| a.port());
+            let capabilities = mesh.get_peer_capabilities(node_id).await;
 
             result.push(DiscoveredPeerInfo {
                 node_id: node_id.clone(),
                 family_id: String::new(),
                 address,
                 tcp_port,
-                capabilities: Vec::new(),
-                last_seen: String::from("mesh"),
+                capabilities,
+                last_seen: "mesh".to_string(),
                 quality: Some(1.0),
                 node_name: None,
-                protocols: vec![String::from("tcp")],
+                protocols: vec!["tcp".to_string()],
+                latency_ms,
             });
         }
 

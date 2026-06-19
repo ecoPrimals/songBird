@@ -100,8 +100,8 @@ pub async fn discover_from_network_with_timeout(
     reason = "async signature required for consistent discovery backend interface"
 )]
 pub async fn discover_mdns_services() -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
-    use std::time::Duration;
-    discover_mdns_services_with_timeout(Duration::from_secs(5)).await
+    discover_mdns_services_with_timeout(songbird_types::defaults::timeouts::DEFAULT_MDNS_TIMEOUT)
+        .await
 }
 
 /// Like [`discover_mdns_services`] with an explicit listen duration (tests use ~1ms).
@@ -150,9 +150,11 @@ async fn query_mdns_services(
 
     debug!("Querying mDNS for service type: {}", service_type);
 
-    // RFC 6762: mDNS uses IPv4 link-local multicast 224.0.0.251, UDP port 5353 (IANA).
-    let mdns_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(224, 0, 0, 251), 5353));
-    let socket = UdpSocket::bind("0.0.0.0:0")
+    let mdns_addr = SocketAddr::V4(SocketAddrV4::new(
+        Ipv4Addr::new(224, 0, 0, 251),
+        songbird_types::constants::MDNS_PORT,
+    ));
+    let socket = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR)
         .await
         .map_err(|e| DiscoveryError::NetworkError(format!("mDNS bind failed: {e}")))?;
     socket
@@ -326,13 +328,14 @@ pub async fn discover_dns_sd_services() -> Result<Vec<DiscoveredPrimal>, Discove
     #[cfg(feature = "dns-sd")]
     {
         use hickory_resolver::{
-            TokioAsyncResolver,
-            config::{ResolverConfig, ResolverOpts},
+            Resolver, config::ResolverConfig, name_server::TokioConnectionProvider,
         };
 
-        // Create DNS resolver
-        let resolver =
-            TokioAsyncResolver::tokio(ResolverConfig::default(), ResolverOpts::default());
+        let resolver = Resolver::builder_with_config(
+            ResolverConfig::default(),
+            TokioConnectionProvider::default(),
+        )
+        .build();
 
         let service_domain = songbird_process_env::var("SONGBIRD_SERVICE_DOMAIN")
             .unwrap_or_else(|_| "local".to_string());
@@ -348,7 +351,6 @@ pub async fn discover_dns_sd_services() -> Result<Vec<DiscoveredPrimal>, Discove
 
             match resolver.srv_lookup(&service_name).await {
                 Ok(srv_lookup) => {
-                    // SrvLookup is an iterator over SRV records
                     for srv_record in srv_lookup.iter() {
                         if let Some(primal) =
                             resolve_srv_to_primal(capability, srv_record, &resolver).await
@@ -377,7 +379,7 @@ pub async fn discover_dns_sd_services() -> Result<Vec<DiscoveredPrimal>, Discove
 async fn resolve_srv_to_primal(
     capability: &str,
     srv: &hickory_resolver::proto::rr::rdata::SRV,
-    resolver: &hickory_resolver::TokioAsyncResolver,
+    resolver: &hickory_resolver::TokioResolver,
 ) -> Option<DiscoveredPrimal> {
     use crate::capabilities::Capability;
     use crate::types::PrimalType;

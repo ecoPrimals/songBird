@@ -304,7 +304,20 @@ impl SongbirdFederation for TarpcServer {
     }
 
     async fn health_check(self, _ctx: Context) -> Result<bool, ServiceError> {
-        Ok(true)
+        let fed_stats = self.federation_state.get_stats().await;
+        let registry_stats = self.service_registry.get_stats().await;
+        let uptime = self.start_time.read().await.elapsed().as_secs();
+
+        let healthy =
+            uptime > 0 && (fed_stats.active_nodes > 0 || registry_stats.total_services > 0);
+        tracing::debug!(
+            uptime_s = uptime,
+            peers = fed_stats.active_nodes,
+            services = registry_stats.total_services,
+            healthy,
+            "tarpc health_check"
+        );
+        Ok(healthy)
     }
 }
 

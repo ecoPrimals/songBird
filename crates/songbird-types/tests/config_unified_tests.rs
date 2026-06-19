@@ -41,7 +41,7 @@ fn test_unified_config_validate_empty_environment() {
     config.system.environment = String::new();
     let result = config.validate();
     // Use pattern matching instead of unwrap_err
-    assert!(matches!(result, Err(ref e) if e == "System environment cannot be empty"));
+    assert!(matches!(result, Err(ref e) if e.to_string() == "System environment cannot be empty"));
 }
 
 #[test]
@@ -50,7 +50,7 @@ fn test_unified_config_validate_empty_system_id() {
     config.system.system_id = String::new();
     let result = config.validate();
     // Use pattern matching instead of unwrap_err
-    assert!(matches!(result, Err(ref e) if e == "System ID cannot be empty"));
+    assert!(matches!(result, Err(ref e) if e.to_string() == "System ID cannot be empty"));
 }
 
 #[test]
@@ -60,7 +60,7 @@ fn test_unified_config_validate_zero_port() {
     let result = config.validate();
     // Use pattern matching instead of unwrap_err
     assert!(
-        matches!(result, Err(ref e) if e == "Network orchestrator port must be greater than 0")
+        matches!(result, Err(ref e) if e.to_string() == "Network orchestrator port must be greater than 0")
     );
 }
 

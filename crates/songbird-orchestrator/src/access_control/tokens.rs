@@ -211,9 +211,12 @@ impl AccessToken {
     }
 }
 
-/// Token validator
+/// Token validator — performs post-decode business-rule checks.
+///
+/// Cryptographic signature verification is performed during `AccessToken::decode()`
+/// (HMAC-SHA256 via `pure_rust_jwt::decode`). This validator enforces additional rules:
+/// expiry, secret-configured guard, and future token blacklist.
 pub struct TokenValidator {
-    #[allow(dead_code, reason = "stored for future JWT cryptographic verification in validate()")]
     secret: Vec<u8>,
 }
 
@@ -226,23 +229,22 @@ impl Default for TokenValidator {
 impl TokenValidator {
     /// Create a new token validator
     ///
-    /// Loads JWT secret from (in priority order):
-    /// 1. `SONGBIRD_JWT_SECRET` environment variable
-    /// 2. Default development secret (INSECURE - development only)
-    ///
-    /// **SECURITY**: In production, ALWAYS set `SONGBIRD_JWT_SECRET` to a strong secret
+    /// Loads JWT secret from `SONGBIRD_JWT_SECRET` environment variable.
+    /// Returns a validator with an empty secret if unset (validation will reject all tokens).
     #[must_use]
     pub fn new() -> Self {
-        let secret = songbird_process_env::var("SONGBIRD_JWT_SECRET").unwrap_or_else(|_| {
+        let secret = if let Ok(s) = songbird_process_env::var("SONGBIRD_JWT_SECRET") {
+            s.into_bytes()
+        } else {
             tracing::warn!(
-                "SONGBIRD_JWT_SECRET not set. Using development secret. \
-                     DO NOT USE IN PRODUCTION. Set SONGBIRD_JWT_SECRET environment variable."
+                "SONGBIRD_JWT_SECRET not set — token validation will reject all tokens; \
+                 configure via environment or delegate to security provider"
             );
-            String::from("songbird-dev-secret-change-in-production")
-        });
+            Vec::new()
+        };
 
         Self {
-            secret: secret.into_bytes(),
+            secret,
         }
     }
 
@@ -253,26 +255,29 @@ impl TokenValidator {
         }
     }
 
+    /// Validate a decoded token against business rules.
+    ///
+    /// Signature integrity is already verified by `AccessToken::decode()` (HMAC-SHA256).
+    /// This method enforces:
+    /// 1. Secret must be configured (non-empty) — prevents accepting tokens in misconfigured state
+    /// 2. Token must not be expired
+    ///
     /// # Errors
     ///
-    /// Returns an error if the operation fails.
+    /// Returns error if secret is unconfigured or token is expired.
     #[expect(
         clippy::unused_async,
         reason = "async signature required by Axum, trait objects, or future I/O"
     )]
     pub async fn validate(&self, token: &AccessToken) -> Result<Identity> {
-        // Check expiry
+        if self.secret.is_empty() {
+            return Err(anyhow!("JWT secret not configured — cannot validate tokens"));
+        }
+
         if token.is_expired() {
             return Err(anyhow!("Token expired"));
         }
 
-        // Check blacklist (for revoked tokens)
-        // FUTURE (Phase 2): Token blacklist via Redis or distributed cache
-        // Current: Expiry-based validation is sufficient for most use cases
-        // Future use case: Immediate token revocation (e.g., compromised tokens, user logout)
-        // For now, expiry check provides basic security
-
-        // Return identity
         Ok(Identity {
             id: token.sub.clone(),
             role: token.role.clone(),
@@ -321,6 +326,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_token_validation() {
+        let _serial = crate::test_sync_env::env_lock();
+        let _jwt = crate::test_sync_env::VarGuard::set(
+            "SONGBIRD_JWT_SECRET",
+            "test-token-validation-secret",
+        );
+
         let validator = TokenValidator::new();
         let token = AccessToken::student("student-123", "CSE-847");
 
@@ -336,7 +347,7 @@ mod tests {
         for token in [
             AccessToken::anonymous(),
             AccessToken::ta("ta1", "C1"),
-            AccessToken::professor("p1", vec![String::from("c")]),
+            AccessToken::professor("p1", vec!["c".to_string()]),
             AccessToken::admin("root"),
         ] {
             let enc = token.encode(secret).unwrap();

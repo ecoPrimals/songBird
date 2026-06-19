@@ -31,6 +31,12 @@ pub(super) async fn dispatch_mesh(
         JsonRpcMethod::Mesh(MeshMethod::AutoDiscover) => {
             handler.mesh_handler.handle_auto_discover(params).await
         }
+        JsonRpcMethod::Mesh(MeshMethod::ProbeLatency) => {
+            handler.mesh_handler.handle_probe_latency(params).await
+        }
+        JsonRpcMethod::Mesh(MeshMethod::CapabilitiesAnnounce) => {
+            handler.mesh_handler.handle_capabilities_announce(params).await
+        }
         other => Err(format!("Unknown method: {other}")),
     }
 }

@@ -107,8 +107,9 @@ pub async fn handle_health(state: &JsonRpcState) -> Result<Value, JsonRpcError> 
 
     Ok(serde_json::json!({
         "status": "healthy",
+        "primal": songbird_types::primal_names::SELF_NAME,
         "version": env!("CARGO_PKG_VERSION"),
-        "uptime_seconds": uptime_seconds
+        "uptime_s": uptime_seconds
     }))
 }
 
@@ -174,9 +175,10 @@ pub async fn handle_health_standard(state: &JsonRpcState) -> Result<Value, JsonR
 
     Ok(serde_json::json!({
         "status": overall,
-        "uptime_seconds": uptime_seconds,
-        "crypto_provider_available": crypto_provider_available,
+        "primal": songbird_types::primal_names::SELF_NAME,
         "version": env!("CARGO_PKG_VERSION"),
+        "uptime_s": uptime_seconds,
+        "crypto_provider_available": crypto_provider_available,
         "subsystems": {
             "ipc": ipc_status,
             "discovery": "up",

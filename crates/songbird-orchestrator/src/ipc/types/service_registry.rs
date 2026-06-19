@@ -129,14 +129,14 @@ pub struct CapabilityResolveRequest {
 /// Response for `capability.resolve` — the single best provider for the capability.
 ///
 /// Wire-format harmonized with universal-ipc `CapabilityResolveResult`: both paths
-/// now emit `socket`, `native_endpoint`, `virtual_endpoint`, and `capabilities`.
+/// now emit `socket`, `native_endpoint`, `virtual_endpoint`, `transport`, and `capabilities`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CapabilityResolveResponse {
     /// Service ID of the resolved provider
     pub service_id: String,
     /// Primal name that owns this capability
     pub primal_name: String,
-    /// Endpoint (Unix socket path or URL) — legacy field, prefer `native_endpoint`
+    /// Endpoint (Unix socket path or URL) — legacy field, prefer `transport`
     pub endpoint: String,
     /// Protocol (json-rpc, tarpc, etc.)
     pub protocol: String,
@@ -146,6 +146,8 @@ pub struct CapabilityResolveResponse {
     pub socket: Option<String>,
     /// Transport-qualified URI (e.g. `unix:///path/to/sock`, `tcp://127.0.0.1:8080`).
     pub native_endpoint: String,
+    /// Structured transport endpoint (Phase 2). Consumers should prefer this.
+    pub transport: songbird_universal_ipc::TransportEndpoint,
     /// Capability-addressed virtual endpoint (e.g. `capability://crypto@beardog`).
     pub virtual_endpoint: String,
     /// All capabilities advertised by this provider

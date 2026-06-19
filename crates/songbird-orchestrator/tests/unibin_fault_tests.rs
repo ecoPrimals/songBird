@@ -19,6 +19,7 @@
 
 use assert_cmd::Command;
 use predicates::prelude::*;
+use songbird_process_env::ScopedEnv;
 use std::fs;
 use tempfile::tempdir;
 
@@ -40,7 +41,7 @@ fn clean_cmd() -> Command {
 // FAULT INJECTION TESTS
 // ====================
 
-#[tokio::test] // ✅ NO #[serial]! Uses isolated environment!
+#[tokio::test]
 async fn test_fault_invalid_port_zero() -> Result<(), Box<dyn std::error::Error>> {
     // Port 0 should fail
     clean_cmd().arg("server").arg("--port").arg("0").assert().failure();
@@ -48,7 +49,7 @@ async fn test_fault_invalid_port_zero() -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-#[tokio::test] // ✅ NO #[serial]! Uses isolated environment!
+#[tokio::test]
 async fn test_fault_invalid_port_overflow() -> Result<(), Box<dyn std::error::Error>> {
     // Port > 65535 should fail
     clean_cmd().arg("server").arg("--port").arg("100000").assert().failure();
@@ -56,7 +57,7 @@ async fn test_fault_invalid_port_overflow() -> Result<(), Box<dyn std::error::Er
     Ok(())
 }
 
-#[tokio::test] // ✅ NO #[serial]! Uses isolated environment!
+#[tokio::test]
 async fn test_fault_invalid_port_negative() -> Result<(), Box<dyn std::error::Error>> {
     // Negative port should fail
     clean_cmd().arg("server").arg("--port").arg("-1").assert().failure();
@@ -64,7 +65,7 @@ async fn test_fault_invalid_port_negative() -> Result<(), Box<dyn std::error::Er
     Ok(())
 }
 
-#[tokio::test] // ✅ NO #[serial]! Uses isolated environment!
+#[tokio::test]
 async fn test_fault_invalid_port_string() -> Result<(), Box<dyn std::error::Error>> {
     // Non-numeric port should fail
     clean_cmd().arg("server").arg("--port").arg("invalid").assert().failure();
@@ -72,7 +73,7 @@ async fn test_fault_invalid_port_string() -> Result<(), Box<dyn std::error::Erro
     Ok(())
 }
 
-#[tokio::test] // ✅ NO #[serial]! Uses isolated environment!
+#[tokio::test]
 async fn test_fault_unknown_command() -> Result<(), Box<dyn std::error::Error>> {
     // Unknown command should fail gracefully
     clean_cmd().arg("nonexistent-command").assert().failure().stderr(
@@ -83,7 +84,6 @@ async fn test_fault_unknown_command() -> Result<(), Box<dyn std::error::Error>> 
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_nonexistent_config_file() -> Result<(), Box<dyn std::error::Error>> {
     // Non-existent config file should handle gracefully
     let mut cmd = clean_cmd();
@@ -98,7 +98,6 @@ async fn test_fault_nonexistent_config_file() -> Result<(), Box<dyn std::error::
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_empty_config_file() -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = tempdir()?;
     let config_path = temp_dir.path().join("empty.toml");
@@ -114,7 +113,6 @@ async fn test_fault_empty_config_file() -> Result<(), Box<dyn std::error::Error>
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_malformed_toml() -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = tempdir()?;
     let config_path = temp_dir.path().join("malformed.toml");
@@ -130,7 +128,6 @@ async fn test_fault_malformed_toml() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_invalid_doctor_format() -> Result<(), Box<dyn std::error::Error>> {
     // Invalid format should fail with helpful message
     let mut cmd = clean_cmd();
@@ -145,7 +142,6 @@ async fn test_fault_invalid_doctor_format() -> Result<(), Box<dyn std::error::Er
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_binary_config_file() -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = tempdir()?;
     let config_path = temp_dir.path().join("binary.toml");
@@ -161,7 +157,6 @@ async fn test_fault_binary_config_file() -> Result<(), Box<dyn std::error::Error
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_directory_as_config() -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = tempdir()?;
 
@@ -173,7 +168,6 @@ async fn test_fault_directory_as_config() -> Result<(), Box<dyn std::error::Erro
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_special_characters_in_args() -> Result<(), Box<dyn std::error::Error>> {
     // Test special characters
     let mut cmd = clean_cmd();
@@ -183,10 +177,8 @@ async fn test_fault_special_characters_in_args() -> Result<(), Box<dyn std::erro
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_unicode_in_args() -> Result<(), Box<dyn std::error::Error>> {
-    // Test unicode handling
-    songbird_process_env::set_var("SONGBIRD_NODE_ID", "node-测试-🦀");
+    let _env = ScopedEnv::new("SONGBIRD_NODE_ID", "node-测试-🦀");
 
     let mut cmd = clean_cmd();
     cmd.arg("--version").assert().success();
@@ -195,10 +187,8 @@ async fn test_fault_unicode_in_args() -> Result<(), Box<dyn std::error::Error>> 
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_whitespace_only_args() -> Result<(), Box<dyn std::error::Error>> {
-    // Whitespace-only env var
-    songbird_process_env::set_var("SONGBIRD_NODE_ID", "   ");
+    let _env = ScopedEnv::new("SONGBIRD_NODE_ID", "   ");
 
     let mut cmd = clean_cmd();
     cmd.arg("--version").assert().success();
@@ -207,11 +197,9 @@ async fn test_fault_whitespace_only_args() -> Result<(), Box<dyn std::error::Err
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_extremely_long_env_var() -> Result<(), Box<dyn std::error::Error>> {
-    // Extremely long env var
     let long_value = "a".repeat(10000);
-    songbird_process_env::set_var("SONGBIRD_NODE_ID", &long_value);
+    let _env = ScopedEnv::new("SONGBIRD_NODE_ID", &long_value);
 
     let mut cmd = clean_cmd();
     cmd.arg("--version").assert().success();
@@ -220,10 +208,8 @@ async fn test_fault_extremely_long_env_var() -> Result<(), Box<dyn std::error::E
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_empty_env_var() -> Result<(), Box<dyn std::error::Error>> {
-    // Empty env var
-    songbird_process_env::set_var("SONGBIRD_NODE_ID", "");
+    let _env = ScopedEnv::new("SONGBIRD_NODE_ID", "");
 
     let mut cmd = clean_cmd();
     cmd.arg("--version").assert().success();
@@ -232,7 +218,6 @@ async fn test_fault_empty_env_var() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_config_init_to_readonly_dir() -> Result<(), Box<dyn std::error::Error>> {
     // Try to init to /dev/null or similar (will fail or handle gracefully)
     let mut cmd = clean_cmd();
@@ -245,7 +230,6 @@ async fn test_fault_config_init_to_readonly_dir() -> Result<(), Box<dyn std::err
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_multiple_flags() -> Result<(), Box<dyn std::error::Error>> {
     // Multiple boolean flags
     let mut cmd = clean_cmd();
@@ -255,10 +239,8 @@ async fn test_fault_multiple_flags() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_conflicting_env_and_args() -> Result<(), Box<dyn std::error::Error>> {
-    // Set env var, then override with arg (arg should win)
-    songbird_process_env::set_var("SONGBIRD_PORT", "9000");
+    let _env = ScopedEnv::new("SONGBIRD_PORT", "9000");
 
     let mut cmd = clean_cmd();
     cmd.arg("server").arg("--port").arg("8888").arg("--help").assert().success();
@@ -267,7 +249,6 @@ async fn test_fault_conflicting_env_and_args() -> Result<(), Box<dyn std::error:
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_boundary_port_1() -> Result<(), Box<dyn std::error::Error>> {
     // Port 1 (minimum valid port)
     let mut cmd = clean_cmd();
@@ -277,7 +258,6 @@ async fn test_fault_boundary_port_1() -> Result<(), Box<dyn std::error::Error>> 
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_boundary_port_65535() -> Result<(), Box<dyn std::error::Error>> {
     // Port 65535 (maximum valid port)
     let mut cmd = clean_cmd();
@@ -287,7 +267,6 @@ async fn test_fault_boundary_port_65535() -> Result<(), Box<dyn std::error::Erro
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_double_dash_args() -> Result<(), Box<dyn std::error::Error>> {
     // Test -- separator
     let mut cmd = clean_cmd();
@@ -299,7 +278,6 @@ async fn test_fault_double_dash_args() -> Result<(), Box<dyn std::error::Error>>
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_repeated_flags() -> Result<(), Box<dyn std::error::Error>> {
     // Repeated flags should error (clap doesn't allow duplicate args)
     let mut cmd = clean_cmd();
@@ -317,7 +295,6 @@ async fn test_fault_repeated_flags() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_missing_required_subcommand_args() -> Result<(), Box<dyn std::error::Error>> {
     // Config init without output should use default
     let mut cmd = clean_cmd();

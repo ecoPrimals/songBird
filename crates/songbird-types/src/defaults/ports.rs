@@ -71,5 +71,19 @@ pub const DEFAULT_FEDERATION_COORDINATION_PORT: u16 = 8082;
 pub const DEFAULT_TARPC_RPC_PORT: u16 = 8091;
 /// StarCraft IPX / gaming base port (env: `SONGBIRD_GAMING_PORT`)
 pub const DEFAULT_GAMING_BASE_PORT: u16 = 6112;
+/// Default mesh peer federation port for cross-gate communication (env: `SONGBIRD_FEDERATION_PORT`)
+pub const DEFAULT_MESH_PEER_PORT: u16 = 7700;
 /// Ephemeral bind address for port-0 allocation
 pub const EPHEMERAL_BIND_ADDR: &str = "127.0.0.1:0";
+/// Consul agent HTTP API default port
+pub const CONSUL_DEFAULT_PORT: u16 = 8500;
+/// Eureka server default port
+pub const EUREKA_DEFAULT_PORT: u16 = 8761;
+/// Broadcast/mDNS discovery port (env: `SONGBIRD_BROADCAST_DISCOVERY_PORT`)
+pub const DEFAULT_BROADCAST_DISCOVERY_PORT: u16 = 2300;
+/// Default AI provider port (env: `SONGBIRD_AI_PROVIDER_PORT`)
+pub const DEFAULT_AI_PROVIDER_PORT: u16 = 8083;
+/// Default federation broadcast port (secondary range)
+pub const DEFAULT_FEDERATION_BROADCAST_PORT: u16 = 8090;
+/// Default IPC listen port (env: `SONGBIRD_IPC_PORT`)
+pub const DEFAULT_IPC_LISTEN_PORT: u16 = 9901;

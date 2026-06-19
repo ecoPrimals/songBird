@@ -3,6 +3,7 @@
 
 //! Platform-appropriate log, cache, data, config, and temp directories.
 
+use songbird_types::constants::HOME_FALLBACK_DIR;
 use songbird_types::error_helpers::SafeEnv;
 
 /// Get log directory from environment or calculate default
@@ -13,12 +14,12 @@ pub fn get_log_dir() -> String {
         if cfg!(windows) {
             format!(
                 "{}\\AppData\\Local\\Songbird\\logs",
-                SafeEnv::get_or_default("USERPROFILE", String::from("C:\\Users\\Default")),
+                SafeEnv::get_or_default("USERPROFILE", "C:\\Users\\Default".to_string()),
             )
         } else {
             format!(
                 "{}/.local/share/songbird/logs",
-                SafeEnv::get_or_default("HOME", String::from("/tmp")),
+                SafeEnv::get_or_default("HOME", HOME_FALLBACK_DIR.to_string()),
             )
         }
     })
@@ -32,10 +33,13 @@ pub fn get_cache_dir() -> String {
         if cfg!(windows) {
             format!(
                 "{}\\AppData\\Local\\Songbird\\cache",
-                SafeEnv::get_or_default("USERPROFILE", String::from("C:\\Users\\Default")),
+                SafeEnv::get_or_default("USERPROFILE", "C:\\Users\\Default".to_string()),
             )
         } else {
-            format!("{}/.cache/songbird", SafeEnv::get_or_default("HOME", String::from("/tmp")),)
+            format!(
+                "{}/.cache/songbird",
+                SafeEnv::get_or_default("HOME", HOME_FALLBACK_DIR.to_string()),
+            )
         }
     })
 }
@@ -48,12 +52,12 @@ pub fn get_data_dir() -> String {
         if cfg!(windows) {
             format!(
                 "{}\\AppData\\Roaming\\Songbird",
-                SafeEnv::get_or_default("USERPROFILE", String::from("C:\\Users\\Default")),
+                SafeEnv::get_or_default("USERPROFILE", "C:\\Users\\Default".to_string()),
             )
         } else {
             format!(
                 "{}/.local/share/songbird",
-                SafeEnv::get_or_default("HOME", String::from("/tmp")),
+                SafeEnv::get_or_default("HOME", HOME_FALLBACK_DIR.to_string()),
             )
         }
     })
@@ -67,10 +71,13 @@ pub fn get_config_dir() -> String {
         if cfg!(windows) {
             format!(
                 "{}\\AppData\\Roaming\\Songbird\\config",
-                SafeEnv::get_or_default("USERPROFILE", String::from("C:\\Users\\Default")),
+                SafeEnv::get_or_default("USERPROFILE", "C:\\Users\\Default".to_string()),
             )
         } else {
-            format!("{}/.config/songbird", SafeEnv::get_or_default("HOME", String::from("/tmp")),)
+            format!(
+                "{}/.config/songbird",
+                SafeEnv::get_or_default("HOME", HOME_FALLBACK_DIR.to_string()),
+            )
         }
     })
 }

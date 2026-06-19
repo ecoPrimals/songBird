@@ -211,6 +211,7 @@ impl LineageServiceDiscovery {
 mod tests {
     use super::*;
     use songbird_types::{LineageId, LineageProof};
+    use std::collections::HashMap;
 
     #[tokio::test]
     async fn test_create_discovery_backend() {
@@ -310,5 +311,184 @@ mod tests {
         assert_eq!(discovery.get_same_lineage_peers().len(), 1);
         assert_eq!(discovery.get_different_lineage_peers().len(), 1);
         assert_eq!(discovery.get_no_lineage_peers().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_advertise_without_lineage_succeeds() {
+        let discovery = LineageServiceDiscovery::new(
+            "_songbird._tcp.local",
+            "test-node-1",
+            vec!["compute".to_string()],
+            "http://192.168.1.100:8080",
+        );
+
+        assert!(discovery.advertise_with_lineage().await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_advertise_with_lineage_succeeds() {
+        let lineage_id = LineageId::new("lineage:tower1:2026:abc");
+        let proof = LineageProof::new(lineage_id.clone(), vec![], 1234567890);
+
+        let discovery = LineageServiceDiscovery::new(
+            "_songbird._tcp.local",
+            "test-node-1",
+            vec!["compute".to_string()],
+            "http://192.168.1.100:8080",
+        )
+        .with_lineage(lineage_id, proof);
+
+        assert!(discovery.advertise_with_lineage().await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_discover_peers_empty_cache() {
+        let mut discovery = LineageServiceDiscovery::new(
+            "_songbird._tcp.local",
+            "test-node-1",
+            vec!["compute".to_string()],
+            "http://192.168.1.100:8080",
+        );
+
+        let peers = discovery.discover_peers_with_lineage().await.unwrap();
+        assert!(peers.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_discover_peers_sorts_by_lineage_compatibility() {
+        let our_lineage = LineageId::new("lineage:tower1:2026:abc");
+        let same_tower = LineageId::new("lineage:tower1:2026:def");
+        let other_tower = LineageId::new("lineage:tower2:2026:xyz");
+
+        let mut discovery = LineageServiceDiscovery::new(
+            "_songbird._tcp.local",
+            "local-node",
+            vec!["compute".to_string()],
+            "http://192.168.1.100:8080",
+        )
+        .with_lineage(
+            our_lineage.clone(),
+            LineageProof::new(our_lineage.clone(), vec![], 1234567890),
+        );
+
+        discovery.peer_cache.insert(
+            "peer-other-tower".to_string(),
+            DiscoveryPacket::new(
+                "peer-other-tower",
+                vec!["storage".to_string()],
+                "http://192.168.1.102:8080",
+            )
+            .with_lineage(other_tower.clone(), LineageProof::new(other_tower, vec![], 1234567890)),
+        );
+        discovery.peer_cache.insert(
+            "peer-no-lineage".to_string(),
+            DiscoveryPacket::new(
+                "peer-no-lineage",
+                vec!["ai".to_string()],
+                "http://192.168.1.103:8080",
+            ),
+        );
+        discovery.peer_cache.insert(
+            "peer-same-tower".to_string(),
+            DiscoveryPacket::new(
+                "peer-same-tower",
+                vec!["compute".to_string()],
+                "http://192.168.1.101:8080",
+            )
+            .with_lineage(same_tower.clone(), LineageProof::new(same_tower, vec![], 1234567890)),
+        );
+        discovery.peer_cache.insert(
+            "peer-same-lineage".to_string(),
+            DiscoveryPacket::new(
+                "peer-same-lineage",
+                vec!["storage".to_string()],
+                "http://192.168.1.104:8080",
+            )
+            .with_lineage(our_lineage.clone(), LineageProof::new(our_lineage, vec![], 1234567890)),
+        );
+
+        let peers = discovery.discover_peers_with_lineage().await.unwrap();
+        assert_eq!(peers.len(), 4);
+        assert_eq!(peers[0].node_id, "peer-same-lineage");
+        assert_eq!(peers[1].node_id, "peer-same-tower");
+    }
+
+    #[test]
+    fn test_process_announcement_rejects_missing_required_fields() {
+        let mut discovery = LineageServiceDiscovery::new(
+            "_songbird._tcp.local",
+            "test-node-1",
+            vec!["compute".to_string()],
+            "http://192.168.1.100:8080",
+        );
+
+        let mut invalid = HashMap::new();
+        invalid.insert("endpoint".to_string(), "http://192.168.1.101:8080".to_string());
+
+        let err = discovery.process_announcement(&invalid).unwrap_err();
+        assert!(
+            err.to_string().contains("Missing required field")
+                || err.to_string().contains("Failed to parse discovery packet"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn test_process_announcement_preserves_lineage_chain() {
+        let lineage_id = LineageId::new("lineage:tower1:2026:abc");
+        let proof = LineageProof::new(lineage_id.clone(), vec![], 1234567890);
+
+        let mut discovery = LineageServiceDiscovery::new(
+            "_songbird._tcp.local",
+            "test-node-1",
+            vec!["compute".to_string()],
+            "http://192.168.1.100:8080",
+        );
+
+        let packet = DiscoveryPacket::new(
+            "peer-with-lineage",
+            vec!["storage".to_string()],
+            "http://192.168.1.101:8080",
+        )
+        .with_lineage(lineage_id.clone(), proof);
+
+        let txt_records = packet.to_txt_records();
+        discovery.process_announcement(&txt_records).unwrap();
+
+        let cached = discovery.peer_cache.get("peer-with-lineage").unwrap();
+        assert!(cached.has_lineage());
+        assert!(cached.has_proof());
+        assert_eq!(cached.genetic_lineage.as_ref(), Some(&lineage_id));
+    }
+
+    #[test]
+    fn test_cleanup_expired_peers_removes_stale_entries() {
+        let mut discovery = LineageServiceDiscovery::new(
+            "_songbird._tcp.local",
+            "test-node-1",
+            vec!["compute".to_string()],
+            "http://192.168.1.100:8080",
+        );
+
+        let mut stale = DiscoveryPacket::new(
+            "stale-peer",
+            vec!["compute".to_string()],
+            "http://192.168.1.200:8080",
+        );
+        stale.timestamp = 0;
+
+        let fresh = DiscoveryPacket::new(
+            "fresh-peer",
+            vec!["storage".to_string()],
+            "http://192.168.1.201:8080",
+        );
+
+        discovery.peer_cache.insert("stale-peer".to_string(), stale);
+        discovery.peer_cache.insert("fresh-peer".to_string(), fresh);
+
+        discovery.cleanup_expired_peers();
+
+        assert!(!discovery.peer_cache.contains_key("stale-peer"));
+        assert!(discovery.peer_cache.contains_key("fresh-peer"));
     }
 }

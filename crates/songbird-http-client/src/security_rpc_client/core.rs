@@ -94,7 +94,7 @@ impl SecurityRpcClient {
     /// # Example
     /// ```rust,ignore
     /// use songbird_http_client::SecurityRpcClient;
-    /// let client = SecurityRpcClient::new_neural_api("/tmp/neural-api.sock");
+    /// let client = SecurityRpcClient::new_neural_api("/run/user/1000/biomeos/neural-api.sock");
     /// ```
     pub fn new_neural_api(neural_api_socket: impl Into<String>) -> Self {
         info!("🌐 Security provider client: NEURAL API mode (production/orchestration)");
@@ -129,9 +129,18 @@ impl SecurityRpcClient {
 
     /// Create from environment variable with isomorphic discovery
     ///
-    /// Checks `SECURITY_PROVIDER_MODE` (preferred) or legacy `BEARDOG_MODE` (prefer `SECURITY_PROVIDER_MODE`) to determine mode:
-    /// - "direct" → Direct mode (discovers `security provider` endpoint) - DEPRECATED for production
-    /// - "neural" or default → Neural API mode (discovers Neural API endpoint) - TRUE PRIMAL pattern
+    /// Checks `SECURITY_PROVIDER_MODE` (preferred) or legacy `BEARDOG_MODE` (deprecated) to determine mode:
+    /// - "direct" → Direct mode (discovers security provider endpoint) - DEPRECATED for production
+    /// - any other value or unset → API mode (discovers Neural API endpoint) - TRUE PRIMAL pattern
+    ///
+    /// Discovery chain (API mode, env-first):
+    /// 1. `$SECURITY_PROVIDER_ENDPOINT` (set by `--security-socket` CLI flag)
+    /// 2. `$NEURAL_API_SOCKET` (explicit override)
+    /// 3. `$SECURITY_PROVIDER_SOCKET` (capability-first naming)
+    /// 4. `$BEARDOG_SOCKET` (legacy, deprecated — emits warning)
+    /// 5. XDG runtime socket (`$XDG_RUNTIME_DIR/biomeos/neural-api-{family}.sock`)
+    /// 6. TCP discovery file
+    /// 7. `/var/run/biomeos/neural-api.sock` (VPS fallback — DH-1 compliant)
     ///
     /// Uses isomorphic discovery to automatically find Unix socket or TCP endpoint.
     pub fn from_env() -> Self {
@@ -145,29 +154,72 @@ impl SecurityRpcClient {
                     );
                 })
             })
-            .unwrap_or_else(|_| "neural".to_string());
+            .unwrap_or_else(|_| "api".to_string());
 
         if mode.to_lowercase() == "direct" {
-            // Direct mode: Discover crypto provider endpoint via capability
-            let legacy_crypto = std::env::temp_dir().join("crypto.sock");
-            let legacy_crypto = legacy_crypto.to_string_lossy();
+            let vps_fallback =
+                format!("{}/crypto.sock", songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR);
             let endpoint = socket_discovery::discover_ipc_endpoint(
                 "CRYPTO_PROVIDER_SOCKET",
                 "crypto",
-                legacy_crypto.as_ref(),
+                &vps_fallback,
             );
             info!("🔧 Security provider mode from env: DIRECT → {:?}", endpoint);
             Self::new_direct_with_endpoint(endpoint)
         } else {
-            // Default to Neural API (TRUE PRIMAL pattern)
-            let endpoint = socket_discovery::discover_ipc_endpoint(
-                "NEURAL_API_SOCKET",
-                NEURAL_API,
-                &format!("{}/neural-api-nat0.sock", std::env::temp_dir().display()),
-            );
+            let endpoint = Self::discover_neural_api_endpoint();
             info!("🌐 Security provider mode from env: NEURAL API → {:?}", endpoint);
             Self::new_neural_api_with_endpoint(endpoint)
         }
+    }
+
+    /// Discover neural API endpoint with full env-first fallback chain.
+    ///
+    /// Honors `--security-socket` CLI flag (via `SECURITY_PROVIDER_ENDPOINT`),
+    /// `BEARDOG_SOCKET`, and `SECURITY_PROVIDER_SOCKET` as overrides
+    /// before falling back to XDG/VPS paths. Zero `/tmp` writes (DH-1).
+    fn discover_neural_api_endpoint() -> IpcEndpoint {
+        use crate::crypto::socket_discovery;
+
+        // 1. CLI --security-socket flag (sets SECURITY_PROVIDER_ENDPOINT)
+        if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
+            && !socket.is_empty()
+        {
+            info!(
+                "✅ Security socket via --security-socket (SECURITY_PROVIDER_ENDPOINT): {}",
+                socket
+            );
+            return IpcEndpoint::UnixSocket(socket);
+        }
+
+        // 2. Explicit Neural API socket
+        if let Ok(socket) = songbird_process_env::var("NEURAL_API_SOCKET")
+            && !socket.is_empty()
+        {
+            info!("✅ Security socket via $NEURAL_API_SOCKET: {}", socket);
+            return IpcEndpoint::UnixSocket(socket);
+        }
+
+        // 3. Capability-first naming
+        if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
+            && !socket.is_empty()
+        {
+            info!("✅ Security socket via $SECURITY_PROVIDER_SOCKET: {}", socket);
+            return IpcEndpoint::UnixSocket(socket);
+        }
+
+        // 4. BEARDOG_SOCKET (backward-compatible — standard on southGate)
+        if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET")
+            && !socket.is_empty()
+        {
+            info!("✅ Security socket via $BEARDOG_SOCKET: {}", socket);
+            return IpcEndpoint::UnixSocket(socket);
+        }
+
+        // 5-7. XDG + TCP + VPS fallback via standard discovery
+        let vps_fallback =
+            format!("{}/neural-api.sock", songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR);
+        socket_discovery::discover_ipc_endpoint("NEURALS_SOCKET", NEURAL_API, &vps_fallback)
     }
 
     /// Get endpoint based on mode (for diagnostics/debugging)

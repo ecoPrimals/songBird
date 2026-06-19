@@ -294,3 +294,147 @@ impl PrimalCoordinator {
         })
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::PrimalCoordinator;
+    use crate::bridge::{CoordinatorTestBridge, PrimalBridge};
+    use crate::coordinator::CoordinatorConfig;
+    use crate::error::PrimalCoordinationError;
+    use crate::types::{CapabilityType, NodeId, Workload};
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[tokio::test(start_paused = true)]
+    async fn request_capability_caches_distinct_capabilities_separately() {
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
+        let coordinator = PrimalCoordinator::new(Arc::clone(&bridge));
+        let sec = coordinator.request_capability(CapabilityType::Security).await.expect("security");
+        let compute =
+            coordinator.request_capability(CapabilityType::Compute).await.expect("compute");
+        assert_ne!(sec.connection_id, compute.connection_id);
+        assert!(sec.endpoint.contains("security"));
+        assert!(compute.endpoint.contains("compute"));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn coordinate_service_mesh_wires_distinct_endpoints() {
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
+        let coordinator = PrimalCoordinator::new(bridge);
+        let mesh = coordinator
+            .coordinate_service_mesh(CapabilityType::Compute, CapabilityType::Security)
+            .await
+            .expect("mesh");
+        assert_ne!(
+            mesh.requester_endpoint.as_ref(),
+            mesh.provider_endpoint.as_ref(),
+            "requester and provider should resolve to different mock URLs"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn health_check_reports_one_row_per_cached_capability() {
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
+        let coordinator = PrimalCoordinator::new(bridge);
+        coordinator.request_capability(CapabilityType::Security).await.expect("seed security");
+        coordinator.request_capability(CapabilityType::Compute).await.expect("seed compute");
+        let statuses = coordinator.health_check_all().await.expect("health");
+        assert_eq!(statuses.len(), 2);
+        let caps: Vec<_> = statuses.iter().map(|s| s.capability.as_ref()).collect();
+        assert!(caps.contains(&"security"));
+        assert!(caps.contains(&"compute"));
+        assert!(statuses.iter().all(|s| !s.healthy));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn request_capability_without_pooling_does_not_seed_health_registry() {
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
+        let config = CoordinatorConfig {
+            enable_pooling: false,
+            ..CoordinatorConfig::default()
+        };
+        let coordinator = PrimalCoordinator::with_config(bridge, config);
+        coordinator.request_capability(CapabilityType::Security).await.expect("connect");
+        let statuses = coordinator.health_check_all().await.expect("health");
+        assert!(
+            statuses.is_empty(),
+            "without pooling, connections should not remain in active_connections"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn request_capability_compute_connects_mock_endpoint() {
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
+        let coordinator = PrimalCoordinator::new(bridge);
+        let conn =
+            coordinator.request_capability(CapabilityType::Compute).await.expect("compute connect");
+        assert!(conn.supports_capability(&CapabilityType::Compute).await);
+        assert!(conn.endpoint.contains("compute"));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn coordinate_service_mesh_same_capability_reuses_cached_connection() {
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
+        let coordinator = PrimalCoordinator::new(bridge);
+        let mesh = coordinator
+            .coordinate_service_mesh(CapabilityType::Security, CapabilityType::Security)
+            .await
+            .expect("mesh");
+        assert_eq!(
+            mesh.requester_endpoint.as_ref(),
+            mesh.provider_endpoint.as_ref(),
+            "same capability should resolve to the same cached endpoint"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn deploy_compute_with_matching_service_fails_at_ipc_transport() {
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
+        let coordinator = PrimalCoordinator::new(bridge);
+        let workload = Workload {
+            id: "ops-deploy".into(),
+            service_type: "compute".into(),
+            requirements: std::collections::HashMap::new(),
+            payload: serde_json::json!({}),
+        };
+        let err = coordinator
+            .deploy_compute(workload)
+            .await
+            .expect_err("capability gate passes then IPC fails");
+        assert!(matches!(err, PrimalCoordinationError::Internal(_)));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn request_capability_without_pooling_invokes_bridge_each_time() {
+        let counter = Arc::new(AtomicUsize::new(0));
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Counting(
+            Arc::clone(&counter),
+        )));
+        let config = CoordinatorConfig {
+            enable_pooling: false,
+            ..CoordinatorConfig::default()
+        };
+        let coordinator = PrimalCoordinator::with_config(bridge, config);
+        coordinator.request_capability(CapabilityType::Security).await.expect("first");
+        coordinator.request_capability(CapabilityType::Security).await.expect("second");
+        assert_eq!(counter.load(Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn coordinate_genesis_fails_before_witness_when_keygen_unreachable() {
+        let bridge = Arc::new(PrimalBridge::CoordinatorTest(CoordinatorTestBridge::Mock));
+        let coordinator = PrimalCoordinator::with_config(
+            bridge,
+            CoordinatorConfig {
+                enable_pooling: false,
+                ..CoordinatorConfig::default()
+            },
+        );
+        let err = coordinator
+            .coordinate_genesis(NodeId("genesis-ops".into()))
+            .await
+            .expect_err("GenerateKeys requires live IPC HTTP");
+        assert!(matches!(err, PrimalCoordinationError::Internal(_)));
+    }
+}

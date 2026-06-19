@@ -35,7 +35,7 @@ pub fn health_check() -> Value {
         "status": "healthy",
         "primal": primal_names::SELF_NAME,
         "version": env!("CARGO_PKG_VERSION"),
-        "uptime_seconds": null,
+        "uptime_s": null,
         "subsystems": {
             "ipc": "up",
             "discovery": "up",
@@ -47,14 +47,16 @@ pub fn health_check() -> Value {
     })
 }
 
-/// Generate health response with runtime metrics.
+/// Generate health response with runtime metrics (HEALTH-01 compliant).
+///
+/// Returns `{status, primal, version, uptime_s}` per ecosystem health contract.
 #[must_use]
 pub fn health(uptime_secs: u64, service_count: usize) -> Value {
     serde_json::json!({
         "status": "healthy",
         "primal": primal_names::SELF_NAME,
         "version": env!("CARGO_PKG_VERSION"),
-        "uptime_seconds": uptime_secs,
+        "uptime_s": uptime_secs,
         "services": service_count,
     })
 }

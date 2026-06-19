@@ -72,6 +72,15 @@ pub enum Error {
     Other(String),
 }
 
+impl Error {
+    /// Whether this error indicates the remote peer responded with HTTP instead of TLS.
+    /// When true, retrying TLS is pointless — the peer doesn't support TLS on this port.
+    #[must_use]
+    pub fn is_http_not_tls(&self) -> bool {
+        matches!(self, Self::TlsHandshake(msg) if msg.contains("responded with HTTP instead of TLS"))
+    }
+}
+
 impl From<hyper::Error> for Error {
     fn from(err: hyper::Error) -> Self {
         Self::Hyper(err.to_string())

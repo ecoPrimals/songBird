@@ -61,6 +61,7 @@ const CALLABLE_METHODS: &[&str] = &[
     "ipc.resolve",
     "ipc.discover",
     "ipc.list",
+    "ipc.watch",
     // ── Capability resolution ──
     "capability.resolve",
     // ── Lifecycle / composition ──

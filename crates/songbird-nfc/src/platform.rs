@@ -326,7 +326,10 @@ mod tests {
     use super::NfcDevice;
     use super::test_support::ScriptedBackend;
     use crate::protocol::NfcMessage;
-    use crate::{MSG_TYPE_GENESIS_REQUEST, PROTOCOL_VERSION, PUBLIC_KEY_SIZE, SIGNATURE_SIZE};
+    use crate::{
+        FRAME_OVERHEAD, HEADER_SIZE, MAX_PAYLOAD_SIZE, MSG_TYPE_GENESIS_REQUEST, PROTOCOL_VERSION,
+        PUBLIC_KEY_SIZE, SIGNATURE_SIZE,
+    };
     use std::time::Duration;
 
     #[test]
@@ -385,5 +388,152 @@ mod tests {
             matches!(err, crate::NfcError::ConnectionLost),
             "expected ConnectionLost on underrun, got {err:?}"
         );
+    }
+
+    #[tokio::test]
+    async fn connect_succeeds_on_scripted_backend() {
+        let mut device = ScriptedBackend::new(Vec::new()).into_device(Duration::from_secs(2));
+        device.connect().await.expect("scripted connect should succeed");
+    }
+
+    #[tokio::test]
+    async fn disconnect_succeeds_on_scripted_backend() {
+        let mut device = ScriptedBackend::new(Vec::new()).into_device(Duration::from_secs(2));
+        device.disconnect().await.expect("scripted disconnect should succeed");
+    }
+
+    #[tokio::test]
+    async fn send_raw_records_exact_bytes() {
+        let backend = ScriptedBackend::new(Vec::new());
+        let sent = backend.sent_frames_handle();
+        let mut device = backend.into_device(Duration::from_secs(2));
+        let payload = vec![0xde, 0xad, 0xbe, 0xef];
+
+        device.send_raw(&payload).await.expect("send_raw should succeed");
+
+        let frames = sent.lock().expect("sent_frames lock");
+        assert_eq!(frames.len(), 1);
+        assert_eq!(frames[0], payload);
+    }
+
+    #[tokio::test]
+    async fn send_and_receive_raw_roundtrip() {
+        let wire = vec![0x01, 0x02, 0x03, 0x04];
+        let mut device = ScriptedBackend::new(wire.clone()).into_device(Duration::from_secs(2));
+        let got =
+            device.receive_raw(wire.len()).await.expect("receive_raw should return scripted bytes");
+        assert_eq!(got, wire);
+    }
+
+    #[tokio::test]
+    async fn receive_message_rejects_truncated_header() {
+        let mut device =
+            ScriptedBackend::new(vec![0u8; HEADER_SIZE - 1]).into_device(Duration::from_secs(1));
+        let err = device
+            .receive_message()
+            .await
+            .expect_err("truncated header should fail before frame parse");
+        assert!(
+            matches!(err, crate::NfcError::ConnectionLost),
+            "expected ConnectionLost for short header, got {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn receive_message_rejects_length_field_beyond_buffer() {
+        let mut wire = vec![PROTOCOL_VERSION, MSG_TYPE_GENESIS_REQUEST, 0x03, 0xe8];
+        wire.extend(std::iter::repeat_n(0u8, 8));
+        let mut device = ScriptedBackend::new(wire).into_device(Duration::from_secs(1));
+        let err = device
+            .receive_message()
+            .await
+            .expect_err("declared payload length larger than buffer should fail");
+        assert!(
+            matches!(err, crate::NfcError::ConnectionLost),
+            "expected ConnectionLost when body underruns declared length, got {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn receive_message_rejects_unsupported_protocol_version() {
+        let msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_REQUEST,
+            [0x11u8; PUBLIC_KEY_SIZE],
+            [0x22u8; crate::NONCE_SIZE],
+            vec![0x33u8; 4],
+            [0x44u8; SIGNATURE_SIZE],
+        );
+        let mut wire = msg.to_bytes().expect("valid frame for mutation");
+        wire[0] = 0x99;
+        let mut device = ScriptedBackend::new(wire).into_device(Duration::from_secs(2));
+        let err = device
+            .receive_message()
+            .await
+            .expect_err("unsupported version should fail deserialization");
+        assert!(
+            matches!(err, crate::NfcError::UnsupportedVersion(0x99)),
+            "expected UnsupportedVersion(0x99), got {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn receive_message_roundtrips_empty_payload() {
+        let msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_REQUEST,
+            [0x55u8; PUBLIC_KEY_SIZE],
+            [0x66u8; crate::NONCE_SIZE],
+            Vec::new(),
+            [0x77u8; SIGNATURE_SIZE],
+        );
+        let wire = msg.to_bytes().expect("empty payload frame");
+        assert_eq!(wire.len(), FRAME_OVERHEAD);
+
+        let mut device = ScriptedBackend::new(wire).into_device(Duration::from_secs(2));
+        let got = device.receive_message().await.expect("empty payload should parse");
+        assert!(got.encrypted_payload.is_empty());
+        assert_eq!(got.msg_type, MSG_TYPE_GENESIS_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn receive_message_roundtrips_max_size_payload() {
+        let payload = vec![0xabu8; MAX_PAYLOAD_SIZE];
+        let msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_REQUEST,
+            [0x88u8; PUBLIC_KEY_SIZE],
+            [0x99u8; crate::NONCE_SIZE],
+            payload.clone(),
+            [0xaau8; SIGNATURE_SIZE],
+        );
+        let wire = msg.to_bytes().expect("max payload frame");
+        assert_eq!(wire.len(), FRAME_OVERHEAD + MAX_PAYLOAD_SIZE);
+
+        let mut device = ScriptedBackend::new(wire).into_device(Duration::from_secs(2));
+        let got = device.receive_message().await.expect("max payload should parse");
+        assert_eq!(got.encrypted_payload.len(), MAX_PAYLOAD_SIZE);
+        assert_eq!(got.encrypted_payload, payload);
+    }
+
+    #[tokio::test]
+    async fn send_message_roundtrips_empty_payload() {
+        let msg = NfcMessage::new(
+            MSG_TYPE_GENESIS_REQUEST,
+            [0xbbu8; PUBLIC_KEY_SIZE],
+            [0xccu8; crate::NONCE_SIZE],
+            Vec::new(),
+            [0xddu8; SIGNATURE_SIZE],
+        );
+        let backend = ScriptedBackend::new(Vec::new());
+        let sent = backend.sent_frames_handle();
+        let mut device = backend.into_device(Duration::from_secs(2));
+
+        device.send_message(&msg).await.expect("empty payload send should succeed");
+
+        let frames = sent.lock().expect("sent_frames lock");
+        let wire = frames[0].clone();
+        drop(frames);
+
+        let mut reader = ScriptedBackend::new(wire).into_device(Duration::from_secs(2));
+        let got = reader.receive_message().await.expect("empty payload receive should succeed");
+        assert!(got.encrypted_payload.is_empty());
     }
 }

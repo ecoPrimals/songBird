@@ -201,4 +201,83 @@ mod tests {
         assert!(!matcher.matches(&capabilities));
         assert_eq!(matcher.score(&capabilities), 0);
     }
+
+    #[test]
+    fn capability_query_default_priority_is_five() {
+        let query = CapabilityQuery::new(CapabilityMatcher::new());
+        assert_eq!(query.priority, 5);
+        assert!(query.context.is_empty());
+    }
+
+    #[test]
+    fn capability_query_with_priority_and_context() {
+        let query = CapabilityQuery::new(CapabilityMatcher::new())
+            .with_priority(9)
+            .with_context("region".into(), "us-west".into());
+
+        assert_eq!(query.priority, 9);
+        assert_eq!(query.context.get("region").map(String::as_str), Some("us-west"));
+    }
+
+    #[test]
+    fn matcher_requires_all_required_capabilities() {
+        let caps = vec![DiscoveryCapability::ServiceRegistration];
+        let matcher = CapabilityMatcher::new()
+            .require(DiscoveryCapability::ServiceRegistration)
+            .require(DiscoveryCapability::ServiceDiscovery);
+
+        assert!(!matcher.matches(&caps));
+        assert_eq!(matcher.score(&caps), 0);
+    }
+
+    #[test]
+    fn matcher_multiple_preferred_boosts_score() {
+        let caps = vec![
+            DiscoveryCapability::ServiceRegistration,
+            DiscoveryCapability::HealthChecking,
+            DiscoveryCapability::ServiceMetrics,
+        ];
+        let matcher = CapabilityMatcher::new()
+            .require(DiscoveryCapability::ServiceRegistration)
+            .prefer(DiscoveryCapability::HealthChecking)
+            .prefer(DiscoveryCapability::ServiceMetrics);
+
+        assert!(matcher.matches(&caps));
+        assert_eq!(matcher.score(&caps), 120);
+    }
+
+    #[test]
+    fn matcher_filter_stores_custom_key_value() {
+        let matcher = CapabilityMatcher::new()
+            .filter("vendor".into(), "hashicorp".into())
+            .require(DiscoveryCapability::ServiceDiscovery);
+
+        assert_eq!(matcher.filters.get("vendor").map(String::as_str), Some("hashicorp"));
+    }
+
+    #[test]
+    fn capability_serde_roundtrip() {
+        let cap = DiscoveryCapability::Custom("federation".into());
+        let json = serde_json::to_string(&cap).expect("serialize");
+        let back: DiscoveryCapability = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, cap);
+    }
+
+    #[test]
+    fn empty_capabilities_do_not_match_required() {
+        let matcher = CapabilityMatcher::new().require(DiscoveryCapability::ServiceListing);
+        assert!(!matcher.matches(&[]));
+        assert_eq!(matcher.score(&[]), 0);
+    }
+
+    #[test]
+    fn excluded_capability_blocks_even_when_required_met() {
+        let caps =
+            vec![DiscoveryCapability::ServiceDiscovery, DiscoveryCapability::VersionManagement];
+        let matcher = CapabilityMatcher::new()
+            .require(DiscoveryCapability::ServiceDiscovery)
+            .exclude(DiscoveryCapability::VersionManagement);
+
+        assert!(!matcher.matches(&caps));
+    }
 }

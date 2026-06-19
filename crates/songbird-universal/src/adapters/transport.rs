@@ -196,9 +196,11 @@ impl TarpcTransport {
             "metrics/storage" => self.0.call_method("get_storage_metrics", None).await,
             "metrics/ai" => self.0.call_method("get_ai_metrics", None).await,
             "api/v1/identity" => self.0.call_method("identity", None).await,
-            other => Err(SongbirdError::network(format!(
-                "Unknown GET path for tarpc transport: {other}"
-            ))),
+            "api/v1/lineage/current" => self.0.call_method("lineage.current", None).await,
+            other => {
+                let method = other.replace('/', ".");
+                self.0.call_method(&method, None).await
+            }
         }
     }
 
@@ -207,6 +209,10 @@ impl TarpcTransport {
         match p {
             "auth/verify" => self.0.call_method("verify_auth", Some(body)).await,
             "api/v1/trust/evaluate" => self.0.call_method("trust.evaluate_peer", Some(body)).await,
+            "api/v1/lineage/verify" => self.0.call_method("lineage.verify", Some(body)).await,
+            "api/v1/lineage/same_family" => {
+                self.0.call_method("lineage.same_family", Some(body)).await
+            }
             _ => self.0.call_method(p, Some(body)).await,
         }
     }
@@ -232,9 +238,11 @@ impl JsonRpcTransport {
             "metrics/storage" => self.0.call_method("get_storage_metrics", None).await,
             "metrics/ai" => self.0.call_method("get_ai_metrics", None).await,
             "api/v1/identity" => self.0.call_method("identity", None).await,
-            other => Err(SongbirdError::network(format!(
-                "Unknown GET path for JSON-RPC transport: {other}"
-            ))),
+            "api/v1/lineage/current" => self.0.call_method("lineage.current", None).await,
+            other => {
+                let method = other.replace('/', ".");
+                self.0.call_method(&method, None).await
+            }
         }
     }
 
@@ -243,6 +251,10 @@ impl JsonRpcTransport {
         match p {
             "auth/verify" => self.0.call_method("verify_auth", Some(body)).await,
             "api/v1/trust/evaluate" => self.0.call_method("trust.evaluate_peer", Some(body)).await,
+            "api/v1/lineage/verify" => self.0.call_method("lineage.verify", Some(body)).await,
+            "api/v1/lineage/same_family" => {
+                self.0.call_method("lineage.same_family", Some(body)).await
+            }
             _ => self.0.call_method(p, Some(body)).await,
         }
     }
@@ -472,20 +484,24 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn tarpc_transport_unknown_get_returns_error() -> songbird_types::SongbirdResult<()> {
+    async fn tarpc_transport_unknown_get_maps_to_rpc_method() -> songbird_types::SongbirdResult<()>
+    {
         let client = TarpcClient::new("tarpc://127.0.0.1:9102")?;
         let t = CapabilityTransport::Tarpc(TarpcTransport(client));
-        let err = t.get("unknown/path").await.expect_err("unknown path");
-        assert!(err.to_string().contains("Unknown GET path for tarpc"), "{}", err);
+        // Unknown paths are mapped to dotted RPC methods and attempted (fails due to no connection)
+        let err = t.get("unknown/path").await.expect_err("rpc fails");
+        assert!(!err.to_string().is_empty(), "Should get an RPC error: {}", err);
         Ok(())
     }
 
     #[tokio::test]
-    async fn jsonrpc_transport_unknown_get_returns_error() -> songbird_types::SongbirdResult<()> {
+    async fn jsonrpc_transport_unknown_get_maps_to_rpc_method() -> songbird_types::SongbirdResult<()>
+    {
         let client = JsonRpcClient::new("unix:///tmp/songbird-jsonrpc-transport.sock")?;
         let t = CapabilityTransport::JsonRpc(JsonRpcTransport(client));
-        let err = t.get("foo/bar").await.expect_err("unknown path");
-        assert!(err.to_string().contains("Unknown GET path for JSON-RPC"), "{}", err);
+        // Unknown paths are mapped to dotted RPC methods and attempted (fails due to no connection)
+        let err = t.get("foo/bar").await.expect_err("rpc fails");
+        assert!(!err.to_string().is_empty(), "Should get an RPC error: {}", err);
         Ok(())
     }
 

@@ -362,4 +362,37 @@ mod tests {
         let s = format!("{m:?}");
         assert!(s.contains("80") && s.contains("8080"), "debug should mention ports: {s}");
     }
+
+    #[test]
+    fn port_mapping_request_default_description_mentions_songbird_and_port() {
+        let req = PortMappingRequest::new(
+            3492,
+            3492,
+            IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),
+            Protocol::Tcp,
+        );
+        assert!(req.description.contains("Songbird"));
+        assert!(req.description.contains("3492"));
+        assert!(req.description.contains("TCP"));
+        assert_eq!(req.lease_duration, crate::DEFAULT_MAPPING_TTL);
+    }
+
+    #[test]
+    fn port_mapping_time_until_expiration_positive_when_fresh() {
+        let m = mapping_with_created_at(3600, Duration::from_secs(0));
+        let remaining = m.time_until_expiration();
+        assert!(
+            remaining.as_secs() > 3500,
+            "fresh mapping should have most of TTL remaining: {remaining:?}"
+        );
+        assert!(!m.is_expired());
+    }
+
+    #[test]
+    fn port_mapping_request_accepts_ipv6_internal_client() {
+        let ip = IpAddr::V6(std::net::Ipv6Addr::LOCALHOST);
+        let req = PortMappingRequest::new(9000, 9000, ip, Protocol::Udp);
+        assert_eq!(req.internal_client, ip);
+        assert_eq!(req.protocol, Protocol::Udp);
+    }
 }

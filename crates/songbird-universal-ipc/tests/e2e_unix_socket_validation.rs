@@ -180,7 +180,7 @@ async fn test_e2e_health_via_unix_socket() {
     assert!(response["result"].is_object());
     assert_eq!(response["result"]["status"], "healthy");
     assert_eq!(response["result"]["primal"], "songbird");
-    assert!(response["result"]["uptime_seconds"].is_number());
+    assert!(response["result"]["uptime_s"].is_number());
     assert_eq!(response["id"], 1);
 
     // Close connection

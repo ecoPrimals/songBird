@@ -90,6 +90,9 @@ case "${PLATFORM}_${ARCH}" in
     linux_aarch64)
         BINARY="songbird-aarch64-linux-musl"
         ;;
+    linux_riscv64)
+        BINARY="songbird-riscv64-linux-musl"
+        ;;
     android_aarch64)
         BINARY="songbird-aarch64-linux-android"
         ;;
@@ -108,6 +111,7 @@ case "${PLATFORM}_${ARCH}" in
         echo "Supported combinations:"
         echo "  - linux_x86_64 (Linux 64-bit Intel/AMD)"
         echo "  - linux_aarch64 (Linux 64-bit ARM)"
+        echo "  - linux_riscv64 (Linux 64-bit RISC-V)"
         echo "  - android_aarch64 (Android 64-bit ARM)"
         echo "  - darwin_x86_64 (macOS Intel)"
         echo "  - darwin_aarch64 (macOS Apple Silicon)"
@@ -203,6 +207,77 @@ if "${BINARY_PATH}" --version >/dev/null 2>&1; then
 else
     echo -e "${YELLOW}⚠${NC}  Version check failed (non-critical)"
 fi
+
+# Symlink to standard PATH location
+SYMLINK_DIR=""
+if [[ "${PLATFORM}" == "linux" ]] || [[ "${PLATFORM}" == "android" ]]; then
+    if [[ -w /usr/local/bin ]]; then
+        SYMLINK_DIR="/usr/local/bin"
+    elif [[ -d "${HOME}/.local/bin" ]]; then
+        SYMLINK_DIR="${HOME}/.local/bin"
+    fi
+fi
+if [[ -n "${SYMLINK_DIR}" ]]; then
+    ln -sf "${BINARY_PATH}" "${SYMLINK_DIR}/songbird" 2>/dev/null && \
+        echo -e "${GREEN}✓${NC} Symlinked: ${SYMLINK_DIR}/songbird" || true
+fi
+
+# Service registration based on --mode
+case "${DEPLOY_MODE}" in
+    systemd)
+        if command -v systemctl >/dev/null 2>&1; then
+            echo ""
+            echo -e "${BLUE}🔧 Registering systemd service...${NC}"
+            SERVICE_FILE="/etc/systemd/system/songbird.service"
+            if [[ -w /etc/systemd/system ]]; then
+                cat > "${SERVICE_FILE}" <<SVCEOF
+[Unit]
+Description=Songbird Network Orchestrator (${FAMILY_ID})
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+ExecStart=${BINARY_PATH} server
+Environment=SONGBIRD_FAMILY_ID=${FAMILY_ID}
+Environment=RUST_LOG=info
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+SVCEOF
+                systemctl daemon-reload
+                systemctl enable songbird.service
+                systemctl start songbird.service
+                echo -e "${GREEN}✓${NC} systemd service registered and started"
+            else
+                echo -e "${YELLOW}⚠${NC}  No write access to /etc/systemd/system — run with sudo for service registration"
+            fi
+        else
+            echo -e "${YELLOW}⚠${NC}  systemctl not found — skipping service registration"
+        fi
+        ;;
+    usb)
+        echo ""
+        echo -e "${BLUE}🔧 USB Live Spore mode — no service registration${NC}"
+        echo -e "${BLUE}   Run directly:${NC} ${BINARY_PATH} server --mode usb-live-spore"
+        ;;
+    android)
+        echo ""
+        echo -e "${BLUE}🔧 Android/Termux mode${NC}"
+        if [[ -d "${HOME}/.termux" ]]; then
+            mkdir -p "${HOME}/.termux/boot"
+            echo "#!/data/data/com.termux/files/usr/bin/bash" > "${HOME}/.termux/boot/songbird.sh"
+            echo "SONGBIRD_FAMILY_ID=${FAMILY_ID} ${BINARY_PATH} server &" >> "${HOME}/.termux/boot/songbird.sh"
+            chmod +x "${HOME}/.termux/boot/songbird.sh"
+            echo -e "${GREEN}✓${NC} Termux boot script installed"
+        fi
+        ;;
+    manual|auto)
+        ;;
+esac
 
 # Success
 echo ""

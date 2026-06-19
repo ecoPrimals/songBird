@@ -1,53 +1,75 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! # 🔍 Gaming Discovery Commands
-//!
-//! **MODERN GAMING SERVICE DISCOVERY** ✅
+//! Service discovery CLI command — wraps `songbird_discovery` for terminal output.
 
 #![allow(missing_docs, reason = "thin command wrapper; behavior described in module docs")]
 
 use crate::errors::SongbirdResult;
+use songbird_discovery::UniversalDiscoveryFactory;
+use songbird_discovery::traits::ServiceQuery;
 
 pub async fn execute_discovery(
     timeout: u64,
     protocol: Option<String>,
     continuous: bool,
 ) -> SongbirdResult<()> {
-    println!("🔍 Discovering gaming services...");
+    use songbird_discovery::ServiceDiscovery;
 
-    if let Some(proto) = protocol {
-        println!("🌐 Filtering by protocol: {proto}");
+    println!("Discovering services...");
+
+    if let Some(ref proto) = protocol {
+        println!("  Filtering by protocol: {proto}");
     }
 
-    println!("⏱️  Timeout: {timeout}s");
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout);
 
-    if continuous {
-        println!("🔄 Continuous discovery mode ");
+    loop {
+        let adapter = match UniversalDiscoveryFactory::create_auto_detect().await {
+            Ok(a) => a,
+            Err(e) => {
+                eprintln!("  Discovery initialization failed: {e}");
+                return Ok(());
+            }
+        };
+
+        let query = ServiceQuery {
+            name: None,
+            service_id: None,
+            service_type: protocol.clone(),
+            version: None,
+            tags: Vec::new(),
+            metadata: std::collections::HashMap::new(),
+            health_status: None,
+            limit: None,
+            sort_by: None,
+        };
+
+        match adapter.discover(query).await {
+            Ok(services) if services.is_empty() => {
+                println!("  No services found.");
+            }
+            Ok(services) => {
+                println!("  Found {} service(s):", services.len());
+                for svc in &services {
+                    println!(
+                        "    {} v{} [{}] ({}:{})",
+                        svc.name, svc.version, svc.service_type, svc.host, svc.port
+                    );
+                }
+            }
+            Err(e) => {
+                eprintln!("  Discovery error: {e}");
+            }
+        }
+
+        if !continuous || std::time::Instant::now() >= deadline {
+            break;
+        }
+
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     }
 
-    // Perform service discovery using the unified discovery system
-    println!("🔍 Starting service discovery...");
-
-    // In a real implementation, this would use songbird_discovery crate
-    // For now, simulate discovery process
-    println!("  📡 Scanning for services...");
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-
-    println!("  ✅ Found 3 services:");
-    println!(
-        "    - orchestrator (songbird_config::canonical::constants::network::DEFAULT_HOST:{})",
-        songbird_config::defaults::ports::orchestrator_port()
-    );
-    println!(
-        "    - discovery (songbird_config::canonical::constants::network::DEFAULT_HOST:{})",
-        songbird_config::defaults::ports::discovery_port()
-    );
-    println!(
-        "    - health (songbird_config::canonical::constants::network::DEFAULT_HOST:{})",
-        songbird_config::defaults::ports::security_provider_port()
-    );
-
-    println!("✅ Discovery complete ");
+    println!("Discovery complete.");
     Ok(())
 }

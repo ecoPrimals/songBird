@@ -144,7 +144,7 @@ impl AgnosticPrimalConfig {
         }
 
         // Check for custom capabilities
-        for (key, value) in std::env::vars() {
+        for (key, value) in songbird_process_env::vars() {
             if key.starts_with("CAPABILITY_") && key.ends_with("_ENDPOINT") {
                 let capability = key
                     .trim_start_matches("CAPABILITY_")
@@ -215,7 +215,7 @@ impl AgnosticPrimalConfig {
             .unwrap_or(true);
 
         let protocol = songbird_process_env::var("SERVICE_MESH_PROTOCOL")
-            .unwrap_or_else(|_| String::from("tarpc"));
+            .unwrap_or_else(|_| "tarpc".to_string());
 
         let enable_tls = songbird_process_env::var("SERVICE_MESH_TLS")
             .map(|v| v == "true" || v == "1")
@@ -269,7 +269,7 @@ impl AgnosticPrimalConfig {
 
         Err(SongbirdError::Configuration {
             message: format!("Capability '{capability}' not available"),
-            field: Some(String::from("capability")),
+            field: Some("capability".to_string()),
             suggestion: Some(format!(
                 "Set CAPABILITY_{}_ENDPOINT environment variable",
                 capability.to_uppercase()
@@ -291,7 +291,7 @@ impl Default for AgnosticPrimalConfig {
             },
             service_mesh: ServiceMeshConfig {
                 enabled: true,
-                protocol: String::from("tarpc"),
+                protocol: "tarpc".to_string(),
                 enable_tls: true,
                 discovery_interval_secs: 60,
             },
@@ -371,8 +371,8 @@ mod tests {
             }
         }
 
-        assert_eq!(endpoints.get("security"), Some(&String::from("https://localhost:8443")));
-        assert_eq!(endpoints.get("compute"), Some(&String::from("http://localhost:8082")));
+        assert_eq!(endpoints.get("security"), Some(&"https://localhost:8443".to_string()));
+        assert_eq!(endpoints.get("compute"), Some(&"http://localhost:8082".to_string()));
 
         // No cleanup needed - env is scoped to this test
     }
@@ -406,9 +406,14 @@ mod tests {
         // No cleanup needed - fully isolated
     }
 
-    /// Test concurrent-safe legacy environment variable migration
-    #[test]
-    fn test_migration_helper() {
+    /// Test concurrent-safe legacy environment variable migration.
+    ///
+    /// Uses the overlay serialization lock because `EnvOverride::contains_key`
+    /// falls back to process env, which can race with ScopedEnv tests.
+    #[tokio::test]
+    async fn test_migration_helper() {
+        let _serial = lock_overlay_env_tests().await;
+
         let env = EnvOverride::new();
         env.set("SONGBIRD_BEARDOG_ENDPOINT", "https://beardog:8443");
         env.set("SONGBIRD_TOADSTOOL_ENDPOINT", "http://toadstool:8082");
@@ -421,18 +426,20 @@ mod tests {
         ];
 
         for (legacy_var, capability_var) in &migrations {
-            if env.get(legacy_var).is_some() {
-                env.set(*capability_var, env.get(legacy_var).unwrap());
+            if let Some(value) = env.get(legacy_var)
+                && !env.contains_key(capability_var)
+            {
+                env.set(*capability_var, value);
             }
         }
 
         assert_eq!(
             env.get("CAPABILITY_SECURITY_ENDPOINT"),
-            Some(String::from("https://beardog:8443"))
+            Some("https://beardog:8443".to_string())
         );
         assert_eq!(
             env.get("CAPABILITY_COMPUTE_ENDPOINT"),
-            Some(String::from("http://toadstool:8082"))
+            Some("http://toadstool:8082".to_string())
         );
     }
 
@@ -444,10 +451,7 @@ mod tests {
             "https://sec:8443",
         );
         let cfg = AgnosticPrimalConfig::from_environment().unwrap();
-        assert_eq!(
-            cfg.capability_endpoints.get("security"),
-            Some(&String::from("https://sec:8443"))
-        );
+        assert_eq!(cfg.capability_endpoints.get("security"), Some(&"https://sec:8443".to_string()));
     }
 
     #[tokio::test]
@@ -458,7 +462,7 @@ mod tests {
             "http://compute:8082",
         );
         let endpoints = AgnosticPrimalConfig::discover_capability_endpoints();
-        assert_eq!(endpoints.get("compute"), Some(&String::from("http://compute:8082")));
+        assert_eq!(endpoints.get("compute"), Some(&"http://compute:8082".to_string()));
     }
 
     #[tokio::test]

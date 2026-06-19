@@ -512,4 +512,95 @@ mod tests {
         let result = soap.add_port_mapping(&req).await;
         assert!(result.is_err(), "unreachable TEST-NET-3 host should yield error, got {result:?}");
     }
+
+    #[test]
+    fn build_add_port_mapping_xml_escapes_description_entities() {
+        let soap = SoapClient::new(
+            "http://192.168.1.254:5431/ctl/IPConn".to_string(),
+            crate::WANIP_SERVICE_TYPE.to_string(),
+        );
+        let req = PortMappingRequest::new(
+            8080,
+            8080,
+            IpAddr::V4(Ipv4Addr::new(192, 168, 1, 2)),
+            Protocol::Tcp,
+        )
+        .with_description("Songbird <test> & \"quotes\"".to_string());
+
+        let xml = soap.build_add_port_mapping_xml(&req);
+        assert!(xml.contains("Songbird &lt;test&gt; &amp; &quot;quotes&quot;"));
+        assert!(!xml.contains("Songbird <test>"));
+    }
+
+    #[test]
+    fn build_add_port_mapping_xml_includes_ipv6_internal_client() {
+        let soap = SoapClient::new(
+            "http://192.168.1.1/ctl".to_string(),
+            crate::WANIP_SERVICE_TYPE.to_string(),
+        );
+        let req = PortMappingRequest::new(
+            443,
+            8443,
+            IpAddr::V6(std::net::Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)),
+            Protocol::Udp,
+        );
+        let xml = soap.build_add_port_mapping_xml(&req);
+        assert!(xml.contains("2001:db8::1"));
+        assert!(xml.contains("<NewProtocol>UDP</NewProtocol>"));
+    }
+
+    #[test]
+    fn parse_external_ip_reads_ipv6() {
+        let response = r#"<?xml version="1.0"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Body>
+    <u:GetExternalIPAddressResponse xmlns:u="urn:schemas-upnp-org:service:WANIPConnection:1">
+      <NewExternalIPAddress>2001:db8::dead:beef</NewExternalIPAddress>
+    </u:GetExternalIPAddressResponse>
+  </s:Body>
+</s:Envelope>"#;
+        let ip = SoapClient::parse_external_ip(response).expect("IPv6 SOAP body");
+        assert_eq!(
+            ip,
+            IpAddr::V6(std::net::Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0xdead, 0xbeef))
+        );
+    }
+
+    #[test]
+    fn parse_soap_error_non_numeric_code_returns_none() {
+        let body = "<errorCode>not-a-number</errorCode>";
+        assert_eq!(SoapClient::parse_soap_error(body), None);
+    }
+
+    #[test]
+    fn parse_soap_error_malformed_unclosed_tag_returns_none() {
+        let body = "<errorCode>718";
+        assert_eq!(SoapClient::parse_soap_error(body), None);
+    }
+
+    #[tokio::test]
+    async fn get_external_ip_unreachable_host_returns_error() {
+        let soap = SoapClient::new(
+            "http://203.0.113.2:5431/ctl/IPConn".to_string(),
+            crate::WANIP_SERVICE_TYPE.to_string(),
+        );
+        let err = soap.get_external_ip().await.expect_err("unreachable router");
+        assert!(
+            matches!(err, IgdError::Timeout | IgdError::SoapError(_)),
+            "expected timeout or connection error, got {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn delete_port_mapping_unreachable_host_returns_error() {
+        let soap = SoapClient::new(
+            "http://203.0.113.3:5431/ctl/IPConn".to_string(),
+            crate::WANIP_SERVICE_TYPE.to_string(),
+        );
+        let err = soap.delete_port_mapping(80, "TCP").await.expect_err("unreachable router");
+        assert!(
+            matches!(err, IgdError::Timeout | IgdError::SoapError(_)),
+            "expected timeout or connection error, got {err:?}"
+        );
+    }
 }

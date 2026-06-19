@@ -55,20 +55,20 @@ impl CapabilityDiscovery {
         &self,
         capability: &str,
     ) -> SongbirdResult<Vec<ServiceEndpoint>> {
-        use hickory_resolver::TokioAsyncResolver;
-        use hickory_resolver::config::{ResolverConfig, ResolverOpts};
+        use hickory_resolver::Resolver;
+        use hickory_resolver::config::ResolverConfig;
+        use hickory_resolver::name_server::TokioConnectionProvider;
 
-        // DNS-SD service type: _{capability}._tcp.local
         let service_name = format!("_{capability}._tcp.local");
 
         debug!("Attempting DNS-SD discovery for: {}", service_name);
 
-        // Create resolver with system configuration
-        // Note: tokio() returns the resolver directly, not a Result
-        let resolver =
-            TokioAsyncResolver::tokio(ResolverConfig::default(), ResolverOpts::default());
+        let resolver = Resolver::builder_with_config(
+            ResolverConfig::default(),
+            TokioConnectionProvider::default(),
+        )
+        .build();
 
-        // Query SRV records for service discovery
         match resolver.srv_lookup(&service_name).await {
             Ok(srv_records) => {
                 let mut endpoints = Vec::new();
@@ -77,7 +77,6 @@ impl CapabilityDiscovery {
                     let target = srv.target().to_utf8();
                     let port = srv.port();
 
-                    // Construct endpoint URL
                     let url = format!("http://{target}:{port}");
 
                     debug!("Discovered via DNS-SD: {}", url);

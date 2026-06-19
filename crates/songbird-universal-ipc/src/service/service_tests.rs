@@ -15,7 +15,7 @@ use tokio::sync::RwLock;
 #[tokio::test]
 async fn test_ipc_service_register() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     let params = json!({
         "primal_id": "security",
@@ -33,7 +33,7 @@ async fn test_ipc_service_register() {
 #[tokio::test]
 async fn test_ipc_service_resolve() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     // Register first
     let register_params = json!({
@@ -59,7 +59,7 @@ async fn test_ipc_service_resolve() {
 #[tokio::test]
 async fn test_ipc_service_discover() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     // Register service with capability
     let register_params = json!({
@@ -86,7 +86,7 @@ async fn test_ipc_service_discover() {
 #[tokio::test]
 async fn test_primal_info_introspection() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     let result = handler.handle("primal.info", json!({})).await;
     assert!(result.is_ok());
@@ -102,7 +102,7 @@ async fn test_primal_info_introspection() {
 #[tokio::test]
 async fn test_primal_capabilities_introspection() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     let result = handler.handle("primal.capabilities", json!({})).await;
     assert!(result.is_ok());
@@ -126,7 +126,7 @@ async fn test_primal_capabilities_introspection() {
 #[tokio::test]
 async fn test_rpc_methods_introspection() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     let result = handler.handle("rpc.methods", json!({})).await;
     assert!(result.is_ok());
@@ -150,7 +150,7 @@ async fn test_rpc_methods_introspection() {
 #[tokio::test]
 async fn test_ipc_service_list() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     // Register multiple services
     for (id, caps) in &[("security", vec!["crypto"]), ("squirrel", vec!["ai"])] {
@@ -174,7 +174,7 @@ async fn test_ipc_service_list() {
 #[tokio::test]
 async fn test_discover_capabilities() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     let result = handler.handle("discover_capabilities", json!({})).await;
     assert!(result.is_ok());
@@ -249,6 +249,7 @@ fn register_and_resolve_result_serialization() {
     let reg = RegisterResult {
         virtual_endpoint: "/primal/x".into(),
         registered_at: "t0".into(),
+        transport: None,
         signature: None,
         signed_payload: None,
     };
@@ -259,18 +260,24 @@ fn register_and_resolve_result_serialization() {
         socket: None,
         virtual_endpoint: "/primal/x".into(),
         native_endpoint: "native".into(),
+        endpoint: TransportEndpoint::Uds {
+            path: "/tmp/x.sock".into(),
+        },
         capabilities: vec!["c".into()],
+        relay: false,
+        relay_socket: None,
         signature: None,
         signed_payload: None,
     };
     let v2 = serde_json::to_value(&res).expect("ResolveResult json");
     assert_eq!(v2["capabilities"][0], "c");
+    assert_eq!(v2["endpoint"]["transport"], "uds");
 }
 
 #[tokio::test]
 async fn ipc_resolve_errors_when_primal_not_registered() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
     let err = handler
         .handle("ipc.resolve", json!({ "primal_id": "ghost" }))
         .await
@@ -281,7 +288,7 @@ async fn ipc_resolve_errors_when_primal_not_registered() {
 #[tokio::test]
 async fn unknown_rpc_method_returns_error() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
     let err = handler.handle("no.such.method", json!({})).await.expect_err("unknown method");
     assert!(
         err.contains("unknown JSON-RPC method") || err.contains("Unknown method"),
@@ -292,7 +299,7 @@ async fn unknown_rpc_method_returns_error() {
 #[tokio::test]
 async fn health_liveness_returns_healthy_status_only() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
     let v = handler.handle("health.liveness", json!({})).await.expect("liveness");
     assert_eq!(v, json!({ "status": "alive" }));
 }
@@ -300,7 +307,7 @@ async fn health_liveness_returns_healthy_status_only() {
 #[tokio::test]
 async fn capabilities_list_returns_wire_standard_envelope() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
     let v = handler.handle("capabilities.list", json!({})).await.expect("caps");
     assert_eq!(v["primal"].as_str().unwrap(), "songbird");
     assert!(v["version"].as_str().is_some(), "version must be present");
@@ -312,7 +319,7 @@ async fn capabilities_list_returns_wire_standard_envelope() {
 #[tokio::test]
 async fn identity_get_returns_wire_standard_response() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
     let v = handler.handle("identity.get", json!({})).await.expect("identity.get");
     assert_eq!(v["primal"].as_str().unwrap(), "songbird");
     assert_eq!(v["domain"].as_str().unwrap(), "network");
@@ -345,7 +352,7 @@ fn federation_response_types_serialize_expected_shape() {
 #[tokio::test]
 async fn federation_peers_and_status_without_state_match_empty_defaults() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     let p = handler.handle("federation.peers", json!({})).await.expect("peers");
     assert_eq!(p["peers"], json!([]));
@@ -395,7 +402,7 @@ async fn federation_peers_and_status_reflect_federation_state() {
 #[tokio::test]
 async fn ipc_resolve_by_capability_returns_provider() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     handler
         .handle(
@@ -420,7 +427,7 @@ async fn ipc_resolve_by_capability_returns_provider() {
 #[tokio::test]
 async fn ipc_resolve_by_capability_unknown_errors() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
     let err = handler
         .handle("ipc.resolve", json!({ "capability": "no.such.cap" }))
         .await
@@ -431,7 +438,7 @@ async fn ipc_resolve_by_capability_unknown_errors() {
 #[tokio::test]
 async fn ipc_resolve_missing_both_params_errors() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
     let err = handler.handle("ipc.resolve", json!({})).await.expect_err("missing params");
     assert!(err.contains("primal_id") && err.contains("capability"), "unexpected: {err}");
 }
@@ -439,7 +446,7 @@ async fn ipc_resolve_missing_both_params_errors() {
 #[tokio::test]
 async fn ipc_resolve_capability_preferred_over_primal_id() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     handler
         .handle(
@@ -466,7 +473,7 @@ async fn ipc_resolve_capability_preferred_over_primal_id() {
 #[tokio::test]
 async fn ipc_resolve_capability_falls_back_to_primal_name() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     handler
         .handle(
@@ -491,7 +498,7 @@ async fn ipc_resolve_capability_falls_back_to_primal_name() {
 #[tokio::test]
 async fn ipc_resolve_name_alias_for_primal_id() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     handler
         .handle(
@@ -516,7 +523,7 @@ async fn ipc_resolve_name_alias_for_primal_id() {
 #[tokio::test]
 async fn ipc_resolve_by_name_method_alias() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry.clone());
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
 
     handler
         .handle(
@@ -541,7 +548,7 @@ async fn ipc_resolve_by_name_method_alias() {
 #[tokio::test]
 async fn discovery_peers_returns_mesh_bootstrap_peers() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
-    let handler = IpcServiceHandler::new(registry);
+    let handler = IpcServiceHandler::new_isolated(registry);
 
     let init_result = handler
         .handle(
@@ -575,4 +582,351 @@ async fn discovery_peers_returns_mesh_bootstrap_peers() {
     let iron = peers.iter().find(|p| p["node_id"] == "iron-gate").unwrap();
     assert_eq!(iron["address"].as_str().unwrap(), "192.168.1.238:7700");
     assert_eq!(iron["tcp_port"].as_u64().unwrap(), 7700);
+}
+
+/// Validates the full `ipc.resolve` → `TransportEndpoint` wire format
+/// that sourDough's `IpcClient` consumes. This is the Phase 2 M1 gate test.
+///
+/// Wire contract:
+/// - `endpoint.transport` discriminant tag (internally tagged enum via `#[serde(tag = "transport")]`)
+/// - UDS variant: `{ "transport": "uds", "path": "..." }`
+/// - TCP variant: `{ "transport": "tcp", "host": "...", "port": N }`
+/// - MeshRelay variant: `{ "transport": "mesh_relay", "peer_id": "...", "capability": "..." }`
+///
+/// sourDough callers use `"native": true` to force the direct endpoint (no relay).
+/// Default mode (`"virtual": true`) returns `mesh_relay` when relay is available.
+#[tokio::test]
+async fn ipc_resolve_returns_transport_endpoint_json_sourdough_wire_compat() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
+
+    // Register a UDS-based primal
+    handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "beardog",
+                "capabilities": ["crypto.sign", "crypto.verify", "security"],
+                "endpoint": "/run/user/1000/biomeos/beardog.sock"
+            }),
+        )
+        .await
+        .unwrap();
+
+    // Register a TCP-based primal
+    handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "skunkbat",
+                "capabilities": ["observability", "metrics"],
+                "endpoint": "tcp://127.0.0.1:9090"
+            }),
+        )
+        .await
+        .unwrap();
+
+    // --- Resolve UDS primal by capability with native=true (bypass relay) ---
+    let uds_result = handler
+        .handle("ipc.resolve", json!({ "capability": "crypto.sign", "native": true }))
+        .await
+        .expect("resolve UDS primal by capability (native)");
+
+    let ep = &uds_result["endpoint"];
+    assert_eq!(ep["transport"], "uds", "UDS endpoint must have transport='uds'");
+    assert_eq!(
+        ep["path"], "/run/user/1000/biomeos/beardog.sock",
+        "UDS path must match registered socket"
+    );
+    assert!(ep.get("host").is_none(), "UDS variant must not have 'host'");
+    assert!(ep.get("port").is_none(), "UDS variant must not have 'port'");
+
+    // Validate envelope fields that sourDough also reads
+    assert_eq!(uds_result["relay"], false);
+    assert!(uds_result["capabilities"].as_array().unwrap().iter().any(|c| c == "crypto.sign"));
+    assert!(uds_result["native_endpoint"].as_str().unwrap().contains("beardog.sock"));
+
+    // --- Resolve TCP primal by primal_id with native=true ---
+    let tcp_result = handler
+        .handle("ipc.resolve", json!({ "primal_id": "skunkbat", "native": true }))
+        .await
+        .expect("resolve TCP primal by primal_id (native)");
+
+    let ep = &tcp_result["endpoint"];
+    assert_eq!(ep["transport"], "tcp", "TCP endpoint must have transport='tcp'");
+    assert_eq!(ep["host"], "127.0.0.1");
+    assert_eq!(ep["port"], 9090);
+    assert!(ep.get("path").is_none(), "TCP variant must not have 'path'");
+    assert!(ep.get("peer_id").is_none(), "TCP variant must not have 'peer_id'");
+
+    // --- Resolve with default virtual mode (relay) ---
+    let relay_result = handler
+        .handle("ipc.resolve", json!({ "capability": "crypto.sign" }))
+        .await
+        .expect("resolve with relay (default virtual mode)");
+
+    let ep = &relay_result["endpoint"];
+    // When relay is available, endpoint becomes mesh_relay
+    assert_eq!(
+        ep["transport"], "mesh_relay",
+        "Virtual mode should return mesh_relay when relay is active"
+    );
+    assert_eq!(ep["peer_id"], "beardog");
+    assert_eq!(ep["capability"], "crypto.sign");
+    assert_eq!(relay_result["relay"], true);
+    // native_endpoint is always present regardless of relay
+    assert!(relay_result["native_endpoint"].as_str().unwrap().contains("beardog.sock"));
+
+    // --- Resolve by `name` alias with native ---
+    let name_result = handler
+        .handle("ipc.resolve", json!({ "name": "beardog", "native": true }))
+        .await
+        .expect("resolve by name alias");
+    assert_eq!(name_result["endpoint"]["transport"], "uds");
+    assert_eq!(name_result["endpoint"]["path"], "/run/user/1000/biomeos/beardog.sock");
+
+    // --- Verify `ipc.resolve_by_name` method alias ---
+    let alias_result = handler
+        .handle("ipc.resolve_by_name", json!({ "name": "skunkbat", "native": true }))
+        .await
+        .expect("ipc.resolve_by_name method alias");
+    assert_eq!(alias_result["endpoint"]["transport"], "tcp");
+    assert_eq!(alias_result["endpoint"]["port"], 9090);
+}
+
+/// Validates `capability.resolve` also returns `TransportEndpoint` JSON.
+/// sourDough's `IpcClient` can use either `ipc.resolve` or `capability.resolve`.
+#[tokio::test]
+async fn capability_resolve_returns_transport_endpoint_json() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
+
+    handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "beardog",
+                "capabilities": ["crypto.sign"],
+                "endpoint": "/run/user/1000/biomeos/beardog.sock"
+            }),
+        )
+        .await
+        .unwrap();
+
+    let result = handler
+        .handle("capability.resolve", json!({ "capability": "crypto.sign" }))
+        .await
+        .expect("capability.resolve");
+
+    let ep = &result["endpoint"];
+    assert_eq!(ep["transport"], "uds");
+    assert_eq!(ep["path"], "/run/user/1000/biomeos/beardog.sock");
+    assert_eq!(result["primal_id"], "beardog");
+}
+
+/// Validates that `ipc.register` returns `TransportEndpoint` in its response
+/// so primals get immediate confirmation of their registered transport.
+#[tokio::test]
+async fn ipc_register_returns_transport_endpoint_in_response() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
+
+    // UDS registration
+    let uds_reg = handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "beardog",
+                "capabilities": ["crypto"],
+                "endpoint": "/run/user/1000/biomeos/beardog.sock"
+            }),
+        )
+        .await
+        .unwrap();
+
+    let t = &uds_reg["transport"];
+    assert_eq!(t["transport"], "uds");
+    assert_eq!(t["path"], "/run/user/1000/biomeos/beardog.sock");
+
+    // TCP registration
+    let tcp_reg = handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "skunkbat",
+                "capabilities": ["observability"],
+                "endpoint": "tcp://127.0.0.1:9090"
+            }),
+        )
+        .await
+        .unwrap();
+
+    let t = &tcp_reg["transport"];
+    assert_eq!(t["transport"], "tcp");
+    assert_eq!(t["host"], "127.0.0.1");
+    assert_eq!(t["port"], 9090);
+}
+
+/// When a capability isn't registered locally but a mesh peer advertises it,
+/// `ipc.resolve` should return a `MeshRelay` transport endpoint pointing to
+/// the remote peer — enabling transparent cross-gate routing (Wave 107 M1).
+#[tokio::test]
+async fn ipc_resolve_falls_back_to_mesh_peer_when_local_absent() {
+    use crate::handlers::mesh_handler::capability_propagation::PeerCapabilityEntry;
+    use std::time::Instant;
+
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
+
+    // Inject a remote peer's capabilities into the mesh handler
+    {
+        let mesh_handler = handler.mesh_handler();
+        let mut caps = mesh_handler.peer_capabilities.write().await;
+        caps.insert(
+            "iron-gate".to_string(),
+            PeerCapabilityEntry {
+                capabilities: vec![
+                    "linalg".to_string(),
+                    "linalg.svd".to_string(),
+                    "compute".to_string(),
+                ],
+                last_seen: Instant::now(),
+            },
+        );
+    }
+
+    // Resolve a capability that only exists on the remote peer
+    let result = handler
+        .handle("ipc.resolve", json!({ "capability": "linalg.svd" }))
+        .await
+        .expect("should resolve via mesh fallback");
+
+    let ep = &result["endpoint"];
+    assert_eq!(ep["transport"], "mesh_relay", "must return mesh_relay transport");
+    assert_eq!(ep["peer_id"], "iron-gate", "must point to the peer with the capability");
+    assert_eq!(ep["capability"], "linalg.svd");
+    assert_eq!(result["relay"], true, "relay flag must be true for mesh resolution");
+    assert_eq!(result["native_endpoint"], "mesh://iron-gate");
+    assert!(
+        result["capabilities"].as_array().unwrap().iter().any(|c| c == "linalg.svd"),
+        "capabilities must include the resolved capability"
+    );
+}
+
+/// `capability.resolve` also falls back to mesh peers when no local provider exists.
+#[tokio::test]
+async fn capability_resolve_falls_back_to_mesh_peer() {
+    use crate::handlers::mesh_handler::capability_propagation::PeerCapabilityEntry;
+    use std::time::Instant;
+
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
+
+    {
+        let mesh_handler = handler.mesh_handler();
+        let mut caps = mesh_handler.peer_capabilities.write().await;
+        caps.insert(
+            "south-gate".to_string(),
+            PeerCapabilityEntry {
+                capabilities: vec!["crypto.sign".to_string(), "security".to_string()],
+                last_seen: Instant::now(),
+            },
+        );
+    }
+
+    let result = handler
+        .handle("capability.resolve", json!({ "capability": "crypto.sign" }))
+        .await
+        .expect("should resolve via mesh fallback");
+
+    let ep = &result["endpoint"];
+    assert_eq!(ep["transport"], "mesh_relay");
+    assert_eq!(ep["peer_id"], "south-gate");
+    assert_eq!(ep["capability"], "crypto.sign");
+    assert_eq!(result["primal_id"], "remote:south-gate");
+}
+
+/// When a capability exists locally, mesh fallback is NOT used (local always wins).
+#[tokio::test]
+async fn ipc_resolve_prefers_local_over_mesh_peer() {
+    use crate::handlers::mesh_handler::capability_propagation::PeerCapabilityEntry;
+    use std::time::Instant;
+
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
+
+    // Register locally with a path that won't collide with any running process
+    let test_sock = format!("/tmp/songbird-test-{}/local-primal.sock", std::process::id());
+    handler
+        .handle(
+            "ipc.register",
+            json!({
+                "primal_id": "local-primal",
+                "capabilities": ["security"],
+                "endpoint": test_sock
+            }),
+        )
+        .await
+        .unwrap();
+
+    // Also inject the same capability as available on a remote peer
+    {
+        let mesh_handler = handler.mesh_handler();
+        let mut caps = mesh_handler.peer_capabilities.write().await;
+        caps.insert(
+            "remote-gate".to_string(),
+            PeerCapabilityEntry {
+                capabilities: vec!["security".to_string()],
+                last_seen: Instant::now(),
+            },
+        );
+    }
+
+    let result = handler
+        .handle("ipc.resolve", json!({ "capability": "security", "native": true }))
+        .await
+        .expect("should resolve locally");
+
+    let ep = &result["endpoint"];
+    assert_eq!(ep["transport"], "uds", "local provider must win over mesh peer");
+    assert!(
+        ep["path"].as_str().unwrap().contains("local-primal.sock"),
+        "must point to local socket"
+    );
+}
+
+/// `find_peer_with_capability` ignores expired entries.
+#[tokio::test]
+async fn find_peer_with_capability_ignores_expired() {
+    use crate::handlers::mesh_handler::MeshHandler;
+    use crate::handlers::mesh_handler::capability_propagation::PeerCapabilityEntry;
+    use std::time::{Duration, Instant};
+
+    let handler = MeshHandler::new();
+
+    {
+        let mut caps = handler.peer_capabilities.write().await;
+        caps.insert(
+            "stale-gate".to_string(),
+            PeerCapabilityEntry {
+                capabilities: vec!["stale-cap".to_string()],
+                last_seen: Instant::now() - Duration::from_secs(700),
+            },
+        );
+        caps.insert(
+            "fresh-gate".to_string(),
+            PeerCapabilityEntry {
+                capabilities: vec!["fresh-cap".to_string()],
+                last_seen: Instant::now(),
+            },
+        );
+    }
+
+    assert!(handler.find_peer_with_capability("stale-cap").await.is_none());
+
+    let found = handler.find_peer_with_capability("fresh-cap").await;
+    assert!(found.is_some());
+    let (peer, caps) = found.unwrap();
+    assert_eq!(peer, "fresh-gate");
+    assert!(caps.contains(&"fresh-cap".to_string()));
 }

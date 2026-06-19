@@ -98,7 +98,7 @@ async fn test_round_robin_with_concurrent_requests() {
         handles.push(tokio::spawn(async move { lb_clone.get_next_endpoint().await }));
     }
 
-    let results: Vec<_> = futures::future::join_all(handles).await;
+    let results: Vec<_> = futures_util::future::join_all(handles).await;
 
     // All should succeed
     for result in results {
@@ -209,7 +209,7 @@ async fn test_all_endpoints_unavailable() {
     // Should return error
     let result = lb.get_next_endpoint().await;
     assert!(result.is_err());
-    assert_eq!(result.expect_err("testing error case"), "No available endpoints");
+    assert_eq!(result.expect_err("testing error case").to_string(), "No available endpoints");
 }
 
 // ============================================================================
@@ -231,7 +231,7 @@ async fn test_concurrent_health_updates() {
         }));
     }
 
-    futures::future::join_all(handles).await;
+    futures_util::future::join_all(handles).await;
 
     // Should not deadlock or panic
     let selected = lb.get_next_endpoint().await;
@@ -358,7 +358,7 @@ async fn test_empty_endpoints() {
 
     let result = lb.get_next_endpoint().await;
     assert!(result.is_err());
-    assert_eq!(result.expect_err("testing error case"), "No endpoints configured");
+    assert_eq!(result.expect_err("testing error case").to_string(), "No endpoints configured");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

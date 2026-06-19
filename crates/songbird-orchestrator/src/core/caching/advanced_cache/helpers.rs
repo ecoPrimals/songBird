@@ -181,7 +181,7 @@ mod tests {
 
     #[test]
     fn entry_is_expired_past_expiry() {
-        let past = Instant::now() - Duration::from_secs(10);
+        let past = Instant::now().checked_sub(Duration::from_secs(10)).unwrap();
         let entry = CacheEntry {
             value: CacheValue::String("v".into()),
             created_at: past,
@@ -222,7 +222,7 @@ mod tests {
     fn estimate_entry_size_numeric_key() {
         let key = CacheKey::Numeric(42);
         let value = CacheValue::String("".into());
-        assert_eq!(estimate_entry_size(&key, &value), 8 + 0 + 64);
+        assert_eq!(estimate_entry_size(&key, &value), 72);
     }
 
     #[test]

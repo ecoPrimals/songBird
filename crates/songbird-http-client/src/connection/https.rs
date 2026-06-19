@@ -512,6 +512,12 @@ impl HttpsConnection {
                         debug!("🧠 Profiler updated: failure for {} with {:?}", host, strategy);
                     }
 
+                    // If the peer responded with HTTP, no TLS strategy will work — abort immediately
+                    if e.is_http_not_tls() {
+                        warn!("🌐 Peer {} is serving plain HTTP — aborting TLS retries", host);
+                        return Err(e);
+                    }
+
                     last_error = Some(e);
                     // tcp_stream dropped here, connection closed cleanly
                 }

@@ -29,7 +29,7 @@ mod types;
 
 pub use super::chunked_upload::{finalize_chunked_upload, negotiate_chunked_upload, upload_chunk};
 pub use binary::{deploy_binary, deploy_binary_bytes, start_service};
-pub use capabilities::get_capabilities;
+pub use capabilities::{detect_network_type_for_peer, get_capabilities};
 pub use types::*;
 
 use axum::{

@@ -20,7 +20,10 @@
 //! This handler delegates to `songbird-onion-relay::BeaconMesh` for
 //! mesh state management while exposing capability via JSON-RPC.
 
+pub(crate) mod capability_propagation;
+mod health_probing;
 mod json;
+pub mod persistence;
 mod udp_discovery;
 
 #[cfg(test)]
@@ -35,8 +38,16 @@ use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
-/// Mesh handler for JSON-RPC integration
-///
+pub use capability_propagation::PartitionStatus;
+use capability_propagation::PendingAnnounce;
+pub(crate) use capability_propagation::{PeerCapabilityEntry, PeerMetadata};
+
+/// Probe result including RTT and optional peer version.
+pub(super) struct ProbeResult {
+    pub(super) rtt: Duration,
+    pub(super) version: Option<String>,
+}
+
 /// Manages the distributed beacon mesh and provides status,
 /// path finding, and relay announcement via JSON-RPC.
 ///
@@ -49,13 +60,18 @@ use tracing::{debug, info};
 #[derive(Clone)]
 pub struct MeshHandler {
     /// Beacon mesh instance
-    mesh: Arc<RwLock<Option<Arc<BeaconMesh>>>>,
+    pub(super) mesh: Arc<RwLock<Option<Arc<BeaconMesh>>>>,
     /// Start time for uptime tracking
     start_time: Instant,
     /// Our node ID
-    node_id: Arc<RwLock<Arc<str>>>,
-    /// Whether this node has announced relay capability to the mesh
-    relay_announced: Arc<RwLock<bool>>,
+    pub(super) node_id: Arc<RwLock<Arc<str>>>,
+    /// Remote peer capabilities received via `mesh.capabilities_announce`.
+    /// Key: `node_id`, Value: capabilities + last-seen timestamp.
+    pub(crate) peer_capabilities: Arc<RwLock<HashMap<String, PeerCapabilityEntry>>>,
+    /// Peers that failed to receive announcements (retried on next health cycle).
+    pending_announces: Arc<RwLock<Vec<PendingAnnounce>>>,
+    /// Per-peer metadata: version, cross-gate reachability reports (for partition detection).
+    pub(crate) peer_metadata: Arc<RwLock<HashMap<String, PeerMetadata>>>,
 }
 
 impl MeshHandler {
@@ -66,7 +82,9 @@ impl MeshHandler {
             mesh: Arc::new(RwLock::new(None::<Arc<BeaconMesh>>)),
             start_time: Instant::now(),
             node_id: Arc::new(RwLock::new(Arc::from(""))),
-            relay_announced: Arc::new(RwLock::new(false)),
+            peer_capabilities: Arc::new(RwLock::new(HashMap::new())),
+            pending_announces: Arc::new(RwLock::new(Vec::new())),
+            peer_metadata: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -81,7 +99,9 @@ impl MeshHandler {
             mesh: Arc::new(RwLock::new(Some(Arc::new(mesh)))),
             start_time: Instant::now(),
             node_id: Arc::new(RwLock::new(node_id.into())),
-            relay_announced: Arc::new(RwLock::new(false)),
+            peer_capabilities: Arc::new(RwLock::new(HashMap::new())),
+            pending_announces: Arc::new(RwLock::new(Vec::new())),
+            peer_metadata: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -123,14 +143,26 @@ impl MeshHandler {
 
         let bootstrap_peers: Vec<(String, std::net::SocketAddr)> = params
             .get("bootstrap_peers")
+            .or_else(|| params.get("peers"))
             .and_then(|v| v.as_array())
             .map(|arr| {
                 arr.iter()
                     .filter_map(|entry| {
-                        let peer_id = entry.get("node_id")?.as_str()?.to_string();
-                        let addr_str = entry.get("address")?.as_str()?;
-                        let addr: std::net::SocketAddr = addr_str.parse().ok()?;
-                        Some((peer_id, addr))
+                        // Object format: {"node_id": "...", "address": "host:port"}
+                        if let Some(obj_id) = entry.get("node_id").and_then(Value::as_str) {
+                            let addr_str = entry.get("address")?.as_str()?;
+                            let addr: std::net::SocketAddr = addr_str.parse().ok()?;
+                            return Some((obj_id.to_string(), addr));
+                        }
+                        // String format: "node_id@host:port" or bare "host:port"
+                        let s = entry.as_str()?;
+                        if let Some((nid, addr_part)) = s.split_once('@') {
+                            let addr: std::net::SocketAddr = addr_part.parse().ok()?;
+                            Some((nid.to_string(), addr))
+                        } else {
+                            let addr: std::net::SocketAddr = s.parse().ok()?;
+                            Some((format!("peer-{}", addr.ip()), addr))
+                        }
                     })
                     .collect()
             })
@@ -146,12 +178,7 @@ impl MeshHandler {
         let mesh = BeaconMesh::new(node_id.as_ref().to_string(), bootstrap_onions);
         let mesh = Arc::new(mesh);
 
-        let mut deduped_peers: HashMap<String, std::net::SocketAddr> = HashMap::new();
-        for (peer_id, addr) in bootstrap_peers {
-            deduped_peers.insert(peer_id, addr);
-        }
-
-        for (peer_id, addr) in &deduped_peers {
+        for (peer_id, addr) in &bootstrap_peers {
             let endpoint = RelayEndpoint {
                 node_id: peer_id.clone(),
                 endpoint_type: EndpointType::Direct {
@@ -164,14 +191,28 @@ impl MeshHandler {
             mesh.add_endpoint(peer_id.clone(), endpoint).await;
         }
 
+        let mesh_ref = Arc::clone(&mesh);
         *self.mesh.write().await = Some(mesh);
         *self.node_id.write().await = node_id.clone();
-        *self.relay_announced.write().await = false;
+
+        let peers_added = bootstrap_peers.len();
+        if !bootstrap_peers.is_empty() {
+            Self::spawn_peer_health_loop(
+                mesh_ref,
+                bootstrap_peers.clone(),
+                Arc::clone(&self.peer_metadata),
+            );
+
+            let node_id_owned = node_id.as_ref().to_string();
+            tokio::task::spawn_blocking(move || {
+                persistence::save_peers(&node_id_owned, &bootstrap_peers);
+            });
+        }
 
         Ok(json!({
             "initialized": true,
             "node_id": node_id.as_ref(),
-            "bootstrap_peers_added": deduped_peers.len()
+            "bootstrap_peers_added": peers_added
         }))
     }
 
@@ -216,22 +257,67 @@ impl MeshHandler {
         }?;
 
         let node_id = self.node_id.read().await.clone();
-        let relay_capable = *self.relay_announced.read().await;
         let uptime = self.start_time.elapsed().as_secs();
 
-        Ok(json!({
+        let our_version = env!("CARGO_PKG_VERSION");
+        let meta = self.peer_metadata.read().await;
+        let mut version_skew: Vec<Value> = Vec::new();
+        let mut partition_warnings: Vec<Value> = Vec::new();
+
+        for peer_id in &reachable {
+            if let Some(pm) = meta.get(peer_id)
+                && let Some(ref v) = pm.version
+                && v != our_version
+            {
+                version_skew.push(json!({
+                    "peer": peer_id,
+                    "version": v,
+                    "local_version": our_version
+                }));
+            }
+        }
+
+        let locally_reachable: std::collections::HashSet<&String> = reachable.iter().collect();
+        for (gate_id, pm) in meta.iter() {
+            if pm.reachable_peers.is_empty() {
+                continue;
+            }
+            for remote_peer in &pm.reachable_peers {
+                if !locally_reachable.contains(remote_peer) && remote_peer != node_id.as_ref() {
+                    partition_warnings.push(json!({
+                        "peer": remote_peer,
+                        "reachable_from": gate_id,
+                        "unreachable_from": node_id.as_ref(),
+                        "type": "local_partition"
+                    }));
+                }
+            }
+        }
+
+        drop(meta);
+
+        let mut response = json!({
             "node_id": node_id.as_ref(),
             "reachable_peers": reachable.len(),
             "relay_enabled": true,
-            "relay_capable": relay_capable,
             "uptime_seconds": uptime,
+            "version": our_version,
             "paths": {
                 "local": local_count,
                 "direct": direct_count,
                 "family_relay": relay_count,
                 "onion": onion_count
             }
-        }))
+        });
+
+        if !version_skew.is_empty() {
+            response["version_skew"] = json!(version_skew);
+        }
+        if !partition_warnings.is_empty() {
+            response["partition_warnings"] = json!(partition_warnings);
+        }
+
+        Ok(response)
     }
 
     /// Handle `mesh.find_path` method - Find best path to a peer
@@ -291,8 +377,6 @@ impl MeshHandler {
             Ok::<_, String>(())
         }?;
 
-        *self.relay_announced.write().await = true;
-
         let node_id = self.node_id.read().await.clone();
 
         info!("📢 Announced {} as relay to mesh", &node_id.as_ref()[..8.min(node_id.len())]);
@@ -306,10 +390,10 @@ impl MeshHandler {
 
     /// Handle `mesh.peers` method - List known peers
     pub async fn handle_peers(&self, params: Value) -> Result<Value, String> {
-        let include_offline =
+        let _include_offline =
             params.get("include_offline").and_then(serde_json::Value::as_bool).unwrap_or(false);
 
-        let (peers, relay_count, online_count) = {
+        let (peers, relay_count) = {
             let mesh = self
                 .mesh
                 .read()
@@ -318,39 +402,23 @@ impl MeshHandler {
                 .cloned()
                 .ok_or("Mesh not initialized (call mesh.init first)")?;
 
-            let node_ids = if include_offline {
-                mesh.get_known_nodes().await
-            } else {
-                mesh.get_reachable_nodes().await
-            };
+            let reachable = mesh.get_reachable_nodes().await;
 
             let mut peers = Vec::new();
             let mut relay_count = 0;
-            let mut online_count = 0;
 
-            for node_id in &node_ids {
-                let path = if let Some(path) = mesh.get_best_path(node_id).await {
-                    Some(path)
-                } else if include_offline {
-                    mesh.get_all_paths(node_id).await.into_iter().next()
-                } else {
-                    None
-                };
-
-                if let Some(path) = path {
+            for node_id in &reachable {
+                if let Some(path) = mesh.get_best_path(node_id).await {
                     let (path_type, address) = json::endpoint_to_strings(&path.endpoint_type);
                     let is_relay = matches!(path.endpoint_type, EndpointType::FamilyRelay { .. });
                     if is_relay {
                         relay_count += 1;
                     }
-                    if path.reachable {
-                        online_count += 1;
-                    }
 
                     let latency_ms =
                         path.latency.map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
 
-                    peers.push(json!({
+                    peers.push((node_id.clone(), json!({
                         "node_id": node_id,
                         "path_type": path_type,
                         "address": address,
@@ -358,18 +426,37 @@ impl MeshHandler {
                         "is_relay": is_relay,
                         "latency_ms": latency_ms,
                         "reachable": path.reachable
-                    }));
+                    })));
                 }
             }
 
-            Ok::<_, String>((peers, relay_count, online_count))
+            Ok::<_, String>((peers, relay_count))
         }?;
 
+        let meta = self.peer_metadata.read().await;
+        let our_version = env!("CARGO_PKG_VERSION");
+        let enriched_peers: Vec<Value> = peers
+            .into_iter()
+            .map(|(node_id, mut peer_json)| {
+                if let Some(pm) = meta.get(&node_id)
+                    && let Some(ref v) = pm.version
+                {
+                    peer_json["version"] = json!(v);
+                    if v != our_version {
+                        peer_json["version_mismatch"] = json!(true);
+                    }
+                }
+                peer_json
+            })
+            .collect();
+        drop(meta);
+
         Ok(json!({
-            "peers": peers,
-            "total": peers.len(),
-            "online": online_count,
-            "relays": relay_count
+            "peers": enriched_peers,
+            "total": enriched_peers.len(),
+            "online": enriched_peers.len(),
+            "relays": relay_count,
+            "local_version": our_version
         }))
     }
 
@@ -437,70 +524,17 @@ impl MeshHandler {
         }))
     }
 
-    /// Handle `mesh.health_check` method - Check peer health
-    pub async fn handle_health_check(&self, params: Value) -> Result<Value, String> {
-        let (results, all_healthy) = {
-            let mesh = self
-                .mesh
-                .read()
-                .await
-                .as_ref()
-                .cloned()
-                .ok_or("Mesh not initialized (call mesh.init first)")?;
-
-            mesh.health_check().await;
-
-            let target_ids: Vec<String> =
-                if let Some(arr) = params.get("target_node_ids").and_then(|v| v.as_array()) {
-                    arr.iter().filter_map(|v| v.as_str().map(String::from)).collect()
-                } else {
-                    mesh.get_reachable_nodes().await
-                };
-
-            let mut results = Vec::new();
-            let mut all_healthy = true;
-
-            for node_id in target_ids {
-                if let Some(path) = mesh.get_best_path(&node_id).await {
-                    let (path_type, _) = json::endpoint_to_strings(&path.endpoint_type);
-                    let healthy = path.reachable;
-                    if !healthy {
-                        all_healthy = false;
-                    }
-
-                    results.push(json!({
-                        "node_id": node_id,
-                        "healthy": healthy,
-                        "latency_ms": path.latency.map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX)),
-                        "path_type": path_type
-                    }));
-                } else {
-                    all_healthy = false;
-                    results.push(json!({
-                        "node_id": node_id,
-                        "healthy": false,
-                        "reason": "no_path_known"
-                    }));
-                }
-            }
-
-            Ok::<_, String>((results, all_healthy))
-        }?;
-
-        Ok(json!({
-            "results": results,
-            "all_healthy": all_healthy
-        }))
-    }
-
     /// Handle `mesh.auto_discover` method - Auto-discover peers on local network
     pub async fn handle_auto_discover(&self, params: Value) -> Result<Value, String> {
         let timeout_ms =
             params.get("timeout_ms").and_then(serde_json::Value::as_u64).unwrap_or(3000);
         let broadcast_port = u16::try_from(
-            params.get("broadcast_port").and_then(serde_json::Value::as_u64).unwrap_or(5353),
+            params
+                .get("broadcast_port")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or_else(|| u64::from(songbird_types::constants::MDNS_PORT)),
         )
-        .unwrap_or(5353);
+        .unwrap_or(songbird_types::constants::MDNS_PORT);
 
         let node_id = self.node_id.read().await.clone();
         info!(
@@ -670,7 +704,6 @@ impl MeshHandler {
         json::path_to_json(path, found)
     }
 
-    /// Initialize mesh state with explicit peer endpoints (remote-dispatch tests).
     pub async fn test_init_with_peers(
         &self,
         node_id: &str,
@@ -682,9 +715,7 @@ impl MeshHandler {
                 peer_id.clone(),
                 RelayEndpoint {
                     node_id: peer_id.clone(),
-                    endpoint_type: EndpointType::Direct {
-                        addr: *addr,
-                    },
+                    endpoint_type: EndpointType::Direct { addr: *addr },
                     latency: None,
                     last_seen: Instant::now(),
                     reachable: *reachable,

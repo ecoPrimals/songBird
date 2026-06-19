@@ -126,8 +126,22 @@ impl Default for AvailableProtocols {
                     throughput_mbps: 10000, // 10 GB/s
                 }),
             }),
-            // websocket: Not yet implemented - will be added in Phase 4 (Week 5)
-            websocket: None,
+            websocket: Some(ProtocolInfo {
+                version: "13".to_string(),
+                endpoints: HashMap::from([(
+                    "ws".to_string(),
+                    format!("ws://[::]:{port}/api/ws/ws"),
+                )]),
+                features: vec![
+                    "bidirectional".to_string(),
+                    "low-latency".to_string(),
+                    "streaming".to_string(),
+                ],
+                performance: Some(PerformanceInfo {
+                    latency_us: 500,
+                    throughput_mbps: 1000,
+                }),
+            }),
         }
     }
 }
@@ -499,8 +513,7 @@ mod tests {
         assert!(protocols.tarpc.is_some());
         assert!(protocols.json_rpc.is_some());
 
-        // WebSocket not yet implemented
-        assert!(protocols.websocket.is_none());
+        assert!(protocols.websocket.is_some());
     }
 
     #[test]

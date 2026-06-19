@@ -113,16 +113,11 @@ pub use types::{HttpRequest, HttpResponse};
 /// Multipart form helpers used with [`IpcHttpClient`] and IPC transports.
 pub use ipc_client::multipart;
 
-// Re-export crypto capability types for agnostic usage
 /// Crypto capability traits, TLS secret bags, and runtime discovery helpers for security-provider sockets.
-#[expect(
-    deprecated,
-    reason = "re-exports include legacy discovery helpers kept for API stability"
-)]
 pub use crypto::{
     CryptoCapability, IpcEndpoint, SecurityCryptoProvider, TlsApplicationSecrets,
     TlsHandshakeSecrets, discover_crypto_capability, discover_ipc_endpoint,
-    discover_neural_api_socket, discover_security_provider_socket, discover_security_socket,
+    discover_neural_api_socket, discover_security_socket,
 };
 
 /// Lower-level security-provider RPC client and TLS secret handles for advanced use.

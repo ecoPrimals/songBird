@@ -90,6 +90,8 @@ pub enum IpcMethod {
     List,
     FindCapability,
     Heartbeat,
+    Watch,
+    RelayStats,
 }
 
 /// `http.*`
@@ -183,6 +185,8 @@ pub enum MeshMethod {
     DiscoverRemotes,
     Mirror,
     Publish,
+    ProbeLatency,
+    CapabilitiesAnnounce,
 }
 
 /// `punch.*`

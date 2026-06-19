@@ -21,7 +21,7 @@ futures-util = { workspace = true }
 clap = { workspace = true }
 
 # RFC 5389 wire integrity
-hmac = "0.12"
+hmac = { workspace = true }
 sha1 = "0.10"
 crc32fast = "1"
 

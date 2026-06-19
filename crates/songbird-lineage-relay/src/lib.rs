@@ -152,6 +152,7 @@
 )]
 
 pub mod birdsong;
+pub mod cloudflared_tunnel;
 pub mod coordinator;
 pub mod error;
 pub mod multi_tier_coordinator;

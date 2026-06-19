@@ -150,10 +150,15 @@ async fn discover_via_subnet_scan(timeout_ms: u64) -> SongbirdResult<Vec<Discove
 
 /// Discover networks via DNS-SD SRV record lookup
 async fn discover_via_dns(timeout_ms: u64) -> SongbirdResult<Vec<DiscoveredNetwork>> {
-    use hickory_resolver::TokioAsyncResolver;
-    use hickory_resolver::config::{ResolverConfig, ResolverOpts};
+    use hickory_resolver::Resolver;
+    use hickory_resolver::config::ResolverConfig;
+    use hickory_resolver::name_server::TokioConnectionProvider;
 
-    let resolver = TokioAsyncResolver::tokio(ResolverConfig::default(), ResolverOpts::default());
+    let resolver = Resolver::builder_with_config(
+        ResolverConfig::default(),
+        TokioConnectionProvider::default(),
+    )
+    .build();
     let service_name = "_songbird._tcp.local.";
     let timeout = std::time::Duration::from_millis(timeout_ms.min(MAX_DISCOVERY_TIMEOUT_MS));
 
@@ -336,6 +341,7 @@ fn parse_discovery_response(response: &str, source_ip: IpAddr) -> Option<Discove
 mod tests {
     use super::{calculate_compatibility_score, discover_networks_api, parse_discovery_response};
     use crate::cli::commands::quick::{DiscoveredNetwork, DiscoveryParameters};
+    use songbird_process_env;
     use std::net::IpAddr;
 
     #[test]
@@ -368,15 +374,16 @@ mod tests {
 
     #[test]
     fn parse_discovery_response_reads_json_fields() {
+        songbird_process_env::set_var("SONGBIRD_DISCOVERY_PORT", "7777");
         let src: IpAddr = "198.51.100.2".parse().unwrap();
         let json = r#"{"name":"lab-net","nodes":4,"type":"Research","institution":"U"}"#;
         let net = parse_discovery_response(json, src).unwrap();
+        songbird_process_env::reset_overlay();
         assert_eq!(net.name, "lab-net");
         assert_eq!(net.node_count, 4);
         assert_eq!(net.network_type, "Research");
         assert_eq!(net.institution.as_deref(), Some("U"));
-        let expected_port = super::discovery_http_port();
-        assert_eq!(net.endpoint, format!("198.51.100.2:{expected_port}"));
+        assert_eq!(net.endpoint, "198.51.100.2:7777");
     }
 
     #[test]
@@ -494,8 +501,24 @@ mod tests {
     }
 
     #[test]
-    fn discovery_http_port_delegates_to_config_canonical() {
-        let expected = songbird_config::defaults::ports::discovery_port();
-        assert_eq!(super::discovery_http_port(), expected);
+    fn discovery_http_port_returns_valid_port() {
+        let port = super::discovery_http_port();
+        assert!(port > 0, "discovery port should be non-zero");
+        assert_eq!(
+            port,
+            songbird_types::defaults::ports::DEFAULT_DISCOVERY_SERVICE_PORT,
+            "without env override, should return canonical default"
+        );
+    }
+
+    #[test]
+    fn discovery_port_env_parsing_pure_logic() {
+        // Pure logic test: verify parse behavior without touching global env.
+        // The actual env integration is tested in songbird-config.
+        let parse = |s: &str| -> Option<u16> { s.parse().ok() };
+        assert_eq!(parse("49152"), Some(49152));
+        assert_eq!(parse("nan"), None);
+        assert_eq!(parse(""), None);
+        assert_eq!(parse("0"), Some(0));
     }
 }

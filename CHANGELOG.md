@@ -7,6 +7,631 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.1-wave113] - 2026-06-13 - Stream 7: riboCipher Transport Signal + Deep Debt
+
+### Added
+- **riboCipher transport signal detection** — all 3 accept loops (`pure_rust_server`, `bin_interface`, `http_server`) detect signal bytes `0xEC`/`0xED`/`0xEE` before protocol fork. Constants in `songbird_types::constants::ribocipher`
+- **`session_protocol.rs`** — SRP extraction from `connection.rs` (815→472L): BTSP framing, NDJSON session loop, encrypted Phase 3
+- **`hardcoded_replace.rs`** — SRP extraction from `hardcoded_elimination.rs` (872→689L): convenience API module
+- **`BTSP_MAX_FRAME_SIZE` constant** — replaces `16 * 1024 * 1024` magic number
+- **`jsonrpc_endpoint_url()` helper** — centralized URL construction (replaces ad-hoc `format!` in 2 callsites)
+- **11 new tests** — 4 riboCipher connection tests + 7 riboCipher constant tests
+
+### Changed
+- **`handle_connection_with_peek`** — riboCipher signal detection is first check before JSON-RPC/BTSP fork
+- **`bin_interface/ipc_session.rs`** — peek for riboCipher before `read_line` (prevents hang on binary first byte)
+- **`http_server.rs` accept loop** — riboCipher detection before TLS/HTTP fork (mito tier for federation)
+- **`capability_propagation.rs`** — uses `jsonrpc_endpoint_url()` instead of inline format
+- **`remote_dispatch.rs`** — uses `jsonrpc_endpoint_url()` instead of inline format
+- **`hardcoded_elimination.rs`** — port literal `8443` → `DEFAULT_HTTPS_PORT`
+
+### Removed
+- Stale "DEEP DEBT: polling loop" comment from `lineage-relay/relay.rs` (implementation was already event-driven)
+
+---
+
+## [v0.2.1-wave113] - 2026-06-12 - Stream 6: Mesh Partition Tolerance + Version Negotiation
+
+### Added
+- **`PeerMetadata` struct** — tracks per-peer version and cross-gate reachability reports for partition detection
+- **`PartitionStatus` enum** — `Healthy`, `PartialPartition { unreachable_from }`, `LocallyUnreachable { reachable_from }`
+- **`partition_status_for()`** — computes partition state for any peer based on cross-gate gossip
+- **`peer_version()`** — query known version for any mesh peer
+- **`probe_peer_full()`** — full probe returning RTT + version metadata (extracts from `health.ping` response)
+- **8 new tests** — partition detection (local/partial/healthy), version tracking, gossip storage, version skew reporting, health check partition flags
+
+### Changed
+- **`mesh.capabilities_announce`** — payload now includes `version` and `reachable_peers` fields for cross-gate gossip
+- **`mesh.status`** — includes `version`, `version_skew[]`, `partition_warnings[]` when detected
+- **`mesh.health_check`** — surfaces `partition_detected: true` and `partitions[]` when cross-gate gossip reveals asymmetric reachability
+- **`mesh.peers`** — enriched with `version`, `version_mismatch` per peer, plus `local_version` at top level
+- **`spawn_peer_health_loop`** — now uses `probe_peer_full()` and records peer version in `PeerMetadata` on each successful probe
+
+### Resolved
+- **MESH-PARTITION-TOLERANCE** (Stream 6, P2) — cross-gate reachability gossip enables partition awareness
+- **PEER-VERSION-MISMATCH** (Stream 6, P3) — version field propagated through probes and capability announces
+
+---
+
+## [v0.2.19-wave112] - 2026-06-12 - Deep Debt Evolution
+
+### Changed
+- **`BearDogVerifier` → `SecurityProviderVerifier`** — capability-based naming; type alias retained for backward compat
+- **`HealthProbe::NoOp` evolved** — replaced always-pass placeholder with 5 real probe variants: `TcpConnect`, `UnixSocket`, `FilesystemAccess`, `Custom`, `JsonRpcHealth`; timing measurement on all probes; refactored via `timed_probe()` helper
+- **`check_gaming_services()`** — evolved from env-var check to real TCP connect probe on configured port
+- **`check_federation_services()`** — evolved from env-var check to real TCP connect probe on bind address (validates parseability)
+- **Hardcoded paths eliminated** — `service_locator.rs`: 2× `/run/user/1000` → `dirs::runtime_dir()` + `BIOMEOS_SYSTEM_RUNTIME_DIR` derivation; `"127.0.0.1"` → `songbird_types::constants::LOCALHOST`
+
+### Added
+- `default_runtime_fallback()` helper in service_locator (UID-agnostic runtime dir resolution)
+- 12 new health probe tests (TCP connect, UDS, filesystem, custom closures, checker aggregation, timing)
+
+### Dependencies
+- **Workspace hoisting**: `sha2`, `hmac`, `hex`, `base64`, `gethostname`, `hyper-util` — 14 crates migrated from inline version specs to `[workspace.dependencies]`
+
+---
+
+## [v0.2.19-wave111] - 2026-06-11 - Federation Completion + Mesh Auto-Reconnect
+
+### Fixed
+- **FEDERATION-STATUS-WIRE** — `federation.status` RPC now reads `SONGBIRD_FEDERATION_ENABLED` / `SONGBIRD_PEERS` / `SONGBIRD_FEDERATION_PORT` env vars when `FederationState` is not injected (standalone IPC path). Fixes false `enabled: false` on bin_interface UDS/TCP
+- **`federation_configured_via_env()` helper** — shared env detection logic for both `federation.status` and `federation.peers` handlers
+
+### Added
+- **FEDERATION-RECONNECT** — `spawn_peer_health_loop`: background task probes bootstrap peers every 30s with exponential backoff (30s → 300s cap). Re-records latency via `record_direct_connection()` on peer recovery. Enables auto-reconnect after VPS/peer restarts
+
+---
+
+## [v0.2.19-wave110] - 2026-06-11 - HEALTH-SB-01 + Federation Status Fix
+
+### Fixed
+- **Federation `enabled` reporting** — `federation.status` and `federation.peers` now report `enabled: true` when federation is configured (state injected at startup), regardless of active peer count. Previously used `total_nodes > 0` which conflated configuration with connectivity, causing WAN gates to misreport as disabled even when federation was running. Root cause for flockGate WAN issue documented and fixed.
+
+### Changed
+- **HEALTH-01 contract compliance** — bare `{"method":"health"}` now returns `{status, primal, version, uptime_s}` per ecosystem 13/13 health contract
+- `uptime_seconds` → `uptime_s` across all health JSON-RPC wire responses (IPC `health()` + HTTP `handle_health_standard()`)
+- `primal` field added to orchestrator `handle_health()` and `handle_health_standard()`
+- `BiomeOsHealth` enum variant wired in IPC dispatch table (was previously falling to "Unknown method" — normalization already routed bare "health" to "health.check" but direct `from_wire_str` path was unhandled)
+
+---
+
+## [v0.2.17-wave102] - 2026-06-09 - Deep Debt: Naming, Stubs, Security Hardening
+
+### Fixed
+- **Legacy primal naming** — `discover_beardog_socket()` renamed to `discover_security_provider_socket()` in mesh trust exchange; default routing mode string evolved from `"neural"` to `"api"` across crypto-provider, http-client, and security RPC client
+- **P0 security: JWT dev secret removed** — `SONGBIRD_JWT_SECRET` now required (no hardcoded fallback); auth rejects all tokens if unset rather than silently using `"songbird-dev-secret-change-in-production"`
+- **Hardcoded socket paths** — VPS fallback paths in http-client and TLS crate now use `songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR` constant instead of string literals
+- **Hardcoded health timeout** — mesh probe timeout now uses `DEFAULT_MESH_PROBE_TIMEOUT` from songbird-types
+- **Always-healthy stubs** — `TarpcServer::health_check` now probes federation/registry stats; `IntegrationManager::check_core_services` probes UDS socket connectivity; `check_federation_services` validates configuration
+
+### Added
+- `DEFAULT_MESH_PROBE_TIMEOUT` constant (5000ms) in `songbird-types::defaults::timeouts`
+- **Process-based container discovery** — `discover_from_process_based()` now scans `/proc/net/tcp` for listening sockets and correlates via `/proc/<pid>/fd` symlinks to identify co-resident services
+- **Consul adapter completion** — `watch()`, `list_all()`, `exists()`, `health_check()`, `register()`, `unregister()`, `update_health()` now use live Consul HTTP API
+- **Kubernetes adapter discovery** — `discover()` queries K8s API (`/api/v1/namespaces/{ns}/services`); `health_check()` probes `/healthz`; service list parsing with clusterIP/port extraction
+- **Federation network discovery** — `NetworkDiscovery::discover_nodes()` reads `SONGBIRD_PEERS` env var (comma-separated host:port) instead of returning `not_implemented`
+
+### Changed
+- `TokenValidator::new()` returns empty-secret validator when `SONGBIRD_JWT_SECRET` unset (rejects all tokens gracefully); `validate()` rejects tokens when secret is empty
+- `discover_mdns_services()` uses `DEFAULT_MDNS_TIMEOUT` constant instead of inline `Duration::from_secs(5)`
+- Genesis security client: `"🐻"` emoji references removed; `BEARDOG_ENDPOINT` deprecation warning simplified
+- Kubernetes adapter: `register`/`unregister` return informative errors explaining K8s manifest-based model
+
+---
+
+## [v0.2.16-wave100] - 2026-06-08 - Final-Mile Integration Gaps for 3-Gate Mesh
+
+### Fixed
+- **Gap 1: security_client UDS routing** — `evaluate_trust_universal()`, `get_current_lineage()`, `verify_lineage()`, and `same_family()` now route through adapter transport layer when endpoint is UDS-based, instead of constructing invalid HTTP URLs by appending REST paths to socket paths
+- **Gap 2: TLS retry abort on HTTP detection** — `attempt_handshake_with_fallback()` in songbird-http-client now immediately returns when the remote peer responds with HTTP instead of TLS (`Error::is_http_not_tls()`), preventing 3 wasted retry attempts
+- **Discovery bridge resilience** — crypto provider unavailability no longer blocks plain HTTP connectivity checks (graceful degradation via `unwrap_or_default()`)
+- **mesh.init parameter compatibility** — accepts both `"bootstrap_peers"` and `"peers"` parameter keys for backward compatibility with socat test commands
+
+### Added
+- `SecurityAdapter::transport_get()` / `transport_post()` — public accessors for direct transport-layer dispatch
+- `Error::is_http_not_tls()` — detects when TLS handshake received HTTP response (peer doesn't support TLS)
+- Lineage method mappings in `JsonRpcTransport` and `TarpcTransport` (`lineage.current`, `lineage.verify`, `lineage.same_family`)
+- Fallback path mapping in `get()` for both transports: unknown REST paths map to dotted JSON-RPC method names
+
+### Changed
+- `SecurityCapabilityClient` internal routing: `adapter_get()`/`adapter_post()` helpers dispatch UDS endpoints through adapter transport, HTTP endpoints through http_client
+- `parse_response_body` and `ApiResponseWrapper` gated to `#[cfg(test)]` (no longer used in production paths)
+
+---
+
+## [v0.2.15-wave99] - 2026-06-08 - P1 Mesh Blockers Resolved
+
+### Fixed
+- **SB-SECURITY-URL-01**: Bare primal names (e.g. `"beardog"`) passed via `CAPABILITY_SECURITY_ENDPOINT` or `SECURITY_ENDPOINT` now resolve to UDS socket paths via XDG runtime dir scanning. Previously produced `Invalid URL: invalid format` when used in HTTP requests.
+- **SB-TLS-LAN-01**: When BTSP tunnel establishment fails (beardog denies `crypto.x25519_generate_ephemeral` without capability token), connection manager now falls back to `HttpRemoteConnection` — plain HTTP JSON-RPC to the peer's network endpoint — instead of attempting non-existent local UDS sockets for remote LAN peers.
+
+### Added
+- `HttpRemoteConnection` in `connections/http_remote.rs` — plain HTTP JSON-RPC transport for LAN mesh peers when BTSP is unavailable. Trust-level-aware with capability enforcement.
+- `resolve_bare_name_to_endpoint()` in `security_setup.rs` — resolves bare primal names to UDS socket paths by scanning `$XDG_RUNTIME_DIR/biomeos/`.
+- `discover_security_socket_from_xdg()` — automatic security provider socket discovery as a priority-4 fallback in endpoint resolution.
+
+### Changed
+- `create_http_connection()` in connection manager trust evaluator now detects remote HTTP endpoints and creates `HttpRemoteConnection` instead of local UDS-based connections.
+- `Connection` enum extended with `HttpRemote` variant.
+
+---
+
+## [v0.2.14-wave98] - 2026-06-08 - Phase 2 M1 Gate: TransportEndpoint JSON
+
+### Added
+- **`ipc.resolve` returns structured `TransportEndpoint` JSON** — Phase 2 M1 gate shipped. All 14 primals can now adopt transport injection via sourDough's `IpcClient`.
+- **Wire-format compatibility tests** — comprehensive tests validate UDS, TCP, and MeshRelay variants match sourDough's internally-tagged serde format.
+- **`capability.resolve` also returns `TransportEndpoint`** — both resolution paths emit structured endpoints.
+- **Port constants**: `CONSUL_DEFAULT_PORT` (8500), `EUREKA_DEFAULT_PORT` (8761), `DEFAULT_BROADCAST_DISCOVERY_PORT` (2300).
+- **NUCLEUS tower validated** — `health.liveness` on UDS socket at `/run/user/1000/biomeos/songbird.sock`.
+
+### Changed
+- `transport_endpoint_from_native()` uses `LOCALHOST` constant instead of hardcoded `"127.0.0.1"`.
+- `TransportEndpoint::is_local()` deduplicated via `is_loopback_host()` helper.
+- 5× `"0.0.0.0:0"` → `EPHEMERAL_BIND_ADDR` constant (songbird-igd, songbird-stun, songbird-universal).
+- Consul/Eureka port fallbacks wired to typed constants.
+- Broadcast discovery port in connectivity hints uses named constant.
+
+### Refactored
+- `service_discovery.rs` (1025L → 731L) — tests extracted to `service_discovery_tests.rs`.
+- `resilience.rs` (941L → 516L) — tests extracted to `resilience_tests.rs`.
+
+### Fixed
+- Flaky tests from Wave 97 fix verified stable (env-mutation synchronization via crate-wide mutex).
+
+---
+
+## [v0.2.13-wave96] - 2026-06-08 - Mesh Blockers Resolved & Deep Debt Evolution
+
+### Fixed
+- **SB-TLS-LAN-01** (P1 BLOCKER): Plain HTTP peer probes — all LAN federation peer
+  communication evolved from hardcoded `https://` to `http://` across 6 files
+  (startup_orchestration, federation state, discovery peer, discovery bridge,
+  p2p_discovery handler, enhanced router). Peers on `:7700` no longer receive
+  TLS ClientHello.
+- **SB-STARTUP-01** (P1 BLOCKER): Security provider env propagation — `setup_security()`
+  failure no longer crashes orchestrator. Degrades gracefully (unsigned ops, plain HTTP
+  federation, secure-random JWT) when no security provider configured.
+- **NoopSignatureVerifier** (CRITICAL): Removed from production — was accepting ALL BTSP
+  signatures. Replaced with `UnavailableVerifier` that rejects signed requests when no
+  crypto provider available. `NoopSignatureVerifier` now `#[cfg(test)]` only.
+- **Trust-on-failure**: `relay_security.rs` verifier errors now reject signed requests
+  instead of silently accepting (was returning `None`, now returns rejection JSON-RPC error).
+- **VPS socket fallbacks**: `discover_neural_api_socket_with` and `discover_security_socket_with`
+  now verify file existence before claiming VPS path as active socket.
+
+### Changed
+- `term_size` crate (unmaintained) replaced with `terminal_size` 0.4 (maintained, pure Rust).
+- `virtual_relay.rs` smart refactored: BTSP validation extracted to `btsp_validation.rs`
+  (126L domain module); production code reduced from 951L to ~670L.
+- `relay_security.rs` agnostic naming: all "bearDog" string literals evolved to
+  "crypto provider" / "security provider" in error messages and docs.
+- `mesh_trust_exchange.rs` and `socket_discovery.rs` log messages evolved from legacy
+  primal name to capability-based references.
+- TLS cert generator: placeholder DER encoding evolved to valid minimal X.509v3 structure
+  (proper ASN.1 SEQUENCE, Ed25519 OID, UTCTime validity, CN/SPKI encoding).
+- `ipc.register` params: added `serde` aliases (`name` for `primal_id`, `socket`/`socket_path`
+  for `endpoint`); `capabilities` field now optional (defaults to `[]`).
+- `service_discovery.rs` stubs evolved to real implementations:
+  - `discover_from_file`: reads YAML/JSON registries with query filtering
+  - `discover_from_network_scan`: TCP connect probe across /24 subnet
+
+### Added
+- `TransportEndpoint` canonicalized in `songbird-types` crate for ecosystem adoption
+  (sourdough standard). Wire format: `{"transport": "Uds"|"Tcp"|"MeshRelay", ...}`.
+- `specs/TRANSPORT_ENDPOINT_STANDARD.md` specification document.
+- `config/capability_registry.toml` updated to v0.2.11 with gate/domain metadata.
+
+### Security
+- Production relay now rejects ALL signed requests when crypto provider is unavailable
+  (secure-by-default). Unsigned Phase 2 tokens still pass through (no signature to verify).
+- VPS fallback paths verified for existence before use — no more phantom socket connections.
+
+---
+
+## [v0.2.12-wave82c] - 2026-06-06 - Coverage Sprint & Registry Sync
+
+### Added
+- **+124 new tests** across 5 crates (cumulative +553 from Wave 79b):
+  - `songbird-network-federation` (+41): ProductionSecurityProvider RPC (health, lineage, revoke),
+    multi-federation auto-join policy (IP allowlist/denylist, capability requirements), network config
+    defaults, rendezvous client mock UDS server (register, heartbeat, query, HMAC fingerprint).
+  - `songbird-genesis` (+27): Ceremony flow (synthetic lineage, multi-primal, degraded path),
+    security_capability_client RPC construction and env discovery, witness validation paths.
+  - `songbird-primal-coordination` (+18): Bridge state management (mock/failing/counting variants),
+    static discovery, capability updates, operational paths (health, pooling, compute deploy).
+  - `songbird-sovereign-onion` (+21): Key storage V2 roundtrips, identity generation via mock crypto,
+    service lifecycle (bind, accept, port conflict), address derivation with delegated SHA3-256.
+  - `songbird-igd` (+17): SSDP header parsing, SOAP XML escaping, IPv6 mapping, gateway XML trimming,
+    NAT-PMP timeout probes.
+
+### Fixed
+- **Rendezvous client test race**: Added `OnceLock<Mutex<()>>` env guards to all tests mutating
+  `RENDEZVOUS_SOCKET_PATH` — eliminates parallel test interference on env-dependent socket discovery.
+
+### Changed
+- `config/capability_registry.toml`: Version synced `0.2.9` → `0.2.11`, added `gate = "southGate"`
+  and `domain = "network-orchestration"` metadata for DOMAIN_OWNER_MAP auto-discovery.
+
+---
+
+## [v0.2.11-wave81] - 2026-06-05 - Deep Debt Cleanup & Evolution
+
+### Fixed
+- **NFC crypto DH**: Production code now returns `Err` when crypto provider unavailable (was
+  silently returning zero shared secret). Test mode retains fallback via `#[cfg(test)]`.
+- **Lineage verify_signatures**: Returns `Err` when security provider is absent (was silently
+  returning `Ok(true)` in production). Empty chains (root-only) correctly skip verification.
+- **TLS extract_public_key**: Now properly rejects non-X.509 DER data with `Err` (was returning
+  32 zero bytes as a placeholder).
+- **8 inline port literals** replaced with `songbird_types::defaults::ports::*` constants across
+  `service_registry_api.rs`, `mesh_handler/mod.rs`, `consolidated_canonical/discovery.rs`,
+  `canonical/network/core.rs`, and `songbird-universal` mDNS.
+- **Hardcoded `"beardog"` path segments** removed from `mesh_trust_exchange.rs` and
+  `construction.rs` — replaced with capability-based socket discovery iterating generic names.
+
+### Changed
+- `songbird-tls::cert::test_utils` module gated behind `#[cfg(test)]` (was publicly compiled).
+- `dirs` dependency updated `5.0` → `6.0`.
+- `config/network/core.rs` port defaults now reference named constants instead of raw literals.
+
+### Added
+- **19 new TURN client tests**: channel data framing (empty/large/truncated/buffer-overflow),
+  Data Indication edge cases, config validation, connect error paths, hex decode, error display.
+- Total workspace tests: 14,004+.
+
+---
+
+## [v0.2.10-wave80] - 2026-06-05 - P0 Mesh Trust Exchange (BD-TRUST-01)
+
+### Added
+- **`mesh_trust_exchange.rs`**: Automatic `auth.exchange_trust` after mesh seeding. After BTSP
+  handshake, Songbird calls remote peer's bearDog to exchange Ed25519 trust keys bidirectionally.
+  Zero operator intervention for cross-gate trust seeding.
+- **`spawn_trust_exchange()`**: Spawns async trust exchange for all seeded peers after mesh.init.
+  Graceful degradation — if bearDog is offline or peer unreachable, logs warning and continues.
+- **`config/capability_registry.toml`**: Machine-readable capability declaration per ecosystem
+  standard (Wave 78 parity). 13 capability domains, 60+ methods, consumed capabilities listed.
+- **7 new tests**: bearDog socket discovery, node ID resolution, UDS call failure, spawn behavior.
+
+### Changed
+- `spawn_mesh_seed()` now triggers `spawn_trust_exchange()` after successful mesh initialization.
+- README version banner synced to v0.2.10-wave80 (was stale at v0.2.8-wave76).
+
+### Fixed
+- **BD-TRUST-01 (P0)**: Symmetric mesh no longer requires manual `auth.trust_issuer` per gate.
+  Trust is automatically seeded during mesh join via `auth.exchange_trust` protocol.
+- **P3 Doc Drift**: README, REMAINING_WORK, CHANGELOG versions aligned.
+
+---
+
+## [v0.2.9-wave79] - 2026-06-04 - P0 TLS Fix: Direct-Mode Crypto Routing (SB-TLS-01)
+
+### Added
+- **Direct-mode routing in `SecurityTlsCryptoClient`**: When `SECURITY_PROVIDER_MODE=direct` or
+  `BEARDOG_MODE=direct`, TLS crypto calls now use bearDog's semantic methods directly
+  (`crypto.sign_ed25519`, `crypto.x25519_generate_ephemeral`, `crypto.x25519_derive_secret`,
+  `crypto.chacha20_poly1305_encrypt`, `crypto.chacha20_poly1305_decrypt`, `crypto.hmac_sha256`)
+  instead of wrapping in `capability.call` envelope (which bearDog rejects with -32601).
+- **`SecurityTlsCryptoClient::new_direct()`**: Explicit constructor for direct-mode targeting
+  bearDog's signing socket without env var detection.
+- **`map_to_direct_method()`**: Deterministic operation-to-method mapping covering all TLS crypto
+  operations plus forward-looking TLS helper methods (`tls.derive_handshake_secrets`,
+  `tls.derive_application_secrets`, `tls.compute_finished_verify_data`).
+- **2 new tests**: `map_to_direct_method_covers_all_tls_operations` (13 mappings verified),
+  `direct_mode_sends_semantic_method_not_capability_call` (E2E TCP mock verifying wire format).
+
+### Changed
+- `SecurityTlsCryptoClient` struct gains `direct_mode: bool` field.
+- `call_capability()` routes based on mode: Neural API path unchanged, direct path sends
+  `{"method": "crypto.sign_ed25519", "params": {...}}` without `capability.call` wrapping.
+- `new()` auto-detects mode from environment variables at construction time.
+- `with_socket_path()` defaults to Neural API mode (backward compatible with all existing tests).
+- Discovery doc comments updated to reflect dual-mode operation.
+
+### Fixed
+- **SB-TLS-01 (P0)**: eastGate Songbird can now originate TLS connections when `BEARDOG_MODE=direct`.
+  Previously returned `-32601 Method not found` because bearDog does not implement `capability.call`
+  (that's a biomeOS Neural API orchestration envelope). Symmetric 2-gate mesh unblocked.
+
+---
+
+## [v0.2.8-wave78] - 2026-06-04 - Phase 3.5: Ed25519 Relay Signature Verification
+
+### Added
+- **Ed25519 signature verification on relay path (Phase 3.5)**: BTSP tokens with signed payloads
+  are now cryptographically verified via bearDog's `crypto.verify.ed25519` UDS JSON-RPC endpoint.
+  Invalid signatures immediately rejected with JSON-RPC error -32603.
+- **`CryptoProviderVerifier`**: Production verifier calling bearDog signing socket. Boxed async
+  trait dispatch (`BtspSignatureVerifier`) for zero-cost noop path when bearDog unavailable.
+- **`relay_security.rs`**: SRP extraction of Phase 3.5 verification logic (258L) — verifier impl,
+  `call_crypto_rpc` low-level UDS client, `verify_relay_signature` orchestration helper.
+- **`discover_crypto_signing_socket()`**: Auto-discovers bearDog via `CAPABILITY_SECURITY_ENDPOINT`
+  env var or XDG runtime path (`$XDG_RUNTIME_DIR/biomeos/beardog/signing.sock`).
+- **Graceful degradation**: If bearDog is offline at verify time, relay logs warning and accepts
+  on trust (prevents hard outage when security primal restarts).
+- **End-to-end tamper rejection test**: Full relay integration test proving that a request with
+  a forged BTSP signature is rejected before reaching the native endpoint.
+- **4 new unit tests** in `relay_security`: invalid sig rejection, empty sig skip, verifier
+  unavailable degradation, socket connection failure handling.
+
+### Changed
+- `VirtualRelayManager::with_crypto_verifier()` constructor wires Phase 3.5 at startup.
+- `relay_accept_loop` and `relay_connection` now thread the verifier through the relay path.
+- `BtspValidation::Valid` fields (`payload_bytes`, `signature_bytes`) promoted from `dead_code`
+  to actively consumed by the verification path.
+
+---
+
+## [v0.2.8-wave77] - 2026-06-04 - Retry Hardening + Flaky Test Elimination
+
+### Added
+- **Exponential backoff for capability retries**: Retry timing now scales as 120s × 2^attempt
+  (attempt 1 = immediate, attempt 2 = skip 1 cycle, attempt 3 = skip 3 cycles, etc.).
+- **Queue depth cap (50)**: Pending announce queue capped to prevent unbounded memory growth
+  in multi-gate scenarios with many unreachable peers.
+- **Stale capability TTL (10 min)**: `PeerCapabilityEntry` tracks `last_seen` timestamp.
+  Entries not refreshed within 600s are evicted during the health cycle.
+- **Max retries raised to 5**: Extended from 3 to give transient outages more recovery time.
+- **5 new tests**: `stale_capabilities_are_evicted_on_retry_cycle`,
+  `queue_depth_cap_prevents_unbounded_growth`, `expired_pending_entries_are_dropped`,
+  `backoff_defers_recent_entries`, `max_retries_drops_entry`.
+
+### Fixed
+- **Flaky env-var test races (3 files, 6 tests)**: CLI `detect_network_speed` and
+  `discovery_http_port` tests refactored to test pure parsing functions (no global env
+  mutation). Orchestrator `test_stable_id_generation` and `new_or_load` pinned with
+  `ScopedEnv`. Config `test_migration_helper` serialized via overlay lock.
+- **Tower bind tests**: Extracted `resolve_bind_address()` pure function, tests no longer
+  race on `SONGBIRD_BIND_ADDRESS`.
+
+### Changed
+- `PendingAnnounce` struct now carries `enqueued_at: Instant` for age-based eviction.
+- `peer_capabilities` internal type evolved from `HashMap<String, Vec<String>>` to
+  `HashMap<String, PeerCapabilityEntry>` (capabilities + freshness timestamp).
+- Retry cycle now logs `retried`/`dropped`/`deferred` counts for observability.
+- Total tests: **13,971** (38 mesh_handler, 175 CLI).
+
+---
+
+## [v0.2.8-wave76] - 2026-06-03 - Hygiene Sweep + Retry Resilience + Phase 3.5 Scaffold
+
+### Added
+- **Capability propagation retry queue**: Failed `mesh.capabilities_announce` deliveries are
+  queued with the original payload and retried on the next health cycle (every ~2 min).
+  Peers that exceed 3 retry attempts are dropped gracefully.
+- **BTSP Phase 3.5 scaffold**: `BtspSignatureVerifier` trait for Ed25519 signature
+  verification on relay tokens. `NoopSignatureVerifier` placeholder active until bearDog
+  delivers `CryptoProvider` integration design. Signature bytes decoded and stored in
+  `BtspValidation::Valid` for future verification.
+- **`VirtualRelayManager::set_signature_verifier()`**: Runtime injection point for
+  bearDog-backed cryptographic verification.
+
+### Fixed
+- **Broker readiness propagation (High)**: `start_broker_with_discovery` and
+  `start_broker_with_shared_handler` now propagate bind failures via `ready_rx.await`
+  instead of silently discarding them with `let _ =`.
+- **`post_jsonrpc_fire_and_forget` HTTP status check**: Drains response body and returns
+  error on non-2xx HTTP responses (prevents connection leaks and silent failures).
+- **Mesh read lock held too long**: `announce_capabilities_to_peers` now clones the
+  `Arc<BeaconMesh>` and drops the outer read lock before async peer iteration.
+- **BTSP timestamp validation hardened**: Structured tokens now REQUIRE `ts` field (no
+  longer optional). Future-skew bound added (60s) to reject far-future tokens.
+- **Capability announce peer validation**: `handle_capabilities_announce` rejects
+  announcements from unknown peers (not in mesh reachable nodes).
+- **`#[must_use]` on `get_peer_capabilities`**: Return value unlikely to be intentionally
+  discarded.
+
+### Metrics
+- Zero clippy warnings, zero `unsafe`, zero `/tmp` hardcoding
+- 13,960+ tests (1 known flaky pre-existing: env var leakage in parallel execution)
+
+---
+
+## [v0.2.7-wave75] - 2026-06-03 - Capability Propagation + HTTP/UDS Unification + Relay Hardening
+
+### Added
+- **Capability Propagation (P1 MESH BLOCKER FIX)**: `ipc.register` now propagates capabilities
+  to all reachable mesh peers via `mesh.capabilities_announce`. Remote peers store received
+  capabilities so `discovery.peers` returns them correctly. Push model eliminates the
+  cross-gate routing blocker where `capabilities: []` was hardcoded for mesh peers.
+- **`mesh.capabilities_announce` method**: New JSON-RPC method for receiving remote peer
+  capability announcements. Stores `node_id → capabilities` mapping. New `MeshMethod::CapabilitiesAnnounce`
+  enum variant.
+- **HTTP/UDS state unification (P1)**: HTTP endpoint (port 7700) and UDS endpoint (`/primal/songbird`)
+  now share the same `IpcServiceHandler`, `ServiceRegistry`, and `MeshHandler`. A single call to
+  `ipc.register` or `mesh.init` on either transport is visible on both.
+  - `TowerAtomicServer::from_shared()` constructor for pre-built Arc handlers
+  - `UniversalIpcBroker::with_shared_handler()` accepts pre-built handler
+  - `start_broker_with_shared_handler()` entrypoint for unified startup
+  - `start_http_server` accepts optional shared handler parameter
+- **BTSP relay security hardening (Phase 3)**: Token validation evolved from presence-only
+  to structural + timestamp verification:
+  - Parses `payload_b64.signature_b64` token format
+  - Validates payload JSON structure (`node_id`, `ts` fields)
+  - Rejects tokens older than 5 minutes (timestamp freshness)
+  - Audit trail via `relay_audit` tracing target
+  - Backward compatible with Phase 2 single-segment tokens
+
+### Fixed
+- **`discovery.peers` capabilities for mesh peers**: `collect_mesh_peers` now reads from
+  `MeshHandler::get_peer_capabilities()` instead of hardcoding `Vec::new()`.
+- **`relay.allocate` dispatch test**: Test updated to accept authorization denial from
+  production implementation (Wave 74 regression).
+- **`coordinate_relay_punch_keep_relay_when_no_udp_reply`**: Updated to use test-only
+  `RelaySession::new_unverified` constructor (Wave 74 handshake regression).
+
+---
+
+## [v0.2.6-wave74] - 2026-06-03 - Cross-Subnet Relay + Virtual Relay Phase 2 + Env Var Alignment
+
+### Added
+- **Virtual relay Phase 2 (default mode)**: `ipc.resolve` now returns virtual relay endpoints
+  by default. `prefer_virtual` defaults to `true`. Native endpoints available via explicit
+  `native: true` parameter. BTSP session validation on relay traffic (rejects empty tokens).
+- **`ipc.relay_stats` method**: Exposes virtual relay performance metrics — active relays,
+  total requests, average overhead (microseconds). New `IpcMethod::RelayStats` enum variant.
+- **Relay session allocate handshake**: `RelaySession::new` now performs full server-side
+  allocation — sends `AllocateRequest`, receives `AllocationResponse`, uses server-assigned
+  `session_id`. Fixes the critical integration gap where client-generated UUIDs never matched
+  server sessions.
+- **`relay.allocate` real implementation**: Evolved from test stub to production handler that
+  checks lineage authorization and returns proper allocation response with session_id, relay_addr,
+  TTL, and masking level.
+- **`RelayMetrics` tracking**: Atomic counters for relay request count and cumulative overhead
+  (microseconds) in `virtual_relay.rs`.
+
+### Changed
+- **Env var alignment**: `SONGBIRD_FEDERATION_ENABLED` canonicalized with consistent bool
+  parsing (default `false`). `FEDERATION_ENABLED` honored as legacy alias in federation setup
+  and health monitor. Tower CLI writes canonical name. Unified config presence-check fixed to
+  proper bool parse.
+- **`cloudflared_tunnel.rs` extraction**: `CloudflaredTunnel` (Tier 5 emergency tunnel) extracted
+  from `multi_tier_coordinator.rs` (799→655L) into its own SRP module.
+- **`remote_dispatch.rs` HTTP POST** (Wave 73): Cross-gate `capability.call` now uses proper
+  HTTP POST to `/jsonrpc` instead of raw TCP.
+- **`mesh_seed` auto-bootstrap** (Wave 73): `spawn_mesh_seed()` called during startup when
+  `SONGBIRD_PEERS` is set.
+- **`mesh.init` string format** (Wave 73): `bootstrap_peers` accepts both `{node_id, address}`
+  objects and `"node@host:port"` / `"host:port"` strings.
+- **`latency_ms` in health cycle** (Wave 73): `mesh.probe_latency` invoked every 4th health
+  tick (~2 minutes) for consistent RTT in `discovery.peers`.
+- **Service discovery env override**: `SONGBIRD_SERVICE_CONFIG_PATH` (colon-separated) allows
+  custom file-based service definition paths instead of hardcoded `/etc/services.*`.
+- **Clippy evolution**: Removed redundant clone, redundant match arms, approx_constant false
+  positive, unchecked Duration subtraction, hand-coded IP address, identity_op.
+
+### Fixed
+- **Relay session ID mismatch**: Production `RelaySession` was generating client-side UUIDs
+  that never matched server-allocated sessions. Now performs proper allocation handshake.
+- **Federation health check semantics**: Was defaulting to "enabled=true" even when unset;
+  now correctly reports healthy unless explicitly set to `false`.
+
+---
+
+## [v0.2.5-wave70] - 2026-06-02 - Active Latency Probing + Connection Pooling + Dependency Evolution
+
+### Added
+- **`mesh.probe_latency` method**: Active RTT measurement to mesh peers. Connects to each
+  peer's TCP endpoint, sends `health.ping` JSON-RPC, measures round-trip time, and updates
+  `BeaconMesh` with real latency data. This populates `latency_ms` in `discovery.peers`.
+  4 new tests (init guard, empty peers, relay skip, unreachable timeout).
+- **Virtual relay connection pooling**: `relay_connection()` now maintains a persistent
+  `NativeConn` (writer + buffered reader) for the entire client session. Reconnects
+  automatically on native endpoint failure with single-retry semantics.
+  Eliminates per-request connect overhead for long-lived sessions.
+
+### Changed
+- **`hickory-resolver` 0.24 → 0.25**: Migrated 4 crates from deprecated 0.24 to 0.25.
+  Constructor updated to builder API (`Resolver::builder_with_config`). Type alias
+  `TokioAsyncResolver` → `TokioResolver`. Feature `tokio-runtime` → `tokio`.
+  0.26 deferred due to breaking SRV/TXT API changes.
+- **Clippy collapsible_if** in `dnssd.rs`: Refactored nested `if let` to chained let-chains.
+- **49 registered methods** (up from 48): `mesh.probe_latency` added to dispatch tables.
+
+### Dependency Notes
+- `bincode` 1.x (RUSTSEC-2025-0141): Documented as blocked on tarpc upstream codec migration.
+  Zero direct production usage outside tarpc protocol transport.
+
+---
+
+## [v0.2.4-wave70] - 2026-06-02 - Virtual Endpoint Relay Phase 1 (shadow mode)
+
+### Added
+- **Virtual Endpoint Relay (Phase 1)**: `VirtualRelayManager` in `songbird-universal-ipc/src/service/virtual_relay.rs`
+  implements per-primal relay UDS sockets. On `ipc.register`, Songbird spawns an async
+  relay listener at `$XDG_RUNTIME_DIR/biomeos/songbird/virtual/{primal}.sock` that proxies
+  NDJSON JSON-RPC to the native endpoint. Supports streaming (multi-request sessions).
+- **`ipc.resolve` virtual opt-in**: `ResolveParams` gains `virtual: bool` and `native: bool`
+  fields. When `virtual: true`, `socket` in the response points to the relay path. `native: true`
+  always bypasses relay (performance escape hatch).
+- **`ResolveResult` extended**: New `relay: bool` and `relay_socket: Option<String>` fields.
+  Clients see whether traffic is relayed and can opt in/out explicitly.
+- **4 new integration tests**: Full lifecycle test with mock native provider — relay start,
+  JSON-RPC round-trip through virtual socket, stop + cleanup.
+
+### Design
+Phase 1 is **shadow mode** (non-breaking): virtual endpoints created alongside native,
+`ipc.resolve` returns native by default. Clients opt-in via `"virtual": true`. Matches
+`SONGBIRD_VIRTUAL_ENDPOINT_RELAY_DESIGN.md` from wateringHole (Wave 68).
+
+---
+
+## [v0.2.3-wave69] - 2026-06-02 - Wire latency_ms into discovery.peers, Wave 69 coordination
+
+### Added
+- **`latency_ms` in `discovery.peers`**: RTT measurement now forwarded from mesh layer to
+  `discovery.peers` response. Both orchestrator (dynamic JSON path) and universal IPC
+  (typed `DiscoveredPeerInfo`) paths emit the field. Uses `skip_serializing_if` — absent
+  until a real probe measures latency, matching primalSpring's graceful-skip validation.
+
+### Notes
+- **sled→redb**: Already resolved at Wave 135 (SB-03). sled is fully removed from workspace.
+  Only legacy artifact cleanup code remains. No migration needed.
+- **Virtual endpoint relay**: Design doc not yet published. Gated on biomeOS L4 routing.
+- **Mesh P0**: Infrastructure confirmed ready. `SONGBIRD_PEERS` parsing, `mesh.init`,
+  `discovery.peers` all operational. Port configurable via `SONGBIRD_FEDERATION_PORT` env.
+
+---
+
+## [v0.2.2-wave209] - 2026-06-02 - Full evolution pass: env abstraction, integration test fix, clippy zero-warning
+
+### Fixed
+- **Integration test compilation**: 7 test files in `songbird-universal` using `futures::future::join_all`
+  migrated to `futures_util::future::join_all` (the `futures` facade crate was never a dependency).
+- **`anyhow::Error` comparison**: 6 sites in integration tests using `assert_eq!` on `anyhow::Error`
+  fixed with `.to_string()` (anyhow doesn't impl `PartialEq`).
+- **`songbird-types` integration tests**: 3 `matches!` guards comparing `anyhow::Error` with `==`
+  fixed to use `.to_string()` comparison.
+- **`songbird-stun` clippy**: `cast_possible_truncation` in test (→ `u16::try_from().unwrap()`),
+  unused `Ipv6Addr` import, unused `StunCredentials` import, `Arc::clone` idiom.
+- **Items after test module**: `hex_decode` in `songbird-turn-client/session.rs` moved above `mod tests`.
+- **36 unfulfilled `#[expect(clippy::...)]`** removed across 5 files — lints no longer fire.
+- **Redundant closures**: 2 sites `|v| v.to_string()` → `ToString::to_string`.
+
+### Changed
+- **`songbird-process-env` adoption complete**: migrated last 7 `std::env::vars()` call sites in
+  `songbird-config` and `songbird-discovery` to `songbird_process_env::vars()`. Zero `std::env`
+  bypass remains in production code.
+- **`state.rs` refactored** (877→459L): tests extracted to `state_tests.rs` via `#[path]` pattern.
+  Zero source files now exceed 800 lines.
+- **Deprecated function tests**: 3 tests calling `legacy_beardog_socket_path_in_biomeos_runtime`
+  annotated with `#[allow(deprecated)]` (intentional backward-compat coverage).
+
+### Metrics
+- 31 crates, 31/31 `forbid(unsafe_code)`, zero clippy warnings (production), zero `std::env` in
+  production, zero `/tmp` in production, zero files >800L, 8,500+ tests passing
+
+---
+
+## [v0.2.2-wave67] - 2026-06-01 - P0 BLOCKER: Security socket fix (BEARDOG_SOCKET honored)
+
+### Fixed
+- **P0 BLOCKER**: `SecurityRpcClient::from_env()` now honors `--security-socket` CLI flag
+  (via `SECURITY_PROVIDER_ENDPOINT`), `BEARDOG_SOCKET`, and `SECURITY_PROVIDER_SOCKET`
+  env vars instead of hardcoding `/tmp/neural-api-*.sock`. This unblocks federation TLS
+  and cross-gate `capability.call` across all gates.
+- **`discover_neural_api_socket()`** in both `songbird-http-client` and `songbird-crypto-provider`
+  now includes `SECURITY_PROVIDER_SOCKET` and `BEARDOG_SOCKET` in the discovery chain.
+- **`discover_security_socket()`** final fallback changed from `/tmp/security-provider.sock`
+  to `/var/run/biomeos/security.sock` (DH-1 compliant).
+- All legacy `/tmp` fallbacks in socket discovery eliminated — VPS paths (`/var/run/biomeos/`)
+  are now the final fallback when no env vars or XDG paths are configured.
+- E2E test suite updated to use env-based socket discovery instead of hardcoded paths.
+- Clippy `collapsible_if` warnings resolved across both crates.
+
+### Changed
+- `SecurityRpcClient::discover_neural_api_endpoint()` discovery priority:
+  1. `$SECURITY_PROVIDER_ENDPOINT` (CLI `--security-socket`)
+  2. `$NEURAL_API_SOCKET`
+  3. `$SECURITY_PROVIDER_SOCKET`
+  4. `$BEARDOG_SOCKET` (southGate standard)
+  5. XDG runtime socket
+  6. TCP discovery file
+  7. `/var/run/biomeos/neural-api.sock` (VPS fallback)
+
+---
+
 ## [v0.2.1-wave60] - 2026-05-29 - Mesh federation methods + DH-1 /tmp elimination
 
 ### Added

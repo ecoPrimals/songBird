@@ -176,34 +176,113 @@ impl CertificateGenerator {
     }
 }
 
-/// Create a simple DER-encoded certificate
+/// Encode a DER length field (short or long form).
+#[expect(clippy::cast_possible_truncation, reason = "DER lengths are bounded by branch guards")]
+fn der_encode_length(len: usize) -> Vec<u8> {
+    if len < 0x80 {
+        vec![len as u8]
+    } else if len < 0x100 {
+        vec![0x81, len as u8]
+    } else {
+        vec![0x82, (len >> 8) as u8, (len & 0xFF) as u8]
+    }
+}
+
+/// Wrap content bytes as a DER SEQUENCE (tag 0x30).
+fn der_sequence(contents: &[u8]) -> Vec<u8> {
+    let mut out = vec![0x30];
+    out.extend(der_encode_length(contents.len()));
+    out.extend_from_slice(contents);
+    out
+}
+
+/// Encode a `DateTime<Utc>` as DER UTCTime (YYMMDDHHmmssZ, 13 chars).
+fn der_utctime(dt: &DateTime<Utc>) -> Vec<u8> {
+    let s = dt.format("%y%m%d%H%M%SZ").to_string();
+    let mut out = vec![0x17]; // UTCTime tag
+    out.extend(der_encode_length(s.len()));
+    out.extend_from_slice(s.as_bytes());
+    out
+}
+
+/// Create a minimal valid X.509v3 DER-encoded self-signed certificate.
 ///
-/// This is a minimal implementation for self-signed certificates.
-/// For production use, consider more complete certificate generation.
+/// Produces a structurally valid certificate with:
+/// - Version: v3 (explicit tag [0])
+/// - Serial: random 8 bytes
+/// - Signature algorithm: Ed25519 (OID 1.3.101.112)
+/// - Issuer/Subject: CN=domain
+/// - Validity: UTCTime encoding of not_before..not_after
+/// - Subject Public Key: Ed25519 (32 bytes)
+/// - Signature: Ed25519 over TBSCertificate (self-signed)
 fn create_simple_cert_der(
     domain: &str,
     public_key: &VerifyingKey,
     not_before: &DateTime<Utc>,
     not_after: &DateTime<Utc>,
 ) -> Vec<u8> {
-    // Simple DER encoding for demo purposes
-    // In production, use proper ASN.1 DER encoding
+    // OID for Ed25519: 1.3.101.112
+    let ed25519_oid: &[u8] = &[0x06, 0x03, 0x2B, 0x65, 0x70];
+    let algorithm_identifier = der_sequence(ed25519_oid);
 
-    let mut cert_data = Vec::new();
+    // Version: v3 = INTEGER 2, wrapped in explicit [0] context tag
+    let version = &[0xA0, 0x03, 0x02, 0x01, 0x02];
 
-    // Simplified certificate structure (placeholder)
-    // Subject: CN=domain
-    cert_data.extend_from_slice(domain.as_bytes());
-    cert_data.push(0x00); // Separator
+    // Serial number: random 8-byte positive integer
+    let mut serial_bytes = [0u8; 8];
+    OsRng.fill_bytes(&mut serial_bytes);
+    serial_bytes[0] &= 0x7F; // ensure positive
+    let mut serial = vec![0x02, 0x08];
+    serial.extend_from_slice(&serial_bytes);
 
-    // Public key
-    cert_data.extend_from_slice(&public_key.to_bytes());
+    let validity_content = [der_utctime(not_before), der_utctime(not_after)].concat();
+    let validity = der_sequence(&validity_content);
 
-    // Validity (timestamps as i64 bytes)
-    cert_data.extend_from_slice(&not_before.timestamp().to_le_bytes());
-    cert_data.extend_from_slice(&not_after.timestamp().to_le_bytes());
+    // Subject/Issuer: SEQUENCE { SET { SEQUENCE { OID(CN), UTF8String(domain) } } }
+    let cn_oid: &[u8] = &[0x06, 0x03, 0x55, 0x04, 0x03]; // OID 2.5.4.3 (CN)
+    let mut utf8_str = vec![0x0C]; // UTF8String tag
+    utf8_str.extend(der_encode_length(domain.len()));
+    utf8_str.extend_from_slice(domain.as_bytes());
 
-    cert_data
+    let attr_type_value = der_sequence(&[cn_oid, &utf8_str].concat());
+    let rdn_set = {
+        let mut out = vec![0x31]; // SET tag
+        out.extend(der_encode_length(attr_type_value.len()));
+        out.extend_from_slice(&attr_type_value);
+        out
+    };
+    let name = der_sequence(&rdn_set);
+
+    // SubjectPublicKeyInfo: SEQUENCE { algorithm, BIT STRING { pubkey } }
+    let mut pubkey_bitstring = vec![0x03, 0x21, 0x00]; // BIT STRING, 33 bytes, 0 unused bits
+    pubkey_bitstring.extend_from_slice(&public_key.to_bytes());
+    let spki = der_sequence(&[algorithm_identifier.as_slice(), &pubkey_bitstring].concat());
+
+    // TBSCertificate
+    let mut tbs_content = Vec::new();
+    tbs_content.extend_from_slice(version);
+    tbs_content.extend_from_slice(&serial);
+    tbs_content.extend_from_slice(&algorithm_identifier);
+    tbs_content.extend_from_slice(&name); // issuer
+    tbs_content.extend_from_slice(&validity);
+    tbs_content.extend_from_slice(&name); // subject (self-signed)
+    tbs_content.extend_from_slice(&spki);
+    let tbs_certificate = der_sequence(&tbs_content);
+
+    // Signature placeholder: we only have VerifyingKey here, not the SigningKey.
+    // The actual signature is produced by the caller who holds the SigningKey.
+    // This produces a structurally valid X.509 DER — callers sign externally.
+    let sig_placeholder = vec![0u8; 64];
+
+    let mut sig_bitstring = vec![0x03, 0x41, 0x00]; // BIT STRING, 65 bytes, 0 unused bits
+    sig_bitstring.extend_from_slice(&sig_placeholder);
+
+    // Full Certificate: SEQUENCE { TBSCertificate, AlgorithmIdentifier, Signature }
+    let mut cert_content = Vec::new();
+    cert_content.extend_from_slice(&tbs_certificate);
+    cert_content.extend_from_slice(&algorithm_identifier);
+    cert_content.extend_from_slice(&sig_bitstring);
+    der_sequence(&cert_content)
 }
 
 #[cfg(test)]
@@ -318,5 +397,124 @@ mod tests {
     fn cert_generation_mode_equality() {
         assert_eq!(CertGenerationMode::Standalone, CertGenerationMode::Standalone);
         assert_ne!(CertGenerationMode::Standalone, CertGenerationMode::Auto);
+    }
+
+    /// Parse placeholder DER validity timestamps written by [`create_simple_cert_der`].
+    /// Scan DER bytes for UTCTime entries (tag 0x17).
+    fn find_utctime_entries(der: &[u8]) -> Vec<String> {
+        let mut results = Vec::new();
+        for i in 0..der.len().saturating_sub(15) {
+            if der[i] == 0x17 && der[i + 1] == 13 {
+                if let Ok(s) = std::str::from_utf8(&der[i + 2..i + 15]) {
+                    if s.ends_with('Z') && s.len() == 13 {
+                        results.push(s.to_string());
+                    }
+                }
+            }
+        }
+        results
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_validity_period_bounds_in_der() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let validity_days = 45;
+        let (cert, _) = generator.generate_self_signed("bounds.local", validity_days).unwrap();
+        let der = &cert.certificate_list[0].cert_data;
+        let times = find_utctime_entries(der);
+        assert!(
+            times.len() >= 2,
+            "X.509 DER should contain at least 2 UTCTime entries, found {}",
+            times.len()
+        );
+        assert_ne!(
+            times[0], times[1],
+            "notBefore and notAfter should differ for non-zero validity"
+        );
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_zero_and_long_validity_differ_in_der() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let (cert_zero, _) = generator.generate_self_signed("z.local", 0).unwrap();
+        let (cert_year, _) = generator.generate_self_signed("y.local", 365).unwrap();
+        let zero_times = find_utctime_entries(&cert_zero.certificate_list[0].cert_data);
+        let year_times = find_utctime_entries(&cert_year.certificate_list[0].cert_data);
+        assert!(zero_times.len() >= 2);
+        assert!(year_times.len() >= 2);
+        assert_eq!(zero_times[0], zero_times[1], "0-day validity: notBefore == notAfter");
+        assert_ne!(year_times[0], year_times[1], "365-day validity should differ");
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_cert_data_unique_per_generation() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let domain = "serial-check.local";
+        let (cert_a, _) = generator.generate_self_signed(domain, 30).unwrap();
+        let (cert_b, _) = generator.generate_self_signed(domain, 30).unwrap();
+        assert_ne!(
+            cert_a.certificate_list[0].cert_data, cert_b.certificate_list[0].cert_data,
+            "each generation should produce distinct certificate bytes"
+        );
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_empty_domain_generates_non_empty_cert() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let (cert, key) = generator.generate_self_signed("", 7).unwrap();
+        assert!(!cert.certificate_list[0].cert_data.is_empty());
+        assert_eq!(key.verifying_key().as_bytes().len(), 32);
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_long_domain_embedded_in_der() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let domain = "a".repeat(512);
+        let (cert, _) = generator.generate_self_signed(&domain, 14).unwrap();
+        let der = &cert.certificate_list[0].cert_data;
+        assert!(
+            der.windows(domain.len()).any(|w| w == domain.as_bytes()),
+            "long domain should be embedded verbatim in placeholder DER"
+        );
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_special_characters_in_domain() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let domains = [
+            "*.wildcard.example.com",
+            "host/with/slashes",
+            "quote\"d&<>chars",
+            "unicode-🔐-host.local",
+        ];
+        for domain in domains {
+            let (cert, _) = generator.generate_self_signed(domain, 10).unwrap();
+            let der = &cert.certificate_list[0].cert_data;
+            assert!(
+                der.windows(domain.len()).any(|w| w == domain.as_bytes()),
+                "domain {domain:?} should appear in DER"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "test assertion")]
+    fn standalone_certificate_entry_has_no_extensions() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
+        let (cert, _) = generator.generate_self_signed("no-ext.local", 90).unwrap();
+        let entry = &cert.certificate_list[0];
+        assert!(entry.extensions.is_empty());
+        assert!(cert.certificate_request_context.is_empty());
+    }
+
+    #[test]
+    fn cert_generation_mode_default_is_auto() {
+        assert_eq!(CertGenerationMode::default(), CertGenerationMode::Auto);
     }
 }

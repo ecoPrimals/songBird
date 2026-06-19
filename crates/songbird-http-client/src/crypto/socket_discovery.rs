@@ -22,9 +22,7 @@
 //! This enables automated Tower Atomic deployment via biomeOS Neural API
 //! while maintaining backward compatibility with manual deployments.
 
-use songbird_types::defaults::paths::{
-    BIOMEOS_RUNTIME_SUBDIR, ai_provider_socket_legacy_path, ipc_discovery_primal_port_path,
-};
+use songbird_types::defaults::paths::{BIOMEOS_RUNTIME_SUBDIR, ipc_discovery_primal_port_path};
 use songbird_types::primal_names::NEURAL_API;
 use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
@@ -348,8 +346,7 @@ pub fn discover_socket(env_var: &str, primal_name: &str, legacy_path: &str) -> S
 /// 6. `$XDG_RUNTIME_DIR/biomeos/crypto-{family_id}.sock` (domain socket)
 /// 7. `$XDG_RUNTIME_DIR/biomeos/beardog-{family_id}.sock` (legacy on-disk)
 /// 8. `$BEARDOG_SOCKET` (legacy env — logged as deprecated)
-/// 9. `{temp_dir}/biomeos/security.sock` (capability temp fallback)
-/// 10. Legacy temp-directory socket filename (backward-compatible)
+/// 9. `/var/run/biomeos/security.sock` (VPS fallback — DH-1 compliant)
 #[must_use]
 pub fn discover_security_socket() -> String {
     if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
@@ -411,7 +408,7 @@ pub fn discover_security_socket() -> String {
             if legacy_beardog.exists() {
                 let path = legacy_beardog.to_string_lossy().to_string();
                 warn!(
-                    "Security provider via legacy beardog socket: {path} — migrate to security-{{family}}.sock"
+                    "Security provider via legacy on-disk socket: {path} — migrate to security-{{family}}.sock"
                 );
                 return path;
             }
@@ -427,40 +424,23 @@ pub fn discover_security_socket() -> String {
         return socket;
     }
 
-    let temp_biomeos_security =
-        std::env::temp_dir().join(BIOMEOS_RUNTIME_SUBDIR).join("security.sock");
-    if temp_biomeos_security.exists() {
-        return temp_biomeos_security.to_string_lossy().into_owned();
-    }
-
-    #[allow(deprecated, reason = "intentional backward-compat fallback path")]
-    let legacy =
-        std::env::temp_dir().join(songbird_types::defaults::paths::LEGACY_SECURITY_SOCKET_FILENAME);
-    warn!(
-        "legacy fallback: {} — migrate to SECURITY_PROVIDER_SOCKET or capability discovery",
-        legacy.display()
-    );
-    legacy.to_string_lossy().into_owned()
+    // VPS fallback (DH-1 compliant — no /tmp writes)
+    let fallback =
+        format!("{}/security.sock", songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR);
+    warn!("VPS fallback: {} — set SECURITY_PROVIDER_SOCKET or XDG_RUNTIME_DIR", fallback);
+    fallback
 }
 
-/// Deprecated alias for [`discover_security_socket`].
-#[deprecated(
-    since = "0.3.0",
-    note = "Use discover_security_socket; prefer CAPABILITY_* or SECURITY_PROVIDER_* env vars (capability-first)"
-)]
-#[must_use]
-pub fn discover_security_provider_socket() -> String {
-    discover_security_socket()
-}
-
-/// Discover Neural API socket with full fallback chain
+/// Discover Neural API socket with full fallback chain (DH-1 compliant)
 ///
 /// Checks in order:
 /// 1. `$NEURAL_API_SOCKET` or `$NEURALS_SOCKET`
-/// 2. `$XDG_RUNTIME_DIR/biomeos/neural-api-$FAMILY_ID.sock`
-/// 3. `/tmp/neural-api-{family_id}.sock` (legacy fallback with env-derived family)
+/// 2. `$SECURITY_PROVIDER_SOCKET` (capability-first naming)
+/// 3. `$SECURITY_PROVIDER_ENDPOINT` (set by `--security-socket` CLI flag)
+/// 4. `$BEARDOG_SOCKET` (backward-compatible — standard on southGate)
+/// 5. `$XDG_RUNTIME_DIR/biomeos/neural-api-$FAMILY_ID.sock`
+/// 6. `/var/run/biomeos/neural-api.sock` (VPS fallback — no `/tmp` writes)
 pub fn discover_neural_api_socket() -> String {
-    // Check both NEURAL_API_SOCKET and NEURALS_SOCKET
     if let Ok(socket) = songbird_process_env::var("NEURAL_API_SOCKET")
         && !socket.is_empty()
     {
@@ -475,21 +455,38 @@ pub fn discover_neural_api_socket() -> String {
         return socket;
     }
 
+    if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Socket discovered via $SECURITY_PROVIDER_SOCKET: {}", socket);
+        return socket;
+    }
+
+    if let Ok(socket) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT")
+        && !socket.is_empty()
+    {
+        info!("✅ Socket discovered via $SECURITY_PROVIDER_ENDPOINT: {}", socket);
+        return socket;
+    }
+
+    if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Socket discovered via $BEARDOG_SOCKET: {}", socket);
+        return socket;
+    }
+
     // Try XDG discovery
     if let Some(xdg_socket) = discover_xdg_socket(NEURAL_API) {
         return xdg_socket;
     }
 
-    // Legacy fallback — use env-derived family ID (canonical chain)
-    let family_id = songbird_process_env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
-        .or_else(|_| songbird_process_env::var("BIOMEOS_FAMILY_ID"))
-        .or_else(|_| songbird_process_env::var("SONGBIRD_FAMILY_ID"))
-        .or_else(|_| songbird_process_env::var("FAMILY_ID"))
-        .unwrap_or_else(|_| "default".to_string());
-    let socket = ai_provider_socket_legacy_path(&family_id).to_string_lossy().into_owned();
-    warn!("⚠️  Using legacy temp-dir Neural API socket: {}", socket);
+    // VPS fallback (DH-1 compliant — no /tmp writes)
+    let fallback =
+        format!("{}/neural-api.sock", songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR);
+    warn!("⚠️  Using VPS fallback Neural API socket: {}", fallback);
     warn!("   Consider setting $NEURAL_API_SOCKET or XDG_RUNTIME_DIR");
-    socket
+    fallback
 }
 
 #[cfg(test)]

@@ -352,8 +352,7 @@ sudo systemctl start songbird
 ## 📚 **Related Documentation**
 
 - [genomeBin Evolution Analysis](../../GENOMEBIN_EVOLUTION_ANALYSIS_JAN_31_2026.md)
-- [genomeBin Week 1 Victory](../../GENOMEBIN_WEEK1_VICTORY_JAN_31_2026.md)
-- [Cross-Compilation Progress](../../CROSS_COMPILATION_PROGRESS_JAN_31_2026.md)
+- [CHANGELOG](../../CHANGELOG.md) (cross-compilation + genomeBin history)
 - [biomeOS Socket Standard](../../BIOMEOS_SOCKET_STANDARD_COMPLIANCE_JAN_30_2026.md)
 
 ---

@@ -174,4 +174,106 @@ mod tests {
         assert_eq!(entry.cert_data, cert_data);
         assert_eq!(entry.extensions, extensions);
     }
+
+    fn encode_certificate_wire(cert: &Certificate) -> Vec<u8> {
+        use crate::codec::bytes::{write_vec8, write_vec16, write_vec24};
+
+        let mut buf = Vec::new();
+        write_vec8(&mut buf, &cert.certificate_request_context).unwrap();
+        let mut list_buf = Vec::new();
+        for entry in &cert.certificate_list {
+            write_vec24(&mut list_buf, &entry.cert_data).unwrap();
+            write_vec16(&mut list_buf, &entry.extensions).unwrap();
+        }
+        write_vec24(&mut buf, &list_buf).unwrap();
+        buf
+    }
+
+    fn decode_certificate_wire(buf: &[u8]) -> Certificate {
+        use crate::codec::bytes::{read_vec8, read_vec16, read_vec24};
+
+        let mut offset = 0;
+        let certificate_request_context = read_vec8(buf, &mut offset).unwrap();
+        let list_data = read_vec24(buf, &mut offset).unwrap();
+        let mut list_offset = 0;
+        let mut certificate_list = Vec::new();
+        while list_offset < list_data.len() {
+            let cert_data = read_vec24(&list_data, &mut list_offset).unwrap();
+            let extensions = read_vec16(&list_data, &mut list_offset).unwrap();
+            certificate_list.push(CertificateEntry::new_with_extensions(cert_data, extensions));
+        }
+        Certificate::new_with_context(certificate_request_context, certificate_list)
+    }
+
+    #[test]
+    fn test_certificate_chain_multiple_entries() {
+        let chain = vec![
+            CertificateEntry::new(vec![0x01, 0x02]),
+            CertificateEntry::new(vec![0x03, 0x04, 0x05]),
+            CertificateEntry::new(vec![0x06]),
+        ];
+        let cert = Certificate::new(chain);
+        assert_eq!(cert.certificate_list.len(), 3);
+        assert!(cert.validate().is_ok());
+        assert_eq!(cert.leaf_certificate().unwrap().cert_data, vec![0x01, 0x02]);
+    }
+
+    #[test]
+    fn test_leaf_certificate_none_for_empty_chain() {
+        let cert = Certificate::new(vec![]);
+        assert!(cert.leaf_certificate().is_none());
+    }
+
+    #[test]
+    fn test_certificate_chain_validation_rejects_empty_entry_in_chain() {
+        let cert = Certificate::new(vec![
+            CertificateEntry::new(vec![1, 2, 3]),
+            CertificateEntry::new(vec![]),
+        ]);
+        let err = cert.validate().unwrap_err();
+        assert!(matches!(err, TlsError::CertificateError(_)));
+        assert!(err.to_string().contains("Certificate 1"));
+    }
+
+    #[test]
+    fn test_certificate_wire_roundtrip_multiple_certs() {
+        let cert = Certificate::new_with_context(
+            vec![0xAA],
+            vec![
+                CertificateEntry::new_with_extensions(vec![1, 2, 3], vec![0x10, 0x11]),
+                CertificateEntry::new(vec![4, 5, 6, 7]),
+            ],
+        );
+        let wire = encode_certificate_wire(&cert);
+        let decoded = decode_certificate_wire(&wire);
+        assert_eq!(decoded.certificate_request_context, cert.certificate_request_context);
+        assert_eq!(decoded.certificate_list.len(), 2);
+        assert_eq!(decoded.certificate_list[0].cert_data, vec![1, 2, 3]);
+        assert_eq!(decoded.certificate_list[0].extensions, vec![0x10, 0x11]);
+        assert_eq!(decoded.certificate_list[1].cert_data, vec![4, 5, 6, 7]);
+    }
+
+    #[test]
+    fn test_certificate_wire_roundtrip_empty_list() {
+        let cert = Certificate::new(vec![]);
+        let wire = encode_certificate_wire(&cert);
+        let decoded = decode_certificate_wire(&wire);
+        assert!(decoded.certificate_list.is_empty());
+        assert!(decoded.validate().is_err());
+    }
+
+    #[test]
+    fn test_certificate_entry_extensions_preserved_in_chain() {
+        let ext_a = vec![0x00, 0x05, 0x00, 0x00, 0x01]; // stub OCSP/status_request bytes
+        let ext_b = vec![0x00, 0x00];
+        let cert = Certificate::new(vec![
+            CertificateEntry::new_with_extensions(vec![0xDE, 0xAD], ext_a.clone()),
+            CertificateEntry::new_with_extensions(vec![0xBE, 0xEF], ext_b.clone()),
+        ]);
+        assert_eq!(cert.certificate_list[0].extensions, ext_a);
+        assert_eq!(cert.certificate_list[1].extensions, ext_b);
+        let decoded = decode_certificate_wire(&encode_certificate_wire(&cert));
+        assert_eq!(decoded.certificate_list[0].extensions, ext_a);
+        assert_eq!(decoded.certificate_list[1].extensions, ext_b);
+    }
 }

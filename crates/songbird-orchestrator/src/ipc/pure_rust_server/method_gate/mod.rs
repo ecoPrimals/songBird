@@ -36,7 +36,9 @@ pub use gate::{
 };
 #[cfg(test)]
 pub use token::NoopVerifier;
-pub use token::{BearDogVerifier, TokenClaims, TokenVerifier, TokenVerifyError};
+pub use token::{
+    BearDogVerifier, SecurityProviderVerifier, TokenClaims, TokenVerifier, TokenVerifyError,
+};
 
 /// Server-defined error codes (JSON-RPC 2.0 range: -32000 to -32099).
 pub mod error_codes {

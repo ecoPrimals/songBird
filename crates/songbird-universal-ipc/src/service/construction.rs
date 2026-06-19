@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-use super::{HandlerBundle, IpcServiceHandler};
+use super::{HandlerBundle, IpcServiceHandler, virtual_relay::VirtualRelayManager};
 use crate::handlers::birdsong_handler::BirdSongHandler;
 use crate::handlers::discovery_bridge::DiscoveryListenerBridge;
 use crate::handlers::discovery_handler::DiscoveryHandler;
@@ -24,6 +24,30 @@ use songbird_network_federation::state::FederationState;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+
+/// Discover security provider's crypto signing socket via capability-based resolution.
+///
+/// Resolution: `CAPABILITY_SECURITY_ENDPOINT` → XDG runtime discovery.
+fn discover_crypto_signing_socket() -> Option<String> {
+    if let Ok(endpoint) = songbird_process_env::var("CAPABILITY_SECURITY_ENDPOINT")
+        && !endpoint.is_empty()
+    {
+        return Some(endpoint);
+    }
+
+    if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
+        let biomeos_dir = std::path::PathBuf::from(xdg)
+            .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR);
+        for name in songbird_types::defaults::paths::CRYPTO_PROVIDER_SOCKET_FILENAMES_XDG {
+            let path = biomeos_dir.join(name);
+            if path.exists() {
+                return path.to_str().map(String::from);
+            }
+        }
+    }
+
+    None
+}
 
 impl IpcServiceHandler {
     /// Build all production-ready handler instances.
@@ -127,6 +151,10 @@ impl IpcServiceHandler {
             igd_handler,
             start_time: Arc::new(RwLock::new(std::time::Instant::now())),
             federation_state,
+            virtual_relay: Arc::new(VirtualRelayManager::with_crypto_verifier(
+                VirtualRelayManager::default_base_dir(),
+                discover_crypto_signing_socket(),
+            )),
         }
     }
 
@@ -195,6 +223,34 @@ impl IpcServiceHandler {
     #[must_use]
     pub fn registry(&self) -> &Arc<RwLock<ServiceRegistry>> {
         &self.registry
+    }
+
+    /// Test-only constructor with an isolated temp directory for virtual relays.
+    ///
+    /// Eliminates filesystem collisions when multiple tests run concurrently
+    /// by giving each test instance its own relay socket directory.
+    #[cfg(test)]
+    pub fn new_isolated(registry: Arc<RwLock<ServiceRegistry>>) -> Self {
+        let isolated_dir = std::env::temp_dir()
+            .join("songbird-test-relays")
+            .join(format!("{}", std::process::id()))
+            .join(format!(
+                "{:x}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .subsec_nanos()
+            ));
+
+        let mut h = Self::assemble(
+            registry,
+            Arc::new(HttpHandler::with_default_discovery()),
+            DiscoveryHandler::new(),
+            None,
+        );
+        h.virtual_relay = Arc::new(VirtualRelayManager::new(isolated_dir));
+        h.crypto_provider = None;
+        h
     }
 }
 

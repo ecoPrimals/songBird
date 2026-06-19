@@ -318,6 +318,7 @@ fn current_timestamp() -> u64 {
 mod tests {
     use super::*;
     use songbird_types::LineageProof;
+    use std::collections::HashMap;
 
     #[test]
     fn test_discovery_packet_creation() {
@@ -405,5 +406,126 @@ mod tests {
         // Parse back
         let parsed = DiscoveryPacket::from_txt_records(&txt).unwrap();
         assert!(parsed.has_lineage());
+    }
+
+    #[test]
+    fn test_from_txt_records_missing_node_id() {
+        let mut txt = HashMap::new();
+        txt.insert("endpoint".to_string(), "http://192.168.1.100:8080".to_string());
+
+        let err = DiscoveryPacket::from_txt_records(&txt).unwrap_err();
+        assert!(matches!(err, DiscoveryError::MissingField("node_id")));
+    }
+
+    #[test]
+    fn test_from_txt_records_missing_endpoint() {
+        let mut txt = HashMap::new();
+        txt.insert("node_id".to_string(), "node-1".to_string());
+
+        let err = DiscoveryPacket::from_txt_records(&txt).unwrap_err();
+        assert!(matches!(err, DiscoveryError::MissingField("endpoint")));
+    }
+
+    #[test]
+    fn test_tags_roundtrip_via_txt_records() {
+        let original = DiscoveryPacket::new(
+            "node-tags",
+            vec!["compute".to_string()],
+            "http://192.168.1.100:8080",
+        )
+        .with_tags(vec!["birdsong_v2".to_string(), "btsp_enabled".to_string()]);
+
+        let parsed = DiscoveryPacket::from_txt_records(&original.to_txt_records()).unwrap();
+        assert_eq!(parsed.tags, original.tags);
+    }
+
+    #[test]
+    fn test_identity_attestation_builder() {
+        let attestation = IdentityAttestation {
+            provider_capability: "security/identity".to_string(),
+            format: "tag_list".to_string(),
+            data: serde_json::json!({"tags": ["family:abc"]}),
+        };
+
+        let packet = DiscoveryPacket::new(
+            "node-attest",
+            vec!["compute".to_string()],
+            "http://192.168.1.100:8080",
+        )
+        .with_identity_attestation(attestation.clone());
+
+        assert_eq!(packet.identity_attestations.len(), 1);
+        assert_eq!(packet.identity_attestations[0], attestation);
+    }
+
+    #[test]
+    fn test_empty_capabilities_roundtrip() {
+        let original = DiscoveryPacket::new("node-empty-caps", vec![], "http://127.0.0.1:8080");
+
+        let parsed = DiscoveryPacket::from_txt_records(&original.to_txt_records()).unwrap();
+        assert!(parsed.capabilities.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_to_txt_records_with_crypto_matches_sync() {
+        let lineage_id = LineageId::new("lineage:tower1:2026-01-02:abc123");
+        let proof = LineageProof::new(lineage_id.clone(), vec![], 1234567890);
+        let packet = DiscoveryPacket::new(
+            "node-crypto",
+            vec!["compute".to_string()],
+            "http://192.168.1.100:8080",
+        )
+        .with_lineage(lineage_id, proof);
+
+        let sync_txt = packet.to_txt_records();
+        let crypto = songbird_crypto_provider::CryptoProvider::from_env();
+        let async_txt = packet.to_txt_records_with_crypto(Some(&crypto)).await;
+
+        assert_eq!(sync_txt.get("node_id"), async_txt.get("node_id"));
+        assert_eq!(sync_txt.get("lineage"), async_txt.get("lineage"));
+    }
+
+    #[test]
+    fn test_malformed_lineage_id_is_ignored_on_parse() {
+        let mut txt = HashMap::new();
+        txt.insert("node_id".to_string(), "node-bad-lineage".to_string());
+        txt.insert("endpoint".to_string(), "http://192.168.1.100:8080".to_string());
+        txt.insert("lineage".to_string(), "not-a-valid-lineage".to_string());
+
+        let parsed = DiscoveryPacket::from_txt_records(&txt).unwrap();
+        assert!(parsed.genetic_lineage.is_none());
+        assert!(!parsed.has_lineage());
+    }
+
+    #[test]
+    fn test_lineage_roundtrip_preserves_proof() {
+        let lineage_id = LineageId::new("lineage:tower1:2026-01-02:abc123");
+        let proof = LineageProof::new(lineage_id.clone(), vec![], 1234567890);
+
+        let original = DiscoveryPacket::new(
+            "node-proof",
+            vec!["compute".to_string()],
+            "http://192.168.1.100:8080",
+        )
+        .with_lineage(lineage_id.clone(), proof);
+
+        let parsed = DiscoveryPacket::from_txt_records(&original.to_txt_records()).unwrap();
+        assert_eq!(parsed.genetic_lineage.as_ref(), Some(&lineage_id));
+        assert!(parsed.has_proof());
+    }
+
+    #[test]
+    fn test_metadata_prefix_roundtrip() {
+        let original = DiscoveryPacket::new(
+            "node-meta",
+            vec!["compute".to_string()],
+            "http://192.168.1.100:8080",
+        )
+        .with_metadata("region", "us-west")
+        .with_metadata("tier", "prod");
+
+        let parsed = DiscoveryPacket::from_txt_records(&original.to_txt_records()).unwrap();
+        assert_eq!(parsed.metadata.get("region"), Some(&"us-west".to_string()));
+        assert_eq!(parsed.metadata.get("tier"), Some(&"prod".to_string()));
     }
 }

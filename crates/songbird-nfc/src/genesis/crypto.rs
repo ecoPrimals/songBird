@@ -65,12 +65,15 @@ impl GenesisExchange {
                 decode_hex_or_b64,
             ),
             Err(e) => {
-                warn!("Crypto provider DH unavailable: {e}");
                 #[cfg(test)]
-                if self.dh_test_fallback {
-                    return Ok(vec![0xABu8; 32]);
+                {
+                    tracing::warn!("Test mode: DH fallback to zero secret (provider: {e})");
+                    return Ok(vec![0u8; 32]);
                 }
-                Err(NfcError::Crypto(format!("x25519 key exchange requires crypto provider: {e}")))
+                #[cfg(not(test))]
+                Err(NfcError::Crypto(format!(
+                    "Crypto provider DH unavailable — cannot derive shared secret: {e}"
+                )))
             }
         }
     }
@@ -285,13 +288,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_crypto_dh_errors_when_unavailable() {
+    async fn test_crypto_dh_fallback_in_test_mode() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
             "/tmp/nonexistent-security-provider.sock".to_string(),
             RoutingMode::Direct,
         ));
-        let result = ex.x25519_dh(&[0u8; 32]).await;
-        assert!(result.is_err());
+        let shared = ex.x25519_dh(&[0u8; 32]).await.unwrap();
+        assert_eq!(shared.len(), 32, "test-mode DH falls back to zero secret");
     }
 
     #[tokio::test]

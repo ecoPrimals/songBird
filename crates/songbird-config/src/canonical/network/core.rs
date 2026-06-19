@@ -276,20 +276,26 @@ impl CanonicalNetworkConfig {
     pub fn default_from_env_reader(
         env: impl Fn(&str) -> Result<String, std::env::VarError>,
     ) -> Self {
+        use songbird_types::defaults::ports;
+
         let bind_address =
             songbird_types::constants::PRODUCTION_BIND_ADDRESS.parse().unwrap_or_else(|_| {
                 warn!("Failed to parse bind address, using development default");
                 std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
             });
-
-        let orchestrator_port =
-            env_port(&env, "SONGBIRD_ORCHESTRATOR_PORT", env_port(&env, "DEFAULT_HTTP_PORT", 8080));
-        let discovery_port = env_port(&env, "SONGBIRD_DISCOVERY_PORT", 8001);
-        let health_port = env_port(&env, "SONGBIRD_HEALTH_PORT", 8002);
-        let dashboard_port = env_port(&env, "SONGBIRD_DASHBOARD_PORT", 3000);
-        let websocket_port = env_port(&env, "SONGBIRD_WEBSOCKET_PORT", 8080);
-        let metrics_port = env_port(&env, "SONGBIRD_METRICS_PORT", 8004);
-        let federation_port = env_port(&env, "SONGBIRD_FEDERATION_PORT", 8005);
+        let orchestrator_port = env_port(
+            &env,
+            "SONGBIRD_ORCHESTRATOR_PORT",
+            env_port(&env, "DEFAULT_HTTP_PORT", ports::DEFAULT_ORCHESTRATOR_PORT),
+        );
+        let discovery_port = env_port(&env, "SONGBIRD_DISCOVERY_PORT", ports::DEFAULT_TARPC_PORT);
+        let health_port = env_port(&env, "SONGBIRD_HEALTH_PORT", ports::DEFAULT_HEALTH_PORT);
+        let dashboard_port =
+            env_port(&env, "SONGBIRD_DASHBOARD_PORT", ports::DEFAULT_DASHBOARD_PORT);
+        let websocket_port = env_port(&env, "SONGBIRD_WEBSOCKET_PORT", ports::DEFAULT_HTTP_PORT);
+        let metrics_port = env_port(&env, "SONGBIRD_METRICS_PORT", ports::DEFAULT_METRICS_PORT);
+        let federation_port =
+            env_port(&env, "SONGBIRD_FEDERATION_PORT", ports::DEFAULT_FEDERATION_PORT);
 
         Self {
             bind_address,

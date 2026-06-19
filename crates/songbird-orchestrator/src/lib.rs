@@ -171,6 +171,8 @@ pub mod integration;
 pub mod ipc;
 /// Automatic mesh peer seeding from `SONGBIRD_PEERS` env var on startup.
 pub mod mesh_seed;
+/// Automatic `auth.exchange_trust` after mesh seeding — bidirectional trust without operator.
+pub mod mesh_trust_exchange;
 /// Network binding, listeners, and endpoint management.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod network;
