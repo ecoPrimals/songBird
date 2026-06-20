@@ -391,6 +391,87 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_overlay_preferred_over_direct() {
+        let mesh = BeaconMesh::new("east-gate".to_string(), vec![]);
+
+        // Add a Direct (WAN) endpoint
+        let direct_ep = RelayEndpoint {
+            node_id: "flock-gate".into(),
+            endpoint_type: EndpointType::Direct {
+                addr: "203.0.113.50:7700".parse().unwrap(),
+            },
+            latency: Some(Duration::from_millis(25)),
+            last_seen: Instant::now(),
+            reachable: true,
+        };
+        mesh.add_endpoint("flock-gate".into(), direct_ep).await;
+
+        // Add an Overlay (WireGuard) endpoint for the same peer
+        let overlay_ep = RelayEndpoint {
+            node_id: "flock-gate".into(),
+            endpoint_type: EndpointType::Overlay {
+                addr: "10.13.37.6:7700".parse().unwrap(),
+                overlay_name: "wireguard".into(),
+            },
+            latency: Some(Duration::from_millis(5)),
+            last_seen: Instant::now(),
+            reachable: true,
+        };
+        mesh.add_endpoint("flock-gate".into(), overlay_ep).await;
+
+        // Best path should be the overlay (priority 0) over direct (priority 1)
+        let path = mesh.get_best_path("flock-gate").await;
+        assert!(path.is_some());
+        let best = path.unwrap();
+        assert!(
+            matches!(best.endpoint_type, EndpointType::Overlay { .. }),
+            "Expected Overlay, got {:?}",
+            best.endpoint_type
+        );
+        assert_eq!(best.endpoint_type.socket_addr().unwrap(), "10.13.37.6:7700".parse().unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_overlay_fallback_to_direct_when_unreachable() {
+        let mesh = BeaconMesh::new("east-gate".to_string(), vec![]);
+
+        // Unreachable overlay
+        let overlay_ep = RelayEndpoint {
+            node_id: "flock-gate".into(),
+            endpoint_type: EndpointType::Overlay {
+                addr: "10.13.37.6:7700".parse().unwrap(),
+                overlay_name: "wireguard".into(),
+            },
+            latency: None,
+            last_seen: Instant::now(),
+            reachable: false,
+        };
+        mesh.add_endpoint("flock-gate".into(), overlay_ep).await;
+
+        // Reachable direct
+        let direct_ep = RelayEndpoint {
+            node_id: "flock-gate".into(),
+            endpoint_type: EndpointType::Direct {
+                addr: "203.0.113.50:7700".parse().unwrap(),
+            },
+            latency: Some(Duration::from_millis(40)),
+            last_seen: Instant::now(),
+            reachable: true,
+        };
+        mesh.add_endpoint("flock-gate".into(), direct_ep).await;
+
+        // Should fall back to Direct since Overlay is unreachable
+        let path = mesh.get_best_path("flock-gate").await;
+        assert!(path.is_some());
+        let best = path.unwrap();
+        assert!(
+            matches!(best.endpoint_type, EndpointType::Direct { .. }),
+            "Expected Direct fallback, got {:?}",
+            best.endpoint_type
+        );
+    }
+
+    #[tokio::test]
     async fn test_relay_fallback() {
         let mesh = BeaconMesh::new("laptop".to_string(), vec!["bootstrap.onion".to_string()]);
 

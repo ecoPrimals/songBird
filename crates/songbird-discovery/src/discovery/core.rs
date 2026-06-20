@@ -47,7 +47,7 @@ impl Default for CanonicalDiscoveryConfig {
             enable_container_discovery: false,
             timeout_seconds: 30,
             health_check_interval: 60,
-            backend: "static".to_string(),
+            backend: String::from("static"),
             consul_url: None,
             kubernetes_namespace: None,
         }
@@ -59,7 +59,7 @@ impl CanonicalDiscoveryConfig {
     #[must_use]
     pub fn static_config() -> Self {
         Self {
-            backend: "static".to_string(),
+            backend: String::from("static"),
             ..Default::default()
         }
     }
@@ -68,7 +68,7 @@ impl CanonicalDiscoveryConfig {
     #[must_use]
     pub fn consul_config(consul_url: String) -> Self {
         Self {
-            backend: "service_discovery".to_string(),
+            backend: String::from("service_discovery"),
             consul_url: Some(consul_url),
             ..Default::default()
         }
@@ -78,7 +78,7 @@ impl CanonicalDiscoveryConfig {
     #[must_use]
     pub fn kubernetes_config(namespace: String) -> Self {
         Self {
-            backend: "container_orchestration".to_string(),
+            backend: String::from("container_orchestration"),
             kubernetes_namespace: Some(namespace),
             ..Default::default()
         }
@@ -116,7 +116,7 @@ impl ServiceInstance {
             name: name.into(),
             endpoint: endpoint.into(),
             capabilities: Vec::new(),
-            health_status: "unknown".to_string(),
+            health_status: String::from("unknown"),
             metadata: HashMap::new(),
         }
     }
@@ -360,7 +360,7 @@ mod tests {
 
     #[test]
     fn test_canonical_discovery_config_consul() {
-        let consul_url = "http://localhost:8500".to_string();
+        let consul_url = String::from("http://localhost:8500");
         let config = CanonicalDiscoveryConfig::consul_config(consul_url.clone());
 
         assert_eq!(config.backend, "service_discovery");
@@ -370,7 +370,7 @@ mod tests {
 
     #[test]
     fn test_canonical_discovery_config_kubernetes() {
-        let namespace = "production".to_string();
+        let namespace = String::from("production");
         let config = CanonicalDiscoveryConfig::kubernetes_config(namespace.clone());
 
         assert_eq!(config.backend, "container_orchestration");
@@ -389,12 +389,12 @@ mod tests {
 
     #[test]
     fn test_canonical_discovery_config_serialization() -> Result<(), Box<dyn std::error::Error>> {
-        let config = CanonicalDiscoveryConfig::consul_config("http://consul:8500".to_string());
+        let config = CanonicalDiscoveryConfig::consul_config(String::from("http://consul:8500"));
         let json = serde_json::to_string(&config)
             .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {e}")))?;
         let deserialized: CanonicalDiscoveryConfig =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
-                format: Some("JSON".to_string()),
+                format: Some(String::from("JSON")),
                 message: format!("Failed to deserialize: {e}"),
                 debug_info: None,
             })?;
@@ -409,9 +409,9 @@ mod tests {
     #[test]
     fn test_service_instance_new() {
         let service = ServiceInstance::new(
-            "svc-001".to_string(),
-            "test-service".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("svc-001"),
+            String::from("test-service"),
+            String::from("http://localhost:8080"),
         );
 
         assert_eq!(service.id, "svc-001");
@@ -425,12 +425,12 @@ mod tests {
     #[test]
     fn test_service_instance_with_capability() {
         let service = ServiceInstance::new(
-            "svc-001".to_string(),
-            "compute-service".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("svc-001"),
+            String::from("compute-service"),
+            String::from("http://localhost:8080"),
         )
-        .with_capability("compute".to_string())
-        .with_capability("gpu".to_string());
+        .with_capability(String::from("compute"))
+        .with_capability(String::from("gpu"));
 
         assert_eq!(service.capabilities.len(), 2);
         assert!(service.has_capability("compute"));
@@ -441,11 +441,11 @@ mod tests {
     #[test]
     fn test_service_instance_with_health_status() {
         let service = ServiceInstance::new(
-            "svc-001".to_string(),
-            "test".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("svc-001"),
+            String::from("test"),
+            String::from("http://localhost:8080"),
         )
-        .with_health_status("healthy".to_string());
+        .with_health_status(String::from("healthy"));
 
         assert_eq!(service.health_status, "healthy");
         assert!(service.is_healthy());
@@ -454,26 +454,26 @@ mod tests {
     #[test]
     fn test_service_instance_with_metadata() {
         let service = ServiceInstance::new(
-            "svc-001".to_string(),
-            "test".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("svc-001"),
+            String::from("test"),
+            String::from("http://localhost:8080"),
         )
-        .with_metadata("region".to_string(), "us-west".to_string())
-        .with_metadata("tier".to_string(), "premium".to_string());
+        .with_metadata(String::from("region"), String::from("us-west"))
+        .with_metadata(String::from("tier"), String::from("premium"));
 
         assert_eq!(service.metadata.len(), 2);
-        assert_eq!(service.metadata.get("region"), Some(&"us-west".to_string()));
-        assert_eq!(service.metadata.get("tier"), Some(&"premium".to_string()));
+        assert_eq!(service.metadata.get("region"), Some(&String::from("us-west")));
+        assert_eq!(service.metadata.get("tier"), Some(&String::from("premium")));
     }
 
     #[test]
     fn test_service_instance_has_capability() {
         let service = ServiceInstance::new(
-            "svc-001".to_string(),
-            "test".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("svc-001"),
+            String::from("test"),
+            String::from("http://localhost:8080"),
         )
-        .with_capability("security".to_string());
+        .with_capability(String::from("security"));
 
         assert!(service.has_capability("security"));
         assert!(!service.has_capability("compute"));
@@ -482,18 +482,18 @@ mod tests {
     #[test]
     fn test_service_instance_is_healthy() {
         let healthy = ServiceInstance::new(
-            "svc-001".to_string(),
-            "test".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("svc-001"),
+            String::from("test"),
+            String::from("http://localhost:8080"),
         )
-        .with_health_status("healthy".to_string());
+        .with_health_status(String::from("healthy"));
 
         let unhealthy = ServiceInstance::new(
-            "svc-002".to_string(),
-            "test".to_string(),
-            "http://localhost:8081".to_string(),
+            String::from("svc-002"),
+            String::from("test"),
+            String::from("http://localhost:8081"),
         )
-        .with_health_status("unhealthy".to_string());
+        .with_health_status(String::from("unhealthy"));
 
         assert!(healthy.is_healthy());
         assert!(!unhealthy.is_healthy());
@@ -502,15 +502,15 @@ mod tests {
     #[test]
     fn test_service_instance_builder_pattern() {
         let service = ServiceInstance::new(
-            "svc-001".to_string(),
-            "full-service".to_string(),
-            "http://localhost:9000".to_string(),
+            String::from("svc-001"),
+            String::from("full-service"),
+            String::from("http://localhost:9000"),
         )
-        .with_capability("compute".to_string())
-        .with_capability("storage".to_string())
-        .with_health_status("healthy".to_string())
-        .with_metadata("version".to_string(), "1.0.0".to_string())
-        .with_metadata("region".to_string(), "us-east".to_string());
+        .with_capability(String::from("compute"))
+        .with_capability(String::from("storage"))
+        .with_health_status(String::from("healthy"))
+        .with_metadata(String::from("version"), String::from("1.0.0"))
+        .with_metadata(String::from("region"), String::from("us-east"));
 
         assert_eq!(service.capabilities.len(), 2);
         assert_eq!(service.metadata.len(), 2);
@@ -520,11 +520,11 @@ mod tests {
     #[test]
     fn test_service_instance_clone() {
         let service = ServiceInstance::new(
-            "svc-001".to_string(),
-            "test".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("svc-001"),
+            String::from("test"),
+            String::from("http://localhost:8080"),
         )
-        .with_capability("compute".to_string());
+        .with_capability(String::from("compute"));
 
         let cloned = service.clone();
 
@@ -536,18 +536,18 @@ mod tests {
     #[test]
     fn test_service_instance_serialization() -> Result<(), Box<dyn std::error::Error>> {
         let service = ServiceInstance::new(
-            "svc-001".to_string(),
-            "test-service".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("svc-001"),
+            String::from("test-service"),
+            String::from("http://localhost:8080"),
         )
-        .with_capability("security".to_string())
-        .with_health_status("healthy".to_string());
+        .with_capability(String::from("security"))
+        .with_health_status(String::from("healthy"));
 
         let json = serde_json::to_string(&service)
             .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {e}")))?;
         let deserialized: ServiceInstance =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
-                format: Some("JSON".to_string()),
+                format: Some(String::from("JSON")),
                 message: format!("Failed to deserialize: {e}"),
                 debug_info: None,
             })?;
@@ -574,7 +574,7 @@ mod tests {
             .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {e}")))?;
         let deserialized: TrustLevel =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
-                format: Some("JSON".to_string()),
+                format: Some(String::from("JSON")),
                 message: format!("Failed to deserialize: {e}"),
                 debug_info: None,
             })?;
@@ -590,7 +590,7 @@ mod tests {
     fn test_interaction_result_success() {
         let result = InteractionResult {
             success: true,
-            message: "Operation completed".to_string(),
+            message: String::from("Operation completed"),
         };
 
         assert!(result.success);
@@ -601,7 +601,7 @@ mod tests {
     fn test_interaction_result_failure() {
         let result = InteractionResult {
             success: false,
-            message: "Operation failed".to_string(),
+            message: String::from("Operation failed"),
         };
 
         assert!(!result.success);
@@ -611,9 +611,9 @@ mod tests {
     #[test]
     fn test_local_node() {
         let node = LocalNode {
-            id: "node-001".to_string(),
-            name: "primary-node".to_string(),
-            endpoint: "http://localhost:9090".to_string(),
+            id: String::from("node-001"),
+            name: String::from("primary-node"),
+            endpoint: String::from("http://localhost:9090"),
         };
 
         assert_eq!(node.id, "node-001");
@@ -648,9 +648,9 @@ mod tests {
     #[test]
     fn test_dataset_info() {
         let dataset = DatasetInfo {
-            name: "training-data".to_string(),
+            name: String::from("training-data"),
             size_bytes: 5_000_000,
-            format: "parquet".to_string(),
+            format: String::from("parquet"),
         };
 
         assert_eq!(dataset.name, "training-data");

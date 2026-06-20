@@ -59,9 +59,9 @@ impl From<UniversalServiceInfo> for DiscoveryServiceInfo {
         // Note: endpoints in discovery are API paths, not network endpoints
         // Create a minimal health check endpoint
         let endpoints = vec![ServiceEndpoint {
-            path: "/".to_string(),
-            method: "GET".to_string(),
-            description: Some("Root endpoint".to_string()),
+            path: String::from("/"),
+            method: String::from("GET"),
+            description: Some(String::from("Root endpoint")),
             parameters: Vec::new(),
             response_schema: None,
             auth_required: false,
@@ -73,11 +73,11 @@ impl From<UniversalServiceInfo> for DiscoveryServiceInfo {
         Self {
             service_id: uuid::Uuid::new_v4().to_string(),
             name: universal.name,
-            version: "unknown".to_string(),
+            version: String::from("unknown"),
             service_type: format!("{:?}", universal.primal_type),
             description: None,
             endpoints,
-            health_check_endpoint: Some("/health".to_string()),
+            health_check_endpoint: Some(String::from("/health")),
             metadata,
             tags: Vec::new(),
             dependencies: Vec::new(),
@@ -140,19 +140,19 @@ impl ServiceInfoExt for DiscoveryServiceInfo {
         Self {
             service_id: uuid::Uuid::new_v4().to_string(),
             name,
-            version: "unknown".to_string(),
-            service_type: "service".to_string(),
+            version: String::from("unknown"),
+            service_type: String::from("service"),
             description: None,
             endpoints: vec![ServiceEndpoint {
-                path: "/".to_string(),
-                method: "GET".to_string(),
-                description: Some("Root endpoint".to_string()),
+                path: String::from("/"),
+                method: String::from("GET"),
+                description: Some(String::from("Root endpoint")),
                 parameters: Vec::new(),
                 response_schema: None,
                 auth_required: false,
                 rate_limit: None,
             }],
-            health_check_endpoint: Some("/health".to_string()),
+            health_check_endpoint: Some(String::from("/health")),
             metadata: HashMap::new(),
             tags: Vec::new(),
             dependencies: Vec::new(),
@@ -188,8 +188,8 @@ impl ServiceInfoExt for DiscoveryServiceInfo {
             endpoint.description = Some(format!("Updated from {}", universal.endpoint));
         } else {
             self.endpoints.push(ServiceEndpoint {
-                path: "/".to_string(),
-                method: "GET".to_string(),
+                path: String::from("/"),
+                method: String::from("GET"),
                 description: Some(format!("Added from {}", universal.endpoint)),
                 parameters: Vec::new(),
                 response_schema: None,
@@ -206,21 +206,21 @@ mod tests {
 
     #[test]
     fn test_parse_endpoint() {
-        assert_eq!(parse_endpoint("localhost:8080"), ("localhost".to_string(), 8080));
-        assert_eq!(parse_endpoint("http://localhost:8080"), ("localhost".to_string(), 8080));
+        assert_eq!(parse_endpoint("localhost:8080"), (String::from("localhost"), 8080));
+        assert_eq!(parse_endpoint("http://localhost:8080"), (String::from("localhost"), 8080));
         assert_eq!(
             parse_endpoint("https://api.example.com:443"),
-            ("api.example.com".to_string(), 443)
+            (String::from("api.example.com"), 443)
         );
-        assert_eq!(parse_endpoint("localhost"), ("localhost".to_string(), 8080));
-        assert_eq!(parse_endpoint("localhost:8080/api"), ("localhost".to_string(), 8080));
+        assert_eq!(parse_endpoint("localhost"), (String::from("localhost"), 8080));
+        assert_eq!(parse_endpoint("localhost:8080/api"), (String::from("localhost"), 8080));
     }
 
     #[test]
     fn test_minimal_service_info() {
         let info = DiscoveryServiceInfo::minimal(
-            "test-service".to_string(),
-            "localhost".to_string(),
+            String::from("test-service"),
+            String::from("localhost"),
             8080,
         );
 

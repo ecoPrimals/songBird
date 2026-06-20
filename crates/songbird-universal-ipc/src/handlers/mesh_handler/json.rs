@@ -24,6 +24,10 @@ pub(super) fn endpoint_to_strings(endpoint: &EndpointType) -> (&'static str, Opt
         EndpointType::Local {
             addr,
         } => ("local", Some(addr.to_string())),
+        EndpointType::Overlay {
+            addr,
+            overlay_name,
+        } => ("overlay", Some(format!("{overlay_name}://{addr}"))),
         EndpointType::Direct {
             addr,
         } => ("direct", Some(addr.to_string())),

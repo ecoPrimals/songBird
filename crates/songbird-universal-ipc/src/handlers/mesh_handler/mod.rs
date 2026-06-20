@@ -110,6 +110,9 @@ impl MeshHandler {
     /// `bootstrap_peers` enables cross-gate discovery by adding TCP-reachable peers
     /// to the mesh at init time (connection attempts are spawned asynchronously).
     ///
+    /// `overlay_peers` (optional) registers WireGuard/VPN endpoints for peers.
+    /// These get priority 0 (same as Local) so overlay paths are preferred when reachable.
+    ///
     /// # Request Example
     ///
     /// ```json
@@ -120,12 +123,20 @@ impl MeshHandler {
     ///     "node_id": "tower-abc123",
     ///     "bootstrap_onions": ["xyz.onion"],
     ///     "bootstrap_peers": [
-    ///       { "node_id": "west-gate", "address": "192.168.1.50:3492" }
-    ///     ]
+    ///       { "node_id": "west-gate", "address": "192.168.1.50:7700" }
+    ///     ],
+    ///     "overlay_peers": [
+    ///       { "node_id": "west-gate", "address": "10.13.37.2:7700" }
+    ///     ],
+    ///     "overlay_name": "wireguard"
     ///   },
     ///   "id": 1
     /// }
     /// ```
+    #[expect(
+        clippy::too_many_lines,
+        reason = "mesh.init handles bootstrap + overlay + health + persistence"
+    )]
     pub async fn handle_init(&self, params: Value) -> Result<Value, String> {
         use songbird_onion_relay::{EndpointType, RelayEndpoint};
 
@@ -191,6 +202,46 @@ impl MeshHandler {
             mesh.add_endpoint(peer_id.clone(), endpoint).await;
         }
 
+        // Register overlay endpoints (WireGuard/VPN — priority 0, preferred)
+        let overlay_name =
+            params.get("overlay_name").and_then(Value::as_str).unwrap_or("wireguard");
+        let overlay_peers: Vec<(String, std::net::SocketAddr)> = params
+            .get("overlay_peers")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|entry| {
+                        if let Some(obj_id) = entry.get("node_id").and_then(Value::as_str) {
+                            let addr_str = entry.get("address")?.as_str()?;
+                            let addr: std::net::SocketAddr = addr_str.parse().ok()?;
+                            return Some((obj_id.to_string(), addr));
+                        }
+                        let s = entry.as_str()?;
+                        if let Some((nid, addr_part)) = s.split_once('@') {
+                            let addr: std::net::SocketAddr = addr_part.parse().ok()?;
+                            Some((nid.to_string(), addr))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        for (peer_id, addr) in &overlay_peers {
+            let endpoint = RelayEndpoint {
+                node_id: peer_id.clone(),
+                endpoint_type: EndpointType::Overlay {
+                    addr: *addr,
+                    overlay_name: String::from(overlay_name),
+                },
+                latency: None,
+                last_seen: std::time::Instant::now(),
+                reachable: true,
+            };
+            mesh.add_endpoint(peer_id.clone(), endpoint).await;
+        }
+
         let mesh_ref = Arc::clone(&mesh);
         *self.mesh.write().await = Some(mesh);
         *self.node_id.write().await = node_id.clone();
@@ -217,8 +268,9 @@ impl MeshHandler {
     }
 
     /// Handle `mesh.status` method - Get mesh network status
+    #[expect(clippy::too_many_lines, reason = "status aggregation across endpoint types")]
     pub async fn handle_status(&self, _params: Value) -> Result<Value, String> {
-        let (reachable, direct_count, relay_count, onion_count, local_count) = {
+        let (reachable, direct_count, relay_count, onion_count, local_count, overlay_count) = {
             let mesh = self
                 .mesh
                 .read()
@@ -233,6 +285,7 @@ impl MeshHandler {
             let mut relay_count = 0;
             let mut onion_count = 0;
             let mut local_count = 0;
+            let mut overlay_count = 0;
 
             for peer_id in &reachable {
                 if let Some(path) = mesh.get_best_path(peer_id).await {
@@ -240,6 +293,9 @@ impl MeshHandler {
                         EndpointType::Local {
                             ..
                         } => local_count += 1,
+                        EndpointType::Overlay {
+                            ..
+                        } => overlay_count += 1,
                         EndpointType::Direct {
                             ..
                         } => direct_count += 1,
@@ -253,7 +309,14 @@ impl MeshHandler {
                 }
             }
 
-            Ok::<_, String>((reachable, direct_count, relay_count, onion_count, local_count))
+            Ok::<_, String>((
+                reachable,
+                direct_count,
+                relay_count,
+                onion_count,
+                local_count,
+                overlay_count,
+            ))
         }?;
 
         let node_id = self.node_id.read().await.clone();
@@ -304,6 +367,7 @@ impl MeshHandler {
             "version": our_version,
             "paths": {
                 "local": local_count,
+                "overlay": overlay_count,
                 "direct": direct_count,
                 "family_relay": relay_count,
                 "onion": onion_count
@@ -715,7 +779,9 @@ impl MeshHandler {
                 peer_id.clone(),
                 RelayEndpoint {
                     node_id: peer_id.clone(),
-                    endpoint_type: EndpointType::Direct { addr: *addr },
+                    endpoint_type: EndpointType::Direct {
+                        addr: *addr,
+                    },
                     latency: None,
                     last_seen: Instant::now(),
                     reachable: *reachable,

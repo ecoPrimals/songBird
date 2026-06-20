@@ -38,38 +38,38 @@ impl FederationPatternRecognizer {
         let mut patterns = HashMap::new();
 
         patterns.insert(
-            "security-genetic".to_string(),
+            String::from("security-genetic"),
             PrimalPattern {
-                pattern_signature: "security-genetic".to_string(),
+                pattern_signature: String::from("security-genetic"),
                 characteristic_capabilities: vec![
-                    "genetic-spawning".to_string(),
-                    "hsm-integration".to_string(),
-                    "entropy-assessment".to_string(),
-                    "quantum-security".to_string(),
+                    String::from("genetic-spawning"),
+                    String::from("hsm-integration"),
+                    String::from("entropy-assessment"),
+                    String::from("quantum-security"),
                 ],
                 behavioral_indicators: vec![
-                    "high-entropy-responses".to_string(),
-                    "security-first-design".to_string(),
-                    "adaptive-threat-response".to_string(),
+                    String::from("high-entropy-responses"),
+                    String::from("security-first-design"),
+                    String::from("adaptive-threat-response"),
                 ],
                 likely_category: PrimalCategory::SecurityFocused,
             },
         );
 
         patterns.insert(
-            "federation-sovereign".to_string(),
+            String::from("federation-sovereign"),
             PrimalPattern {
-                pattern_signature: "federation-sovereign".to_string(),
+                pattern_signature: String::from("federation-sovereign"),
                 characteristic_capabilities: vec![
-                    "sovereign-federation".to_string(),
-                    "quorum-sensing".to_string(),
-                    "fractal-networking".to_string(),
-                    "zero-leaders".to_string(),
+                    String::from("sovereign-federation"),
+                    String::from("quorum-sensing"),
+                    String::from("fractal-networking"),
+                    String::from("zero-leaders"),
                 ],
                 behavioral_indicators: vec![
-                    "sovereignty-preservation".to_string(),
-                    "decentralized-coordination".to_string(),
-                    "human-dignity-protection".to_string(),
+                    String::from("sovereignty-preservation"),
+                    String::from("decentralized-coordination"),
+                    String::from("human-dignity-protection"),
                 ],
                 likely_category: PrimalCategory::FederationFocused,
             },
@@ -110,13 +110,13 @@ impl FederationPatternRecognizer {
             Ok(Some(FederationCapabilities {
                 supports_sovereign_federation: pattern
                     .characteristic_capabilities
-                    .contains(&"sovereign-federation".to_string()),
+                    .contains(&String::from("sovereign-federation")),
                 supports_entropy_hierarchy: pattern
                     .characteristic_capabilities
-                    .contains(&"entropy-assessment".to_string()),
+                    .contains(&String::from("entropy-assessment")),
                 supports_quorum_sensing: pattern
                     .characteristic_capabilities
-                    .contains(&"quorum-sensing".to_string()),
+                    .contains(&String::from("quorum-sensing")),
                 detected_pattern: pattern.clone(),
                 pattern_confidence: confidence,
             }))
@@ -244,14 +244,14 @@ impl NetworkEffectsDetector {
                 effects.push(PotentialNetworkEffect {
                     effect_type: NetworkEffectType::Multiplicative {
                         enhanced_capabilities: vec![
-                            "entropy-aware-federation".to_string(),
-                            "hierarchical-sovereignty".to_string(),
+                            String::from("entropy-aware-federation"),
+                            String::from("hierarchical-sovereignty"),
                         ],
                     },
                     benefit_multiplier: 2.5,
                     required_conditions: vec![
-                        "compatible-security-primal".to_string(),
-                        "compatible-federation-primal".to_string(),
+                        String::from("compatible-security-primal"),
+                        String::from("compatible-federation-primal"),
                     ],
                     confidence: caps.pattern_confidence,
                 });
@@ -261,12 +261,12 @@ impl NetworkEffectsDetector {
                 effects.push(PotentialNetworkEffect {
                     effect_type: NetworkEffectType::Emergent {
                         novel_capabilities: vec![
-                            "collective-intelligence".to_string(),
-                            "swarm-coordination".to_string(),
+                            String::from("collective-intelligence"),
+                            String::from("swarm-coordination"),
                         ],
                     },
                     benefit_multiplier: 1.8,
-                    required_conditions: vec!["multiple-quorum-sensing-nodes".to_string()],
+                    required_conditions: vec![String::from("multiple-quorum-sensing-nodes")],
                     confidence: caps.pattern_confidence * 0.8,
                 });
             }
@@ -295,15 +295,15 @@ impl NetworkEffectsDetector {
             effects.push(PotentialNetworkEffect {
                 effect_type: NetworkEffectType::Multiplicative {
                     enhanced_capabilities: vec![
-                        "entropy-aware-sovereign-federation".to_string(),
-                        "genetic-quorum-sensing".to_string(),
-                        "hierarchical-sovereignty-enforcement".to_string(),
+                        String::from("entropy-aware-sovereign-federation"),
+                        String::from("genetic-quorum-sensing"),
+                        String::from("hierarchical-sovereignty-enforcement"),
                     ],
                 },
                 benefit_multiplier: 3.0,
                 required_conditions: vec![
-                    "compatible-protocols".to_string(),
-                    "mutual-trust-establishment".to_string(),
+                    String::from("compatible-protocols"),
+                    String::from("mutual-trust-establishment"),
                 ],
                 confidence: 0.9,
             });
@@ -330,10 +330,10 @@ mod tests {
     ) -> ServiceInfo {
         let now = Utc::now();
         ServiceInfo {
-            service_id: "fed-1".to_string(),
-            name: "n".to_string(),
-            version: "1.0.0".to_string(),
-            service_type: "t".to_string(),
+            service_id: String::from("fed-1"),
+            name: String::from("n"),
+            version: String::from("1.0.0"),
+            service_type: String::from("t"),
             description: None,
             endpoints: vec![],
             health_check_endpoint: None,
@@ -343,8 +343,8 @@ mod tests {
             status: ServiceStatus::Running,
             created_at: now,
             updated_at: now,
-            instance_id: "i".to_string(),
-            host: "127.0.0.1".to_string(),
+            instance_id: String::from("i"),
+            host: String::from("127.0.0.1"),
             port: 9000,
         }
     }
@@ -360,7 +360,7 @@ mod tests {
             network_effects: vec![],
             discovery_metadata: DiscoveryMetadata {
                 discovered_at: SystemTime::UNIX_EPOCH,
-                discovery_method: "unit".to_string(),
+                discovery_method: String::from("unit"),
                 last_health_check: None,
                 discovery_confidence: 1.0,
             },
@@ -380,9 +380,9 @@ mod tests {
         let r = FederationPatternRecognizer::new();
         let s = sample_service(
             vec![
-                "genetic-spawning".to_string(),
-                "hsm-integration".to_string(),
-                "entropy-assessment".to_string(),
+                String::from("genetic-spawning"),
+                String::from("hsm-integration"),
+                String::from("entropy-assessment"),
             ],
             HashMap::new(),
         );
@@ -397,7 +397,7 @@ mod tests {
         let r = FederationPatternRecognizer::new();
         let mut meta = HashMap::new();
         meta.insert(
-            "capabilities".to_string(),
+            String::from("capabilities"),
             serde_json::json!([
                 "genetic-spawning",
                 "hsm-integration",
@@ -418,7 +418,7 @@ mod tests {
             supports_entropy_hierarchy: true,
             supports_quorum_sensing: false,
             detected_pattern: PrimalPattern {
-                pattern_signature: "security-genetic".to_string(),
+                pattern_signature: String::from("security-genetic"),
                 characteristic_capabilities: vec![],
                 behavioral_indicators: vec![],
                 likely_category: PrimalCategory::SecurityFocused,
@@ -449,7 +449,7 @@ mod tests {
             supports_entropy_hierarchy: true,
             supports_quorum_sensing: true,
             detected_pattern: PrimalPattern {
-                pattern_signature: "federation-sovereign".to_string(),
+                pattern_signature: String::from("federation-sovereign"),
                 characteristic_capabilities: vec![],
                 behavioral_indicators: vec![],
                 likely_category: PrimalCategory::FederationFocused,
@@ -471,7 +471,7 @@ mod tests {
             supports_entropy_hierarchy: true,
             supports_quorum_sensing: false,
             detected_pattern: PrimalPattern {
-                pattern_signature: "security-genetic".to_string(),
+                pattern_signature: String::from("security-genetic"),
                 characteristic_capabilities: vec![],
                 behavioral_indicators: vec![],
                 likely_category: PrimalCategory::SecurityFocused,
@@ -483,7 +483,7 @@ mod tests {
             supports_entropy_hierarchy: true,
             supports_quorum_sensing: true,
             detected_pattern: PrimalPattern {
-                pattern_signature: "federation-sovereign".to_string(),
+                pattern_signature: String::from("federation-sovereign"),
                 characteristic_capabilities: vec![],
                 behavioral_indicators: vec![],
                 likely_category: PrimalCategory::FederationFocused,

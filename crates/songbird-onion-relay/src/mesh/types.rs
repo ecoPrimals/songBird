@@ -44,6 +44,13 @@ pub enum EndpointType {
         /// LAN peer address.
         addr: SocketAddr,
     },
+    /// Encrypted overlay network (WireGuard, etc.)
+    Overlay {
+        /// Peer address on the overlay subnet.
+        addr: SocketAddr,
+        /// Which overlay this belongs to (e.g. "wireguard").
+        overlay_name: String,
+    },
 }
 
 impl EndpointType {
@@ -52,6 +59,9 @@ impl EndpointType {
     pub const fn priority(&self) -> u8 {
         match self {
             Self::Local {
+                ..
+            }
+            | Self::Overlay {
                 ..
             } => 0,
             Self::Direct {
@@ -75,6 +85,10 @@ impl EndpointType {
             }
             | Self::Local {
                 addr,
+            }
+            | Self::Overlay {
+                addr,
+                ..
             } => Some(addr.ip()),
             Self::FamilyRelay {
                 ..
@@ -98,6 +112,10 @@ impl EndpointType {
             }
             | Self::Local {
                 addr,
+            }
+            | Self::Overlay {
+                addr,
+                ..
             } => Some(*addr),
             Self::FamilyRelay {
                 ..
@@ -248,6 +266,63 @@ mod tests {
             addr: "[fd00::1]:8080".parse().unwrap(),
         };
         assert_eq!(local.priority(), 0);
+    }
+
+    #[test]
+    fn endpoint_type_overlay_priority_zero_same_as_local() {
+        let overlay = EndpointType::Overlay {
+            addr: "10.13.37.5:7700".parse().unwrap(),
+            overlay_name: "wireguard".into(),
+        };
+        assert_eq!(overlay.priority(), 0);
+    }
+
+    #[test]
+    fn endpoint_type_overlay_preferred_over_direct() {
+        let overlay = EndpointType::Overlay {
+            addr: "10.13.37.5:7700".parse().unwrap(),
+            overlay_name: "wireguard".into(),
+        };
+        let direct = EndpointType::Direct {
+            addr: "203.0.113.5:7700".parse().unwrap(),
+        };
+        assert!(overlay.priority() < direct.priority());
+    }
+
+    #[test]
+    fn endpoint_type_overlay_address_extraction() {
+        let overlay = EndpointType::Overlay {
+            addr: "10.13.37.2:7700".parse().unwrap(),
+            overlay_name: "wireguard".into(),
+        };
+        assert_eq!(overlay.address(), Some("10.13.37.2".parse().unwrap()));
+        assert_eq!(overlay.socket_addr(), Some("10.13.37.2:7700".parse().unwrap()));
+    }
+
+    #[test]
+    fn endpoint_type_overlay_equality() {
+        let a = EndpointType::Overlay {
+            addr: "10.13.37.5:7700".parse().unwrap(),
+            overlay_name: "wireguard".into(),
+        };
+        let b = EndpointType::Overlay {
+            addr: "10.13.37.5:7700".parse().unwrap(),
+            overlay_name: "wireguard".into(),
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn endpoint_type_overlay_inequality_different_addr() {
+        let a = EndpointType::Overlay {
+            addr: "10.13.37.5:7700".parse().unwrap(),
+            overlay_name: "wireguard".into(),
+        };
+        let b = EndpointType::Overlay {
+            addr: "10.13.37.6:7700".parse().unwrap(),
+            overlay_name: "wireguard".into(),
+        };
+        assert_ne!(a, b);
     }
 
     #[test]

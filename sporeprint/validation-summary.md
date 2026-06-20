@@ -1,7 +1,7 @@
 +++
 title = "Songbird Validation Summary"
 description = "Sovereign networking primal — 8,929 lib tests, 31 crates, 58+ JSON-RPC methods, riboCipher transport signal detection (Stream 7), HEALTH-01 compliant (13/13 ecosystem contract), topology-aware cross-gate routing (ipc.resolve mesh fallback), mesh persistence + autonomous reconnect, federation env-aware status + peer health loop, mesh partition tolerance (cross-gate reachability gossip), peer version negotiation (version_skew detection), real health probes (TCP/UDS/FS/Custom/JsonRpc), capability-first naming (SecurityProviderVerifier), workspace dep hoisting, 5-tier NAT traversal, cross-gate capability.call (HTTP POST + TURN relay), capability propagation (push model + retry queue + TTL expiry), peer-aware network detection, HTTP/UDS unified state, virtual relay Phase 2 (default mode), DH-1 compliant, zero clippy workspace-wide"
-date = 2026-06-19
+date = 2026-06-20
 
 [taxonomies]
 primals = ["songbird"]

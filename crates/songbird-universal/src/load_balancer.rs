@@ -221,9 +221,9 @@ mod tests {
     #[tokio::test]
     async fn test_round_robin_load_balancing() -> SongbirdResult<()> {
         let endpoints = vec![
-            "http://endpoint1:8080".to_string(),
-            "http://endpoint2:8080".to_string(),
-            "http://endpoint3:8080".to_string(),
+            String::from("http://endpoint1:8080"),
+            String::from("http://endpoint2:8080"),
+            String::from("http://endpoint3:8080"),
         ];
 
         let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
@@ -264,7 +264,7 @@ mod tests {
     #[tokio::test]
     async fn test_least_loaded_selection() -> SongbirdResult<()> {
         let endpoints =
-            vec!["http://endpoint1:8080".to_string(), "http://endpoint2:8080".to_string()];
+            vec![String::from("http://endpoint1:8080"), String::from("http://endpoint2:8080")];
 
         let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::LeastLoaded);
 
@@ -286,7 +286,7 @@ mod tests {
     #[tokio::test]
     async fn test_health_based_selection() -> SongbirdResult<()> {
         let endpoints =
-            vec!["http://endpoint1:8080".to_string(), "http://endpoint2:8080".to_string()];
+            vec![String::from("http://endpoint1:8080"), String::from("http://endpoint2:8080")];
 
         let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::HealthBased);
 
@@ -308,7 +308,7 @@ mod tests {
     #[tokio::test]
     async fn test_mark_endpoint_unavailable() -> SongbirdResult<()> {
         let endpoints =
-            vec!["http://endpoint1:8080".to_string(), "http://endpoint2:8080".to_string()];
+            vec![String::from("http://endpoint1:8080"), String::from("http://endpoint2:8080")];
 
         let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
@@ -330,7 +330,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_all_endpoints_unavailable() {
-        let endpoints = vec!["http://endpoint1:8080".to_string()];
+        let endpoints = vec![String::from("http://endpoint1:8080")];
 
         let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
@@ -356,7 +356,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_endpoint_recovery() -> SongbirdResult<()> {
-        let endpoints = vec!["http://endpoint1:8080".to_string()];
+        let endpoints = vec![String::from("http://endpoint1:8080")];
 
         let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
@@ -377,7 +377,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_health_score_update() {
-        let endpoints = vec!["http://endpoint1:8080".to_string()];
+        let endpoints = vec![String::from("http://endpoint1:8080")];
 
         let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::HealthBased);
 

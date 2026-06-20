@@ -130,7 +130,10 @@ impl LineageRelayPrimalConnection {
     /// Returns error if the underlying connectivity handler fails.
     pub async fn send_request(&self, request: PrimalRequest) -> Result<PrimalResponse> {
         let params = match request {
-            PrimalRequest::Custom { params, .. } => params,
+            PrimalRequest::Custom {
+                params,
+                ..
+            } => params,
             other => {
                 return Ok(PrimalResponse::Error(format!(
                     "Invalid connectivity request: expected Custom variant, got {:?}",
@@ -181,9 +184,7 @@ mod tests {
 
         let config = LineageRelayConfig::default();
         let coordinator = Arc::new(
-            LineageRelayCoordinator::new(config, broadcaster, relay_authority)
-                .await
-                .unwrap(),
+            LineageRelayCoordinator::new(config, broadcaster, relay_authority).await.unwrap(),
         );
 
         LineageRelayAdapter::new(coordinator)
@@ -192,10 +193,7 @@ mod tests {
     #[tokio::test]
     async fn test_relay_stats_request() {
         let adapter = make_adapter().await;
-        let response = adapter
-            .handle_request(ConnectivityRequest::GetRelayStats)
-            .await
-            .unwrap();
+        let response = adapter.handle_request(ConnectivityRequest::GetRelayStats).await.unwrap();
 
         match response {
             ConnectivityResponse::RelayStats {
@@ -319,7 +317,9 @@ mod tests {
         let json = serde_json::to_string(&resp).unwrap();
         let deserialized: ConnectivityResponse = serde_json::from_str(&json).unwrap();
         match deserialized {
-            ConnectivityResponse::ConnectionEstablished { connection_type } => {
+            ConnectivityResponse::ConnectionEstablished {
+                connection_type,
+            } => {
                 assert_eq!(connection_type, "direct");
             }
             _ => panic!("Expected ConnectionEstablished"),
@@ -331,6 +331,8 @@ mod tests {
         let resp = ConnectivityResponse::Error("something broke".into());
         let json = serde_json::to_string(&resp).unwrap();
         let deserialized: ConnectivityResponse = serde_json::from_str(&json).unwrap();
-        assert!(matches!(deserialized, ConnectivityResponse::Error(msg) if msg == "something broke"));
+        assert!(
+            matches!(deserialized, ConnectivityResponse::Error(msg) if msg == "something broke")
+        );
     }
 }

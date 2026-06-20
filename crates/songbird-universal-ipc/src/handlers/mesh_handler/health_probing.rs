@@ -132,6 +132,10 @@ impl MeshHandler {
                     }
                     | EndpointType::Local {
                         addr,
+                    }
+                    | EndpointType::Overlay {
+                        addr,
+                        ..
                     } => Some(*addr),
                     _ => None,
                 };

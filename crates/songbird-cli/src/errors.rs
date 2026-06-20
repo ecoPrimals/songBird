@@ -50,10 +50,10 @@ impl From<CliError> for SongbirdError {
                 command,
                 message,
             } => Self::Service {
-                service: "cli".to_string(),
+                service: String::from("cli"),
                 message: format!("{command}: {message}"),
-                suggested_alternatives: vec!["--help".to_string()],
-                recovery_actions: vec!["Check command syntax".to_string()],
+                suggested_alternatives: vec![String::from("--help")],
+                recovery_actions: vec![String::from("Check command syntax")],
             },
             CliError::Config {
                 message,
@@ -74,19 +74,19 @@ impl From<CliError> for SongbirdError {
                 suggestion,
             },
             CliError::UserCancelled => Self::Configuration {
-                message: "Operation cancelled by user".to_string(),
-                field: Some("user_input".to_string()),
-                suggestion: Some("Try again or use --force to skip confirmations".to_string()),
+                message: String::from("Operation cancelled by user"),
+                field: Some(String::from("user_input")),
+                suggestion: Some(String::from("Try again or use --force to skip confirmations")),
             },
             CliError::Serialization(e) => Self::Serialization {
                 message: e.to_string(),
-                format: Some("json".to_string()),
+                format: Some(String::from("json")),
                 debug_info: None,
             },
             CliError::Io(e) => Self::Configuration {
                 message: format!("IO error: {e}"),
-                field: Some("file_system".to_string()),
-                suggestion: Some("Check file permissions and paths".to_string()),
+                field: Some(String::from("file_system")),
+                suggestion: Some(String::from("Check file permissions and paths")),
             },
         }
     }
@@ -99,8 +99,8 @@ mod tests {
     #[test]
     fn test_cli_error_command_display() {
         let error = CliError::Command {
-            command: "test".to_string(),
-            message: "failed".to_string(),
+            command: String::from("test"),
+            message: String::from("failed"),
         };
         let display = format!("{error}");
         assert!(display.contains("Command error"));
@@ -111,9 +111,9 @@ mod tests {
     #[test]
     fn test_cli_error_config_display() {
         let error = CliError::Config {
-            message: "invalid config".to_string(),
-            field: Some("port".to_string()),
-            suggestion: Some("use port 8080".to_string()),
+            message: String::from("invalid config"),
+            field: Some(String::from("port")),
+            suggestion: Some(String::from("use port 8080")),
         };
         let display = format!("{error}");
         assert!(display.contains("Configuration error"));
@@ -123,9 +123,9 @@ mod tests {
     #[test]
     fn test_cli_error_network_display() {
         let error = CliError::Network {
-            message: "connection failed".to_string(),
-            interface: Some("eth0".to_string()),
-            suggestion: Some("check network".to_string()),
+            message: String::from("connection failed"),
+            interface: Some(String::from("eth0")),
+            suggestion: Some(String::from("check network")),
         };
         let display = format!("{error}");
         assert!(display.contains("Network error"));
@@ -142,8 +142,8 @@ mod tests {
     #[test]
     fn test_cli_error_to_songbird_error_command() {
         let cli_error = CliError::Command {
-            command: "init".to_string(),
-            message: "missing args".to_string(),
+            command: String::from("init"),
+            message: String::from("missing args"),
         };
         let songbird_error: SongbirdError = cli_error.into();
         let display = format!("{songbird_error}");
@@ -153,9 +153,9 @@ mod tests {
     #[test]
     fn test_cli_error_to_songbird_error_config() {
         let cli_error = CliError::Config {
-            message: "bad config".to_string(),
-            field: Some("timeout".to_string()),
-            suggestion: Some("use 30s".to_string()),
+            message: String::from("bad config"),
+            field: Some(String::from("timeout")),
+            suggestion: Some(String::from("use 30s")),
         };
         let songbird_error: SongbirdError = cli_error.into();
         let display = format!("{songbird_error}");
@@ -165,7 +165,7 @@ mod tests {
     #[test]
     fn test_cli_error_to_songbird_error_network() {
         let cli_error = CliError::Network {
-            message: "timeout".to_string(),
+            message: String::from("timeout"),
             interface: None,
             suggestion: None,
         };
@@ -202,9 +202,9 @@ mod tests {
     #[test]
     fn test_cli_error_config_with_all_fields() {
         let error = CliError::Config {
-            message: "Port must be between 1024 and 65535".to_string(),
-            field: Some("server.port".to_string()),
-            suggestion: Some("Try using port 8080".to_string()),
+            message: String::from("Port must be between 1024 and 65535"),
+            field: Some(String::from("server.port")),
+            suggestion: Some(String::from("Try using port 8080")),
         };
 
         let songbird_error: SongbirdError = error.into();
@@ -215,8 +215,8 @@ mod tests {
         } = songbird_error
         {
             assert_eq!(message, "Port must be between 1024 and 65535");
-            assert_eq!(field, Some("server.port".to_string()));
-            assert_eq!(suggestion, Some("Try using port 8080".to_string()));
+            assert_eq!(field, Some(String::from("server.port")));
+            assert_eq!(suggestion, Some(String::from("Try using port 8080")));
         } else {
             panic!("Expected Configuration error");
         }
@@ -225,9 +225,9 @@ mod tests {
     #[test]
     fn test_cli_error_network_with_interface() {
         let error = CliError::Network {
-            message: "Cannot bind to interface".to_string(),
-            interface: Some("wlan0".to_string()),
-            suggestion: Some("Check interface status with 'ip link'".to_string()),
+            message: String::from("Cannot bind to interface"),
+            interface: Some(String::from("wlan0")),
+            suggestion: Some(String::from("Check interface status with 'ip link'")),
         };
 
         let songbird_error: SongbirdError = error.into();
@@ -238,8 +238,8 @@ mod tests {
         } = songbird_error
         {
             assert!(message.contains("Cannot bind to interface"));
-            assert_eq!(interface, Some("wlan0".to_string()));
-            assert_eq!(suggestion, Some("Check interface status with 'ip link'".to_string()));
+            assert_eq!(interface, Some(String::from("wlan0")));
+            assert_eq!(suggestion, Some(String::from("Check interface status with 'ip link'")));
         } else {
             panic!("Expected Network error");
         }

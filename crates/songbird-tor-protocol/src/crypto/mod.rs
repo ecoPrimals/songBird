@@ -128,11 +128,11 @@ impl TorProtocolCrypto for CryptoProvider {
 
         let client_public_b64 =
             result.get("client_public").and_then(|v| v.as_str()).ok_or_else(|| {
-                Error::Crypto("Missing client_public in ntor_client_init response".to_string())
+                Error::Crypto(String::from("Missing client_public in ntor_client_init response"))
             })?;
 
         let state_id = result.get("state_id").and_then(|v| v.as_str()).ok_or_else(|| {
-            Error::Crypto("Missing state_id in ntor_client_init response".to_string())
+            Error::Crypto(String::from("Missing state_id in ntor_client_init response"))
         })?;
 
         let client_public_bytes = BASE64
@@ -169,7 +169,7 @@ impl TorProtocolCrypto for CryptoProvider {
             .map_err(|e| map_crypto_err(&e))?;
 
         let key_seed_b64 = result.get("key_seed").and_then(|v| v.as_str()).ok_or_else(|| {
-            Error::Crypto("Missing key_seed in ntor_client_finish response".to_string())
+            Error::Crypto(String::from("Missing key_seed in ntor_client_finish response"))
         })?;
 
         let key_seed_bytes = BASE64
@@ -217,7 +217,7 @@ impl TorProtocolCrypto for CryptoProvider {
         let derived_b64 = result
             .get("derived")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::Crypto("Missing derived in tor_kdf response".to_string()))?;
+            .ok_or_else(|| Error::Crypto(String::from("Missing derived in tor_kdf response")))?;
 
         BASE64
             .decode(derived_b64)
@@ -239,7 +239,7 @@ impl TorProtocolCrypto for CryptoProvider {
 
         let ciphertext_b64 =
             result.get("ciphertext").and_then(|v| v.as_str()).ok_or_else(|| {
-                Error::Crypto("Missing ciphertext in tor_cell_encrypt response".to_string())
+                Error::Crypto(String::from("Missing ciphertext in tor_cell_encrypt response"))
             })?;
 
         BASE64
@@ -261,7 +261,7 @@ impl TorProtocolCrypto for CryptoProvider {
             .map_err(|e| map_crypto_err(&e))?;
 
         let plaintext_b64 = result.get("plaintext").and_then(|v| v.as_str()).ok_or_else(|| {
-            Error::Crypto("Missing plaintext in tor_cell_decrypt response".to_string())
+            Error::Crypto(String::from("Missing plaintext in tor_cell_decrypt response"))
         })?;
 
         BASE64
@@ -312,7 +312,7 @@ impl TorProtocolCrypto for CryptoProvider {
             .map_err(|e| map_crypto_err(&e))?;
 
         let sig_b64 = result.get("signature").and_then(|v| v.as_str()).ok_or_else(|| {
-            Error::Crypto("Missing signature in ed25519_sign response".to_string())
+            Error::Crypto(String::from("Missing signature in ed25519_sign response"))
         })?;
 
         let sig_bytes = BASE64
@@ -348,7 +348,7 @@ impl TorProtocolCrypto for CryptoProvider {
         result
             .get("valid")
             .and_then(serde_json::Value::as_bool)
-            .ok_or_else(|| Error::Crypto("Missing valid in ed25519_verify response".to_string()))
+            .ok_or_else(|| Error::Crypto(String::from("Missing valid in ed25519_verify response")))
     }
 
     async fn x25519_generate_ephemeral(&self) -> Result<X25519Keypair> {
@@ -365,7 +365,7 @@ impl TorProtocolCrypto for CryptoProvider {
         let public_b64 = result
             .get("public_key")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::Crypto("Missing public_key in x25519 response".to_string()))?;
+            .ok_or_else(|| Error::Crypto(String::from("Missing public_key in x25519 response")))?;
 
         let secret_id = result.get("secret_key_id").and_then(|v| v.as_str()).unwrap_or("ephemeral");
 
@@ -411,10 +411,9 @@ impl TorProtocolCrypto for CryptoProvider {
             .await
             .map_err(|e| map_crypto_err(&e))?;
 
-        let shared_b64 = result
-            .get("shared_secret")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::Crypto("Missing shared_secret in x25519 response".to_string()))?;
+        let shared_b64 = result.get("shared_secret").and_then(|v| v.as_str()).ok_or_else(|| {
+            Error::Crypto(String::from("Missing shared_secret in x25519 response"))
+        })?;
 
         let shared_bytes = BASE64
             .decode(shared_b64)
@@ -442,7 +441,7 @@ impl TorProtocolCrypto for CryptoProvider {
         let hash_b64 = result
             .get("hash")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::Crypto("Missing hash in sha3_256 response".to_string()))?;
+            .ok_or_else(|| Error::Crypto(String::from("Missing hash in sha3_256 response")))?;
 
         let hash_bytes = BASE64
             .decode(hash_b64)
@@ -471,7 +470,7 @@ impl TorProtocolCrypto for CryptoProvider {
         let mac_b64 = result
             .get("mac")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::Crypto("Missing mac in hmac_sha256 response".to_string()))?;
+            .ok_or_else(|| Error::Crypto(String::from("Missing mac in hmac_sha256 response")))?;
 
         let mac_bytes = BASE64
             .decode(mac_b64)
@@ -507,7 +506,7 @@ impl TorProtocolCrypto for CryptoProvider {
 
         let ciphertext_b64 =
             result.get("ciphertext").and_then(|v| v.as_str()).ok_or_else(|| {
-                Error::Crypto("Missing ciphertext in chacha20_poly1305 response".to_string())
+                Error::Crypto(String::from("Missing ciphertext in chacha20_poly1305 response"))
             })?;
 
         BASE64
@@ -536,7 +535,7 @@ impl TorProtocolCrypto for CryptoProvider {
             .map_err(|e| map_crypto_err(&e))?;
 
         let plaintext_b64 = result.get("plaintext").and_then(|v| v.as_str()).ok_or_else(|| {
-            Error::Crypto("Missing plaintext in chacha20_poly1305 response".to_string())
+            Error::Crypto(String::from("Missing plaintext in chacha20_poly1305 response"))
         })?;
 
         BASE64
@@ -596,7 +595,7 @@ mod tests {
 
     #[test]
     fn test_crypto_provider_new() {
-        let p = CryptoProvider::new("/tmp/test.sock".to_string());
+        let p = CryptoProvider::new(String::from("/tmp/test.sock"));
         assert_eq!(p.socket_path(), "/tmp/test.sock");
     }
 
@@ -604,7 +603,7 @@ mod tests {
     fn ntor_client_init_clone_copies_fields() {
         let a = NtorClientInit {
             client_public: [7u8; 32],
-            state_id: "state-1".to_string(),
+            state_id: String::from("state-1"),
         };
         let b = a.clone();
         assert_eq!(a.client_public, b.client_public);

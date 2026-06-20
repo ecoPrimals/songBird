@@ -195,6 +195,10 @@ impl DiscoveryHandler {
                     }
                     | EndpointType::Local {
                         addr,
+                    }
+                    | EndpointType::Overlay {
+                        addr,
+                        ..
                     } => addr.to_string(),
                     EndpointType::FamilyRelay {
                         relay_node_id,

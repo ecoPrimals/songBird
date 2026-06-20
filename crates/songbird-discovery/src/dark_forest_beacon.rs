@@ -55,11 +55,11 @@
 //! // Create payload
 //! let payload = BeaconPayload {
 //!     beacon_id: vec![1, 2, 3],
-//!     node_id: "my-node".to_string(),
-//!     endpoints: vec!["/ip4/127.0.0.1/tcp/1234".to_string()],
+//!     node_id: String::from("my-node"),
+//!     endpoints: vec![String::from("/ip4/127.0.0.1/tcp/1234")],
 //!     capabilities_hash: [0u8; 32],
 //!     cluster_id: None,
-//!     session_id: "session-abc".to_string(),
+//!     session_id: String::from("session-abc"),
 //!     created_at: 1234567890,
 //! };
 //!
@@ -344,7 +344,7 @@ impl BeaconPayload {
     ///
     /// ```
     /// use songbird_discovery::dark_forest_beacon::BeaconPayload;
-    /// let caps = vec!["ai".to_string(), "storage".to_string()];
+    /// let caps = vec![String::from("ai"), String::from("storage")];
     /// let hash = BeaconPayload::hash_capabilities(&caps);
     /// ```
     #[must_use]
@@ -466,11 +466,11 @@ mod tests {
     fn test_beacon_payload_creation() {
         let payload = BeaconPayload::new(
             vec![1, 2, 3],
-            "test-node".to_string(),
-            vec!["/ip4/127.0.0.1/tcp/1234".to_string()],
-            &["ai".to_string(), "storage".to_string()],
+            String::from("test-node"),
+            vec![String::from("/ip4/127.0.0.1/tcp/1234")],
+            &[String::from("ai"), String::from("storage")],
             None,
-            "session-123".to_string(),
+            String::from("session-123"),
         );
 
         assert_eq!(payload.node_id, "test-node");
@@ -483,13 +483,13 @@ mod tests {
     fn test_beacon_payload_with_wireguard() {
         let payload = BeaconPayload::new(
             vec![1, 2, 3],
-            "test-node".to_string(),
-            vec!["/ip4/127.0.0.1/tcp/1234".to_string()],
-            &["ai".to_string()],
+            String::from("test-node"),
+            vec![String::from("/ip4/127.0.0.1/tcp/1234")],
+            &[String::from("ai")],
             None,
-            "session-123".to_string(),
+            String::from("session-123"),
         )
-        .with_wireguard("1.2.3.4:51820".to_string(), "base64_pubkey_here".to_string());
+        .with_wireguard(String::from("1.2.3.4:51820"), String::from("base64_pubkey_here"));
 
         assert_eq!(payload.external_tunnels.len(), 1);
         assert_eq!(payload.external_tunnels[0].tunnel_type, TunnelType::WireGuard);
@@ -501,11 +501,11 @@ mod tests {
     fn test_beacon_payload_roundtrip() {
         let payload = BeaconPayload {
             beacon_id: vec![1, 2, 3],
-            node_id: "test-node".to_string(),
-            endpoints: vec!["/ip4/127.0.0.1/tcp/1234".to_string()],
+            node_id: String::from("test-node"),
+            endpoints: vec![String::from("/ip4/127.0.0.1/tcp/1234")],
             capabilities_hash: [0u8; 32],
-            cluster_id: Some("cluster-1".to_string()),
-            session_id: "session-123".to_string(),
+            cluster_id: Some(String::from("cluster-1")),
+            session_id: String::from("session-123"),
             external_tunnels: vec![],
             created_at: 1234567890,
         };
@@ -514,7 +514,7 @@ mod tests {
         let decoded = BeaconPayload::from_bytes(&bytes).unwrap();
 
         assert_eq!(decoded.node_id, "test-node");
-        assert_eq!(decoded.cluster_id, Some("cluster-1".to_string()));
+        assert_eq!(decoded.cluster_id, Some(String::from("cluster-1")));
         assert_eq!(decoded.created_at, 1234567890);
     }
 
@@ -570,10 +570,10 @@ mod tests {
 
     #[test]
     fn test_capabilities_hashing_deterministic() {
-        let caps1 = vec!["ai".to_string(), "storage".to_string()];
+        let caps1 = vec![String::from("ai"), String::from("storage")];
         let hash1 = BeaconPayload::hash_capabilities(&caps1);
 
-        let caps2 = vec!["ai".to_string(), "storage".to_string()];
+        let caps2 = vec![String::from("ai"), String::from("storage")];
         let hash2 = BeaconPayload::hash_capabilities(&caps2);
 
         assert_eq!(hash1, hash2, "Same capabilities should hash to same value");
@@ -581,10 +581,10 @@ mod tests {
 
     #[test]
     fn test_capabilities_hashing_order_independent() {
-        let caps1 = vec!["ai".to_string(), "storage".to_string()];
+        let caps1 = vec![String::from("ai"), String::from("storage")];
         let hash1 = BeaconPayload::hash_capabilities(&caps1);
 
-        let caps2 = vec!["storage".to_string(), "ai".to_string()]; // Different order
+        let caps2 = vec![String::from("storage"), String::from("ai")]; // Different order
         let hash2 = BeaconPayload::hash_capabilities(&caps2);
 
         assert_eq!(hash1, hash2, "Order should not affect hash");
@@ -592,10 +592,10 @@ mod tests {
 
     #[test]
     fn test_capabilities_hashing_different() {
-        let caps1 = vec!["ai".to_string(), "storage".to_string()];
+        let caps1 = vec![String::from("ai"), String::from("storage")];
         let hash1 = BeaconPayload::hash_capabilities(&caps1);
 
-        let caps2 = vec!["ai".to_string(), "compute".to_string()]; // Different capability
+        let caps2 = vec![String::from("ai"), String::from("compute")]; // Different capability
         let hash2 = BeaconPayload::hash_capabilities(&caps2);
 
         assert_ne!(hash1, hash2, "Different capabilities should hash differently");

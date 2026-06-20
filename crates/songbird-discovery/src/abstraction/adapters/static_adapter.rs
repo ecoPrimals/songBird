@@ -135,7 +135,10 @@ impl StaticProviderAdapter {
                 let mut meta = HashMap::new();
                 meta.insert("type".to_string(), "static".to_string());
                 meta.insert("protocol".to_string(), "memory".to_string());
-                meta.insert("vendor".to_string(), "songbird".to_string());
+                meta.insert(
+                    "vendor".to_string(),
+                    String::from(songbird_types::primal_names::SELF_NAME),
+                );
                 meta.insert("persistence".to_string(), "memory".to_string());
                 meta
             },

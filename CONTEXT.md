@@ -5,7 +5,7 @@
 **Phase**: Stadial (S1-S4 graduated, 4-gate mesh collective LIVE)
 **Version**: 0.2.1-wave113
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: June 19, 2026
+**Last Updated**: June 20, 2026
 
 ## What It Does
 

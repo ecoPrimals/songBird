@@ -270,6 +270,10 @@ impl MeshHandler {
                     }
                     | EndpointType::Local {
                         addr,
+                    }
+                    | EndpointType::Overlay {
+                        addr,
+                        ..
                     } => songbird_types::constants::jsonrpc_endpoint_url(&addr),
                     _ => continue,
                 };

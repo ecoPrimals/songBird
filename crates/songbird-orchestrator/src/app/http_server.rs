@@ -271,7 +271,8 @@ async fn start_https_server(
     let sans = sans_list;
 
     // Get node ID for common name
-    let node_id = SafeEnv::get_or_default("SONGBIRD_NODE_ID", "songbird");
+    let node_id =
+        SafeEnv::get_or_default("SONGBIRD_NODE_ID", songbird_types::primal_names::SELF_NAME);
 
     let sans_display = sans.join(", ");
 
@@ -502,18 +503,14 @@ async fn start_https_server(
 /// Dispatch a JSON-RPC method received over a riboCipher-signalled federation connection.
 ///
 /// Handles health/liveness probes natively; other methods get a generic ack.
-fn dispatch_federation_rpc(
-    method: &str,
-    id: serde_json::Value,
-    tier: &str,
-) -> serde_json::Value {
+fn dispatch_federation_rpc(method: &str, id: serde_json::Value, tier: &str) -> serde_json::Value {
     match method {
         "health.liveness" | "health" | "ping" => {
             serde_json::json!({
                 "jsonrpc": "2.0",
                 "result": {
                     "status": "healthy",
-                    "primal": "songbird",
+                    "primal": songbird_types::primal_names::SELF_NAME,
                     "version": env!("CARGO_PKG_VERSION"),
                     "tier": tier,
                     "uptime_secs": std::time::SystemTime::now()
@@ -534,7 +531,7 @@ fn dispatch_federation_rpc(
                         "health.liveness",
                         "birdsong.broadcast",
                     ],
-                    "primal": "songbird",
+                    "primal": songbird_types::primal_names::SELF_NAME,
                     "tier": tier,
                 },
                 "id": id

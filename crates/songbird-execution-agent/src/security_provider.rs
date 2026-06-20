@@ -211,24 +211,24 @@ impl SecurityProviderValidator {
     fn check_command_violations(&self, command: &str) -> Option<String> {
         // Empty command
         if command.trim().is_empty() {
-            return Some("empty_command".to_string());
+            return Some(String::from("empty_command"));
         }
 
         // Shell injection attempts
         if command.contains("$(") || command.contains('`') {
-            return Some("shell_injection".to_string());
+            return Some(String::from("shell_injection"));
         }
 
         // Path traversal
         if command.contains("../../../") {
-            return Some("path_traversal".to_string());
+            return Some(String::from("path_traversal"));
         }
 
         // Privilege escalation attempts
         if (command.starts_with("sudo ") || command.contains("| sudo "))
             && !self.policy.allow_privilege_escalation
         {
-            return Some("privilege_escalation".to_string());
+            return Some(String::from("privilege_escalation"));
         }
 
         None
@@ -341,19 +341,19 @@ impl ConservativePolicy {
                 max_threat_threshold: 0.3, // Very conservative
                 allow_privilege_escalation: false,
                 restrictions: vec![
-                    "no_privilege_escalation".to_string(),
-                    "limited_commands".to_string(),
+                    String::from("no_privilege_escalation"),
+                    String::from("limited_commands"),
                 ],
             },
             SovereigntyLevel::Enhanced => Self {
                 max_threat_threshold: 0.5,
                 allow_privilege_escalation: false,
-                restrictions: vec!["conservative_mode".to_string()],
+                restrictions: vec![String::from("conservative_mode")],
             },
             SovereigntyLevel::Maximum => Self {
                 max_threat_threshold: 0.7,
                 allow_privilege_escalation: false,
-                restrictions: vec!["monitored".to_string()],
+                restrictions: vec![String::from("monitored")],
             },
             SovereigntyLevel::Absolute => Self {
                 max_threat_threshold: 0.9,
@@ -408,8 +408,8 @@ mod tests {
         let mut validator = SecurityProviderValidator::new(SovereigntyLevel::Enhanced, false);
 
         let request = ExecutionSecurityRequest {
-            command: "echo hello world".to_string(),
-            requester_id: Some("test_user".to_string()),
+            command: String::from("echo hello world"),
+            requester_id: Some(String::from("test_user")),
             required_sovereignty: SovereigntyLevel::Basic,
         };
 
@@ -422,8 +422,8 @@ mod tests {
         let mut validator = SecurityProviderValidator::new(SovereigntyLevel::Enhanced, false);
 
         let request = ExecutionSecurityRequest {
-            command: "rm -rf /".to_string(),
-            requester_id: Some("test_user".to_string()),
+            command: String::from("rm -rf /"),
+            requester_id: Some(String::from("test_user")),
             required_sovereignty: SovereigntyLevel::Basic,
         };
 
@@ -436,8 +436,8 @@ mod tests {
         let mut validator = SecurityProviderValidator::new(SovereigntyLevel::Basic, false);
 
         let request = ExecutionSecurityRequest {
-            command: "echo test".to_string(),
-            requester_id: Some("test_user".to_string()),
+            command: String::from("echo test"),
+            requester_id: Some(String::from("test_user")),
             required_sovereignty: SovereigntyLevel::Maximum,
         };
 
