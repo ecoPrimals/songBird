@@ -13,7 +13,7 @@
 //! Failed announcements are queued with exponential backoff (skip cycles based on
 //! attempt count). Queue depth is capped at [`MAX_PENDING_QUEUE_DEPTH`] to prevent
 //! memory growth in multi-gate scenarios. Stale peer capabilities (not refreshed
-//! within [`CAPABILITY_TTL`]) are evicted on each health cycle.
+//! within `CAPABILITY_TTL`) are evicted on each health cycle.
 
 use serde_json::{Value, json};
 use songbird_onion_relay::mesh::EndpointType;
@@ -129,7 +129,7 @@ impl MeshHandler {
     /// Get capabilities for a specific remote peer (from announcements).
     ///
     /// Returns empty if the peer has no known capabilities or if the entry has
-    /// expired (older than [`CAPABILITY_TTL`]).
+    /// expired (older than `CAPABILITY_TTL`).
     #[must_use = "peer capabilities should be used in discovery responses"]
     pub async fn get_peer_capabilities(&self, node_id: &str) -> Vec<String> {
         let guard = self.peer_capabilities.read().await;
@@ -331,10 +331,10 @@ impl MeshHandler {
     ///
     /// Uses exponential backoff: an entry with N attempts is only retried if
     /// `2^N` health cycles have elapsed since enqueueing. Entries exceeding
-    /// [`MAX_ANNOUNCE_RETRIES`] or older than 10 minutes are dropped.
+    /// `MAX_ANNOUNCE_RETRIES` or older than 10 minutes are dropped.
     ///
     /// Also evicts stale entries from `peer_capabilities` that haven't been
-    /// refreshed within [`CAPABILITY_TTL`].
+    /// refreshed within `CAPABILITY_TTL`.
     pub async fn retry_pending_announces(&self) {
         // Evict stale peer capabilities
         {

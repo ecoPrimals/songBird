@@ -213,7 +213,7 @@ pub struct CapabilityCallParams {
 }
 
 fn default_routing() -> String {
-    "any".to_string()
+    String::from("any")
 }
 
 /// `capability.call` response — result from the resolved provider.
@@ -329,8 +329,8 @@ mod tests {
     #[test]
     fn register_result_serializes() {
         let result = RegisterResult {
-            virtual_endpoint: "/primal/security".to_string(),
-            registered_at: "2026-03-27T12:00:00Z".to_string(),
+            virtual_endpoint: String::from("/primal/security"),
+            registered_at: String::from("2026-03-27T12:00:00Z"),
             transport: None,
             signature: None,
             signed_payload: None,
@@ -344,13 +344,13 @@ mod tests {
     #[test]
     fn resolve_result_serializes_with_capabilities() {
         let result = ResolveResult {
-            socket: Some("/tmp/security.sock".to_string()),
-            virtual_endpoint: "/primal/security".to_string(),
-            native_endpoint: "unix:///tmp/security.sock".to_string(),
+            socket: Some(String::from("/tmp/security.sock")),
+            virtual_endpoint: String::from("/primal/security"),
+            native_endpoint: String::from("unix:///tmp/security.sock"),
             endpoint: TransportEndpoint::Uds {
-                path: "/tmp/security.sock".to_string(),
+                path: String::from("/tmp/security.sock"),
             },
-            capabilities: vec!["crypto".to_string(), "auth".to_string()],
+            capabilities: vec![String::from("crypto"), String::from("auth")],
             relay: false,
             relay_socket: None,
             signature: None,
@@ -379,11 +379,11 @@ mod tests {
     fn discover_result_with_providers() {
         let result = DiscoverResult {
             providers: vec![ProviderInfo {
-                primal_id: "songbird".to_string(),
-                socket: Some("/tmp/songbird.sock".to_string()),
-                virtual_endpoint: "/primal/songbird".to_string(),
-                native_endpoint: "unix:///tmp/songbird.sock".to_string(),
-                capabilities: vec!["network.discovery".to_string()],
+                primal_id: String::from("songbird"),
+                socket: Some(String::from("/tmp/songbird.sock")),
+                virtual_endpoint: String::from("/primal/songbird"),
+                native_endpoint: String::from("unix:///tmp/songbird.sock"),
+                capabilities: vec![String::from("network.discovery")],
                 signature: None,
                 signed_payload: None,
             }],
@@ -400,14 +400,17 @@ mod tests {
         let result = ListResult {
             services: vec![
                 ServiceInfo {
-                    primal_id: "security".to_string(),
-                    virtual_endpoint: "/primal/security".to_string(),
-                    capabilities: vec!["crypto".to_string()],
+                    primal_id: String::from("security"),
+                    virtual_endpoint: String::from("/primal/security"),
+                    capabilities: vec![String::from("crypto")],
                 },
                 ServiceInfo {
-                    primal_id: "songbird".to_string(),
-                    virtual_endpoint: "/primal/songbird".to_string(),
-                    capabilities: vec!["network.discovery".to_string(), "ipc.jsonrpc".to_string()],
+                    primal_id: String::from("songbird"),
+                    virtual_endpoint: String::from("/primal/songbird"),
+                    capabilities: vec![
+                        String::from("network.discovery"),
+                        String::from("ipc.jsonrpc"),
+                    ],
                 },
             ],
         };
@@ -421,7 +424,7 @@ mod tests {
     #[test]
     fn federation_peers_response_serializes() {
         let result = FederationPeersResponse {
-            peers: vec!["node-a".to_string(), "node-b".to_string()],
+            peers: vec![String::from("node-a"), String::from("node-b")],
             total_count: 2,
             federation_enabled: true,
         };
@@ -445,13 +448,13 @@ mod tests {
     #[test]
     fn provider_info_clone_is_independent() {
         let original = ProviderInfo {
-            primal_id: "test".to_string(),
-            socket: Some("/tmp/test.sock".to_string()),
-            virtual_endpoint: "/primal/test".to_string(),
-            native_endpoint: "unix:///tmp/test.sock".to_string(),
-            capabilities: vec!["cap1".to_string()],
-            signature: Some("sig123".to_string()),
-            signed_payload: Some("payload".to_string()),
+            primal_id: String::from("test"),
+            socket: Some(String::from("/tmp/test.sock")),
+            virtual_endpoint: String::from("/primal/test"),
+            native_endpoint: String::from("unix:///tmp/test.sock"),
+            capabilities: vec![String::from("cap1")],
+            signature: Some(String::from("sig123")),
+            signed_payload: Some(String::from("payload")),
         };
         let cloned = original.clone();
         assert_eq!(original.primal_id, cloned.primal_id);
@@ -468,12 +471,12 @@ mod tests {
     #[test]
     fn register_result_with_signature_serializes() {
         let result = RegisterResult {
-            virtual_endpoint: "/primal/nestgate".to_string(),
-            registered_at: "2026-04-28T14:00:00Z".to_string(),
+            virtual_endpoint: String::from("/primal/nestgate"),
+            registered_at: String::from("2026-04-28T14:00:00Z"),
             transport: Some(TransportEndpoint::Uds {
-                path: "/tmp/ng.sock".to_string(),
+                path: String::from("/tmp/ng.sock"),
             }),
-            signature: Some("c2lnbmF0dXJl".to_string()),
+            signature: Some(String::from("c2lnbmF0dXJl")),
             signed_payload: Some(
                 r#"{"c":["storage"],"e":"/tmp/ng.sock","p":"nestgate","t":"2026-04-28T14:00:00Z"}"#
                     .to_string(),
@@ -487,10 +490,10 @@ mod tests {
     #[test]
     fn register_result_transport_wire_format_sourdough_compat() {
         let uds_result = RegisterResult {
-            virtual_endpoint: "/primal/test".to_string(),
-            registered_at: "2026-06-08T00:00:00Z".to_string(),
+            virtual_endpoint: String::from("/primal/test"),
+            registered_at: String::from("2026-06-08T00:00:00Z"),
             transport: Some(TransportEndpoint::Uds {
-                path: "/run/user/1000/biomeos/test.sock".to_string(),
+                path: String::from("/run/user/1000/biomeos/test.sock"),
             }),
             signature: None,
             signed_payload: None,
@@ -501,10 +504,10 @@ mod tests {
         assert_eq!(t["path"], "/run/user/1000/biomeos/test.sock");
 
         let tcp_result = RegisterResult {
-            virtual_endpoint: "/primal/test-tcp".to_string(),
-            registered_at: "2026-06-08T00:00:00Z".to_string(),
+            virtual_endpoint: String::from("/primal/test-tcp"),
+            registered_at: String::from("2026-06-08T00:00:00Z"),
             transport: Some(TransportEndpoint::Tcp {
-                host: "127.0.0.1".to_string(),
+                host: String::from("127.0.0.1"),
                 port: 9876,
             }),
             signature: None,
@@ -520,17 +523,17 @@ mod tests {
     #[test]
     fn resolve_result_with_signature_serializes() {
         let result = ResolveResult {
-            socket: Some("/run/user/1000/biomeos/beardog.sock".to_string()),
-            virtual_endpoint: "/primal/beardog".to_string(),
-            native_endpoint: "unix:///run/user/1000/biomeos/beardog.sock".to_string(),
+            socket: Some(String::from("/run/user/1000/biomeos/beardog.sock")),
+            virtual_endpoint: String::from("/primal/beardog"),
+            native_endpoint: String::from("unix:///run/user/1000/biomeos/beardog.sock"),
             endpoint: TransportEndpoint::Uds {
-                path: "/run/user/1000/biomeos/beardog.sock".to_string(),
+                path: String::from("/run/user/1000/biomeos/beardog.sock"),
             },
-            capabilities: vec!["crypto".to_string()],
+            capabilities: vec![String::from("crypto")],
             relay: false,
             relay_socket: None,
-            signature: Some("sig_b64".to_string()),
-            signed_payload: Some("payload_json".to_string()),
+            signature: Some(String::from("sig_b64")),
+            signed_payload: Some(String::from("payload_json")),
         };
         let json = serde_json::to_value(&result).unwrap();
         assert_eq!(json["signature"], "sig_b64");
@@ -542,14 +545,14 @@ mod tests {
     #[test]
     fn capability_resolve_result_omits_none_signature() {
         let result = CapabilityResolveResult {
-            primal_id: "songbird".to_string(),
-            socket: Some("/tmp/songbird.sock".to_string()),
-            virtual_endpoint: "/primal/songbird".to_string(),
-            native_endpoint: "unix:///tmp/songbird.sock".to_string(),
+            primal_id: String::from("songbird"),
+            socket: Some(String::from("/tmp/songbird.sock")),
+            virtual_endpoint: String::from("/primal/songbird"),
+            native_endpoint: String::from("unix:///tmp/songbird.sock"),
             endpoint: TransportEndpoint::Uds {
-                path: "/tmp/songbird.sock".to_string(),
+                path: String::from("/tmp/songbird.sock"),
             },
-            capabilities: vec!["network.discovery".to_string()],
+            capabilities: vec![String::from("network.discovery")],
             signature: None,
             signed_payload: None,
         };
@@ -563,7 +566,7 @@ mod tests {
     #[test]
     fn transport_endpoint_uds_serializes_tagged() {
         let ep = TransportEndpoint::Uds {
-            path: "/run/membrane/beardog.sock".to_string(),
+            path: String::from("/run/membrane/beardog.sock"),
         };
         let json = serde_json::to_value(&ep).unwrap();
         assert_eq!(json["transport"], "uds");
@@ -576,8 +579,8 @@ mod tests {
     #[test]
     fn transport_endpoint_mesh_relay_serializes_tagged() {
         let ep = TransportEndpoint::MeshRelay {
-            peer_id: "strand-gate".to_string(),
-            capability: "security".to_string(),
+            peer_id: String::from("strand-gate"),
+            capability: String::from("security"),
         };
         let json = serde_json::to_value(&ep).unwrap();
         assert_eq!(json["transport"], "mesh_relay");
@@ -590,7 +593,7 @@ mod tests {
     #[test]
     fn transport_endpoint_tcp_serializes_tagged() {
         let ep = TransportEndpoint::Tcp {
-            host: "192.168.1.144".to_string(),
+            host: String::from("192.168.1.144"),
             port: 7700,
         };
         let json = serde_json::to_value(&ep).unwrap();
@@ -604,7 +607,7 @@ mod tests {
     #[test]
     fn transport_endpoint_uds_round_trips() {
         let ep = TransportEndpoint::Uds {
-            path: "/tmp/test.sock".to_string(),
+            path: String::from("/tmp/test.sock"),
         };
         let json_str = serde_json::to_string(&ep).unwrap();
         let deserialized: TransportEndpoint = serde_json::from_str(&json_str).unwrap();
@@ -614,8 +617,8 @@ mod tests {
     #[test]
     fn transport_endpoint_mesh_relay_round_trips() {
         let ep = TransportEndpoint::MeshRelay {
-            peer_id: "east-gate".to_string(),
-            capability: "crypto".to_string(),
+            peer_id: String::from("east-gate"),
+            capability: String::from("crypto"),
         };
         let json_str = serde_json::to_string(&ep).unwrap();
         let deserialized: TransportEndpoint = serde_json::from_str(&json_str).unwrap();
@@ -625,7 +628,7 @@ mod tests {
     #[test]
     fn transport_endpoint_tcp_round_trips() {
         let ep = TransportEndpoint::Tcp {
-            host: "10.0.0.1".to_string(),
+            host: String::from("10.0.0.1"),
             port: 8080,
         };
         let json_str = serde_json::to_string(&ep).unwrap();
@@ -641,7 +644,7 @@ mod tests {
         assert_eq!(
             uds,
             TransportEndpoint::Uds {
-                path: "/run/membrane/beardog.sock".to_string()
+                path: String::from("/run/membrane/beardog.sock")
             }
         );
 
@@ -652,8 +655,8 @@ mod tests {
         assert_eq!(
             relay,
             TransportEndpoint::MeshRelay {
-                peer_id: "strand-gate".to_string(),
-                capability: "security".to_string()
+                peer_id: String::from("strand-gate"),
+                capability: String::from("security")
             }
         );
 
@@ -663,7 +666,7 @@ mod tests {
         assert_eq!(
             tcp,
             TransportEndpoint::Tcp {
-                host: "192.168.1.144".to_string(),
+                host: String::from("192.168.1.144"),
                 port: 7700
             }
         );

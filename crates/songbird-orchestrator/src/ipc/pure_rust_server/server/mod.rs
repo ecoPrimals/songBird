@@ -189,7 +189,7 @@ impl UnixSocketServer {
         info!("🔌 Starting IPC server (isomorphic mode)...");
         info!("   Socket path: {}", self.socket_path.display());
 
-        match self.clone().try_unix_server().await {
+        match Arc::clone(&self).try_unix_server().await {
             Ok(()) => Ok(()),
             Err(e) => {
                 if self.is_platform_constraint(&e) {

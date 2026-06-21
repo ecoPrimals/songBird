@@ -686,6 +686,7 @@ pub async fn start_tarpc_server(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

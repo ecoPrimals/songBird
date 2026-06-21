@@ -68,7 +68,7 @@ impl MockRemoteGate {
                         return;
                     };
                     let method = req.get("method").and_then(Value::as_str).unwrap_or("");
-                    let id = req.get("id").cloned().unwrap_or(json!(1));
+                    let id = req.get("id").cloned().unwrap_or_else(|| json!(1));
 
                     let response = match method {
                         "capabilities.list" => {

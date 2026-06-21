@@ -84,7 +84,7 @@ impl ModernizedDiscoveryFactory {
 
         if songbird_process_env::var("KUBERNETES_SERVICE_HOST").is_ok() {
             let namespace = songbird_process_env::var("KUBERNETES_NAMESPACE")
-                .unwrap_or_else(|_| "default".to_string());
+                .unwrap_or_else(|_| String::from("default"));
             configs.push(self.create_kubernetes_config_from_env(namespace));
         }
 
@@ -129,7 +129,7 @@ impl ModernizedDiscoveryFactory {
 
     /// Get available provider types
     pub async fn available_provider_types(&self) -> Vec<String> {
-        vec!["static".to_string(), "consul".to_string(), "kubernetes".to_string()]
+        vec![String::from("static"), String::from("consul"), String::from("kubernetes")]
     }
 
     /// Validate configuration before creating providers
@@ -157,15 +157,15 @@ impl ModernizedDiscoveryFactory {
 
         if let Ok(services_json) = songbird_process_env::var("SONGBIRD_STATIC_SERVICES") {
             if let Ok(services) = serde_json::from_str::<serde_json::Value>(&services_json) {
-                parameters.insert("services".to_string(), services);
+                parameters.insert(String::from("services"), services);
             }
         }
 
-        parameters.insert("type".to_string(), serde_json::Value::String("static".to_string()));
+        parameters.insert(String::from("type"), serde_json::Value::String(String::from("static")));
 
         ProviderConfig {
-            id: "env-static".to_string(),
-            name: "Environment Static Provider".to_string(),
+            id: String::from("env-static"),
+            name: String::from("Environment Static Provider"),
             parameters,
             environment: HashMap::new(),
             timeout_ms: Some(1000),
@@ -175,21 +175,21 @@ impl ModernizedDiscoveryFactory {
 
     fn create_consul_config_from_env(&self, consul_url: String) -> ProviderConfig {
         let mut parameters = HashMap::new();
-        parameters.insert("type".to_string(), serde_json::Value::String("consul".to_string()));
-        parameters.insert("url".to_string(), serde_json::Value::String(consul_url));
+        parameters.insert(String::from("type"), serde_json::Value::String(String::from("consul")));
+        parameters.insert(String::from("url"), serde_json::Value::String(consul_url));
 
         if let Ok(datacenter) = songbird_process_env::var("CONSUL_DATACENTER") {
-            parameters.insert("datacenter".to_string(), serde_json::Value::String(datacenter));
+            parameters.insert(String::from("datacenter"), serde_json::Value::String(datacenter));
         }
 
         let mut environment = HashMap::new();
         if let Ok(token) = songbird_process_env::var("CONSUL_TOKEN") {
-            environment.insert("CONSUL_TOKEN".to_string(), token);
+            environment.insert(String::from("CONSUL_TOKEN"), token);
         }
 
         ProviderConfig {
-            id: "env-consul".to_string(),
-            name: "Environment Consul Provider".to_string(),
+            id: String::from("env-consul"),
+            name: String::from("Environment Consul Provider"),
             parameters,
             environment,
             timeout_ms: Some(10_000),
@@ -199,17 +199,18 @@ impl ModernizedDiscoveryFactory {
 
     fn create_kubernetes_config_from_env(&self, namespace: String) -> ProviderConfig {
         let mut parameters = HashMap::new();
-        parameters.insert("type".to_string(), serde_json::Value::String("kubernetes".to_string()));
-        parameters.insert("namespace".to_string(), serde_json::Value::String(namespace));
+        parameters
+            .insert(String::from("type"), serde_json::Value::String(String::from("kubernetes")));
+        parameters.insert(String::from("namespace"), serde_json::Value::String(namespace));
 
         let mut environment = HashMap::new();
         if let Ok(kubeconfig) = songbird_process_env::var("KUBECONFIG") {
-            environment.insert("KUBECONFIG".to_string(), kubeconfig);
+            environment.insert(String::from("KUBECONFIG"), kubeconfig);
         }
 
         ProviderConfig {
-            id: "env-kubernetes".to_string(),
-            name: "Environment Kubernetes Provider".to_string(),
+            id: String::from("env-kubernetes"),
+            name: String::from("Environment Kubernetes Provider"),
             parameters,
             environment,
             timeout_ms: Some(30_000),
@@ -251,12 +252,12 @@ impl DiscoveryConfigBuilder {
     #[must_use]
     pub fn add_static(mut self, id: String, services: Vec<serde_json::Value>) -> Self {
         let mut parameters = HashMap::new();
-        parameters.insert("type".to_string(), serde_json::Value::String("static".to_string()));
-        parameters.insert("services".to_string(), serde_json::Value::Array(services));
+        parameters.insert(String::from("type"), serde_json::Value::String(String::from("static")));
+        parameters.insert(String::from("services"), serde_json::Value::Array(services));
 
         self.configs.push(ProviderConfig {
             id,
-            name: "Static Provider".to_string(),
+            name: String::from("Static Provider"),
             parameters,
             environment: HashMap::new(),
             timeout_ms: Some(1000),
@@ -270,12 +271,12 @@ impl DiscoveryConfigBuilder {
     #[must_use]
     pub fn add_consul(mut self, id: String, url: String) -> Self {
         let mut parameters = HashMap::new();
-        parameters.insert("type".to_string(), serde_json::Value::String("consul".to_string()));
-        parameters.insert("url".to_string(), serde_json::Value::String(url));
+        parameters.insert(String::from("type"), serde_json::Value::String(String::from("consul")));
+        parameters.insert(String::from("url"), serde_json::Value::String(url));
 
         self.configs.push(ProviderConfig {
             id,
-            name: "Consul Provider".to_string(),
+            name: String::from("Consul Provider"),
             parameters,
             environment: HashMap::new(),
             timeout_ms: Some(10_000),
@@ -289,12 +290,13 @@ impl DiscoveryConfigBuilder {
     #[must_use]
     pub fn add_kubernetes(mut self, id: String, namespace: String) -> Self {
         let mut parameters = HashMap::new();
-        parameters.insert("type".to_string(), serde_json::Value::String("kubernetes".to_string()));
-        parameters.insert("namespace".to_string(), serde_json::Value::String(namespace));
+        parameters
+            .insert(String::from("type"), serde_json::Value::String(String::from("kubernetes")));
+        parameters.insert(String::from("namespace"), serde_json::Value::String(namespace));
 
         self.configs.push(ProviderConfig {
             id,
-            name: "Kubernetes Provider".to_string(),
+            name: String::from("Kubernetes Provider"),
             parameters,
             environment: HashMap::new(),
             timeout_ms: Some(30_000),
@@ -326,9 +328,9 @@ mod tests {
         let factory = ModernizedDiscoveryFactory::new().await.expect("create modernized factory");
         let types = factory.available_provider_types().await;
 
-        assert!(types.contains(&"static".to_string()));
-        assert!(types.contains(&"consul".to_string()));
-        assert!(types.contains(&"kubernetes".to_string()));
+        assert!(types.contains(&String::from("static")));
+        assert!(types.contains(&String::from("consul")));
+        assert!(types.contains(&String::from("kubernetes")));
     }
 
     #[tokio::test]
@@ -342,8 +344,8 @@ mod tests {
         );
 
         let configs = DiscoveryConfigBuilder::new()
-            .add_static("static-1".to_string(), vec![])
-            .add_consul("consul-1".to_string(), test_consul_url)
+            .add_static(String::from("static-1"), vec![])
+            .add_consul(String::from("consul-1"), test_consul_url)
             .build();
 
         assert_eq!(configs.len(), 2);
@@ -355,7 +357,8 @@ mod tests {
     async fn test_config_validation() {
         let factory = ModernizedDiscoveryFactory::new().await.expect("create modernized factory");
 
-        let configs = DiscoveryConfigBuilder::new().add_static("test".to_string(), vec![]).build();
+        let configs =
+            DiscoveryConfigBuilder::new().add_static(String::from("test"), vec![]).build();
 
         assert!(factory.validate_configs(&configs).await.is_ok());
     }

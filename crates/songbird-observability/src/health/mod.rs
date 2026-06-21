@@ -151,7 +151,7 @@ impl HealthChecker {
             match check.run() {
                 Ok(result) => results.push(result),
                 Err(err) => results.push(HealthCheckResult {
-                    name: "Unknown".to_string(),
+                    name: String::from("Unknown"),
                     status: HealthStatus::Unhealthy,
                     message: format!("Check failed: {err:?}"),
                     response_time_ms: 0,
@@ -222,7 +222,7 @@ impl HealthProbe {
                 timeout,
             } => Self::timed_probe(name, || {
                 std::net::TcpStream::connect_timeout(addr, *timeout)
-                    .map(|_| "connected".to_string())
+                    .map(|_| String::from("connected"))
                     .map_err(|e| format!("tcp connect failed: {e}"))
             }),
             #[cfg(unix)]
@@ -233,7 +233,7 @@ impl HealthProbe {
                 let p = path.clone();
                 Self::timed_probe(name, || {
                     std::os::unix::net::UnixStream::connect(&p)
-                        .map(|_| "socket reachable".to_string())
+                        .map(|_| String::from("socket reachable"))
                         .map_err(|e| format!("socket unreachable: {e}"))
                 })
             }
@@ -246,7 +246,7 @@ impl HealthProbe {
                     let accessible = p.exists()
                         && p.metadata().map(|m| !m.permissions().readonly()).unwrap_or(false);
                     if accessible {
-                        Ok("path accessible and writable".to_string())
+                        Ok(String::from("path accessible and writable"))
                     } else {
                         Err(format!("path not accessible: {}", p.display()))
                     }
@@ -307,7 +307,7 @@ impl HealthProbe {
         } else if let Some(err) = resp["error"]["message"].as_str() {
             Err(err.to_string())
         } else {
-            Ok("ok".to_string())
+            Ok(String::from("ok"))
         }
     }
 }
@@ -325,7 +325,7 @@ mod probe_tests {
         let addr = listener.local_addr().unwrap();
 
         let probe = HealthProbe::TcpConnect {
-            name: "test-tcp".to_string(),
+            name: String::from("test-tcp"),
             addr,
             timeout: std::time::Duration::from_secs(1),
         };
@@ -340,7 +340,7 @@ mod probe_tests {
         let addr: std::net::SocketAddr = "127.0.0.1:1".parse().unwrap();
 
         let probe = HealthProbe::TcpConnect {
-            name: "test-tcp-fail".to_string(),
+            name: String::from("test-tcp-fail"),
             addr,
             timeout: std::time::Duration::from_millis(50),
         };
@@ -358,7 +358,7 @@ mod probe_tests {
         let _listener = std::os::unix::net::UnixListener::bind(&sock_path).unwrap();
 
         let probe = HealthProbe::UnixSocket {
-            name: "test-uds".to_string(),
+            name: String::from("test-uds"),
             path: sock_path,
         };
 
@@ -371,7 +371,7 @@ mod probe_tests {
     #[test]
     fn unix_socket_probe_unhealthy() {
         let probe = HealthProbe::UnixSocket {
-            name: "test-uds-fail".to_string(),
+            name: String::from("test-uds-fail"),
             path: std::path::PathBuf::from("/tmp/nonexistent-songbird-test-probe.sock"),
         };
 
@@ -384,7 +384,7 @@ mod probe_tests {
     fn filesystem_access_probe_healthy() {
         let dir = tempfile::tempdir().unwrap();
         let probe = HealthProbe::FilesystemAccess {
-            name: "test-fs".to_string(),
+            name: String::from("test-fs"),
             path: dir.path().to_path_buf(),
         };
 
@@ -395,7 +395,7 @@ mod probe_tests {
     #[test]
     fn filesystem_access_probe_missing_path() {
         let probe = HealthProbe::FilesystemAccess {
-            name: "test-fs-missing".to_string(),
+            name: String::from("test-fs-missing"),
             path: std::path::PathBuf::from("/nonexistent/songbird/test/path"),
         };
 
@@ -406,8 +406,8 @@ mod probe_tests {
     #[test]
     fn custom_probe_healthy() {
         let probe = HealthProbe::Custom {
-            name: "custom-ok".to_string(),
-            check: Arc::new(|| Ok("all good".to_string())),
+            name: String::from("custom-ok"),
+            check: Arc::new(|| Ok(String::from("all good"))),
         };
 
         let result = probe.run().unwrap();
@@ -418,8 +418,8 @@ mod probe_tests {
     #[test]
     fn custom_probe_unhealthy() {
         let probe = HealthProbe::Custom {
-            name: "custom-fail".to_string(),
-            check: Arc::new(|| Err("something broke".to_string())),
+            name: String::from("custom-fail"),
+            check: Arc::new(|| Err(String::from("something broke"))),
         };
 
         let result = probe.run().unwrap();
@@ -434,13 +434,13 @@ mod probe_tests {
 
         let mut checker = HealthChecker::new();
         checker.add_check(HealthProbe::TcpConnect {
-            name: "tcp".to_string(),
+            name: String::from("tcp"),
             addr,
             timeout: std::time::Duration::from_secs(1),
         });
         checker.add_check(HealthProbe::Custom {
-            name: "custom".to_string(),
-            check: Arc::new(|| Ok("ok".to_string())),
+            name: String::from("custom"),
+            check: Arc::new(|| Ok(String::from("ok"))),
         });
 
         let results = checker.check_all();
@@ -452,12 +452,12 @@ mod probe_tests {
     fn health_checker_captures_failures() {
         let mut checker = HealthChecker::new();
         checker.add_check(HealthProbe::Custom {
-            name: "pass".to_string(),
-            check: Arc::new(|| Ok("fine".to_string())),
+            name: String::from("pass"),
+            check: Arc::new(|| Ok(String::from("fine"))),
         });
         checker.add_check(HealthProbe::Custom {
-            name: "fail".to_string(),
-            check: Arc::new(|| Err("broken".to_string())),
+            name: String::from("fail"),
+            check: Arc::new(|| Err(String::from("broken"))),
         });
 
         let results = checker.check_all();
@@ -469,10 +469,10 @@ mod probe_tests {
     #[test]
     fn probe_measures_response_time() {
         let probe = HealthProbe::Custom {
-            name: "timed".to_string(),
+            name: String::from("timed"),
             check: Arc::new(|| {
                 std::thread::sleep(std::time::Duration::from_millis(10));
-                Ok("done".to_string())
+                Ok(String::from("done"))
             }),
         };
 

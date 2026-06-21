@@ -79,7 +79,7 @@ impl DiscoveryHandler {
         }
     }
 
-    /// Inject a custom registry slot (e.g. [`PeerRegistrySlot::Mock`] in unit tests).
+    /// Inject a custom registry slot (e.g. `PeerRegistrySlot::Mock` in unit tests).
     #[must_use]
     pub fn with_peer_registry(slot: PeerRegistrySlot) -> Self {
         Self {

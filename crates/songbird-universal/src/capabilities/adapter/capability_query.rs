@@ -150,7 +150,7 @@ impl CapabilityQuery {
             }
         }
 
-        Err(CapabilityError::NetworkError("All capability endpoints failed".to_string()))
+        Err(CapabilityError::NetworkError(String::from("All capability endpoints failed")))
     }
 
     /// Infer basic capabilities from primal name and endpoint
@@ -161,51 +161,51 @@ impl CapabilityQuery {
         match primal_type {
             PrimalType::Security => vec![
                 Capability {
-                    capability_type: "authentication".to_string(),
-                    name: "auth_service".to_string(),
-                    version: "1.0".to_string(),
+                    capability_type: String::from("authentication"),
+                    name: String::from("auth_service"),
+                    version: String::from("1.0"),
                     parameters: HashMap::default(),
                     qos_metrics: QoSMetrics::default(),
                     available: true,
                 },
                 Capability {
-                    capability_type: "encryption".to_string(),
-                    name: "encryption_service".to_string(),
-                    version: "1.0".to_string(),
+                    capability_type: String::from("encryption"),
+                    name: String::from("encryption_service"),
+                    version: String::from("1.0"),
                     parameters: HashMap::default(),
                     qos_metrics: QoSMetrics::default(),
                     available: true,
                 },
             ],
             PrimalType::Compute => vec![Capability {
-                capability_type: "compute".to_string(),
-                name: "compute_service".to_string(),
-                version: "1.0".to_string(),
+                capability_type: String::from("compute"),
+                name: String::from("compute_service"),
+                version: String::from("1.0"),
                 parameters: HashMap::default(),
                 qos_metrics: QoSMetrics::default(),
                 available: true,
             }],
             PrimalType::Storage => vec![Capability {
-                capability_type: "storage".to_string(),
-                name: "storage_service".to_string(),
-                version: "1.0".to_string(),
+                capability_type: String::from("storage"),
+                name: String::from("storage_service"),
+                version: String::from("1.0"),
                 parameters: HashMap::default(),
                 qos_metrics: QoSMetrics::default(),
                 available: true,
             }],
             PrimalType::AI => vec![
                 Capability {
-                    capability_type: "ai".to_string(),
-                    name: "ai_service".to_string(),
-                    version: "1.0".to_string(),
+                    capability_type: String::from("ai"),
+                    name: String::from("ai_service"),
+                    version: String::from("1.0"),
                     parameters: HashMap::default(),
                     qos_metrics: QoSMetrics::default(),
                     available: true,
                 },
                 Capability {
-                    capability_type: "ml".to_string(),
-                    name: "ml_service".to_string(),
-                    version: "1.0".to_string(),
+                    capability_type: String::from("ml"),
+                    name: String::from("ml_service"),
+                    version: String::from("1.0"),
                     parameters: HashMap::default(),
                     qos_metrics: QoSMetrics::default(),
                     available: true,
@@ -331,11 +331,11 @@ mod tests {
     async fn test_check_primal_provides_capability() {
         let mut registry = CapabilityRegistry::default();
         registry.primal_capabilities.insert(
-            "p1".to_string(),
+            String::from("p1"),
             vec![Capability {
-                capability_type: "storage".to_string(),
-                name: "blob".to_string(),
-                version: "1".to_string(),
+                capability_type: String::from("storage"),
+                name: String::from("blob"),
+                version: String::from("1"),
                 parameters: Default::default(),
                 qos_metrics: QoSMetrics::default(),
                 available: true,
@@ -360,7 +360,7 @@ mod tests {
     async fn test_get_best_primal_first_without_qos_selector() {
         let mut reg = CapabilityRegistry::default();
         reg.capability_providers
-            .insert("compute".to_string(), vec!["alpha".to_string(), "beta".to_string()]);
+            .insert(String::from("compute"), vec![String::from("alpha"), String::from("beta")]);
         reg.qos_selector = None;
         let registry = Arc::new(RwLock::new(reg));
         let q = CapabilityQuery::new(registry);

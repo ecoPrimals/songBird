@@ -454,8 +454,13 @@ impl SessionKeys {
 }
 
 #[cfg(all(test, feature = "standalone"))]
+#[allow(
+    clippy::case_sensitive_file_extension_comparisons,
+    clippy::unused_async,
+    clippy::unwrap_used,
+    clippy::expect_used
+)]
 mod tests {
-    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
 
@@ -548,6 +553,7 @@ mod tests {
 #[cfg(test)]
 mod stored_identity_tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::case_sensitive_file_extension_comparisons)]
 
     use crate::keys::OnionIdentity;
     use serde_json::json;
@@ -633,6 +639,8 @@ mod stored_identity_tests {
 #[cfg(test)]
 mod keys_security_provider_tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::case_sensitive_file_extension_comparisons)]
+    #![allow(clippy::unused_async)]
 
     use super::{EphemeralKeypair, OnionIdentity, SessionKeys};
     use crate::security_crypto::SecurityCryptoClient;

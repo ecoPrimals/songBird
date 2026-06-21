@@ -613,5 +613,5 @@ fn message_integrity_wrong_length_rejected_on_decode() {
 fn fingerprint_wrong_length_rejected_on_decode() {
     let mut buf: &[u8] = &[0x80, 0x28, 0x00, 0x02, 0x01, 0x02];
     let err = StunAttribute::decode(&mut buf).expect_err("FP must be 4 bytes");
-    assert!(err.to_string().contains("4"));
+    assert!(err.to_string().contains('4'));
 }

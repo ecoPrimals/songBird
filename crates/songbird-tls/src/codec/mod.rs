@@ -494,13 +494,13 @@ mod tests {
         let mut buf = Vec::new();
         write_u8(&mut buf, 0x01);
         write_u16(&mut buf, 0x0203);
-        write_u24(&mut buf, 0x040506);
+        write_u24(&mut buf, 0x04_0506);
         write_u32(&mut buf, 0x0708_090A);
 
         let mut off = 0;
         assert_eq!(read_u8(&buf, &mut off).unwrap(), 0x01);
         assert_eq!(read_u16(&buf, &mut off).unwrap(), 0x0203);
-        assert_eq!(read_u24(&buf, &mut off).unwrap(), 0x040506);
+        assert_eq!(read_u24(&buf, &mut off).unwrap(), 0x04_0506);
         assert_eq!(read_u32(&buf, &mut off).unwrap(), 0x0708_090A);
         assert_eq!(off, buf.len());
     }

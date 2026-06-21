@@ -589,7 +589,7 @@ mod discover_socket_unix_tests {
             let _neural = ScopedEnv::new("NEURAL_API_SOCKET", &ghost);
             let _sec = ScopedEnv::new("SECURITY_PROVIDER_SOCKET", &ghost);
             let _biome = ScopedEnv::new("BIOMEOS_SOCKET", &ghost);
-            let _xdg = ScopedEnv::new("XDG_RUNTIME_DIR", &next_temp_path("empty-xdg"));
+            let _xdg = ScopedEnv::new("XDG_RUNTIME_DIR", next_temp_path("empty-xdg"));
 
             let err = SecurityTlsCryptoClient::discover_socket_unix().unwrap_err();
             assert!(
@@ -628,6 +628,10 @@ async fn spawn_unix_jsonrpc_echo(expected_method: &str, response_body: &str) -> 
 }
 
 #[tokio::test]
+#[expect(
+    clippy::await_holding_lock,
+    reason = "env test serialization requires lock held across await"
+)]
 async fn new_parses_security_provider_mode_direct() {
     let _guard = ENV_OVERLAY_TEST_LOCK.lock().expect("env test lock");
     reset_overlay_for_test();
@@ -643,6 +647,10 @@ async fn new_parses_security_provider_mode_direct() {
 }
 
 #[tokio::test]
+#[expect(
+    clippy::await_holding_lock,
+    reason = "env test serialization requires lock held across await"
+)]
 async fn new_parses_beardog_mode_direct_case_insensitive() {
     let _guard = ENV_OVERLAY_TEST_LOCK.lock().expect("env test lock");
     reset_overlay_for_test();
@@ -658,6 +666,10 @@ async fn new_parses_beardog_mode_direct_case_insensitive() {
 }
 
 #[tokio::test]
+#[expect(
+    clippy::await_holding_lock,
+    reason = "env test serialization requires lock held across await"
+)]
 async fn new_defaults_to_neural_mode_when_env_unset() {
     let _guard = ENV_OVERLAY_TEST_LOCK.lock().expect("env test lock");
     reset_overlay_for_test();

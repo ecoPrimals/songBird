@@ -3,6 +3,7 @@
 
 #![allow(clippy::unwrap_used, reason = "test assertions")]
 #![allow(clippy::expect_used, reason = "test assertions")]
+#![allow(clippy::unchecked_time_subtraction, reason = "test time arithmetic")]
 
 use super::*;
 use crate::registry::ServiceRegistry;

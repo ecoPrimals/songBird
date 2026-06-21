@@ -68,6 +68,10 @@ impl GenesisExchange {
                 #[cfg(test)]
                 {
                     tracing::warn!("Test mode: DH fallback to zero secret (provider: {e})");
+                    #[allow(
+                        clippy::needless_return,
+                        reason = "cfg(test) block requires explicit return"
+                    )]
                     return Ok(vec![0u8; 32]);
                 }
                 #[cfg(not(test))]

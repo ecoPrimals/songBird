@@ -220,7 +220,8 @@ mod tests {
                 if n == 0 {
                     continue;
                 }
-                let req: serde_json::Value = serde_json::from_slice(&buf[..n]).unwrap_or(json!({}));
+                let req: serde_json::Value =
+                    serde_json::from_slice(&buf[..n]).unwrap_or_else(|_| json!({}));
                 let method = req["method"].as_str().unwrap_or("");
                 let params = &req["params"];
 

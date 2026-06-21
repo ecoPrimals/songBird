@@ -4,7 +4,7 @@
 //! Dynamic plugin registry and composition
 //!
 //! Provides runtime plugin discovery and composition capabilities.
-//! Plugins are metadata-only [`RegisteredPlugin`] structs (no trait-object dispatch).
+//! Plugins are metadata-only `RegisteredPlugin` structs (no trait-object dispatch).
 
 mod types;
 

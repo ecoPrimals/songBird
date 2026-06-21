@@ -39,7 +39,8 @@
 //! Tests the federation coordination system with modern concurrent patterns
 
 use songbird_network_federation::NetworkFederationBridge;
-use songbird_network_federation::federation::{FederationConfig, FederationCoordinator};
+use songbird_network_federation::federation::FederationCoordinator;
+use songbird_network_federation::federation_config::FederationConfig;
 use songbird_network_federation::state::{NodeRegistration, NodeStatus};
 
 // ============================================================================

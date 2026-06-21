@@ -161,19 +161,19 @@ mod tests {
     #[test]
     fn test_peer_https_endpoint() {
         let peer = DiscoveredPeer {
-            session_id: "test-session".to_string(),
+            session_id: String::from("test-session"),
             node_id: None,
             node_name: None,
             endpoints: None,
-            capabilities: vec!["orchestration".to_string()],
+            capabilities: vec![String::from("orchestration")],
             tags: None,
             timestamp: None,
             identity_attestations: None,
-            protocols: vec!["https".to_string()],
+            protocols: vec![String::from("https")],
             port: 8080,
             address: "192.168.1.100:5353".parse().unwrap(),
             last_seen: SystemTime::now(),
-            version: "2.1".to_string(),
+            version: String::from("2.1"),
         };
 
         assert_eq!(peer.https_endpoint(), "https://192.168.1.100:8080");
@@ -182,9 +182,9 @@ mod tests {
     #[test]
     fn test_peer_is_same_v3() {
         let peer1 = DiscoveredPeer {
-            session_id: "session1".to_string(),
-            node_id: Some("node-abc".to_string()),
-            node_name: Some("testnode".to_string()),
+            session_id: String::from("session1"),
+            node_id: Some(String::from("node-abc")),
+            node_name: Some(String::from("testnode")),
             endpoints: None,
             capabilities: vec![],
             tags: None,
@@ -194,11 +194,11 @@ mod tests {
             port: 8080,
             address: "192.168.1.100:5353".parse().unwrap(),
             last_seen: SystemTime::now(),
-            version: "3.0".to_string(),
+            version: String::from("3.0"),
         };
 
         let mut peer2 = peer1.clone();
-        peer2.session_id = "different-session".to_string(); // Different session
+        peer2.session_id = String::from("different-session"); // Different session
 
         // Should match because node_id is same
         assert!(peer1.is_same_peer(&peer2));
@@ -207,7 +207,7 @@ mod tests {
     #[test]
     fn test_peer_is_same_v2() {
         let peer1 = DiscoveredPeer {
-            session_id: "session1".to_string(),
+            session_id: String::from("session1"),
             node_id: None, // v2.x - no node_id
             node_name: None,
             endpoints: None,
@@ -219,11 +219,11 @@ mod tests {
             port: 8080,
             address: "192.168.1.100:5353".parse().unwrap(),
             last_seen: SystemTime::now(),
-            version: "2.1".to_string(),
+            version: String::from("2.1"),
         };
 
         let mut peer2 = peer1.clone();
-        peer2.session_id = "different-session".to_string();
+        peer2.session_id = String::from("different-session");
 
         // Should NOT match because session_id is different
         assert!(!peer1.is_same_peer(&peer2));
@@ -232,11 +232,11 @@ mod tests {
     #[test]
     fn test_peer_capabilities() {
         let peer = DiscoveredPeer {
-            session_id: "test".to_string(),
+            session_id: String::from("test"),
             node_id: None,
             node_name: None,
             endpoints: None,
-            capabilities: vec!["orchestration".to_string(), "storage".to_string()],
+            capabilities: vec![String::from("orchestration"), String::from("storage")],
             tags: None,
             timestamp: None,
             identity_attestations: None,
@@ -244,7 +244,7 @@ mod tests {
             port: 8080,
             address: "192.168.1.100:5353".parse().unwrap(),
             last_seen: SystemTime::now(),
-            version: "2.1".to_string(),
+            version: String::from("2.1"),
         };
 
         assert!(peer.has_capability("orchestration"));
@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn test_peer_staleness() {
         let mut peer = DiscoveredPeer {
-            session_id: "test".to_string(),
+            session_id: String::from("test"),
             node_id: None,
             node_name: None,
             endpoints: None,
@@ -267,7 +267,7 @@ mod tests {
             port: 8080,
             address: "192.168.1.100:5353".parse().unwrap(),
             last_seen: SystemTime::now() - Duration::from_secs(400), // 400 seconds ago
-            version: "2.1".to_string(),
+            version: String::from("2.1"),
         };
 
         // Should be stale (older than 300 seconds)
@@ -284,9 +284,9 @@ mod tests {
     fn test_peer_display_name() {
         // v3.0 peer with node_name
         let peer_v3 = DiscoveredPeer {
-            session_id: "session-abc".to_string(),
-            node_id: Some("node-123".to_string()),
-            node_name: Some("eastgate".to_string()),
+            session_id: String::from("session-abc"),
+            node_id: Some(String::from("node-123")),
+            node_name: Some(String::from("eastgate")),
             endpoints: None,
             capabilities: vec![],
             tags: None,
@@ -296,14 +296,14 @@ mod tests {
             port: 8080,
             address: "192.168.1.100:5353".parse().unwrap(),
             last_seen: SystemTime::now(),
-            version: "3.0".to_string(),
+            version: String::from("3.0"),
         };
 
         assert_eq!(peer_v3.display_name(), "eastgate");
 
         // v2.x peer without node_name
         let peer_v2 = DiscoveredPeer {
-            session_id: "session-xyz".to_string(),
+            session_id: String::from("session-xyz"),
             node_id: None,
             node_name: None,
             endpoints: None,
@@ -315,7 +315,7 @@ mod tests {
             port: 8080,
             address: "192.168.1.100:5353".parse().unwrap(),
             last_seen: SystemTime::now(),
-            version: "2.1".to_string(),
+            version: String::from("2.1"),
         };
 
         assert_eq!(peer_v2.display_name(), "session-xyz");
@@ -324,19 +324,19 @@ mod tests {
     #[test]
     fn test_peer_http_endpoint() {
         let peer = DiscoveredPeer {
-            session_id: "test-session".to_string(),
+            session_id: String::from("test-session"),
             node_id: None,
             node_name: None,
             endpoints: None,
-            capabilities: vec!["orchestration".to_string()],
+            capabilities: vec![String::from("orchestration")],
             tags: None,
             timestamp: None,
             identity_attestations: None,
-            protocols: vec!["http".to_string()],
+            protocols: vec![String::from("http")],
             port: 7700,
             address: "192.168.1.65:5353".parse().unwrap(),
             last_seen: SystemTime::now(),
-            version: "3.0".to_string(),
+            version: String::from("3.0"),
         };
 
         assert_eq!(peer.http_endpoint(), "http://192.168.1.65:7700");
@@ -345,9 +345,9 @@ mod tests {
     #[test]
     fn test_primary_endpoint_falls_back_to_http() {
         let peer = DiscoveredPeer {
-            session_id: "test-session".to_string(),
-            node_id: Some("node-1".to_string()),
-            node_name: Some("southgate".to_string()),
+            session_id: String::from("test-session"),
+            node_id: Some(String::from("node-1")),
+            node_name: Some(String::from("southgate")),
             endpoints: None,
             capabilities: vec![],
             tags: None,
@@ -357,7 +357,7 @@ mod tests {
             port: 7700,
             address: "192.168.1.132:5353".parse().unwrap(),
             last_seen: SystemTime::now(),
-            version: "3.0".to_string(),
+            version: String::from("3.0"),
         };
 
         assert_eq!(peer.primary_endpoint(), "http://192.168.1.132:7700");

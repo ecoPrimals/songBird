@@ -409,7 +409,7 @@ mod tests {
     /// Test concurrent-safe legacy environment variable migration.
     ///
     /// Uses the overlay serialization lock because `EnvOverride::contains_key`
-    /// falls back to process env, which can race with ScopedEnv tests.
+    /// falls back to process env, which can race with `ScopedEnv` tests.
     #[tokio::test]
     async fn test_migration_helper() {
         let _serial = lock_overlay_env_tests().await;

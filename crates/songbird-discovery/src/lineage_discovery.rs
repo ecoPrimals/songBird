@@ -218,7 +218,7 @@ mod tests {
         let discovery = LineageServiceDiscovery::new(
             "_songbird._tcp.local",
             "test-node-1",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         );
 
@@ -234,7 +234,7 @@ mod tests {
         let discovery = LineageServiceDiscovery::new(
             "_songbird._tcp.local",
             "test-node-1",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         )
         .with_lineage(lineage_id, proof);
@@ -248,13 +248,13 @@ mod tests {
         let mut discovery = LineageServiceDiscovery::new(
             "_songbird._tcp.local",
             "test-node-1",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         );
 
         let packet = DiscoveryPacket::new(
             "peer-node-1",
-            vec!["storage".to_string()],
+            vec![String::from("storage")],
             "http://192.168.1.101:8080",
         );
 
@@ -272,7 +272,7 @@ mod tests {
         let mut discovery = LineageServiceDiscovery::new(
             "_songbird._tcp.local",
             "test-node-1",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         )
         .with_lineage(our_lineage.clone(), our_proof);
@@ -280,32 +280,32 @@ mod tests {
         // Add peer with same lineage
         let same_packet = DiscoveryPacket::new(
             "peer-same",
-            vec!["storage".to_string()],
+            vec![String::from("storage")],
             "http://192.168.1.101:8080",
         )
         .with_lineage(our_lineage.clone(), LineageProof::new(our_lineage, vec![], 1234567890));
-        discovery.peer_cache.insert("peer-same".to_string(), same_packet);
+        discovery.peer_cache.insert(String::from("peer-same"), same_packet);
 
         // Add peer with different lineage
         let different_lineage = LineageId::new("lineage:tower2:2026:xyz");
         let different_packet = DiscoveryPacket::new(
             "peer-different",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.102:8080",
         )
         .with_lineage(
             different_lineage.clone(),
             LineageProof::new(different_lineage, vec![], 1234567890),
         );
-        discovery.peer_cache.insert("peer-different".to_string(), different_packet);
+        discovery.peer_cache.insert(String::from("peer-different"), different_packet);
 
         // Add peer with no lineage
         let no_lineage_packet = DiscoveryPacket::new(
             "peer-no-lineage",
-            vec!["ai".to_string()],
+            vec![String::from("ai")],
             "http://192.168.1.103:8080",
         );
-        discovery.peer_cache.insert("peer-no-lineage".to_string(), no_lineage_packet);
+        discovery.peer_cache.insert(String::from("peer-no-lineage"), no_lineage_packet);
 
         // Test filtering
         assert_eq!(discovery.get_same_lineage_peers().len(), 1);
@@ -318,7 +318,7 @@ mod tests {
         let discovery = LineageServiceDiscovery::new(
             "_songbird._tcp.local",
             "test-node-1",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         );
 
@@ -333,7 +333,7 @@ mod tests {
         let discovery = LineageServiceDiscovery::new(
             "_songbird._tcp.local",
             "test-node-1",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         )
         .with_lineage(lineage_id, proof);
@@ -346,7 +346,7 @@ mod tests {
         let mut discovery = LineageServiceDiscovery::new(
             "_songbird._tcp.local",
             "test-node-1",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         );
 
@@ -363,7 +363,7 @@ mod tests {
         let mut discovery = LineageServiceDiscovery::new(
             "_songbird._tcp.local",
             "local-node",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         )
         .with_lineage(
@@ -372,36 +372,36 @@ mod tests {
         );
 
         discovery.peer_cache.insert(
-            "peer-other-tower".to_string(),
+            String::from("peer-other-tower"),
             DiscoveryPacket::new(
                 "peer-other-tower",
-                vec!["storage".to_string()],
+                vec![String::from("storage")],
                 "http://192.168.1.102:8080",
             )
             .with_lineage(other_tower.clone(), LineageProof::new(other_tower, vec![], 1234567890)),
         );
         discovery.peer_cache.insert(
-            "peer-no-lineage".to_string(),
+            String::from("peer-no-lineage"),
             DiscoveryPacket::new(
                 "peer-no-lineage",
-                vec!["ai".to_string()],
+                vec![String::from("ai")],
                 "http://192.168.1.103:8080",
             ),
         );
         discovery.peer_cache.insert(
-            "peer-same-tower".to_string(),
+            String::from("peer-same-tower"),
             DiscoveryPacket::new(
                 "peer-same-tower",
-                vec!["compute".to_string()],
+                vec![String::from("compute")],
                 "http://192.168.1.101:8080",
             )
             .with_lineage(same_tower.clone(), LineageProof::new(same_tower, vec![], 1234567890)),
         );
         discovery.peer_cache.insert(
-            "peer-same-lineage".to_string(),
+            String::from("peer-same-lineage"),
             DiscoveryPacket::new(
                 "peer-same-lineage",
-                vec!["storage".to_string()],
+                vec![String::from("storage")],
                 "http://192.168.1.104:8080",
             )
             .with_lineage(our_lineage.clone(), LineageProof::new(our_lineage, vec![], 1234567890)),
@@ -418,12 +418,12 @@ mod tests {
         let mut discovery = LineageServiceDiscovery::new(
             "_songbird._tcp.local",
             "test-node-1",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         );
 
         let mut invalid = HashMap::new();
-        invalid.insert("endpoint".to_string(), "http://192.168.1.101:8080".to_string());
+        invalid.insert(String::from("endpoint"), String::from("http://192.168.1.101:8080"));
 
         let err = discovery.process_announcement(&invalid).unwrap_err();
         assert!(
@@ -441,13 +441,13 @@ mod tests {
         let mut discovery = LineageServiceDiscovery::new(
             "_songbird._tcp.local",
             "test-node-1",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         );
 
         let packet = DiscoveryPacket::new(
             "peer-with-lineage",
-            vec!["storage".to_string()],
+            vec![String::from("storage")],
             "http://192.168.1.101:8080",
         )
         .with_lineage(lineage_id.clone(), proof);
@@ -466,25 +466,25 @@ mod tests {
         let mut discovery = LineageServiceDiscovery::new(
             "_songbird._tcp.local",
             "test-node-1",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         );
 
         let mut stale = DiscoveryPacket::new(
             "stale-peer",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.200:8080",
         );
         stale.timestamp = 0;
 
         let fresh = DiscoveryPacket::new(
             "fresh-peer",
-            vec!["storage".to_string()],
+            vec![String::from("storage")],
             "http://192.168.1.201:8080",
         );
 
-        discovery.peer_cache.insert("stale-peer".to_string(), stale);
-        discovery.peer_cache.insert("fresh-peer".to_string(), fresh);
+        discovery.peer_cache.insert(String::from("stale-peer"), stale);
+        discovery.peer_cache.insert(String::from("fresh-peer"), fresh);
 
         discovery.cleanup_expired_peers();
 

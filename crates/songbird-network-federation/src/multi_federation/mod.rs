@@ -649,7 +649,7 @@ mod tests {
             capabilities: vec!["compute".into()],
             protocols: vec!["https".into()],
             port: 8080,
-            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9000),
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 9000),
             last_seen: SystemTime::now(),
             version: "2.1".into(),
             tags: None,

@@ -153,6 +153,7 @@ impl LineageRelayPrimalConnection {
 }
 
 #[cfg(test)]
+#[allow(clippy::ip_constant)]
 mod tests {
     use super::*;
     use crate::birdsong::BirdSongBroadcaster;
@@ -305,7 +306,7 @@ mod tests {
                 assert_eq!(peer_id, "node-abc");
                 assert_eq!(peer_address, "10.0.0.1:8080");
             }
-            _ => panic!("Expected EstablishConnection"),
+            ConnectivityRequest::GetRelayStats => panic!("Expected EstablishConnection"),
         }
     }
 

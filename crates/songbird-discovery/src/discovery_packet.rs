@@ -166,13 +166,13 @@ impl DiscoveryPacket {
             && let Ok(encoded) = proof.to_discovery_txt()
         {
             if encoded.len() <= 400 {
-                txt.insert("lineage_proof".to_string(), encoded);
+                txt.insert(String::from("lineage_proof"), encoded);
             } else {
                 let proof_hash =
                     hex::encode(crate::crypto_helpers::sha256_hash_sync(None, encoded.as_bytes()));
-                txt.insert("lineage_proof_hash".to_string(), proof_hash);
+                txt.insert(String::from("lineage_proof_hash"), proof_hash);
                 txt.insert(
-                    "lineage_proof_url".to_string(),
+                    String::from("lineage_proof_url"),
                     format!("{}/api/v1/lineage/proof", self.endpoint),
                 );
             }
@@ -189,12 +189,12 @@ impl DiscoveryPacket {
             && let Ok(encoded) = proof.to_discovery_txt()
         {
             if encoded.len() <= 400 {
-                txt.insert("lineage_proof".to_string(), encoded);
+                txt.insert(String::from("lineage_proof"), encoded);
             } else {
                 let digest = crate::crypto_helpers::sha256_hash(crypto, encoded.as_bytes()).await;
-                txt.insert("lineage_proof_hash".to_string(), hex::encode(digest));
+                txt.insert(String::from("lineage_proof_hash"), hex::encode(digest));
                 txt.insert(
-                    "lineage_proof_url".to_string(),
+                    String::from("lineage_proof_url"),
                     format!("{}/api/v1/lineage/proof", self.endpoint),
                 );
             }
@@ -205,14 +205,14 @@ impl DiscoveryPacket {
     fn txt_records_base(&self) -> HashMap<String, String> {
         let mut txt = HashMap::new();
 
-        txt.insert("node_id".to_string(), self.node_id.clone());
-        txt.insert("capabilities".to_string(), self.capabilities.join(","));
-        txt.insert("tags".to_string(), self.tags.join(","));
-        txt.insert("endpoint".to_string(), self.endpoint.clone());
-        txt.insert("timestamp".to_string(), self.timestamp.to_string());
+        txt.insert(String::from("node_id"), self.node_id.clone());
+        txt.insert(String::from("capabilities"), self.capabilities.join(","));
+        txt.insert(String::from("tags"), self.tags.join(","));
+        txt.insert(String::from("endpoint"), self.endpoint.clone());
+        txt.insert(String::from("timestamp"), self.timestamp.to_string());
 
         if let Some(name) = &self.node_name {
-            txt.insert("node_name".to_string(), name.clone());
+            txt.insert(String::from("node_name"), name.clone());
         }
 
         for (k, v) in &self.metadata {
@@ -220,7 +220,7 @@ impl DiscoveryPacket {
         }
 
         if let Some(lineage) = &self.genetic_lineage {
-            txt.insert("lineage".to_string(), lineage.to_string());
+            txt.insert(String::from("lineage"), lineage.to_string());
         }
 
         txt
@@ -324,7 +324,7 @@ mod tests {
     fn test_discovery_packet_creation() {
         let packet = DiscoveryPacket::new(
             "node-123",
-            vec!["compute".to_string(), "storage".to_string()],
+            vec![String::from("compute"), String::from("storage")],
             "http://192.168.1.100:8080",
         );
 
@@ -341,7 +341,7 @@ mod tests {
 
         let packet = DiscoveryPacket::new(
             "node-123",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         )
         .with_lineage(lineage_id, proof);
@@ -354,7 +354,7 @@ mod tests {
     fn test_txt_records_conversion() {
         let packet = DiscoveryPacket::new(
             "node-123",
-            vec!["compute".to_string(), "storage".to_string()],
+            vec![String::from("compute"), String::from("storage")],
             "http://192.168.1.100:8080",
         )
         .with_name("test-node")
@@ -362,17 +362,17 @@ mod tests {
 
         let txt = packet.to_txt_records();
 
-        assert_eq!(txt.get("node_id"), Some(&"node-123".to_string()));
-        assert_eq!(txt.get("node_name"), Some(&"test-node".to_string()));
-        assert_eq!(txt.get("capabilities"), Some(&"compute,storage".to_string()));
-        assert_eq!(txt.get("meta_version"), Some(&"1.0.0".to_string()));
+        assert_eq!(txt.get("node_id"), Some(&String::from("node-123")));
+        assert_eq!(txt.get("node_name"), Some(&String::from("test-node")));
+        assert_eq!(txt.get("capabilities"), Some(&String::from("compute,storage")));
+        assert_eq!(txt.get("meta_version"), Some(&String::from("1.0.0")));
     }
 
     #[test]
     fn test_txt_records_round_trip() {
         let original = DiscoveryPacket::new(
             "node-123",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         )
         .with_name("test-node");
@@ -393,7 +393,7 @@ mod tests {
 
         let packet = DiscoveryPacket::new(
             "node-123",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         )
         .with_lineage(lineage_id, proof);
@@ -411,7 +411,7 @@ mod tests {
     #[test]
     fn test_from_txt_records_missing_node_id() {
         let mut txt = HashMap::new();
-        txt.insert("endpoint".to_string(), "http://192.168.1.100:8080".to_string());
+        txt.insert(String::from("endpoint"), String::from("http://192.168.1.100:8080"));
 
         let err = DiscoveryPacket::from_txt_records(&txt).unwrap_err();
         assert!(matches!(err, DiscoveryError::MissingField("node_id")));
@@ -420,7 +420,7 @@ mod tests {
     #[test]
     fn test_from_txt_records_missing_endpoint() {
         let mut txt = HashMap::new();
-        txt.insert("node_id".to_string(), "node-1".to_string());
+        txt.insert(String::from("node_id"), String::from("node-1"));
 
         let err = DiscoveryPacket::from_txt_records(&txt).unwrap_err();
         assert!(matches!(err, DiscoveryError::MissingField("endpoint")));
@@ -430,10 +430,10 @@ mod tests {
     fn test_tags_roundtrip_via_txt_records() {
         let original = DiscoveryPacket::new(
             "node-tags",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         )
-        .with_tags(vec!["birdsong_v2".to_string(), "btsp_enabled".to_string()]);
+        .with_tags(vec![String::from("birdsong_v2"), String::from("btsp_enabled")]);
 
         let parsed = DiscoveryPacket::from_txt_records(&original.to_txt_records()).unwrap();
         assert_eq!(parsed.tags, original.tags);
@@ -442,14 +442,14 @@ mod tests {
     #[test]
     fn test_identity_attestation_builder() {
         let attestation = IdentityAttestation {
-            provider_capability: "security/identity".to_string(),
-            format: "tag_list".to_string(),
+            provider_capability: String::from("security/identity"),
+            format: String::from("tag_list"),
             data: serde_json::json!({"tags": ["family:abc"]}),
         };
 
         let packet = DiscoveryPacket::new(
             "node-attest",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         )
         .with_identity_attestation(attestation.clone());
@@ -472,7 +472,7 @@ mod tests {
         let proof = LineageProof::new(lineage_id.clone(), vec![], 1234567890);
         let packet = DiscoveryPacket::new(
             "node-crypto",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         )
         .with_lineage(lineage_id, proof);
@@ -488,9 +488,9 @@ mod tests {
     #[test]
     fn test_malformed_lineage_id_is_ignored_on_parse() {
         let mut txt = HashMap::new();
-        txt.insert("node_id".to_string(), "node-bad-lineage".to_string());
-        txt.insert("endpoint".to_string(), "http://192.168.1.100:8080".to_string());
-        txt.insert("lineage".to_string(), "not-a-valid-lineage".to_string());
+        txt.insert(String::from("node_id"), String::from("node-bad-lineage"));
+        txt.insert(String::from("endpoint"), String::from("http://192.168.1.100:8080"));
+        txt.insert(String::from("lineage"), String::from("not-a-valid-lineage"));
 
         let parsed = DiscoveryPacket::from_txt_records(&txt).unwrap();
         assert!(parsed.genetic_lineage.is_none());
@@ -504,7 +504,7 @@ mod tests {
 
         let original = DiscoveryPacket::new(
             "node-proof",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         )
         .with_lineage(lineage_id.clone(), proof);
@@ -518,14 +518,14 @@ mod tests {
     fn test_metadata_prefix_roundtrip() {
         let original = DiscoveryPacket::new(
             "node-meta",
-            vec!["compute".to_string()],
+            vec![String::from("compute")],
             "http://192.168.1.100:8080",
         )
         .with_metadata("region", "us-west")
         .with_metadata("tier", "prod");
 
         let parsed = DiscoveryPacket::from_txt_records(&original.to_txt_records()).unwrap();
-        assert_eq!(parsed.metadata.get("region"), Some(&"us-west".to_string()));
-        assert_eq!(parsed.metadata.get("tier"), Some(&"prod".to_string()));
+        assert_eq!(parsed.metadata.get("region"), Some(&String::from("us-west")));
+        assert_eq!(parsed.metadata.get("tier"), Some(&String::from("prod")));
     }
 }

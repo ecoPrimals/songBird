@@ -160,7 +160,7 @@ fn test_is_encrypted_and_encryption_provider_getters() {
         enabled: true,
         ..Default::default()
     };
-    let processor = BirdSongProcessor::new(Some(enc.clone()), config);
+    let processor = BirdSongProcessor::new(Some(enc), config);
 
     assert!(processor.is_encrypted());
     assert!(processor.encryption_provider().is_some());

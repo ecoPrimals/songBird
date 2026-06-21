@@ -277,7 +277,7 @@ mod tests {
 
         assert_eq!(update.node_id, "metrics-node");
         assert!(update.timestamp <= chrono::Utc::now());
-        assert!(update.storage_usage.len() >= 1);
+        assert!(!update.storage_usage.is_empty());
     }
 
     #[tokio::test]

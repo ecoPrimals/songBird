@@ -224,7 +224,7 @@ mod tests {
     use crate::error::TlsError;
 
     /// TLS 1.3 alert fatality follows alert level (fatal vs warning).
-    const fn alert_is_fatal(alert: &Alert) -> bool {
+    const fn alert_is_fatal(alert: Alert) -> bool {
         matches!(alert.level, AlertLevel::Fatal)
     }
 
@@ -356,14 +356,14 @@ mod tests {
     fn alert_warning_level_is_not_fatal() {
         let alert = Alert::warning(AlertDescription::CloseNotify);
         assert_eq!(alert.level, AlertLevel::Warning);
-        assert!(!alert_is_fatal(&alert));
+        assert!(!alert_is_fatal(alert));
     }
 
     #[test]
     fn alert_fatal_level_is_fatal() {
         let alert = Alert::fatal(AlertDescription::HandshakeFailure);
         assert_eq!(alert.level, AlertLevel::Fatal);
-        assert!(alert_is_fatal(&alert));
+        assert!(alert_is_fatal(alert));
     }
 
     #[test]
@@ -386,7 +386,7 @@ mod tests {
         ];
         for err in errors {
             let alert = Alert::from_error(&err);
-            assert!(alert_is_fatal(&alert), "expected fatal for {err:?}");
+            assert!(alert_is_fatal(alert), "expected fatal for {err:?}");
         }
     }
 
@@ -394,14 +394,14 @@ mod tests {
     fn alert_close_notify_is_warning_and_not_fatal() {
         let alert = Alert::close_notify();
         assert_eq!(alert.level, AlertLevel::Warning);
-        assert!(!alert_is_fatal(&alert));
+        assert!(!alert_is_fatal(alert));
         assert!(alert.is_close_notify());
     }
 
     #[test]
     fn alert_level_classification_unknown_defaults_to_fatal() {
         assert_eq!(AlertLevel::from(99), AlertLevel::Fatal);
-        assert!(alert_is_fatal(&Alert::new(AlertLevel::from(99), AlertDescription::InternalError)));
+        assert!(alert_is_fatal(Alert::new(AlertLevel::from(99), AlertDescription::InternalError)));
     }
 
     #[test]
