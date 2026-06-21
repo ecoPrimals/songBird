@@ -347,7 +347,7 @@ mod tests {
         for token in [
             AccessToken::anonymous(),
             AccessToken::ta("ta1", "C1"),
-            AccessToken::professor("p1", vec!["c".to_string()]),
+            AccessToken::professor("p1", vec![String::from("c")]),
             AccessToken::admin("root"),
         ] {
             let enc = token.encode(secret).unwrap();

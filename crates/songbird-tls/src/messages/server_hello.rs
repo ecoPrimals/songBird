@@ -91,30 +91,30 @@ impl ServerHello {
     pub fn validate(&self) -> Result<()> {
         // Must have extensions
         if self.extensions.is_empty() {
-            return Err(TlsError::ProtocolError(
-                "ServerHello must contain extensions in TLS 1.3".to_string(),
-            ));
+            return Err(TlsError::ProtocolError(String::from(
+                "ServerHello must contain extensions in TLS 1.3",
+            )));
         }
 
         // Must have supported_versions extension
         if self.get_supported_version().is_none() {
-            return Err(TlsError::ProtocolError(
-                "ServerHello must contain supported_versions extension".to_string(),
-            ));
+            return Err(TlsError::ProtocolError(String::from(
+                "ServerHello must contain supported_versions extension",
+            )));
         }
 
         // Must have key_share extension
         if self.get_key_share().is_none() {
-            return Err(TlsError::ProtocolError(
-                "ServerHello must contain key_share extension".to_string(),
-            ));
+            return Err(TlsError::ProtocolError(String::from(
+                "ServerHello must contain key_share extension",
+            )));
         }
 
         // Legacy session ID echo must be <= 32 bytes
         if self.legacy_session_id_echo.len() > 32 {
-            return Err(TlsError::ProtocolError(
-                "Legacy session ID echo must be <= 32 bytes".to_string(),
-            ));
+            return Err(TlsError::ProtocolError(String::from(
+                "Legacy session ID echo must be <= 32 bytes",
+            )));
         }
 
         Ok(())

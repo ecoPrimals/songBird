@@ -108,9 +108,9 @@ pub(super) fn extract_control_url(xml: &str, base_url: &str) -> Result<String> {
         }
     }
 
-    Err(IgdError::InvalidResponse(
-        "No WANIPConnection controlURL found in device description".to_string(),
-    ))
+    Err(IgdError::InvalidResponse(String::from(
+        "No WANIPConnection controlURL found in device description",
+    )))
 }
 
 /// Extract a simple XML element value

@@ -255,9 +255,9 @@ impl OnionIdentity {
         {
             // Production with v1 storage: Regenerate via security provider
             // Delete old storage and generate fresh identity
-            Err(crate::OnionError::CryptoError(
-                "Legacy v1 storage format detected. Delete ./data/sovereign-onion to regenerate identity.".to_string()
-            ))
+            Err(crate::OnionError::CryptoError(String::from(
+                "Legacy v1 storage format detected. Delete ./data/sovereign-onion to regenerate identity.",
+            )))
         }
     }
 }

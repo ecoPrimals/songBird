@@ -47,9 +47,9 @@ impl Finished {
     pub fn validate(&self) -> Result<()> {
         // verify_data must not be empty
         if self.verify_data.is_empty() {
-            return Err(TlsError::ProtocolError(
-                "Finished verify_data cannot be empty".to_string(),
-            ));
+            return Err(TlsError::ProtocolError(String::from(
+                "Finished verify_data cannot be empty",
+            )));
         }
 
         // For ChaCha20-Poly1305-SHA256 cipher suite, verify_data should be 32 bytes
@@ -80,9 +80,9 @@ impl Finished {
     /// Returns an error if lengths differ or verification fails.
     pub fn verify(&self, expected_verify_data: &[u8]) -> Result<()> {
         if self.verify_data.len() != expected_verify_data.len() {
-            return Err(TlsError::HandshakeFailure(
-                "Finished verify_data length mismatch".to_string(),
-            ));
+            return Err(TlsError::HandshakeFailure(String::from(
+                "Finished verify_data length mismatch",
+            )));
         }
 
         // Constant-time comparison to prevent timing attacks
@@ -92,9 +92,9 @@ impl Finished {
         }
 
         if diff != 0 {
-            return Err(TlsError::HandshakeFailure(
-                "Finished verify_data does not match expected value".to_string(),
-            ));
+            return Err(TlsError::HandshakeFailure(String::from(
+                "Finished verify_data does not match expected value",
+            )));
         }
 
         Ok(())

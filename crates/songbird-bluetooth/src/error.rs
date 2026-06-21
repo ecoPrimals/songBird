@@ -156,7 +156,7 @@ mod tests {
     #[test]
     fn bluetooth_error_display_covers_invalid_data_variant() {
         let e = BluetoothError::InvalidData {
-            context: "bad acl".to_string(),
+            context: String::from("bad acl"),
         };
         let s = e.to_string();
         assert!(s.contains("Invalid data"));

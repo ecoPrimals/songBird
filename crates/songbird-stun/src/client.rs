@@ -158,7 +158,7 @@ impl StunClient {
         stun_servers: &[&str],
     ) -> StunResult<SocketAddr> {
         if stun_servers.is_empty() {
-            return Err(StunError::Config("No STUN servers provided".to_string()));
+            return Err(StunError::Config(String::from("No STUN servers provided")));
         }
 
         info!("🏁 Racing {} STUN servers concurrently", stun_servers.len());
@@ -292,7 +292,7 @@ impl StunClient {
         stun_servers: &[&str],
     ) -> StunResult<PublicEndpoint> {
         if stun_servers.is_empty() {
-            return Err(StunError::Config("No STUN servers provided".to_string()));
+            return Err(StunError::Config(String::from("No STUN servers provided")));
         }
 
         let first_server_addr = resolve_stun_server(stun_servers[0]).await?;
@@ -347,7 +347,7 @@ impl StunClient {
         stun_servers: &[String],
     ) -> StunResult<SocketAddr> {
         if stun_servers.is_empty() {
-            return Err(StunError::Config("No STUN servers provided".to_string()));
+            return Err(StunError::Config(String::from("No STUN servers provided")));
         }
 
         info!("🔍 Discovering public address via {} STUN servers (parallel)", stun_servers.len());

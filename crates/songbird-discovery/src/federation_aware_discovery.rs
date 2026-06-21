@@ -340,7 +340,7 @@ impl<S: ServiceDiscovery> FederationAwareDiscovery<S> {
             network_effects,
             discovery_metadata: DiscoveryMetadata {
                 discovered_at: SystemTime::now(),
-                discovery_method: "federation-aware".to_string(),
+                discovery_method: String::from("federation-aware"),
                 last_health_check: None,
                 discovery_confidence: 0.85,
             },

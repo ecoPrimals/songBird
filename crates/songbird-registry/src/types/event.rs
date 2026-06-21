@@ -128,7 +128,7 @@ mod tests {
     #[test]
     fn test_event_with_context() {
         let event = RegistryEvent::new(EventType::Error {
-            message: "Test error".to_string(),
+            message: String::from("Test error"),
             plugin_id: None,
         })
         .with_context(serde_json::json!({"severity": "high"}));
@@ -187,7 +187,7 @@ mod tests {
     fn test_error_event_with_plugin_id() {
         let plugin_id = PluginId::from("error-test");
         let event = RegistryEvent::new(EventType::Error {
-            message: "Test error".to_string(),
+            message: String::from("Test error"),
             plugin_id: Some(plugin_id.clone()),
         });
 
@@ -198,7 +198,7 @@ mod tests {
     #[test]
     fn test_error_event_without_plugin_id() {
         let event = RegistryEvent::new(EventType::Error {
-            message: "General error".to_string(),
+            message: String::from("General error"),
             plugin_id: None,
         });
 

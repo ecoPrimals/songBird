@@ -125,7 +125,7 @@ impl BirdSongProcessor {
                 // This allows receivers to see the family_id and decide if they should decrypt
                 use base64::{Engine as _, engine::general_purpose};
                 let packet = BirdSongPacket::new(
-                    "1.0".to_string(),
+                    String::from("1.0"),
                     family_id.clone(),
                     general_purpose::STANDARD.encode(&encrypted_payload),
                 );
@@ -282,12 +282,12 @@ impl BirdSongProcessor {
                 "Encrypted ({})",
                 self.encryption
                     .as_ref()
-                    .map_or_else(|| "unknown".to_string(), |e| e.provider_name())
+                    .map_or_else(|| String::from("unknown"), |e| e.provider_name())
             )
         } else if self.config.enabled {
-            "Plaintext (provider unavailable)".to_string()
+            String::from("Plaintext (provider unavailable)")
         } else {
-            "Plaintext (disabled)".to_string()
+            String::from("Plaintext (disabled)")
         }
     }
 

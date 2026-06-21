@@ -120,7 +120,7 @@ mod tests {
     #[test]
     fn test_capability_creation() {
         let cap = Capability::new(CapabilityType::Encryption {
-            algorithms: vec!["aes256".to_string()],
+            algorithms: vec![String::from("aes256")],
             key_sizes: vec![256],
         });
 
@@ -131,12 +131,12 @@ mod tests {
     #[test]
     fn test_capability_compatibility() {
         let cap1 = Capability::new(CapabilityType::Encryption {
-            algorithms: vec!["aes256".to_string()],
+            algorithms: vec![String::from("aes256")],
             key_sizes: vec![256],
         });
 
         let cap2 = Capability::new(CapabilityType::Encryption {
-            algorithms: vec!["aes128".to_string()],
+            algorithms: vec![String::from("aes128")],
             key_sizes: vec![128],
         });
 

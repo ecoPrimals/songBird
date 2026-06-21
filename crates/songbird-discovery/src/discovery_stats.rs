@@ -177,7 +177,7 @@ impl NetworkInfo {
     pub fn detect_interfaces() -> Vec<String> {
         // Use nix or pnet to detect interfaces
         // For now, return a simple list
-        vec!["ens33".to_string(), "lo".to_string()]
+        vec![String::from("ens33"), String::from("lo")]
     }
 }
 
@@ -317,9 +317,9 @@ mod tests {
     async fn test_status_manager() {
         let manager = DiscoveryStatusManager::new(
             true,
-            "Anonymous".to_string(),
+            String::from("Anonymous"),
             2300,
-            Some("239.255.42.99:4242".to_string()),
+            Some(String::from("239.255.42.99:4242")),
         );
 
         // Record some activity

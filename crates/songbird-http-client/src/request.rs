@@ -228,8 +228,8 @@ mod tests {
         let uri: Uri = "https://example.com/".parse().unwrap();
         let config = HttpClientConfig::minimal();
         let mut headers = HashMap::new();
-        headers.insert("X-Custom-Header".to_string(), "custom-value".to_string());
-        headers.insert("Authorization".to_string(), "Bearer token123".to_string());
+        headers.insert(String::from("X-Custom-Header"), String::from("custom-value"));
+        headers.insert(String::from("Authorization"), String::from("Bearer token123"));
 
         let request = RequestBuilder::build(&uri, "GET", &config, &headers, None).unwrap();
         let request_str = String::from_utf8_lossy(&request);
@@ -243,9 +243,9 @@ mod tests {
         let uri: Uri = "https://example.com/".parse().unwrap();
         let config = HttpClientConfig::minimal();
         let mut headers = HashMap::new();
-        headers.insert("Z-Last".to_string(), "last".to_string());
-        headers.insert("A-First".to_string(), "first".to_string());
-        headers.insert("M-Middle".to_string(), "middle".to_string());
+        headers.insert(String::from("Z-Last"), String::from("last"));
+        headers.insert(String::from("A-First"), String::from("first"));
+        headers.insert(String::from("M-Middle"), String::from("middle"));
 
         let request = RequestBuilder::build(&uri, "GET", &config, &headers, None).unwrap();
         let request_str = String::from_utf8_lossy(&request);

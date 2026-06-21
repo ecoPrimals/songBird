@@ -51,7 +51,7 @@ use tower::{check_status, list_towers};
 
 fn init_tracing() {
     let filter = songbird_process_env::var("RUST_LOG")
-        .unwrap_or_else(|_| "info,songbird_remote_deploy=debug".to_string());
+        .unwrap_or_else(|_| String::from("info,songbird_remote_deploy=debug"));
     let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
 }
 
@@ -75,7 +75,7 @@ pub async fn run(args: Args) -> Result<()> {
         } => {
             let effective_user = ssh_user
                 .or_else(|| songbird_process_env::var("USER").ok())
-                .unwrap_or_else(|| "root".to_string());
+                .unwrap_or_else(|| String::from("root"));
             deploy_service(DeploymentConfig {
                 songbird_endpoint: &args.songbird_endpoint,
                 tower_id: &tower,

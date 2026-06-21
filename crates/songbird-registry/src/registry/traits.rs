@@ -99,17 +99,17 @@ mod tests {
         use crate::types::capability::{Capability, CapabilityType};
 
         let comp1 = TestComposable {
-            name: "test1".to_string(),
+            name: String::from("test1"),
             capabilities: vec![Capability::new(CapabilityType::Encryption {
-                algorithms: vec!["aes256".to_string()],
+                algorithms: vec![String::from("aes256")],
                 key_sizes: vec![256],
             })],
         };
 
         let comp2 = TestComposable {
-            name: "test2".to_string(),
+            name: String::from("test2"),
             capabilities: vec![Capability::new(CapabilityType::Encryption {
-                algorithms: vec!["aes128".to_string()],
+                algorithms: vec![String::from("aes128")],
                 key_sizes: vec![128],
             })],
         };

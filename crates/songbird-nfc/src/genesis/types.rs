@@ -47,7 +47,7 @@ pub(super) mod hex {
 
     pub(in crate::genesis) fn decode(s: &str) -> std::result::Result<Vec<u8>, String> {
         if !s.len().is_multiple_of(2) {
-            return Err("odd hex length".to_string());
+            return Err(String::from("odd hex length"));
         }
         (0..s.len())
             .step_by(2)
@@ -110,8 +110,8 @@ mod tests {
         let creds = GenesisCredentials {
             identity: vec![1, 2, 3],
             family_seed: vec![4, 5, 6],
-            lineage: vec!["root".to_string(), "child".to_string()],
-            beacons: vec!["beacon1.onion".to_string()],
+            lineage: vec![String::from("root"), String::from("child")],
+            beacons: vec![String::from("beacon1.onion")],
             timestamp: 1707350400000,
         };
         let json = serde_json::to_vec(&creds).unwrap();

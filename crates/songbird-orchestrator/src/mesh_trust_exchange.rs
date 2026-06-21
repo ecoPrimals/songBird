@@ -113,7 +113,7 @@ async fn get_local_public_key() -> Result<String, String> {
         .get("local_public_key")
         .and_then(Value::as_str)
         .map(String::from)
-        .ok_or_else(|| "security provider did not return local_public_key".to_string())
+        .ok_or_else(|| String::from("security provider did not return local_public_key"))
 }
 
 /// Call `auth.exchange_trust` on a remote peer's Songbird HTTP endpoint.
@@ -239,9 +239,9 @@ fn discover_security_provider_socket() -> Result<String, String> {
     });
 
     if path.is_empty() {
-        return Err(
-            "No security provider socket discovered (set SECURITY_PROVIDER_SOCKET)".to_string()
-        );
+        return Err(String::from(
+            "No security provider socket discovered (set SECURITY_PROVIDER_SOCKET)",
+        ));
     }
     Ok(path)
 }
@@ -273,7 +273,7 @@ async fn call_uds_jsonrpc(socket_path: &str, request: &Value) -> Result<Value, S
         return Err(msg.to_string());
     }
 
-    response.get("result").cloned().ok_or_else(|| "No result in JSON-RPC response".to_string())
+    response.get("result").cloned().ok_or_else(|| String::from("No result in JSON-RPC response"))
 }
 
 /// Send a JSON-RPC request via HTTP POST and return the full response.
@@ -387,7 +387,7 @@ mod tests {
     #[tokio::test]
     async fn spawn_trust_exchange_with_peers_does_not_panic() {
         let peers = vec![(
-            "test-peer".to_string(),
+            String::from("test-peer"),
             SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 100)), 7700),
         )];
         spawn_trust_exchange(peers);

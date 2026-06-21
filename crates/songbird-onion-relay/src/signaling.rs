@@ -165,7 +165,7 @@ impl PeerInfo {
             local_addr: None,
             nat_type: NatType::Unknown,
             timestamp: SystemTime::now(),
-            capabilities: vec!["relay".to_string(), "stun".to_string()],
+            capabilities: vec![String::from("relay"), String::from("stun")],
         }
     }
 
@@ -185,12 +185,12 @@ mod tests {
 
     #[test]
     fn peer_info_new_defaults_and_capabilities() {
-        let peer = PeerInfo::new("tower-123".to_string(), "1.2.3.4:5678".parse().unwrap());
+        let peer = PeerInfo::new(String::from("tower-123"), "1.2.3.4:5678".parse().unwrap());
         assert_eq!(peer.node_id, "tower-123");
         assert_eq!(peer.public_addr.to_string(), "1.2.3.4:5678");
         assert!(peer.local_addr.is_none());
         assert_eq!(peer.nat_type, NatType::Unknown);
-        assert!(peer.capabilities.contains(&"relay".to_string()));
+        assert!(peer.capabilities.contains(&String::from("relay")));
         assert!(peer.is_fresh(), "new peer should be fresh");
     }
 
@@ -215,10 +215,10 @@ mod tests {
 
     #[test]
     fn register_roundtrip_json() {
-        let peer = PeerInfo::new("tower-123".to_string(), "1.2.3.4:5678".parse().unwrap());
+        let peer = PeerInfo::new(String::from("tower-123"), "1.2.3.4:5678".parse().unwrap());
         let msg = SignalingMessage::Register {
             peer_info: peer,
-            encrypted_beacon: Some("encrypted_data".to_string()),
+            encrypted_beacon: Some(String::from("encrypted_data")),
         };
         let json = msg.to_json().expect("serialize");
         let parsed = SignalingMessage::from_json(&json).expect("deserialize");

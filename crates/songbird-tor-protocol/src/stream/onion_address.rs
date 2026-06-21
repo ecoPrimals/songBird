@@ -58,7 +58,7 @@ impl OnionAddress {
             },
             addr,
         )
-        .ok_or_else(|| Error::Protocol("Failed to decode base32 onion address".to_string()))?;
+        .ok_or_else(|| Error::Protocol(String::from("Failed to decode base32 onion address")))?;
 
         // Should be 35 bytes (32 + 2 + 1)
         if decoded.len() != 35 {
@@ -71,11 +71,11 @@ impl OnionAddress {
         // Extract components
         let public_key: [u8; 32] = decoded[0..32]
             .try_into()
-            .map_err(|_| Error::Protocol("Failed to extract public key".to_string()))?;
+            .map_err(|_| Error::Protocol(String::from("Failed to extract public key")))?;
 
         let checksum: [u8; 2] = decoded[32..34]
             .try_into()
-            .map_err(|_| Error::Protocol("Failed to extract checksum".to_string()))?;
+            .map_err(|_| Error::Protocol(String::from("Failed to extract checksum")))?;
 
         let version = decoded[34];
 

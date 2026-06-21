@@ -82,19 +82,19 @@ fn detect_disk_gb() -> Option<usize> {
 
 /// Auto-detect capabilities based on resources
 pub fn detect_capabilities(info: &ServiceInfo) -> String {
-    let mut caps = vec!["compute".to_string(), "cpu".to_string()];
+    let mut caps = vec![String::from("compute"), String::from("cpu")];
 
     if info.gpu_count > 0 {
-        caps.push("gpu".to_string());
-        caps.push("ml-inference".to_string());
+        caps.push(String::from("gpu"));
+        caps.push(String::from("ml-inference"));
     }
 
     if info.cpu_cores >= 8 {
-        caps.push("batch-processing".to_string());
+        caps.push(String::from("batch-processing"));
     }
 
     if info.cpu_cores >= 32 {
-        caps.push("parallel-computing".to_string());
+        caps.push(String::from("parallel-computing"));
     }
 
     caps.join(",")

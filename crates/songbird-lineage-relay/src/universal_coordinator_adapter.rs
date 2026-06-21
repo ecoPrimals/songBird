@@ -167,7 +167,7 @@ mod tests {
         let lineage_provider = Arc::new(MockLineageProvider::new());
         let crypto = Arc::new(BirdSongCrypto::from(MockBirdSongCrypto::new(
             lineage_provider.clone(),
-            "node-1".to_string(),
+            String::from("node-1"),
         )));
         let relay_authority =
             Arc::new(RelayAuthority::from(MockRelayAuthority::new(lineage_provider)));

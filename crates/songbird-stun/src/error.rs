@@ -75,14 +75,14 @@ mod tests {
 
     #[test]
     fn invalid_response_displays() {
-        let e = StunError::InvalidResponse("bad".to_string());
+        let e = StunError::InvalidResponse(String::from("bad"));
         assert!(e.to_string().contains("Invalid STUN response"));
         assert!(e.to_string().contains("bad"));
     }
 
     #[test]
     fn server_error_displays() {
-        let e = StunError::ServerError("code 500".to_string());
+        let e = StunError::ServerError(String::from("code 500"));
         assert!(e.to_string().contains("STUN server error"));
     }
 

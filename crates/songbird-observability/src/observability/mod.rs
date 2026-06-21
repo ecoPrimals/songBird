@@ -416,7 +416,7 @@ mod tests {
     async fn test_health_monitoring() {
         let manager = ObservabilityManager::new();
         let result = manager
-            .record_health_check("test-service".to_string(), HealthStatus::Healthy, 100)
+            .record_health_check(String::from("test-service"), HealthStatus::Healthy, 100)
             .await;
         assert!(result.is_ok());
     }

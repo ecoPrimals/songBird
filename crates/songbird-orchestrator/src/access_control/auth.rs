@@ -428,7 +428,7 @@ fn compute_totp(secret: &[u8], counter: u64) -> String {
 
     let counter_bytes = counter.to_be_bytes();
     let Ok(mut mac) = Hmac::<Sha1>::new_from_slice(secret) else {
-        return "000000".to_string();
+        return String::from("000000");
     };
     mac.update(&counter_bytes);
     let result = mac.finalize().into_bytes();

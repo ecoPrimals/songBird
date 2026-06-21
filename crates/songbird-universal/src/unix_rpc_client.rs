@@ -186,7 +186,7 @@ impl UnixRpcClient {
 
         // Build request
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: String::from("2.0"),
             method: method.to_string(),
             params,
             id,
@@ -346,7 +346,7 @@ mod tests {
 
         // Call echo method
         let request = EchoRequest {
-            message: "Hello, Unix sockets!".to_string(),
+            message: String::from("Hello, Unix sockets!"),
         };
         let response: EchoResponse = client.call("echo", request).await?;
 

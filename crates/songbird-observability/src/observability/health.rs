@@ -210,7 +210,7 @@ mod tests {
     #[tokio::test]
     async fn test_service_registration() {
         let monitor = HealthMonitor::new();
-        assert!(monitor.register_service("test-service".to_string()).await.is_ok());
+        assert!(monitor.register_service(String::from("test-service")).await.is_ok());
 
         let stats = monitor.get_health_stats().await;
         assert_eq!(stats.total_services, 1);
@@ -219,7 +219,7 @@ mod tests {
     #[tokio::test]
     async fn test_health_status_update() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let monitor = HealthMonitor::new();
-        monitor.register_service("test-service".to_string()).await?;
+        monitor.register_service(String::from("test-service")).await?;
 
         assert!(monitor.update_service_health("test-service", HealthStatus::Healthy).await.is_ok());
 

@@ -218,7 +218,7 @@ mod tests {
             internal_client: IpAddr::V4(Ipv4Addr::new(192, 168, 1, 10)),
             external_ip: None,
             protocol: Protocol::Tcp,
-            description: "test".to_string(),
+            description: String::from("test"),
             lease_duration: 3600,
             created_at: Instant::now()
                 .checked_sub(Duration::from_secs(10_000))

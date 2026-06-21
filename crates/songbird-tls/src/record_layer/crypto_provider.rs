@@ -68,7 +68,9 @@ impl RecordLayer {
 
 fn tls_record_nonce_from_iv(iv: &[u8], sequence: u64) -> Result<[u8; 12]> {
     if iv.len() != 12 {
-        return Err(TlsError::InvalidParameter("TLS record AEAD IV must be 12 bytes".to_string()));
+        return Err(TlsError::InvalidParameter(String::from(
+            "TLS record AEAD IV must be 12 bytes",
+        )));
     }
     let mut nonce = [0u8; 12];
     nonce.copy_from_slice(iv);
@@ -104,10 +106,10 @@ pub async fn record_aead_encrypt_via_provider(
         TlsError::CryptoUnavailable
     })?;
     let ciphertext_b64 = result["ciphertext"].as_str().ok_or_else(|| {
-        TlsError::CryptoError("Security provider aead_encrypt: missing ciphertext".to_string())
+        TlsError::CryptoError(String::from("Security provider aead_encrypt: missing ciphertext"))
     })?;
     let tag_b64 = result["tag"].as_str().ok_or_else(|| {
-        TlsError::CryptoError("Security provider aead_encrypt: missing tag".to_string())
+        TlsError::CryptoError(String::from("Security provider aead_encrypt: missing tag"))
     })?;
     let mut ciphertext = general_purpose::STANDARD
         .decode(ciphertext_b64)
@@ -151,7 +153,7 @@ pub async fn record_aead_decrypt_via_provider(
         TlsError::CryptoUnavailable
     })?;
     let plaintext_b64 = result["plaintext"].as_str().ok_or_else(|| {
-        TlsError::CryptoError("Security provider aead_decrypt: missing plaintext".to_string())
+        TlsError::CryptoError(String::from("Security provider aead_decrypt: missing plaintext"))
     })?;
     general_purpose::STANDARD
         .decode(plaintext_b64)

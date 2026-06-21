@@ -215,16 +215,16 @@ impl RelaySession {
         };
 
         if !response.success {
-            let reason = response.error.unwrap_or_else(|| "unknown".to_string());
+            let reason = response.error.unwrap_or_else(|| String::from("unknown"));
             return Err(LineageRelayError::NoRelayAvailable(format!(
                 "Relay allocation denied by {relay_node}: {reason}"
             )));
         }
 
         let session_id = response.session_id.ok_or_else(|| {
-            LineageRelayError::InvalidProtocol(
-                "AllocationResponse success=true but no session_id".to_string(),
-            )
+            LineageRelayError::InvalidProtocol(String::from(
+                "AllocationResponse success=true but no session_id",
+            ))
         })?;
 
         info!(
@@ -457,7 +457,9 @@ impl RelayDiscovery {
             }
         }
 
-        Err(LineageRelayError::NoRelayAvailable("No authorized relay offers received".to_string()))
+        Err(LineageRelayError::NoRelayAvailable(String::from(
+            "No authorized relay offers received",
+        )))
     }
 
     /// Offer relay service (as ancestor)
@@ -478,9 +480,9 @@ impl RelayDiscovery {
 
         if !authorization.authorized {
             warn!("Relay denied for {}", request.requester);
-            return Err(LineageRelayError::RelayDenied(
-                "Not authorized to relay for this node".to_string(),
-            ));
+            return Err(LineageRelayError::RelayDenied(String::from(
+                "Not authorized to relay for this node",
+            )));
         }
 
         // Create relay offer

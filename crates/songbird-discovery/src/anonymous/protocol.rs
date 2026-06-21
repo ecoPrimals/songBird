@@ -172,7 +172,7 @@ pub async fn build_dark_forest_beacon_bytes(
 
     let payload = BeaconPayload::new(
         beacon_id,
-        node_id.unwrap_or_else(|| "unknown".to_string()),
+        node_id.unwrap_or_else(|| String::from("unknown")),
         endpoints_list,
         capabilities,
         None,
@@ -238,9 +238,9 @@ mod tests {
         assert!(!prep.session_id.is_empty());
         let msg = AnonymousDiscoveryMessage::from_bytes(&prep.bytes).expect("parse");
         assert_eq!(msg.version, "2.1");
-        assert_eq!(msg.capabilities, vec!["orchestration".to_string()]);
+        assert_eq!(msg.capabilities, vec![String::from("orchestration")]);
         assert_eq!(msg.port, 8443);
-        assert_eq!(msg.tags, Some(vec!["tag:a".to_string()]));
+        assert_eq!(msg.tags, Some(vec![String::from("tag:a")]));
     }
 
     #[test]

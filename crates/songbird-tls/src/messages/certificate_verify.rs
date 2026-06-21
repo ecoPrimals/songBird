@@ -52,7 +52,7 @@ impl CertificateVerify {
     pub fn validate(&self) -> Result<()> {
         // Signature must not be empty
         if self.signature.is_empty() {
-            return Err(TlsError::CertificateError("Signature cannot be empty".to_string()));
+            return Err(TlsError::CertificateError(String::from("Signature cannot be empty")));
         }
 
         // Check if algorithm is supported

@@ -180,14 +180,14 @@ mod tests {
             e
         );
 
-        let e = IgdError::MappingConflict(443, "other-host".to_string());
+        let e = IgdError::MappingConflict(443, String::from("other-host"));
         assert!(e.to_string().contains("443"), "should include port: {e}");
         assert!(e.to_string().contains("other-host"), "should include peer hint: {e}");
 
-        let e = IgdError::InvalidParameter("bad".to_string());
+        let e = IgdError::InvalidParameter(String::from("bad"));
         assert!(e.to_string().contains("bad"), "should include parameter detail: {e}");
 
-        let e = IgdError::ProtocolNotSupported("foo".to_string());
+        let e = IgdError::ProtocolNotSupported(String::from("foo"));
         assert!(e.to_string().contains("foo"), "should include protocol name: {e}");
     }
 

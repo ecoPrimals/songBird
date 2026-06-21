@@ -27,7 +27,7 @@ impl HolePunchCoordinator {
 
         // Get our info
         let my_info = self.my_info.read().await.clone().ok_or_else(|| {
-            OnionRelayError::Other("Must discover public address first".to_string())
+            OnionRelayError::Other(String::from("Must discover public address first"))
         })?;
 
         // Get peer info

@@ -165,7 +165,7 @@ async fn stop_job(
     Ok(Json(StopJobResponse {
         job_id,
         status: ExecutionStatus::Stopped,
-        signal: request.signal.unwrap_or_else(|| "SIGTERM".to_string()),
+        signal: request.signal.unwrap_or_else(|| String::from("SIGTERM")),
     }))
 }
 
@@ -198,7 +198,7 @@ impl IntoResponse for AppError {
             } => (StatusCode::TOO_MANY_REQUESTS, message.clone()),
             _ => {
                 error!("Internal error: {:?}", self.0);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                (StatusCode::INTERNAL_SERVER_ERROR, String::from("Internal server error"))
             }
         };
 

@@ -279,9 +279,9 @@ impl SovereigntyAwareAdapter {
         // Create decision metadata
         let decision_metadata = RoutingDecisionMetadata {
             decision_timestamp: std::time::SystemTime::now(),
-            algorithm_version: "sovereignty-aware-v1.0".to_string(),
+            algorithm_version: String::from("sovereignty-aware-v1.0"),
             decision_factors: vec![DecisionFactor {
-                factor_name: "sovereignty_score".to_string(),
+                factor_name: String::from("sovereignty_score"),
                 factor_weight: self.config.sovereignty_preference_weight,
                 factor_value: selected_path.sovereignty_score,
             }],
@@ -402,14 +402,14 @@ impl SovereigntyAwareAdapter {
 
         let mut effects = Vec::new();
         effects.push(ExpectedNetworkEffect {
-            effect_id: "routing_efficiency_hint".to_string(),
+            effect_id: String::from("routing_efficiency_hint"),
             effect_type: NetworkEffectType::PerformanceImprovement,
             impact_magnitude: (path.efficiency_score - 0.5).abs(),
             confidence_level: 0.45,
         });
         if path.sovereignty_score > 0.6 {
             effects.push(ExpectedNetworkEffect {
-                effect_id: "routing_sovereignty_hint".to_string(),
+                effect_id: String::from("routing_sovereignty_hint"),
                 effect_type: NetworkEffectType::SecurityEnhancement,
                 impact_magnitude: (path.sovereignty_score - 0.5).abs(),
                 confidence_level: 0.45,

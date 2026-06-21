@@ -339,8 +339,8 @@ mod tests {
     #[test]
     fn test_tunnel_state_checks() {
         let mut tunnel = BtspTunnel {
-            tunnel_id: "tunnel-1".to_string(),
-            remote_node_id: "peer-1".to_string(),
+            tunnel_id: String::from("tunnel-1"),
+            remote_node_id: String::from("peer-1"),
             endpoint: BtspEndpoint::Direct {
                 addr: "192.168.1.1:8080".parse().unwrap(),
             },

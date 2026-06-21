@@ -345,7 +345,7 @@ mod tests {
             identity_public: [1u8; 32],
             encryption_secret: [2u8; 32],
             encryption_public: [3u8; 32],
-            onion_address: "test".to_string(),
+            onion_address: String::from("test"),
         };
 
         assert!(matches!(
@@ -361,7 +361,7 @@ mod tests {
             identity_public: [1u8; 32],
             encryption_secret: [2u8; 32],
             encryption_public: [3u8; 32],
-            onion_address: "test".to_string(),
+            onion_address: String::from("test"),
         };
 
         // Wire-format test: non-empty signature bytes (no crypto validity asserted)
@@ -397,7 +397,7 @@ mod tests {
             identity_public: [1u8; 32],
             encryption_secret: [2u8; 32],
             encryption_public: [3u8; 32],
-            onion_address: "test".to_string(),
+            onion_address: String::from("test"),
         };
 
         let intro_points = vec![IntroductionPoint {
@@ -427,7 +427,7 @@ mod tests {
             identity_public: [1u8; 32],
             encryption_secret: [2u8; 32],
             encryption_public: [3u8; 32],
-            onion_address: "test".to_string(),
+            onion_address: String::from("test"),
         };
 
         let d1 = OnionServiceDescriptor {

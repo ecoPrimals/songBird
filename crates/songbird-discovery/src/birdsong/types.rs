@@ -75,8 +75,11 @@ mod tests {
 
     #[test]
     fn new_and_accessors() {
-        let p =
-            BirdSongPacket::new("1.0".to_string(), "fam".to_string(), "cGF5bG9hZA==".to_string());
+        let p = BirdSongPacket::new(
+            String::from("1.0"),
+            String::from("fam"),
+            String::from("cGF5bG9hZA=="),
+        );
         assert_eq!(p.version(), "1.0");
         assert_eq!(p.family_id(), "fam");
         assert_eq!(p.encrypted_payload(), "cGF5bG9hZA==");
@@ -84,7 +87,7 @@ mod tests {
 
     #[test]
     fn serde_uses_birdsong_field_name() {
-        let p = BirdSongPacket::new("1.0".to_string(), "fam".to_string(), "x".to_string());
+        let p = BirdSongPacket::new(String::from("1.0"), String::from("fam"), String::from("x"));
         let v: serde_json::Value = serde_json::to_value(&p).unwrap();
         assert_eq!(v.get("birdsong").and_then(|x| x.as_str()), Some("1.0"));
         assert_eq!(v.get("family_id").and_then(|x| x.as_str()), Some("fam"));
@@ -92,7 +95,8 @@ mod tests {
 
     #[test]
     fn serde_roundtrip() {
-        let p = BirdSongPacket::new("1.0".to_string(), "iidn".to_string(), "payload".to_string());
+        let p =
+            BirdSongPacket::new(String::from("1.0"), String::from("iidn"), String::from("payload"));
         let json = serde_json::to_string(&p).unwrap();
         let back: BirdSongPacket = serde_json::from_str(&json).unwrap();
         assert_eq!(p.version, back.version);

@@ -65,7 +65,7 @@ fn resolve_tower_id(
 
 fn init_tracing() {
     let filter = songbird_process_env::var("RUST_LOG")
-        .unwrap_or_else(|_| "info,songbird_compute_bridge=debug".to_string());
+        .unwrap_or_else(|_| String::from("info,songbird_compute_bridge=debug"));
     let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
 }
 
@@ -194,13 +194,16 @@ mod tests {
         assert_eq!(normalize_capabilities_csv(""), vec![""]);
         assert_eq!(
             normalize_capabilities_csv("a,,b"),
-            vec!["a".to_string(), String::new(), "b".to_string()]
+            vec![String::from("a"), String::new(), String::from("b")]
         );
         assert_eq!(
             normalize_capabilities_csv("gpu, gpu ,gpu"),
-            vec!["gpu".to_string(), "gpu".to_string(), "gpu".to_string()]
+            vec![String::from("gpu"), String::from("gpu"), String::from("gpu")]
         );
-        assert_eq!(normalize_capabilities_csv("  x  ,  y"), vec!["x".to_string(), "y".to_string()]);
+        assert_eq!(
+            normalize_capabilities_csv("  x  ,  y"),
+            vec![String::from("x"), String::from("y")]
+        );
         assert_eq!(
             normalize_capabilities_csv(",,,,"),
             vec![String::new(), String::new(), String::new(), String::new(), String::new()]

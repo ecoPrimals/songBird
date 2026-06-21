@@ -106,16 +106,16 @@ mod tests {
 
     #[test]
     fn http_variant_display_includes_message() {
-        let e = Error::Http("status 502 bad gateway".to_string());
+        let e = Error::Http(String::from("status 502 bad gateway"));
         assert!(e.to_string().contains("502"));
         assert!(e.to_string().contains("HTTP"));
     }
 
     #[test]
     fn consensus_and_not_found_roundtrip_display() {
-        let c = Error::Consensus("stale microdesc".to_string());
+        let c = Error::Consensus(String::from("stale microdesc"));
         assert!(c.to_string().contains("stale"));
-        let n = Error::NotFound("relay fingerprint".to_string());
+        let n = Error::NotFound(String::from("relay fingerprint"));
         assert!(n.to_string().contains("relay"));
     }
 }

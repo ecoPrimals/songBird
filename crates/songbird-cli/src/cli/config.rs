@@ -35,7 +35,7 @@ impl Default for CliConfig {
             log_dir: config_dir.join("logs"),
             editor: songbird_process_env::var("EDITOR").ok(),
             color: true,
-            default_deployment_type: "home-network".to_string(),
+            default_deployment_type: String::from("home-network"),
         }
     }
 }

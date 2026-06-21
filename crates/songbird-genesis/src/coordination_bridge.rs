@@ -100,7 +100,7 @@ impl GenesisCoordinationBridge {
         reason = "async signature for API compatibility with coordination-enabled builds"
     )]
     pub async fn execute_genesis(&self, _node_id_str: String) -> Result<()> {
-        Err(GenesisError::CoordinationFailed("Coordination feature not enabled".to_string()))
+        Err(GenesisError::CoordinationFailed(String::from("Coordination feature not enabled")))
     }
 }
 
@@ -122,7 +122,7 @@ mod tests {
         let discovery = Arc::new(PrimalDiscovery::Static(StaticPrimalDiscovery {
             endpoint: "http://mock:8080".into(),
             capabilities: PrimalCapabilities {
-                services: vec!["security".to_string()],
+                services: vec![String::from("security")],
                 resources: std::collections::HashMap::new(),
                 metadata: std::collections::HashMap::new(),
                 quality: ServiceQuality::default(),
@@ -142,7 +142,7 @@ mod tests {
     async fn test_fallback_mode() {
         let bridge = GenesisCoordinationBridge::new_fallback();
         let err = bridge
-            .execute_genesis("test-node-123".to_string())
+            .execute_genesis(String::from("test-node-123"))
             .await
             .expect_err("fallback must error");
         match err {

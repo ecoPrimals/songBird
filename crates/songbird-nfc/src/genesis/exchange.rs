@@ -212,8 +212,8 @@ mod tests {
         GenesisCredentials {
             identity: vec![1, 2, 3],
             family_seed: vec![4, 5, 6],
-            lineage: vec!["root".to_string()],
-            beacons: vec!["b.onion".to_string()],
+            lineage: vec![String::from("root")],
+            beacons: vec![String::from("b.onion")],
             timestamp: 1_707_350_400_000,
         }
     }

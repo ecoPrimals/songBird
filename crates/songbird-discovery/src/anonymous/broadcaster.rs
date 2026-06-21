@@ -88,7 +88,7 @@ impl AnonymousDiscoveryBroadcaster {
         interval_secs: u64,
     ) -> Self {
         Self {
-            version: "2.1".to_string(),
+            version: String::from("2.1"),
             node_id: None,
             node_name: None,
             endpoints: None,
@@ -124,10 +124,11 @@ impl AnonymousDiscoveryBroadcaster {
             .and_then(|p| p.parse().ok())
             .unwrap_or_else(protocol::default_v3_fallback_port);
 
-        let protocols = primary.map_or_else(|| vec!["https".to_string()], |e| e.protocols.clone());
+        let protocols =
+            primary.map_or_else(|| vec![String::from("https")], |e| e.protocols.clone());
 
         Self {
-            version: "3.0".to_string(),
+            version: String::from("3.0"),
             node_id: Some(node_id),
             node_name: Some(node_name),
             endpoints: Some(endpoints),

@@ -241,7 +241,7 @@ impl DynamicPluginRegistry {
             .await?;
 
         plans.into_iter().next().ok_or_else(|| {
-            SongbirdError::service("plugin-registry", "No viable composition found".to_string())
+            SongbirdError::service("plugin-registry", String::from("No viable composition found"))
         })
     }
 

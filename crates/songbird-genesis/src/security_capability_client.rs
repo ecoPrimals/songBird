@@ -70,7 +70,7 @@ impl SecurityCapabilityClient {
         let request = SignRequest {
             node_id: node_id.to_string(),
             data: hex::encode(data),
-            signature_type: "genesis".to_string(),
+            signature_type: String::from("genesis"),
         };
 
         let url = format!("{}/v1/sign", self.base_url);

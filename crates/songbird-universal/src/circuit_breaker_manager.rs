@@ -47,7 +47,7 @@
 //! }
 //!
 //! # async fn external_service_call() -> Result<String, std::io::Error> {
-//! #     Ok("success".to_string())
+//! #     Ok(String::from("success"))
 //! # }
 //! ```
 
@@ -463,7 +463,7 @@ mod tests {
     async fn test_call_with_breaker_success_records_success() {
         let manager = CircuitBreakerManager::new();
         let out: Result<String, String> = manager
-            .call_with_breaker("https://success.example/api", || async { Ok("ok".to_string()) })
+            .call_with_breaker("https://success.example/api", || async { Ok(String::from("ok")) })
             .await;
         assert_eq!(out.expect("ok"), "ok");
     }

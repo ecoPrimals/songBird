@@ -59,7 +59,7 @@ impl NetworkDiscovery {
                 nodes.push(DiscoveredNode {
                     node_id,
                     address,
-                    capabilities: vec!["network".to_string(), "mesh".to_string()],
+                    capabilities: vec![String::from("network"), String::from("mesh")],
                 });
             }
         }
@@ -69,7 +69,7 @@ impl NetworkDiscovery {
                 nodes.push(DiscoveredNode {
                     node_id,
                     address,
-                    capabilities: vec!["network".to_string(), "mesh".to_string()],
+                    capabilities: vec![String::from("network"), String::from("mesh")],
                 });
             }
         }

@@ -46,7 +46,7 @@ impl ResponseParser {
 
         // Status line
         let status_line =
-            lines.next().ok_or_else(|| Error::InvalidResponse("Empty response".to_string()))?;
+            lines.next().ok_or_else(|| Error::InvalidResponse(String::from("Empty response")))?;
 
         // Debug: Log the status line to understand parsing issues
         debug!("📝 Parsing status line: {:?}", status_line);
@@ -126,7 +126,7 @@ mod tests {
         let parsed = ResponseParser::parse(response).unwrap();
 
         assert_eq!(parsed.status, 200);
-        assert_eq!(parsed.headers.get("content-type"), Some(&"application/json".to_string()));
+        assert_eq!(parsed.headers.get("content-type"), Some(&String::from("application/json")));
         assert_eq!(parsed.body, serde_json::json!({"status": "ok"}));
     }
 
@@ -170,7 +170,7 @@ mod tests {
         let response = b"HTTP/1.1 200 OK\r\nX-Test: a\r\nY-Test: b\r\n\r\nnot json {{{";
         let parsed = ResponseParser::parse(response).unwrap();
         assert_eq!(parsed.status, 200);
-        assert_eq!(parsed.headers.get("x-test"), Some(&"a".to_string()));
+        assert_eq!(parsed.headers.get("x-test"), Some(&String::from("a")));
         assert_eq!(parsed.body, serde_json::json!("not json {{{"));
     }
 
@@ -178,7 +178,7 @@ mod tests {
     fn test_parse_headers_skips_malformed_lines_until_blank() {
         let response = b"HTTP/1.1 200 OK\r\nbadheader\r\nGood: yes\r\n\r\n";
         let parsed = ResponseParser::parse(response).unwrap();
-        assert_eq!(parsed.headers.get("good"), Some(&"yes".to_string()));
+        assert_eq!(parsed.headers.get("good"), Some(&String::from("yes")));
     }
 
     #[test]

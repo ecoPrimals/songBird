@@ -160,7 +160,7 @@ impl HttpsConnection {
             error!(
                 "❌ No HTTP response data received (server closed connection without sending response)"
             );
-            return Err(Error::HttpProtocol("No response data received from server".to_string()));
+            return Err(Error::HttpProtocol(String::from("No response data received from server")));
         }
 
         info!("✅ HTTP response RECEIVED from server:");
@@ -526,7 +526,7 @@ impl HttpsConnection {
 
         // All attempts failed
         let error = last_error.unwrap_or_else(|| {
-            Error::TlsHandshake("All handshake strategies exhausted".to_string())
+            Error::TlsHandshake(String::from("All handshake strategies exhausted"))
         });
         error!("❌ TLS handshake failed: All {} attempt(s) exhausted", strategies_to_try.len());
         error!("   Last error: {}", error);

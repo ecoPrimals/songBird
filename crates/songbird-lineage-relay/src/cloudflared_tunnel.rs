@@ -52,7 +52,7 @@ impl CloudflaredTunnel {
             })?;
 
         let stderr = child.stderr.take().ok_or_else(|| {
-            LineageRelayError::NoRelayAvailable("cannot capture cloudflared stderr".to_string())
+            LineageRelayError::NoRelayAvailable(String::from("cannot capture cloudflared stderr"))
         })?;
 
         let endpoint = Self::parse_tunnel_url(stderr).await?;
@@ -85,17 +85,17 @@ impl CloudflaredTunnel {
         loop {
             let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
             if remaining.is_zero() {
-                return Err(LineageRelayError::Timeout(
-                    "cloudflared did not emit tunnel URL within 30 s".to_string(),
-                ));
+                return Err(LineageRelayError::Timeout(String::from(
+                    "cloudflared did not emit tunnel URL within 30 s",
+                )));
             }
 
             let line = match tokio::time::timeout(remaining, lines.next_line()).await {
                 Ok(Ok(Some(line))) => line,
                 Ok(Ok(None)) => {
-                    return Err(LineageRelayError::NoRelayAvailable(
-                        "cloudflared exited before emitting tunnel URL".to_string(),
-                    ));
+                    return Err(LineageRelayError::NoRelayAvailable(String::from(
+                        "cloudflared exited before emitting tunnel URL",
+                    )));
                 }
                 Ok(Err(e)) => {
                     return Err(LineageRelayError::NetworkError(format!(
@@ -103,9 +103,9 @@ impl CloudflaredTunnel {
                     )));
                 }
                 Err(_) => {
-                    return Err(LineageRelayError::Timeout(
-                        "cloudflared did not emit tunnel URL within 30 s".to_string(),
-                    ));
+                    return Err(LineageRelayError::Timeout(String::from(
+                        "cloudflared did not emit tunnel URL within 30 s",
+                    )));
                 }
             };
 
@@ -152,7 +152,7 @@ mod tests {
         let line = "2026-05-20T12:00:01Z INF | https://foo-bar-baz.trycloudflare.com |";
         assert_eq!(
             extract_trycloudflare_url(line),
-            Some("https://foo-bar-baz.trycloudflare.com".to_string())
+            Some(String::from("https://foo-bar-baz.trycloudflare.com"))
         );
     }
 

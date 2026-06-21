@@ -185,7 +185,7 @@ mod tests {
     #[test]
     fn circuit_hop_keys_roundtrip_clone() {
         let relay = RelayInfo {
-            nickname: "g".to_string(),
+            nickname: String::from("g"),
             fingerprint: [7u8; 20],
             address: std::net::IpAddr::from([10, 0, 0, 1]),
             or_port: 9001,
@@ -193,7 +193,7 @@ mod tests {
             flags: crate::directory::RelayFlags::empty(),
             bandwidth: 100,
             ntor_key: Some([9u8; 32]),
-            version: Some("0.4.8".to_string()),
+            version: Some(String::from("0.4.8")),
         };
         let hop = CircuitHop::new(relay.clone(), [1u8; 32], [2u8; 32], [3u8; 16], [4u8; 16]);
         let cloned = hop.clone();

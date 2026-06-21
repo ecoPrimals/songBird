@@ -133,7 +133,7 @@ async fn negotiate_chunked_upload(
 
     if !response.is_success() {
         let status = response.status();
-        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let error_text = response.text().await.unwrap_or_else(|_| String::from("Unknown error"));
         return Err(anyhow!("Negotiation failed with status {status}: {error_text}"));
     }
 
@@ -168,7 +168,7 @@ async fn upload_chunk(
 
     if !response.is_success() {
         let status = response.status();
-        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let error_text = response.text().await.unwrap_or_else(|_| String::from("Unknown error"));
         return Err(anyhow!(
             "Chunk {chunk_index} upload failed with status {status}: {error_text}"
         ));
@@ -203,7 +203,7 @@ async fn finalize_chunked_upload<S: BuildHasher>(
 
     if !response.is_success() {
         let status = response.status();
-        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let error_text = response.text().await.unwrap_or_else(|_| String::from("Unknown error"));
         return Err(anyhow!("Finalize failed with status {status}: {error_text}"));
     }
 

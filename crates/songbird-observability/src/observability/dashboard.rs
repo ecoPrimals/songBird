@@ -23,7 +23,7 @@ fn http_error_to_songbird(error: hyper::http::Error) -> SongbirdError {
     SongbirdError::Network {
         message: format!("HTTP error: {error}"),
         interface: None,
-        suggestion: Some("Check HTTP request/response construction".to_string()),
+        suggestion: Some(String::from("Check HTTP request/response construction")),
     }
 }
 
@@ -309,7 +309,9 @@ mod tests {
         let content_type = resp
             .headers()
             .get("content-type")
-            .ok_or_else(|| SongbirdError::configuration("Missing content-type header".to_string()))?
+            .ok_or_else(|| {
+                SongbirdError::configuration(String::from("Missing content-type header"))
+            })?
             .to_str()
             .map_err(|e| SongbirdError::configuration(format!("Invalid HTTP header value: {e}")))?;
         assert!(content_type.contains("text/html"));
@@ -329,7 +331,9 @@ mod tests {
         let content_type = resp
             .headers()
             .get("content-type")
-            .ok_or_else(|| SongbirdError::configuration("Missing content-type header".to_string()))?
+            .ok_or_else(|| {
+                SongbirdError::configuration(String::from("Missing content-type header"))
+            })?
             .to_str()
             .map_err(|e| SongbirdError::configuration(format!("Invalid HTTP header value: {e}")))?;
         assert!(content_type.contains("application/json"));
@@ -349,7 +353,9 @@ mod tests {
         let content_type = resp
             .headers()
             .get("content-type")
-            .ok_or_else(|| SongbirdError::configuration("Missing content-type header".to_string()))?
+            .ok_or_else(|| {
+                SongbirdError::configuration(String::from("Missing content-type header"))
+            })?
             .to_str()
             .map_err(|e| SongbirdError::configuration(format!("Invalid HTTP header value: {e}")))?;
         assert!(content_type.contains("application/json"));
@@ -369,7 +375,9 @@ mod tests {
         let content_type = resp
             .headers()
             .get("content-type")
-            .ok_or_else(|| SongbirdError::configuration("Missing content-type header".to_string()))?
+            .ok_or_else(|| {
+                SongbirdError::configuration(String::from("Missing content-type header"))
+            })?
             .to_str()
             .map_err(|e| SongbirdError::configuration(format!("Invalid HTTP header value: {e}")))?;
         assert!(content_type.contains("application/json"));

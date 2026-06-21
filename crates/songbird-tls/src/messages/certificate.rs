@@ -75,7 +75,9 @@ impl Certificate {
     pub fn validate(&self) -> Result<()> {
         // Must have at least one certificate
         if self.certificate_list.is_empty() {
-            return Err(TlsError::CertificateError("Certificate list cannot be empty".to_string()));
+            return Err(TlsError::CertificateError(String::from(
+                "Certificate list cannot be empty",
+            )));
         }
 
         // Each certificate must have data

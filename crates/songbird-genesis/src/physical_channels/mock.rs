@@ -61,9 +61,9 @@ impl Default for MockPhysicalChannel {
 impl PhysicalChannelProvider for MockPhysicalChannel {
     async fn verify_proximity(&self) -> Result<ProximityProof> {
         if !self.should_succeed {
-            return Err(GenesisError::ProximityVerificationFailed(
-                "Mock verification failed".to_string(),
-            ));
+            return Err(GenesisError::ProximityVerificationFailed(String::from(
+                "Mock verification failed",
+            )));
         }
 
         Ok(ProximityProof {
@@ -76,7 +76,7 @@ impl PhysicalChannelProvider for MockPhysicalChannel {
 
     async fn secure_exchange(&self) -> Result<Vec<u8>> {
         if !self.should_succeed {
-            return Err(GenesisError::PhysicalChannelError("Mock exchange failed".to_string()));
+            return Err(GenesisError::PhysicalChannelError(String::from("Mock exchange failed")));
         }
 
         // Return mock genesis credentials

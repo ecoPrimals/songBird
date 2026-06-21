@@ -160,7 +160,7 @@ mod tests {
     #[test]
     fn with_stun_servers_overrides_defaults() {
         let config =
-            HolePunchConfig::default().with_stun_servers(vec!["my-stun.local:3478".to_string()]);
+            HolePunchConfig::default().with_stun_servers(vec![String::from("my-stun.local:3478")]);
         assert_eq!(config.stun_servers.len(), 1);
         assert_eq!(config.stun_servers[0], "my-stun.local:3478");
     }
@@ -172,7 +172,7 @@ mod tests {
             attempt_timeout: Duration::from_millis(100),
             packet_interval: Duration::from_millis(25),
             total_timeout: Duration::from_secs(3),
-            stun_servers: vec!["test:1234".to_string()],
+            stun_servers: vec![String::from("test:1234")],
             ack_timeout: Duration::from_secs(2),
         };
         let cloned = original.clone();

@@ -37,30 +37,30 @@ impl PhysicalChannelProvider for QrCodeChannel {
     async fn verify_proximity(&self) -> Result<ProximityProof> {
         #[cfg(not(feature = "qr"))]
         {
-            return Err(GenesisError::FeatureUnavailable(
-                "QR code support requires the 'qr' feature".to_string(),
-            ));
+            return Err(GenesisError::FeatureUnavailable(String::from(
+                "QR code support requires the 'qr' feature",
+            )));
         }
         #[cfg(feature = "qr")]
         {
-            Err(GenesisError::QrCodeError(
-                "QR proximity verification is not yet implemented; enable `qr` and wire generation (qrcode), capture (image), and decode (rqrr)".to_string(),
-            ))
+            Err(GenesisError::QrCodeError(String::from(
+                "QR proximity verification is not yet implemented; enable `qr` and wire generation (qrcode), capture (image), and decode (rqrr)",
+            )))
         }
     }
 
     async fn secure_exchange(&self) -> Result<Vec<u8>> {
         #[cfg(not(feature = "qr"))]
         {
-            return Err(GenesisError::FeatureUnavailable(
-                "QR code support requires the 'qr' feature".to_string(),
-            ));
+            return Err(GenesisError::FeatureUnavailable(String::from(
+                "QR code support requires the 'qr' feature",
+            )));
         }
         #[cfg(feature = "qr")]
         {
-            Err(GenesisError::QrCodeError(
-                "QR secure exchange is not yet implemented; complete OOB scan validation then derive credentials".to_string(),
-            ))
+            Err(GenesisError::QrCodeError(String::from(
+                "QR secure exchange is not yet implemented; complete OOB scan validation then derive credentials",
+            )))
         }
     }
 

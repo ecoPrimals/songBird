@@ -406,7 +406,7 @@ mod tests {
                 file_name,
                 ..
             } => {
-                assert_eq!(file_name, Some("test.bin".to_string()));
+                assert_eq!(file_name, Some(String::from("test.bin")));
             }
             PartContent::Text {
                 ..
@@ -423,7 +423,7 @@ mod tests {
                 mime,
                 ..
             } => {
-                assert_eq!(mime, Some("application/octet-stream".to_string()));
+                assert_eq!(mime, Some(String::from("application/octet-stream")));
             }
             PartContent::Text {
                 ..
