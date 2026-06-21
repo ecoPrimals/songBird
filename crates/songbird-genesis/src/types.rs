@@ -210,7 +210,7 @@ mod tests {
         assert_eq!(back.proof_data, proof.proof_data);
 
         let lineage = PrimalLineage {
-            primal_name: "songbird".to_string(),
+            primal_name: String::from("songbird"),
             lineage_data: vec![9],
             signature: vec![8],
             timestamp: Utc::now(),
@@ -263,18 +263,18 @@ mod tests {
 
         let mut primal_lineages = HashMap::new();
         primal_lineages.insert(
-            "a".to_string(),
+            String::from("a"),
             PrimalLineage {
-                primal_name: "a".to_string(),
+                primal_name: String::from("a"),
                 lineage_data: vec![1, 2],
                 signature: vec![3],
                 timestamp: Utc.with_ymd_and_hms(2025, 6, 1, 12, 0, 0).unwrap(),
             },
         );
         primal_lineages.insert(
-            "b".to_string(),
+            String::from("b"),
             PrimalLineage {
-                primal_name: "b".to_string(),
+                primal_name: String::from("b"),
                 lineage_data: vec![],
                 signature: vec![9, 9],
                 timestamp: Utc.with_ymd_and_hms(2025, 6, 2, 0, 0, 0).unwrap(),
@@ -282,7 +282,7 @@ mod tests {
         );
 
         let gl = GenesisLineage {
-            witness_device_id: "witness-1".to_string(),
+            witness_device_id: String::from("witness-1"),
             primal_lineages,
             birth_timestamp: Utc.with_ymd_and_hms(2025, 6, 3, 0, 0, 0).unwrap(),
             ceremony_id: Uuid::nil(),
@@ -299,8 +299,8 @@ mod tests {
     #[test]
     fn primal_genesis_request_and_response_serde_roundtrip() {
         let req = PrimalGenesisRequest {
-            new_node_id: "child".to_string(),
-            witness_device_id: "w".to_string(),
+            new_node_id: String::from("child"),
+            witness_device_id: String::from("w"),
             witness_pubkey: vec![0xab, 0xcd],
             proximity_proof: ProximityProof {
                 channel_type: PhysicalChannelType::Nfc,
@@ -316,15 +316,15 @@ mod tests {
         assert_eq!(req_back.proximity_proof.attestation, Some(vec![8, 8]));
 
         let resp = PrimalGenesisResponse {
-            primal_name: "songbird".to_string(),
+            primal_name: String::from("songbird"),
             lineage: PrimalLineage {
-                primal_name: "songbird".to_string(),
+                primal_name: String::from("songbird"),
                 lineage_data: vec![1],
                 signature: vec![2],
                 timestamp: Utc.with_ymd_and_hms(2024, 3, 3, 3, 3, 3).unwrap(),
             },
             success: false,
-            error: Some("temporary".to_string()),
+            error: Some(String::from("temporary")),
         };
         let resp_json = serde_json::to_string(&resp).expect("resp serde");
         let resp_back: PrimalGenesisResponse = serde_json::from_str(&resp_json).expect("resp de");

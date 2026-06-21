@@ -127,15 +127,15 @@ impl Default for AvailableProtocols {
                 }),
             }),
             websocket: Some(ProtocolInfo {
-                version: "13".to_string(),
+                version: String::from("13"),
                 endpoints: HashMap::from([(
-                    "ws".to_string(),
+                    String::from("ws"),
                     format!("ws://[::]:{port}/api/ws/ws"),
                 )]),
                 features: vec![
-                    "bidirectional".to_string(),
-                    "low-latency".to_string(),
-                    "streaming".to_string(),
+                    String::from("bidirectional"),
+                    String::from("low-latency"),
+                    String::from("streaming"),
                 ],
                 performance: Some(PerformanceInfo {
                     latency_us: 500,

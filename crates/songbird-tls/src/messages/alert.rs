@@ -301,7 +301,7 @@ mod tests {
         assert_eq!(alert.level, AlertLevel::Fatal);
         assert_eq!(alert.description, AlertDescription::DecryptError);
 
-        let error = TlsError::CertificateError("test".to_string());
+        let error = TlsError::CertificateError(String::from("test"));
         let alert = Alert::from_error(&error);
         assert_eq!(alert.description, AlertDescription::BadCertificate);
     }
@@ -370,19 +370,19 @@ mod tests {
     fn alert_from_error_always_produces_fatal_alerts() {
         let errors = [
             TlsError::DecryptError,
-            TlsError::CertificateError("bad".to_string()),
-            TlsError::HandshakeFailure("fail".to_string()),
-            TlsError::Unsupported("old tls".to_string()),
-            TlsError::ProtocolError("bad msg".to_string()),
+            TlsError::CertificateError(String::from("bad")),
+            TlsError::HandshakeFailure(String::from("fail")),
+            TlsError::Unsupported(String::from("old tls")),
+            TlsError::ProtocolError(String::from("bad msg")),
             TlsError::UnexpectedMessage {
-                expected: "A".to_string(),
-                got: "B".to_string(),
+                expected: String::from("A"),
+                got: String::from("B"),
             },
-            TlsError::InvalidParameter("x".to_string()),
+            TlsError::InvalidParameter(String::from("x")),
             TlsError::RecordTooLarge {
                 size: 99999,
             },
-            TlsError::InternalError("boom".to_string()),
+            TlsError::InternalError(String::from("boom")),
         ];
         for err in errors {
             let alert = Alert::from_error(&err);

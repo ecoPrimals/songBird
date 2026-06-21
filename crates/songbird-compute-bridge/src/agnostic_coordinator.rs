@@ -96,7 +96,7 @@ impl AgnosticComputeCoordinator {
             tracing::info!("Discovered compute capability at: {}", endpoint);
             return Ok(ComputeProvider {
                 endpoint,
-                capabilities: vec!["compute".to_string()],
+                capabilities: vec![String::from("compute")],
                 metadata: HashMap::new(),
                 healthy: true,
             });
@@ -121,7 +121,7 @@ impl AgnosticComputeCoordinator {
                 tracing::info!("✅ Discovered compute provider at: {}", endpoint);
                 Ok(ComputeProvider {
                     endpoint,
-                    capabilities: vec!["compute".to_string()],
+                    capabilities: vec![String::from("compute")],
                     metadata: HashMap::new(),
                     healthy: true,
                 })
@@ -289,8 +289,8 @@ mod tests {
 
     fn workload_sample() -> Workload {
         Workload {
-            id: "test-workload-1".to_string(),
-            service_type: "ml-inference".to_string(),
+            id: String::from("test-workload-1"),
+            service_type: String::from("ml-inference"),
             requirements: HashMap::new(),
         }
     }
@@ -393,7 +393,7 @@ mod tests {
             from_cache.endpoint, "http://cached.compute.test:9000",
             "in-memory cache should satisfy when env is masked"
         );
-        assert!(from_cache.capabilities.contains(&"compute".to_string()));
+        assert!(from_cache.capabilities.contains(&String::from("compute")));
         assert!(from_cache.healthy);
 
         let _env =
@@ -414,8 +414,8 @@ mod tests {
             .insert_provider_for_test(
                 "compute",
                 ComputeProvider {
-                    endpoint: "http://127.0.0.1:1".to_string(),
-                    capabilities: vec!["compute".to_string()],
+                    endpoint: String::from("http://127.0.0.1:1"),
+                    capabilities: vec![String::from("compute")],
                     metadata: HashMap::new(),
                     healthy: true,
                 },

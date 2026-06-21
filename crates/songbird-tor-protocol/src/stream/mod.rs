@@ -110,7 +110,7 @@ impl StreamManager {
         let mut next_id = self
             .next_stream_id
             .write()
-            .map_err(|_| Error::Protocol("Failed to acquire stream ID lock".to_string()))?;
+            .map_err(|_| Error::Protocol(String::from("Failed to acquire stream ID lock")))?;
 
         let stream_id = *next_id;
         *next_id = next_id.wrapping_add(1);
@@ -123,7 +123,7 @@ impl StreamManager {
         let mut streams = self
             .streams
             .write()
-            .map_err(|_| Error::Protocol("Failed to acquire streams lock".to_string()))?;
+            .map_err(|_| Error::Protocol(String::from("Failed to acquire streams lock")))?;
         streams.insert(stream_id, stream);
         drop(streams);
 
@@ -139,7 +139,7 @@ impl StreamManager {
         let streams = self
             .streams
             .read()
-            .map_err(|_| Error::Protocol("Failed to acquire streams lock".to_string()))?;
+            .map_err(|_| Error::Protocol(String::from("Failed to acquire streams lock")))?;
         streams
             .get(&stream_id)
             .cloned()
@@ -158,7 +158,7 @@ impl StreamManager {
         let mut streams = self
             .streams
             .write()
-            .map_err(|_| Error::Protocol("Failed to acquire streams lock".to_string()))?;
+            .map_err(|_| Error::Protocol(String::from("Failed to acquire streams lock")))?;
 
         let stream = streams
             .get_mut(&stream_id)
@@ -178,7 +178,7 @@ impl StreamManager {
         let mut streams = self
             .streams
             .write()
-            .map_err(|_| Error::Protocol("Failed to acquire streams lock".to_string()))?;
+            .map_err(|_| Error::Protocol(String::from("Failed to acquire streams lock")))?;
         streams.remove(&stream_id);
         drop(streams);
         Ok(())

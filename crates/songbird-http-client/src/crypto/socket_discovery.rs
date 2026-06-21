@@ -392,7 +392,7 @@ pub fn discover_security_socket() -> String {
         }
 
         let crypto_name = if family_id.is_empty() {
-            "crypto.sock".to_string()
+            String::from("crypto.sock")
         } else {
             format!("crypto-{family_id}.sock")
         };
@@ -509,7 +509,7 @@ mod tests {
         let env = mock_env(HashMap::from([("TEST_SOCKET", "/custom/path.sock")]));
         let endpoint =
             discover_ipc_endpoint_with("TEST_SOCKET", "test-primal", "/tmp/fallback.sock", env);
-        assert_eq!(endpoint, IpcEndpoint::UnixSocket("/custom/path.sock".to_string()));
+        assert_eq!(endpoint, IpcEndpoint::UnixSocket(String::from("/custom/path.sock")));
     }
 
     #[test]
@@ -518,7 +518,7 @@ mod tests {
         let env = mock_env(HashMap::new());
         let endpoint =
             discover_ipc_endpoint_with("TEST_SOCKET", "test-primal", "/tmp/fallback.sock", env);
-        assert_eq!(endpoint, IpcEndpoint::UnixSocket("/tmp/fallback.sock".to_string()));
+        assert_eq!(endpoint, IpcEndpoint::UnixSocket(String::from("/tmp/fallback.sock")));
     }
 
     #[test]
@@ -530,7 +530,7 @@ mod tests {
         let endpoint =
             discover_ipc_endpoint_with("TEST_SOCKET", "test-primal", "/tmp/fallback.sock", env);
         // Socket file doesn't exist, so falls through to legacy
-        assert_eq!(endpoint, IpcEndpoint::UnixSocket("/tmp/fallback.sock".to_string()));
+        assert_eq!(endpoint, IpcEndpoint::UnixSocket(String::from("/tmp/fallback.sock")));
     }
 
     #[test]
@@ -539,12 +539,12 @@ mod tests {
         let env = mock_env(HashMap::from([("TEST_SOCKET", "")]));
         let endpoint =
             discover_ipc_endpoint_with("TEST_SOCKET", "test-primal", "/tmp/fallback.sock", env);
-        assert_eq!(endpoint, IpcEndpoint::UnixSocket("/tmp/fallback.sock".to_string()));
+        assert_eq!(endpoint, IpcEndpoint::UnixSocket(String::from("/tmp/fallback.sock")));
     }
 
     #[test]
     fn test_ipc_endpoint_unix() {
-        let endpoint = IpcEndpoint::UnixSocket("/tmp/test.sock".to_string());
+        let endpoint = IpcEndpoint::UnixSocket(String::from("/tmp/test.sock"));
         assert_eq!(endpoint.display(), "unix:///tmp/test.sock");
     }
 
@@ -603,12 +603,12 @@ mod tests {
         let env = mock_env(HashMap::new());
         let endpoint = discover_ipc_endpoint_with("NO_SUCH_ENV", primal, "/tmp/fallback.sock", env);
         let _ = std::fs::remove_file(&path);
-        assert_eq!(endpoint, IpcEndpoint::UnixSocket("/tmp/fallback.sock".to_string()));
+        assert_eq!(endpoint, IpcEndpoint::UnixSocket(String::from("/tmp/fallback.sock")));
     }
 
     #[test]
     fn ipc_endpoint_unix_display_escapes_nothing_special() {
-        let ep = IpcEndpoint::UnixSocket("/path/with space.sock".to_string());
+        let ep = IpcEndpoint::UnixSocket(String::from("/path/with space.sock"));
         assert!(ep.display().contains("unix://"));
     }
 

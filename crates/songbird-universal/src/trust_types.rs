@@ -133,7 +133,8 @@ mod tests {
 
     #[test]
     fn test_trust_request_creation() {
-        let request = TrustEvaluationRequest::new("tower2", vec!["crypto:family:a3f2".to_string()]);
+        let request =
+            TrustEvaluationRequest::new("tower2", vec![String::from("crypto:family:a3f2")]);
 
         assert_eq!(request.peer_id, "tower2");
         assert_eq!(request.peer_tags.len(), 1);
@@ -143,10 +144,11 @@ mod tests {
     #[test]
     fn test_trust_request_with_context() {
         let mut context = HashMap::new();
-        context.insert("source".to_string(), "discovery".to_string());
+        context.insert(String::from("source"), String::from("discovery"));
 
-        let request = TrustEvaluationRequest::new("tower2", vec!["crypto:family:a3f2".to_string()])
-            .with_context(context);
+        let request =
+            TrustEvaluationRequest::new("tower2", vec![String::from("crypto:family:a3f2")])
+                .with_context(context);
 
         assert!(request.context.is_some());
     }
@@ -154,9 +156,9 @@ mod tests {
     #[test]
     fn test_trust_response_is_auto_accept() {
         let response = TrustEvaluationResponse {
-            decision: "auto_accept".to_string(),
+            decision: String::from("auto_accept"),
             trust_level: TrustLevel::Highest, // Phase 1: Use enum
-            reason: "Same family".to_string(),
+            reason: String::from("Same family"),
             suggested_action: None,
             metadata: None,
         };
@@ -169,9 +171,9 @@ mod tests {
     #[test]
     fn test_trust_response_is_reject() {
         let response = TrustEvaluationResponse {
-            decision: "reject".to_string(),
+            decision: String::from("reject"),
             trust_level: TrustLevel::None, // Phase 1: Use enum
-            reason: "Unknown peer".to_string(),
+            reason: String::from("Unknown peer"),
             suggested_action: None,
             metadata: None,
         };

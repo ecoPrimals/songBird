@@ -469,7 +469,7 @@ mod tests {
     #[test]
     fn test_federation_capability_creation() {
         let capability = FederationCapability {
-            capability_id: "test-capability".to_string(),
+            capability_id: String::from("test-capability"),
             capability_type: FederationCapabilityType::CrossNodeCommunication,
             availability_score: 0.99,
             performance_characteristics: PerformanceCharacteristics {
@@ -487,7 +487,7 @@ mod tests {
     #[test]
     fn test_expected_network_effect_creation() {
         let effect = ExpectedNetworkEffect {
-            effect_id: "performance-boost".to_string(),
+            effect_id: String::from("performance-boost"),
             effect_type: NetworkEffectType::PerformanceImprovement,
             impact_magnitude: 0.75,
             confidence_level: 0.85,
@@ -502,10 +502,10 @@ mod tests {
     #[test]
     fn test_sovereignty_risk_creation() {
         let risk = SovereigntyRisk {
-            risk_id: "data-sovereignty-001".to_string(),
+            risk_id: String::from("data-sovereignty-001"),
             risk_type: SovereigntyRiskType::DataSovereignty,
             severity: RiskSeverity::High,
-            mitigation_strategies: vec!["encryption".to_string(), "local-storage".to_string()],
+            mitigation_strategies: vec![String::from("encryption"), String::from("local-storage")],
         };
 
         assert_eq!(risk.risk_id, "data-sovereignty-001");
@@ -520,7 +520,7 @@ mod tests {
 
         let metadata = RoutingDecisionMetadata {
             decision_timestamp: SystemTime::now(),
-            algorithm_version: "v1.0.0".to_string(),
+            algorithm_version: String::from("v1.0.0"),
             decision_factors: vec![],
             alternative_paths_count: 3,
         };
@@ -532,7 +532,7 @@ mod tests {
     #[test]
     fn test_decision_factor_creation() {
         let factor = DecisionFactor {
-            factor_name: "sovereignty_score".to_string(),
+            factor_name: String::from("sovereignty_score"),
             factor_weight: 0.8,
             factor_value: 0.95,
         };
@@ -547,7 +547,7 @@ mod tests {
         let assessment = SecurityAssessment {
             security_score: 0.92,
             security_level: SecurityLevel::High,
-            identified_vulnerabilities: vec!["minor-timing-leak".to_string()],
+            identified_vulnerabilities: vec![String::from("minor-timing-leak")],
         };
 
         assert_eq!(assessment.security_score, 0.92);
@@ -590,7 +590,7 @@ mod tests {
             expected_network_effects: vec![],
             decision_metadata: RoutingDecisionMetadata {
                 decision_timestamp: SystemTime::now(),
-                algorithm_version: "v1.0.0".to_string(),
+                algorithm_version: String::from("v1.0.0"),
                 decision_factors: vec![],
                 alternative_paths_count: 2,
             },

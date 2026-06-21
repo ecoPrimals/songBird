@@ -91,7 +91,7 @@ impl RelayHandler {
         {
             let server_guard = self.server.read().await;
             if server_guard.is_some() {
-                return Err("Relay server already running".to_string());
+                return Err(String::from("Relay server already running"));
             }
         }
 
@@ -160,7 +160,7 @@ impl RelayHandler {
 
         let server = {
             let mut server_guard = self.server.write().await;
-            server_guard.take().ok_or_else(|| "Relay server not running".to_string())?
+            server_guard.take().ok_or_else(|| String::from("Relay server not running"))?
         };
         let task = {
             let mut task_guard = self.task.write().await;
@@ -251,7 +251,7 @@ impl RelayHandler {
         {
             let server_guard = self.server.read().await;
             if server_guard.is_none() {
-                return Err("Relay server not running".to_string());
+                return Err(String::from("Relay server not running"));
             }
         }
 
@@ -260,19 +260,19 @@ impl RelayHandler {
             .get("relay_node")
             .and_then(|v| v.as_str())
             .map(std::convert::Into::into)
-            .ok_or_else(|| "Missing 'relay_node'".to_string())?;
+            .ok_or_else(|| String::from("Missing 'relay_node'"))?;
 
         let requester: NodeId = params
             .get("requester")
             .and_then(|v| v.as_str())
             .map(std::convert::Into::into)
-            .ok_or_else(|| "Missing 'requester'".to_string())?;
+            .ok_or_else(|| String::from("Missing 'requester'"))?;
 
         let target_addr: SocketAddr = params
             .get("target_addr")
             .and_then(|v| v.as_str())
             .and_then(|s| s.parse().ok())
-            .ok_or_else(|| "Invalid 'target_addr'".to_string())?;
+            .ok_or_else(|| String::from("Invalid 'target_addr'"))?;
 
         let lineage_proof: Vec<u8> = params
             .get("lineage_proof")

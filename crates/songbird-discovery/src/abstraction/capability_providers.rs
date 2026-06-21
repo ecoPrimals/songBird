@@ -190,23 +190,23 @@ pub async fn discover_capability_vendor(
     let vendor_name = match capability {
         CapabilityType::ContainerOrchestration => {
             if songbird_process_env::var("KUBERNETES_SERVICE_HOST").is_ok() {
-                "kubernetes".to_string()
+                String::from("kubernetes")
             } else if songbird_process_env::var("DOCKER_HOST").is_ok() {
-                "docker".to_string()
+                String::from("docker")
             } else {
-                "kubernetes".to_string()
+                String::from("kubernetes")
             }
         }
         CapabilityType::ServiceRegistry => {
             if songbird_process_env::var("CONSUL_HTTP_ADDR").is_ok() {
-                "consul".to_string()
+                String::from("consul")
             } else if songbird_process_env::var("ETCD_ENDPOINTS").is_ok() {
-                "etcd".to_string()
+                String::from("etcd")
             } else {
-                "consul".to_string()
+                String::from("consul")
             }
         }
-        _ => "unknown".to_string(),
+        _ => String::from("unknown"),
     };
 
     Ok(VendorImplementation {
@@ -229,7 +229,7 @@ mod tests {
         assert_eq!(CapabilityType::parse("service_registry"), CapabilityType::ServiceRegistry);
         assert_eq!(
             CapabilityType::parse("custom_capability"),
-            CapabilityType::Custom("custom_capability".to_string())
+            CapabilityType::Custom(String::from("custom_capability"))
         );
     }
 

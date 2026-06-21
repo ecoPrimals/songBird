@@ -115,9 +115,9 @@ impl TorConnection {
             {
                 Ok(Ok(0)) => {
                     warn!("Connection closed by relay after NETINFO!");
-                    return Err(Error::Network(
-                        "Relay closed connection after NETINFO".to_string(),
-                    ));
+                    return Err(Error::Network(String::from(
+                        "Relay closed connection after NETINFO",
+                    )));
                 }
                 Ok(Ok(_n)) => {
                     // Got some data - relay may be sending padding or certs
@@ -141,7 +141,7 @@ impl TorConnection {
     /// Send VERSIONS cell
     async fn send_versions(&mut self) -> Result<()> {
         let stream =
-            self.stream.as_mut().ok_or_else(|| Error::Network("Not connected".to_string()))?;
+            self.stream.as_mut().ok_or_else(|| Error::Network(String::from("Not connected")))?;
 
         // VERSIONS is a variable-length cell (not 512 bytes)
         // Format: CircID (2 bytes, 0 for VERSIONS) | Command (1 byte, 7) | Length (2 bytes) | Payload
@@ -153,7 +153,7 @@ impl TorConnection {
         let versions_len = SUPPORTED_VERSIONS.len() * 2;
         buf.extend_from_slice(
             &u16::try_from(versions_len)
-                .map_err(|_| Error::Network("VERSIONS payload too long".to_string()))?
+                .map_err(|_| Error::Network(String::from("VERSIONS payload too long")))?
                 .to_be_bytes(),
         );
 
@@ -176,7 +176,7 @@ impl TorConnection {
     /// Receive and parse VERSIONS cell
     async fn recv_versions(&mut self) -> Result<()> {
         let stream =
-            self.stream.as_mut().ok_or_else(|| Error::Network("Not connected".to_string()))?;
+            self.stream.as_mut().ok_or_else(|| Error::Network(String::from("Not connected")))?;
 
         // Read variable-length VERSIONS cell header
         let mut header = [0u8; 5];
@@ -233,7 +233,7 @@ impl TorConnection {
     /// Receive NETINFO cell (and possibly other cells)
     async fn recv_netinfo(&mut self) -> Result<()> {
         let stream =
-            self.stream.as_mut().ok_or_else(|| Error::Network("Not connected".to_string()))?;
+            self.stream.as_mut().ok_or_else(|| Error::Network(String::from("Not connected")))?;
 
         // After VERSIONS, server sends: CERTS, AUTH_CHALLENGE, then NETINFO
         // CERTS and AUTH_CHALLENGE are variable-length cells
@@ -297,7 +297,7 @@ impl TorConnection {
     /// Send NETINFO cell
     async fn send_netinfo(&mut self) -> Result<()> {
         let stream =
-            self.stream.as_mut().ok_or_else(|| Error::Network("Not connected".to_string()))?;
+            self.stream.as_mut().ok_or_else(|| Error::Network(String::from("Not connected")))?;
 
         // NETINFO cell format (link v4+):
         // CircID (4 bytes) | Command (1 byte, 8) | Payload (507 bytes, padded)
@@ -371,7 +371,7 @@ impl TorConnection {
         use tokio::io::AsyncWriteExt;
 
         let stream =
-            self.stream.as_mut().ok_or_else(|| Error::Network("Not connected".to_string()))?;
+            self.stream.as_mut().ok_or_else(|| Error::Network(String::from("Not connected")))?;
 
         let buf = cell.encode();
         debug!(
@@ -416,7 +416,7 @@ impl TorConnection {
         use tokio::time::timeout;
 
         let stream =
-            self.stream.as_mut().ok_or_else(|| Error::Network("Not connected".to_string()))?;
+            self.stream.as_mut().ok_or_else(|| Error::Network(String::from("Not connected")))?;
 
         loop {
             let mut buf = [0u8; CELL_LEN];
@@ -427,7 +427,7 @@ impl TorConnection {
             match timeout(Duration::from_secs(30), stream.read(&mut header)).await {
                 Ok(Ok(0)) => {
                     warn!("Connection closed by remote (read 0 bytes)");
-                    return Err(Error::Network("Connection closed by relay".to_string()));
+                    return Err(Error::Network(String::from("Connection closed by relay")));
                 }
                 Ok(Ok(n)) if n < 5 => {
                     warn!("Partial header read: {} bytes: {:02x?}", n, &header[..n]);
@@ -441,7 +441,9 @@ impl TorConnection {
                                 "Failed to read rest of header: {e}"
                             )));
                         }
-                        Err(_) => return Err(Error::Network("Header read timed out".to_string())),
+                        Err(_) => {
+                            return Err(Error::Network(String::from("Header read timed out")));
+                        }
                     }
                 }
                 Ok(Ok(n)) => {
@@ -452,9 +454,9 @@ impl TorConnection {
                 }
                 Err(_) => {
                     warn!("Cell read timed out after 30s - no response from relay");
-                    return Err(Error::Network(
-                        "Cell read timed out - relay did not respond".to_string(),
-                    ));
+                    return Err(Error::Network(String::from(
+                        "Cell read timed out - relay did not respond",
+                    )));
                 }
             }
 
@@ -468,7 +470,7 @@ impl TorConnection {
                 }
                 Err(_) => {
                     warn!("Got header {:02x?} but payload read timed out", &buf[..5]);
-                    return Err(Error::Network("Cell payload read timed out".to_string()));
+                    return Err(Error::Network(String::from("Cell payload read timed out")));
                 }
             }
 
@@ -510,7 +512,7 @@ mod tests {
 
     fn test_relay() -> RelayInfo {
         RelayInfo {
-            nickname: "TestRelay".to_string(),
+            nickname: String::from("TestRelay"),
             fingerprint: [0u8; 20],
             address: IpAddr::from([127, 0, 0, 1]),
             or_port: 9001,

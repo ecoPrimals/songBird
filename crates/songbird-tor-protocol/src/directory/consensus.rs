@@ -59,7 +59,7 @@ impl Consensus {
             }
         }
 
-        Err(Error::Consensus("Failed to fetch consensus from all authorities".to_string()))
+        Err(Error::Consensus(String::from("Failed to fetch consensus from all authorities")))
     }
 
     /// Fetch consensus from specific authority
@@ -134,7 +134,7 @@ impl Consensus {
 
         // For now, require at least 3 relays
         if self.relays.len() < 3 {
-            return Err(Error::Consensus("Not enough relays in consensus".to_string()));
+            return Err(Error::Consensus(String::from("Not enough relays in consensus")));
         }
 
         // Select guard (must have GUARD flag)
@@ -142,7 +142,7 @@ impl Consensus {
             .relays
             .iter()
             .find(|r| r.is_guard())
-            .ok_or_else(|| Error::Consensus("No suitable guard found".to_string()))?
+            .ok_or_else(|| Error::Consensus(String::from("No suitable guard found")))?
             .clone();
 
         // Select middle (must be fast + stable)
@@ -150,7 +150,7 @@ impl Consensus {
             .relays
             .iter()
             .find(|r| r.is_middle() && r.fingerprint != guard.fingerprint)
-            .ok_or_else(|| Error::Consensus("No suitable middle found".to_string()))?
+            .ok_or_else(|| Error::Consensus(String::from("No suitable middle found")))?
             .clone();
 
         // Select exit/hsdir (must have HSDIR flag for onion services)
@@ -162,7 +162,7 @@ impl Consensus {
                     && r.fingerprint != guard.fingerprint
                     && r.fingerprint != middle.fingerprint
             })
-            .ok_or_else(|| Error::Consensus("No suitable hsdir found".to_string()))?
+            .ok_or_else(|| Error::Consensus(String::from("No suitable hsdir found")))?
             .clone();
 
         Ok(CircuitPath {
@@ -261,7 +261,7 @@ impl Consensus {
         Err(Error::Consensus(format!(
             "Failed to fetch ntor key for {}: {}",
             relay.nickname,
-            last_error.unwrap_or_else(|| "Unknown error".to_string())
+            last_error.unwrap_or_else(|| String::from("Unknown error"))
         )))
     }
 
@@ -300,7 +300,7 @@ impl Consensus {
 
         // Check if we got keys for at least the guard (required for first hop)
         if path.guard.ntor_key.is_none() {
-            return Err(Error::Consensus("Failed to fetch guard ntor key".to_string()));
+            return Err(Error::Consensus(String::from("Failed to fetch guard ntor key")));
         }
 
         Ok(())

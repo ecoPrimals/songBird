@@ -59,7 +59,7 @@ mod tests {
     #[test]
     fn network_error_maps_to_songbird() {
         let e: songbird_types::SongbirdError =
-            UniversalAdapterError::NetworkError("n".to_string()).into();
+            UniversalAdapterError::NetworkError(String::from("n")).into();
         assert!(!e.to_string().is_empty());
     }
 
@@ -72,19 +72,19 @@ mod tests {
     #[test]
     fn no_providers_maps() {
         let e: songbird_types::SongbirdError =
-            UniversalAdapterError::NoProvidersAvailable("c".to_string()).into();
+            UniversalAdapterError::NoProvidersAvailable(String::from("c")).into();
         assert!(e.to_string().contains('c') || !e.to_string().is_empty());
     }
 
     #[test]
     fn all_variants_display() {
         let cases = [
-            UniversalAdapterError::NetworkError("a".to_string()),
-            UniversalAdapterError::ParseError("b".to_string()),
-            UniversalAdapterError::DiscoveryError("c".to_string()),
-            UniversalAdapterError::ServiceError("d".to_string()),
+            UniversalAdapterError::NetworkError(String::from("a")),
+            UniversalAdapterError::ParseError(String::from("b")),
+            UniversalAdapterError::DiscoveryError(String::from("c")),
+            UniversalAdapterError::ServiceError(String::from("d")),
             UniversalAdapterError::MissingCapability,
-            UniversalAdapterError::NoProvidersAvailable("e".to_string()),
+            UniversalAdapterError::NoProvidersAvailable(String::from("e")),
         ];
         for err in cases {
             assert!(!err.to_string().is_empty());

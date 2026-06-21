@@ -457,13 +457,13 @@ impl AnonymousDiscoveryListener {
                 let (interface_type, address) = if parts.len() >= 2 {
                     (parts[0].to_string(), parts[1..].join(":"))
                 } else {
-                    ("tcp".to_string(), ep.clone())
+                    (String::from("tcp"), ep.clone())
                 };
 
                 TransportEndpointMessage {
                     interface_type,
                     address,
-                    protocols: vec!["https".to_string()],
+                    protocols: vec![String::from("https")],
                     preference: u8::try_from(idx).unwrap_or(u8::MAX),
                 }
             })
@@ -479,11 +479,11 @@ impl AnonymousDiscoveryListener {
             tags: None,
             timestamp: Some(payload.created_at),
             identity_attestations: None, // Exchange after trust establishment
-            protocols: vec!["https".to_string()],
+            protocols: vec![String::from("https")],
             port: songbird_types::defaults::ports::DEFAULT_HTTP_PORT, // Default
             address: addr,
             last_seen: SystemTime::now(),
-            version: "dark_forest_v2".to_string(),
+            version: String::from("dark_forest_v2"),
         };
 
         info!(
@@ -522,8 +522,9 @@ mod tests {
 
     #[test]
     fn test_listener_with_node_id() {
-        let listener = AnonymousDiscoveryListener::new(2300, 60).with_node_id("tower1".to_string());
-        assert_eq!(listener.node_id, Some("tower1".to_string()));
+        let listener =
+            AnonymousDiscoveryListener::new(2300, 60).with_node_id(String::from("tower1"));
+        assert_eq!(listener.node_id, Some(String::from("tower1")));
     }
 
     #[tokio::test]

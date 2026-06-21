@@ -245,7 +245,7 @@ impl SoapClient {
         let (host, port) = if let Some(idx) = host_port.rfind(':') {
             let port = host_port[idx + 1..]
                 .parse::<u16>()
-                .map_err(|_| IgdError::InvalidParameter("Invalid port in URL".to_string()))?;
+                .map_err(|_| IgdError::InvalidParameter(String::from("Invalid port in URL")))?;
             (&host_port[..idx], port)
         } else {
             (host_port, 80u16)
@@ -281,14 +281,16 @@ impl SoapClient {
             }
         }
 
-        Err(IgdError::InvalidResponse("Could not parse external IP from SOAP response".to_string()))
+        Err(IgdError::InvalidResponse(String::from(
+            "Could not parse external IP from SOAP response",
+        )))
     }
 
     /// Map SOAP error code to `IgdError`
     fn map_soap_error(code: u16, port: u16) -> IgdError {
         match SoapErrorCode::from_code(code) {
             Some(SoapErrorCode::ConflictInMappingEntry) => {
-                IgdError::MappingConflict(port, "unknown host".to_string())
+                IgdError::MappingConflict(port, String::from("unknown host"))
             }
             Some(err) => IgdError::SoapError(format!("SOAP error {code}: {}", err.description())),
             None => IgdError::SoapError(format!("Unknown SOAP error code: {code}")),
@@ -332,7 +334,7 @@ mod tests {
     #[test]
     fn build_add_port_mapping_xml_contains_expected_elements() {
         let soap = SoapClient::new(
-            "http://192.168.1.254:5431/ctl/IPConn".to_string(),
+            String::from("http://192.168.1.254:5431/ctl/IPConn"),
             crate::WANIP_SERVICE_TYPE.to_string(),
         );
 
@@ -355,7 +357,7 @@ mod tests {
     #[test]
     fn build_delete_port_mapping_xml_contains_port_and_protocol() {
         let soap = SoapClient::new(
-            "http://192.168.1.1/ctl".to_string(),
+            String::from("http://192.168.1.1/ctl"),
             crate::WANIP_SERVICE_TYPE.to_string(),
         );
         let xml = soap.build_delete_port_mapping_xml(443, "UDP");
@@ -366,7 +368,7 @@ mod tests {
     #[test]
     fn build_get_external_ip_xml_includes_service_namespace() {
         let soap = SoapClient::new(
-            "http://192.168.1.1/ctl".to_string(),
+            String::from("http://192.168.1.1/ctl"),
             crate::WANIP_SERVICE_TYPE.to_string(),
         );
         let xml = soap.build_get_external_ip_xml();
@@ -498,7 +500,7 @@ mod tests {
     #[tokio::test]
     async fn add_port_mapping_unreachable_host_returns_error() {
         let soap = SoapClient::new(
-            "http://203.0.113.1:5431/ctl/IPConn".to_string(),
+            String::from("http://203.0.113.1:5431/ctl/IPConn"),
             crate::WANIP_SERVICE_TYPE.to_string(),
         );
 
@@ -516,7 +518,7 @@ mod tests {
     #[test]
     fn build_add_port_mapping_xml_escapes_description_entities() {
         let soap = SoapClient::new(
-            "http://192.168.1.254:5431/ctl/IPConn".to_string(),
+            String::from("http://192.168.1.254:5431/ctl/IPConn"),
             crate::WANIP_SERVICE_TYPE.to_string(),
         );
         let req = PortMappingRequest::new(
@@ -525,7 +527,7 @@ mod tests {
             IpAddr::V4(Ipv4Addr::new(192, 168, 1, 2)),
             Protocol::Tcp,
         )
-        .with_description("Songbird <test> & \"quotes\"".to_string());
+        .with_description(String::from("Songbird <test> & \"quotes\""));
 
         let xml = soap.build_add_port_mapping_xml(&req);
         assert!(xml.contains("Songbird &lt;test&gt; &amp; &quot;quotes&quot;"));
@@ -535,7 +537,7 @@ mod tests {
     #[test]
     fn build_add_port_mapping_xml_includes_ipv6_internal_client() {
         let soap = SoapClient::new(
-            "http://192.168.1.1/ctl".to_string(),
+            String::from("http://192.168.1.1/ctl"),
             crate::WANIP_SERVICE_TYPE.to_string(),
         );
         let req = PortMappingRequest::new(
@@ -581,7 +583,7 @@ mod tests {
     #[tokio::test]
     async fn get_external_ip_unreachable_host_returns_error() {
         let soap = SoapClient::new(
-            "http://203.0.113.2:5431/ctl/IPConn".to_string(),
+            String::from("http://203.0.113.2:5431/ctl/IPConn"),
             crate::WANIP_SERVICE_TYPE.to_string(),
         );
         let err = soap.get_external_ip().await.expect_err("unreachable router");
@@ -594,7 +596,7 @@ mod tests {
     #[tokio::test]
     async fn delete_port_mapping_unreachable_host_returns_error() {
         let soap = SoapClient::new(
-            "http://203.0.113.3:5431/ctl/IPConn".to_string(),
+            String::from("http://203.0.113.3:5431/ctl/IPConn"),
             crate::WANIP_SERVICE_TYPE.to_string(),
         );
         let err = soap.delete_port_mapping(80, "TCP").await.expect_err("unreachable router");

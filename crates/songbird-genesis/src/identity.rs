@@ -138,7 +138,7 @@ mod tests {
 
     fn create_test_witness() -> GenesisWitness {
         GenesisWitness::new(
-            "test-witness".to_string(),
+            String::from("test-witness"),
             vec![1, 2, 3],
             PhysicalChannelType::HardwareKey,
         )
@@ -164,7 +164,7 @@ mod tests {
         }
 
         GenesisLineage {
-            witness_device_id: "test-witness".to_string(),
+            witness_device_id: String::from("test-witness"),
             primal_lineages,
             birth_timestamp: Utc::now(),
             ceremony_id: Uuid::new_v4(),
@@ -177,7 +177,7 @@ mod tests {
         let lineage = create_test_lineage();
 
         let identity =
-            NewNodeIdentity::new("new-node-123".to_string(), vec![16, 17, 18], witness, lineage);
+            NewNodeIdentity::new(String::from("new-node-123"), vec![16, 17, 18], witness, lineage);
 
         assert_eq!(identity.node_id, "new-node-123");
         assert_eq!(identity.genesis_trust_level(), TrustLevel::Maximum);
@@ -189,7 +189,7 @@ mod tests {
     fn test_primal_lineage_queries() {
         let witness = create_test_witness();
         let lineage = create_test_lineage();
-        let identity = NewNodeIdentity::new("test".to_string(), vec![], witness, lineage);
+        let identity = NewNodeIdentity::new(String::from("test"), vec![], witness, lineage);
 
         assert!(identity.has_primal_lineage("songbird"));
         assert!(identity.has_primal_lineage("beardog"));
@@ -205,7 +205,7 @@ mod tests {
     fn new_node_identity_single_primal_is_not_multi_primal() {
         let witness = create_test_witness();
         let lineage = create_lineage_with_primals(&["songbird"]);
-        let identity = NewNodeIdentity::new("n1".to_string(), vec![1], witness, lineage);
+        let identity = NewNodeIdentity::new(String::from("n1"), vec![1], witness, lineage);
         assert_eq!(identity.primal_signature_count(), 1);
         assert!(!identity.is_multi_primal_genesis(), "one primal should not count as multi-primal");
     }
@@ -214,12 +214,12 @@ mod tests {
     async fn verify_all_signatures_false_when_no_primal_lineages() {
         let witness = create_test_witness();
         let lineage = GenesisLineage {
-            witness_device_id: "w".to_string(),
+            witness_device_id: String::from("w"),
             primal_lineages: std::collections::HashMap::new(),
             birth_timestamp: Utc::now(),
             ceremony_id: Uuid::new_v4(),
         };
-        let identity = NewNodeIdentity::new("n".to_string(), vec![], witness, lineage);
+        let identity = NewNodeIdentity::new(String::from("n"), vec![], witness, lineage);
         assert!(
             !identity.verify_all_signatures().await,
             "empty primal lineages must fail verification"
@@ -231,14 +231,14 @@ mod tests {
         let witness = create_test_witness();
         let lineage = create_test_lineage();
         let mut identity =
-            NewNodeIdentity::new("node-a".to_string(), vec![9, 9, 9], witness, lineage);
-        identity.metadata.insert("k".to_string(), "v".to_string());
+            NewNodeIdentity::new(String::from("node-a"), vec![9, 9, 9], witness, lineage);
+        identity.metadata.insert(String::from("k"), String::from("v"));
 
         let json = serde_json::to_string(&identity).expect("serialize identity");
         let back: NewNodeIdentity = serde_json::from_str(&json).expect("deserialize identity");
         assert_eq!(back.node_id, "node-a");
         assert_eq!(back.public_key, vec![9, 9, 9]);
-        assert_eq!(back.metadata.get("k"), Some(&"v".to_string()));
+        assert_eq!(back.metadata.get("k"), Some(&String::from("v")));
         assert_eq!(back.ceremony_id, identity.ceremony_id);
     }
 
@@ -303,9 +303,9 @@ mod tests {
         let witness = create_test_witness();
         let mut lineage = create_lineage_with_primals(&["dup"]);
         lineage.primal_lineages.insert(
-            "dup".to_string(),
+            String::from("dup"),
             PrimalLineage {
-                primal_name: "dup".to_string(),
+                primal_name: String::from("dup"),
                 lineage_data: vec![99],
                 signature: vec![],
                 timestamp: Utc::now(),

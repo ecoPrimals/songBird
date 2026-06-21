@@ -82,7 +82,7 @@ impl SecurityRpcClient {
         trace!(
             "  Response JSON: {}",
             serde_json::to_string_pretty(&result)
-                .unwrap_or_else(|_| "unable to serialize".to_string())
+                .unwrap_or_else(|_| String::from("unable to serialize"))
         );
 
         debug!("📋 Parsing handshake traffic keys from response...");
@@ -179,14 +179,14 @@ impl SecurityRpcClient {
         trace!(
             "  Response JSON: {}",
             serde_json::to_string_pretty(&result)
-                .unwrap_or_else(|_| "unable to serialize".to_string())
+                .unwrap_or_else(|_| String::from("unable to serialize"))
         );
 
         debug!("📋 Parsing application traffic keys from response...");
 
         let client_write_key = BASE64_STANDARD
             .decode(result["client_write_key"].as_str().ok_or_else(|| {
-                Error::SecurityProviderRpc("Missing client_write_key in response".to_string())
+                Error::SecurityProviderRpc(String::from("Missing client_write_key in response"))
             })?)
             .map_err(|e| {
                 Error::SecurityProviderRpc(format!("Invalid client_write_key base64: {e}"))
@@ -195,7 +195,7 @@ impl SecurityRpcClient {
 
         let server_write_key = BASE64_STANDARD
             .decode(result["server_write_key"].as_str().ok_or_else(|| {
-                Error::SecurityProviderRpc("Missing server_write_key in response".to_string())
+                Error::SecurityProviderRpc(String::from("Missing server_write_key in response"))
             })?)
             .map_err(|e| {
                 Error::SecurityProviderRpc(format!("Invalid server_write_key base64: {e}"))
@@ -204,7 +204,7 @@ impl SecurityRpcClient {
 
         let client_write_iv = BASE64_STANDARD
             .decode(result["client_write_iv"].as_str().ok_or_else(|| {
-                Error::SecurityProviderRpc("Missing client_write_iv in response".to_string())
+                Error::SecurityProviderRpc(String::from("Missing client_write_iv in response"))
             })?)
             .map_err(|e| {
                 Error::SecurityProviderRpc(format!("Invalid client_write_iv base64: {e}"))
@@ -213,7 +213,7 @@ impl SecurityRpcClient {
 
         let server_write_iv = BASE64_STANDARD
             .decode(result["server_write_iv"].as_str().ok_or_else(|| {
-                Error::SecurityProviderRpc("Missing server_write_iv in response".to_string())
+                Error::SecurityProviderRpc(String::from("Missing server_write_iv in response"))
             })?)
             .map_err(|e| {
                 Error::SecurityProviderRpc(format!("Invalid server_write_iv base64: {e}"))
@@ -274,7 +274,7 @@ impl SecurityRpcClient {
             })?;
 
         let verify_data = result["verify_data"].as_str().ok_or_else(|| {
-            Error::SecurityProviderRpc("Missing verify_data in response".to_string())
+            Error::SecurityProviderRpc(String::from("Missing verify_data in response"))
         })?;
 
         let decoded = BASE64_STANDARD
@@ -337,7 +337,7 @@ mod tests {
         let err: crate::error::Result<Vec<u8>> = (|| {
             BASE64_STANDARD
                 .decode(result["client_write_key"].as_str().ok_or_else(|| {
-                    Error::SecurityProviderRpc("Missing client_write_key in response".to_string())
+                    Error::SecurityProviderRpc(String::from("Missing client_write_key in response"))
                 })?)
                 .map_err(|e| {
                     Error::SecurityProviderRpc(format!("Invalid client_write_key base64: {e}"))

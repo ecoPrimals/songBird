@@ -74,7 +74,7 @@ impl HealthChecker {
 
         Err(DiscoveryError::HealthCheckFailed {
             primal: primal.name.clone(),
-            reason: "All health check paths failed".to_string(),
+            reason: String::from("All health check paths failed"),
         })
     }
 
@@ -118,13 +118,13 @@ mod tests {
     async fn test_health_check_invalid_endpoint() {
         let checker = HealthChecker::default();
         let mut primal = DiscoveredPrimal {
-            name: "test".to_string(),
+            name: String::from("test"),
             primal_type: PrimalType::new("security"),
-            endpoint: "http://invalid-endpoint-12345:9999".to_string(),
+            endpoint: String::from("http://invalid-endpoint-12345:9999"),
             capabilities: vec![Capability {
-                capability_type: "security".to_string(),
-                name: "security".to_string(),
-                version: "1.0".to_string(),
+                capability_type: String::from("security"),
+                name: String::from("security"),
+                version: String::from("1.0"),
                 parameters: Default::default(),
                 qos_metrics: Default::default(),
                 available: true,

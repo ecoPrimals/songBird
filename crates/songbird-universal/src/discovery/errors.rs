@@ -57,13 +57,13 @@ mod tests {
 
     #[test]
     fn test_discovery_error_display_network() {
-        let err = DiscoveryError::NetworkError("Connection refused".to_string());
+        let err = DiscoveryError::NetworkError(String::from("Connection refused"));
         assert_eq!(err.to_string(), "Network error: Connection refused");
     }
 
     #[test]
     fn test_discovery_error_display_configuration() {
-        let err = DiscoveryError::ConfigurationError("Invalid port".to_string());
+        let err = DiscoveryError::ConfigurationError(String::from("Invalid port"));
         assert_eq!(err.to_string(), "Configuration error: Invalid port");
     }
 
@@ -81,31 +81,31 @@ mod tests {
 
     #[test]
     fn test_discovery_error_display_health_check() {
-        let err = DiscoveryError::HealthCheckFailed("Service unresponsive".to_string());
+        let err = DiscoveryError::HealthCheckFailed(String::from("Service unresponsive"));
         assert_eq!(err.to_string(), "Health check failed: Service unresponsive");
     }
 
     #[test]
     fn test_discovery_error_display_invalid_endpoint() {
-        let err = DiscoveryError::InvalidEndpoint("http://[invalid".to_string());
+        let err = DiscoveryError::InvalidEndpoint(String::from("http://[invalid"));
         assert_eq!(err.to_string(), "Invalid endpoint: http://[invalid");
     }
 
     #[test]
     fn test_discovery_error_display_environment() {
-        let err = DiscoveryError::EnvironmentError("DISCOVERY_HOST not set".to_string());
+        let err = DiscoveryError::EnvironmentError(String::from("DISCOVERY_HOST not set"));
         assert_eq!(err.to_string(), "Environment error: DISCOVERY_HOST not set");
     }
 
     #[test]
     fn test_discovery_error_display_container() {
-        let err = DiscoveryError::ContainerError("Docker not available".to_string());
+        let err = DiscoveryError::ContainerError(String::from("Docker not available"));
         assert_eq!(err.to_string(), "Container discovery error: Docker not available");
     }
 
     #[test]
     fn test_discovery_error_display_backend_unavailable() {
-        let err = DiscoveryError::BackendUnavailable("mDNS not enabled".to_string());
+        let err = DiscoveryError::BackendUnavailable(String::from("mDNS not enabled"));
         assert_eq!(err.to_string(), "Backend unavailable: mDNS not enabled");
     }
 
@@ -118,7 +118,7 @@ mod tests {
 
     #[test]
     fn test_discovery_result_ok() {
-        let result: DiscoveryResult<String> = Ok("found".to_string());
+        let result: DiscoveryResult<String> = Ok(String::from("found"));
         assert!(matches!(result, Ok(ref s) if s == "found"));
     }
 
@@ -130,7 +130,7 @@ mod tests {
 
     #[test]
     fn test_discovery_error_debug_format() {
-        let err = DiscoveryError::NetworkError("test".to_string());
+        let err = DiscoveryError::NetworkError(String::from("test"));
         let debug_str = format!("{:?}", err);
         assert!(debug_str.contains("NetworkError"));
         assert!(debug_str.contains("test"));

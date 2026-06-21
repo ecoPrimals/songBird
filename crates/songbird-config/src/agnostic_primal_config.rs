@@ -215,7 +215,7 @@ impl AgnosticPrimalConfig {
             .unwrap_or(true);
 
         let protocol = songbird_process_env::var("SERVICE_MESH_PROTOCOL")
-            .unwrap_or_else(|_| "tarpc".to_string());
+            .unwrap_or_else(|_| String::from("tarpc"));
 
         let enable_tls = songbird_process_env::var("SERVICE_MESH_TLS")
             .map(|v| v == "true" || v == "1")
@@ -269,7 +269,7 @@ impl AgnosticPrimalConfig {
 
         Err(SongbirdError::Configuration {
             message: format!("Capability '{capability}' not available"),
-            field: Some("capability".to_string()),
+            field: Some(String::from("capability")),
             suggestion: Some(format!(
                 "Set CAPABILITY_{}_ENDPOINT environment variable",
                 capability.to_uppercase()
@@ -291,7 +291,7 @@ impl Default for AgnosticPrimalConfig {
             },
             service_mesh: ServiceMeshConfig {
                 enabled: true,
-                protocol: "tarpc".to_string(),
+                protocol: String::from("tarpc"),
                 enable_tls: true,
                 discovery_interval_secs: 60,
             },
@@ -371,8 +371,8 @@ mod tests {
             }
         }
 
-        assert_eq!(endpoints.get("security"), Some(&"https://localhost:8443".to_string()));
-        assert_eq!(endpoints.get("compute"), Some(&"http://localhost:8082".to_string()));
+        assert_eq!(endpoints.get("security"), Some(&String::from("https://localhost:8443")));
+        assert_eq!(endpoints.get("compute"), Some(&String::from("http://localhost:8082")));
 
         // No cleanup needed - env is scoped to this test
     }
@@ -435,11 +435,11 @@ mod tests {
 
         assert_eq!(
             env.get("CAPABILITY_SECURITY_ENDPOINT"),
-            Some("https://beardog:8443".to_string())
+            Some(String::from("https://beardog:8443"))
         );
         assert_eq!(
             env.get("CAPABILITY_COMPUTE_ENDPOINT"),
-            Some("http://toadstool:8082".to_string())
+            Some(String::from("http://toadstool:8082"))
         );
     }
 
@@ -451,7 +451,10 @@ mod tests {
             "https://sec:8443",
         );
         let cfg = AgnosticPrimalConfig::from_environment().unwrap();
-        assert_eq!(cfg.capability_endpoints.get("security"), Some(&"https://sec:8443".to_string()));
+        assert_eq!(
+            cfg.capability_endpoints.get("security"),
+            Some(&String::from("https://sec:8443"))
+        );
     }
 
     #[tokio::test]
@@ -462,7 +465,7 @@ mod tests {
             "http://compute:8082",
         );
         let endpoints = AgnosticPrimalConfig::discover_capability_endpoints();
-        assert_eq!(endpoints.get("compute"), Some(&"http://compute:8082".to_string()));
+        assert_eq!(endpoints.get("compute"), Some(&String::from("http://compute:8082")));
     }
 
     #[tokio::test]

@@ -100,7 +100,7 @@ mod tests {
         let mut manager = SovereigntyFederationManager::new();
 
         let capability = FederationCapability {
-            capability_id: "test-cap-1".to_string(),
+            capability_id: String::from("test-cap-1"),
             capability_type: FederationCapabilityType::RouteOptimization,
             availability_score: 1.0,
             performance_characteristics: PerformanceCharacteristics::default(),
@@ -117,14 +117,14 @@ mod tests {
         let mut manager = SovereigntyFederationManager::new();
 
         manager.register_capability(FederationCapability {
-            capability_id: "cap-1".to_string(),
+            capability_id: String::from("cap-1"),
             capability_type: FederationCapabilityType::RouteOptimization,
             availability_score: 1.0,
             performance_characteristics: PerformanceCharacteristics::default(),
         });
 
         manager.register_capability(FederationCapability {
-            capability_id: "cap-2".to_string(),
+            capability_id: String::from("cap-2"),
             capability_type: FederationCapabilityType::LoadDistribution,
             availability_score: 0.8,
             performance_characteristics: PerformanceCharacteristics::default(),
@@ -138,12 +138,12 @@ mod tests {
         let manager = SovereigntyFederationManager::new();
 
         let request = UniversalRequest {
-            request_id: "test-123".to_string(),
-            source: "test-source".to_string(),
-            target: "test-target".to_string(),
-            action: "process".to_string(),
+            request_id: String::from("test-123"),
+            source: String::from("test-source"),
+            target: String::from("test-target"),
+            action: String::from("process"),
             parameters: std::collections::HashMap::from([(
-                "test".to_string(),
+                String::from("test"),
                 serde_json::json!("data"),
             )]),
             security_context: None,
@@ -167,10 +167,10 @@ mod tests {
         let manager = SovereigntyFederationManager::new();
 
         let request = UniversalRequest {
-            request_id: "unique-id-456".to_string(),
-            source: "test-source".to_string(),
-            target: "storage-target".to_string(),
-            action: "store".to_string(),
+            request_id: String::from("unique-id-456"),
+            source: String::from("test-source"),
+            target: String::from("storage-target"),
+            action: String::from("store"),
             parameters: HashMap::new(),
             security_context: None,
         };
@@ -187,7 +187,7 @@ mod tests {
         let mut manager = SovereigntyFederationManager::new();
 
         manager.register_capability(FederationCapability {
-            capability_id: "ref-test".to_string(),
+            capability_id: String::from("ref-test"),
             capability_type: FederationCapabilityType::HealthMonitoring,
             availability_score: 1.0,
             performance_characteristics: PerformanceCharacteristics::default(),

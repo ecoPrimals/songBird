@@ -70,11 +70,11 @@ impl CertificateValidator {
         // Get leaf certificate
         let leaf = certificate
             .leaf_certificate()
-            .ok_or_else(|| TlsError::CertificateError("No leaf certificate".to_string()))?;
+            .ok_or_else(|| TlsError::CertificateError(String::from("No leaf certificate")))?;
 
         // Basic validation: certificate data must not be empty
         if leaf.cert_data.is_empty() {
-            return Err(TlsError::CertificateError("Empty certificate data".to_string()));
+            return Err(TlsError::CertificateError(String::from("Empty certificate data")));
         }
 
         // Non-empty DER blob check only; full PKIX validation is not applied on this path.
@@ -146,9 +146,9 @@ impl CertificateValidator {
         };
 
         if !cert.validity().is_valid() {
-            return Err(TlsError::CertificateError(
-                "Certificate is expired or not yet valid".to_string(),
-            ));
+            return Err(TlsError::CertificateError(String::from(
+                "Certificate is expired or not yet valid",
+            )));
         }
 
         Ok(())
@@ -180,9 +180,9 @@ impl CertificateValidator {
             return Ok(());
         }
 
-        Err(TlsError::CertificateError(
-            "Certificate Extended Key Usage does not allow TLS server authentication".to_string(),
-        ))
+        Err(TlsError::CertificateError(String::from(
+            "Certificate Extended Key Usage does not allow TLS server authentication",
+        )))
     }
 
     /// Build and validate certificate chain
@@ -198,7 +198,7 @@ impl CertificateValidator {
 
         // For now, just check that we have at least one certificate
         if certificate.certificate_list.is_empty() {
-            return Err(TlsError::CertificateError("Empty certificate chain".to_string()));
+            return Err(TlsError::CertificateError(String::from("Empty certificate chain")));
         }
 
         // Chain presence only: per-link signatures, trust anchors, and revocation are out of scope here.

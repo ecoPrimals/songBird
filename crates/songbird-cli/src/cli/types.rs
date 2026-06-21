@@ -265,7 +265,7 @@ mod tests {
         // ✅ Concurrent-safe: Injectable env reader
         let args = CliArgs::parse_with(|name| {
             if name == "SONGBIRD_VERBOSE" {
-                Some("1".to_string())
+                Some(String::from("1"))
             } else {
                 None
             }
@@ -278,7 +278,7 @@ mod tests {
         // ✅ Concurrent-safe: Injectable env reader
         let args = CliArgs::parse_with(|name| {
             if name == "SONGBIRD_QUIET" {
-                Some("1".to_string())
+                Some(String::from("1"))
             } else {
                 None
             }
@@ -291,12 +291,12 @@ mod tests {
         // ✅ Concurrent-safe: Injectable env reader
         let args = CliArgs::parse_with(|name| {
             if name == "SONGBIRD_CONFIG" {
-                Some("/etc/songbird.toml".to_string())
+                Some(String::from("/etc/songbird.toml"))
             } else {
                 None
             }
         });
-        assert_eq!(args.config, Some("/etc/songbird.toml".to_string()));
+        assert_eq!(args.config, Some(String::from("/etc/songbird.toml")));
     }
 
     #[test]
@@ -335,7 +335,7 @@ mod tests {
     #[test]
     fn test_config_action_export() {
         let action = ConfigAction::Export {
-            output: Some("config.json".to_string()),
+            output: Some(String::from("config.json")),
             format: ExportFormat::Json,
         };
 
@@ -344,7 +344,7 @@ mod tests {
             format,
         } = action
         {
-            assert_eq!(output, Some("config.json".to_string()));
+            assert_eq!(output, Some(String::from("config.json")));
             assert!(matches!(format, ExportFormat::Json));
         } else {
             panic!("Expected Export action");
@@ -357,7 +357,7 @@ mod tests {
             verbose: true,
             quiet: false,
             format: OutputFormat::Json,
-            config: Some("test.toml".to_string()),
+            config: Some(String::from("test.toml")),
         };
 
         let cloned = args.clone();

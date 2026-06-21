@@ -238,7 +238,7 @@ impl BeaconMesh {
                 local_addr: None,
                 nat_type: NatType::Unknown,
                 timestamp: SystemTime::now(),
-                capabilities: vec!["relay".to_string(), format!("can_reach:{}", reachable.len())],
+                capabilities: vec![String::from("relay"), format!("can_reach:{}", reachable.len())],
             },
             encrypted_beacon: my_onion,
         }
@@ -332,7 +332,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_mesh_creation() {
-        let mesh = BeaconMesh::new("tower".to_string(), vec!["abc123.onion".to_string()]);
+        let mesh = BeaconMesh::new(String::from("tower"), vec![String::from("abc123.onion")]);
 
         assert_eq!(mesh.my_node_id, "tower");
         assert_eq!(mesh.bootstrap_onions.len(), 1);
@@ -357,18 +357,18 @@ mod tests {
             }
             .priority()
                 < EndpointType::FamilyRelay {
-                    relay_node_id: "relay".to_string()
+                    relay_node_id: String::from("relay")
                 }
                 .priority()
         );
 
         assert!(
             EndpointType::FamilyRelay {
-                relay_node_id: "relay".to_string()
+                relay_node_id: String::from("relay")
             }
             .priority()
                 < EndpointType::TorOnion {
-                    onion_addr: "abc.onion".to_string()
+                    onion_addr: String::from("abc.onion")
                 }
                 .priority()
         );
@@ -376,10 +376,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_and_find_path() {
-        let mesh = BeaconMesh::new("tower".to_string(), vec![]);
+        let mesh = BeaconMesh::new(String::from("tower"), vec![]);
 
         mesh.record_direct_connection(
-            "pixel".to_string(),
+            String::from("pixel"),
             "1.2.3.4:5678".parse().unwrap(),
             Duration::from_millis(50),
         )
@@ -392,7 +392,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_overlay_preferred_over_direct() {
-        let mesh = BeaconMesh::new("east-gate".to_string(), vec![]);
+        let mesh = BeaconMesh::new(String::from("east-gate"), vec![]);
 
         // Add a Direct (WAN) endpoint
         let direct_ep = RelayEndpoint {
@@ -433,7 +433,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_overlay_fallback_to_direct_when_unreachable() {
-        let mesh = BeaconMesh::new("east-gate".to_string(), vec![]);
+        let mesh = BeaconMesh::new(String::from("east-gate"), vec![]);
 
         // Unreachable overlay
         let overlay_ep = RelayEndpoint {
@@ -473,10 +473,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_relay_fallback() {
-        let mesh = BeaconMesh::new("laptop".to_string(), vec!["bootstrap.onion".to_string()]);
+        let mesh = BeaconMesh::new(String::from("laptop"), vec![String::from("bootstrap.onion")]);
 
         mesh.record_direct_connection(
-            "tower".to_string(),
+            String::from("tower"),
             "1.2.3.4:5678".parse().unwrap(),
             Duration::from_millis(30),
         )
@@ -614,7 +614,7 @@ mod tests {
         }
 
         let nodes = mesh.get_reachable_nodes().await;
-        assert_eq!(nodes, vec!["up".to_string()]);
+        assert_eq!(nodes, vec![String::from("up")]);
     }
 
     #[tokio::test]

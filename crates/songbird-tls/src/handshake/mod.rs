@@ -88,8 +88,8 @@ impl HandshakeStateMachine {
     pub fn process_client_hello(&mut self, client_hello: ClientHello) -> Result<()> {
         if self.state != HandshakeState::Start {
             return Err(TlsError::UnexpectedMessage {
-                expected: "Start".to_string(),
-                got: "ClientHello".to_string(),
+                expected: String::from("Start"),
+                got: String::from("ClientHello"),
             });
         }
 
@@ -117,15 +117,15 @@ impl HandshakeStateMachine {
     /// May panic if system time is before `UNIX_EPOCH` (used for server random fallback).
     pub async fn generate_server_hello(&mut self) -> Result<ServerHello> {
         if self.state != HandshakeState::ReceivedClientHello {
-            return Err(TlsError::ProtocolError(
-                "Cannot generate ServerHello in current state".to_string(),
-            ));
+            return Err(TlsError::ProtocolError(String::from(
+                "Cannot generate ServerHello in current state",
+            )));
         }
 
         let client_hello = self
             .client_hello
             .as_ref()
-            .ok_or_else(|| TlsError::InternalError("ClientHello not stored".to_string()))?;
+            .ok_or_else(|| TlsError::InternalError(String::from("ClientHello not stored")))?;
 
         // Server random (32 bytes): OS CSPRNG — no security-provider delegation (RFC 8446)
         let mut server_random = [0u8; 32];
@@ -135,14 +135,14 @@ impl HandshakeStateMachine {
         let crypto = self
             .crypto_client
             .as_ref()
-            .ok_or_else(|| TlsError::InternalError("Crypto client not set".to_string()))?;
+            .ok_or_else(|| TlsError::InternalError(String::from("Crypto client not set")))?;
 
         // Select cipher suite (for now, just take first supported)
         let cipher_suite = client_hello
             .cipher_suites
             .first()
             .copied()
-            .ok_or_else(|| TlsError::HandshakeFailure("No cipher suites".to_string()))?;
+            .ok_or_else(|| TlsError::HandshakeFailure(String::from("No cipher suites")))?;
 
         // Echo session ID
         let session_id_echo = client_hello.legacy_session_id.clone();
@@ -181,9 +181,9 @@ impl HandshakeStateMachine {
     /// Returns an error if not in `SentServerHello` state.
     pub fn complete_handshake(&mut self) -> Result<()> {
         if self.state != HandshakeState::SentServerHello {
-            return Err(TlsError::ProtocolError(
-                "Cannot complete handshake in current state".to_string(),
-            ));
+            return Err(TlsError::ProtocolError(String::from(
+                "Cannot complete handshake in current state",
+            )));
         }
 
         // Transition to connected

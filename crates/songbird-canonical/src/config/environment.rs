@@ -190,9 +190,9 @@ impl Default for PortConfig {
 impl Default for LoggingConfig {
     fn default() -> Self {
         Self {
-            level: "info".to_string(),
-            format: "json".to_string(),
-            output: "stdout".to_string(),
+            level: String::from("info"),
+            format: String::from("json"),
+            output: String::from("stdout"),
             file_rotation: true,
             max_file_size_mb: 100,
             max_files: 10,
@@ -218,7 +218,7 @@ impl Default for ObservabilityConfig {
 impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
-            bind_address: "0.0.0.0".to_string(),
+            bind_address: String::from("0.0.0.0"),
             enable_tls: false,
             tls_cert_path: None,
             tls_key_path: None,
@@ -234,12 +234,12 @@ impl Default for EnvironmentSecurityConfig {
     fn default() -> Self {
         Self {
             enable_auth: true,
-            auth_method: "bearer".to_string(),
+            auth_method: String::from("bearer"),
             enable_authz: true,
             enable_audit: true,
             audit_log_path: None,
             enable_cors: true,
-            cors_origins: vec!["*".to_string()],
+            cors_origins: vec![String::from("*")],
         }
     }
 }
@@ -272,8 +272,8 @@ mod tests {
     #[test]
     fn environment_config_roundtrip() {
         let mut c = EnvironmentConfig::default();
-        c.environment = Environment::Custom("edge".to_string());
-        c.observability.custom_tags.insert("k".to_string(), "v".to_string());
+        c.environment = Environment::Custom(String::from("edge"));
+        c.observability.custom_tags.insert(String::from("k"), String::from("v"));
         assert_json_roundtrip(&c);
     }
 
@@ -284,7 +284,7 @@ mod tests {
             Environment::Staging,
             Environment::Production,
             Environment::Testing,
-            Environment::Custom("lab".to_string()),
+            Environment::Custom(String::from("lab")),
         ] {
             assert_json_roundtrip(&env);
         }

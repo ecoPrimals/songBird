@@ -264,8 +264,8 @@ mod tests {
     #[test]
     fn from_env_with_neural_uses_neural_socket_from_env() {
         let p = CryptoProvider::from_env_with(|key| match key {
-            "SECURITY_PROVIDER_MODE" => Some("neural".to_string()),
-            "NEURAL_API_SOCKET" => Some("/run/neural.sock".to_string()),
+            "SECURITY_PROVIDER_MODE" => Some(String::from("neural")),
+            "NEURAL_API_SOCKET" => Some(String::from("/run/neural.sock")),
             _ => None,
         });
         assert_eq!(p.mode, RoutingMode::NeuralApi);
@@ -275,7 +275,7 @@ mod tests {
     #[test]
     fn from_env_with_defaults_to_neural_when_security_provider_mode_absent() {
         let p = CryptoProvider::from_env_with(|key| match key {
-            "NEURAL_API_SOCKET" => Some("/only/neural.sock".to_string()),
+            "NEURAL_API_SOCKET" => Some(String::from("/only/neural.sock")),
             _ => None,
         });
         assert_eq!(p.mode, RoutingMode::NeuralApi, "unset mode env should default to NeuralApi");
@@ -287,8 +287,8 @@ mod tests {
     #[test]
     fn from_env_with_direct_prefers_legacy_beardog_socket_env() {
         let p = CryptoProvider::from_env_with(|key| match key {
-            "BEARDOG_MODE" => Some("direct".to_string()),
-            "BEARDOG_SOCKET" => Some("/custom/security-provider.sock".to_string()),
+            "BEARDOG_MODE" => Some(String::from("direct")),
+            "BEARDOG_SOCKET" => Some(String::from("/custom/security-provider.sock")),
             _ => None,
         });
         assert_eq!(p.mode, RoutingMode::Direct);
@@ -305,7 +305,7 @@ mod tests {
         std::fs::create_dir_all(socket_path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&socket_path, b"x").expect("touch socket path");
         let p = CryptoProvider::from_env_with(move |key| match key {
-            "BEARDOG_MODE" => Some("direct".to_string()),
+            "BEARDOG_MODE" => Some(String::from("direct")),
             "XDG_RUNTIME_DIR" => Some(xdg.clone()),
             _ => None,
         });

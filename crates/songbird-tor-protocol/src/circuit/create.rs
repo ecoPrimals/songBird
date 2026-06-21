@@ -93,10 +93,10 @@ impl NtorHandshake {
         // Parse response: Y (server ephemeral public) || AUTH (32 bytes)
         let server_pubkey: [u8; 32] = response[0..32]
             .try_into()
-            .map_err(|_| Error::Protocol("Failed to parse server pubkey".to_string()))?;
+            .map_err(|_| Error::Protocol(String::from("Failed to parse server pubkey")))?;
         let auth: [u8; 32] = response[32..64]
             .try_into()
-            .map_err(|_| Error::Protocol("Failed to parse auth".to_string()))?;
+            .map_err(|_| Error::Protocol(String::from("Failed to parse auth")))?;
 
         // Per Tor ntor spec, compute TWO shared secrets:
         // 1. EXP(Y,x) - our ephemeral secret with server's ephemeral public
@@ -159,7 +159,7 @@ impl NtorHandshake {
             .await?;
 
         if auth != expected_auth {
-            return Err(Error::Protocol("ntor auth verification failed".to_string()));
+            return Err(Error::Protocol(String::from("ntor auth verification failed")));
         }
 
         // Derive forward/backward keys via RFC5869 HKDF
@@ -212,10 +212,10 @@ impl NtorHandshake {
             backward_digest,
             forward_key: expanded[40..56]
                 .try_into()
-                .map_err(|_| Error::Crypto("Failed to extract forward_key".to_string()))?,
+                .map_err(|_| Error::Crypto(String::from("Failed to extract forward_key")))?,
             backward_key: expanded[56..72]
                 .try_into()
-                .map_err(|_| Error::Crypto("Failed to extract backward_key".to_string()))?,
+                .map_err(|_| Error::Crypto(String::from("Failed to extract backward_key")))?,
         })
     }
 }
@@ -281,9 +281,9 @@ mod tests {
 
     #[tokio::test]
     async fn complete_handshake_rejects_empty_response() {
-        let ntor = NtorHandshake::new(CryptoProvider::new(
-            "/tmp/songbird-tor-protocol-ntor-test.sock".to_string(),
-        ));
+        let ntor = NtorHandshake::new(CryptoProvider::new(String::from(
+            "/tmp/songbird-tor-protocol-ntor-test.sock",
+        )));
         let state = HandshakeState {
             client_ephemeral_secret: [9u8; 32],
             client_ephemeral_public: [8u8; 32],
@@ -299,9 +299,9 @@ mod tests {
 
     #[tokio::test]
     async fn complete_handshake_rejects_non_64_byte_response() {
-        let ntor = NtorHandshake::new(CryptoProvider::new(
-            "/tmp/songbird-tor-protocol-ntor-test.sock".to_string(),
-        ));
+        let ntor = NtorHandshake::new(CryptoProvider::new(String::from(
+            "/tmp/songbird-tor-protocol-ntor-test.sock",
+        )));
         let state = HandshakeState {
             client_ephemeral_secret: [1u8; 32],
             client_ephemeral_public: [2u8; 32],

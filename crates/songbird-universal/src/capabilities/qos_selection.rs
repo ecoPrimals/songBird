@@ -303,7 +303,7 @@ mod tests {
         // Add metrics for two providers
         selector
             .update_metrics(ProviderQoSMetrics {
-                provider_id: "provider-a".to_string(),
+                provider_id: String::from("provider-a"),
                 avg_latency_ms: 50.0,
                 current_load: 0.3,
                 availability: 0.99,
@@ -316,7 +316,7 @@ mod tests {
 
         selector
             .update_metrics(ProviderQoSMetrics {
-                provider_id: "provider-b".to_string(),
+                provider_id: String::from("provider-b"),
                 avg_latency_ms: 200.0,
                 current_load: 0.8,
                 availability: 0.85,
@@ -327,17 +327,17 @@ mod tests {
             })
             .await;
 
-        let providers = vec!["provider-a".to_string(), "provider-b".to_string()];
+        let providers = vec![String::from("provider-a"), String::from("provider-b")];
         let best = selector.select_best_provider(&providers).await;
 
-        assert_eq!(best, Some("provider-a".to_string()));
+        assert_eq!(best, Some(String::from("provider-a")));
     }
 
     #[tokio::test]
     async fn test_qos_selection_no_metrics() {
         let selector = QoSProviderSelector::new();
 
-        let providers = vec!["unknown-a".to_string(), "unknown-b".to_string()];
+        let providers = vec![String::from("unknown-a"), String::from("unknown-b")];
         let best = selector.select_best_provider(&providers).await;
 
         // Should still select one even without metrics
@@ -391,7 +391,7 @@ mod tests {
         // Fast but degraded
         selector
             .update_metrics(ProviderQoSMetrics {
-                provider_id: "fast-degraded".to_string(),
+                provider_id: String::from("fast-degraded"),
                 avg_latency_ms: 10.0,
                 current_load: 0.5,
                 availability: 0.5,
@@ -405,7 +405,7 @@ mod tests {
         // Slow but healthy
         selector
             .update_metrics(ProviderQoSMetrics {
-                provider_id: "slow-healthy".to_string(),
+                provider_id: String::from("slow-healthy"),
                 avg_latency_ms: 500.0,
                 current_load: 0.5,
                 availability: 0.5,
@@ -416,10 +416,10 @@ mod tests {
             })
             .await;
 
-        let providers = vec!["fast-degraded".to_string(), "slow-healthy".to_string()];
+        let providers = vec![String::from("fast-degraded"), String::from("slow-healthy")];
         let best = selector.select_best_provider(&providers).await;
 
         // With 50/50 weights, healthy should win despite slower
-        assert_eq!(best, Some("slow-healthy".to_string()));
+        assert_eq!(best, Some(String::from("slow-healthy")));
     }
 }

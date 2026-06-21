@@ -27,7 +27,7 @@ impl PrimalType {
         Self {
             category: category.to_string(),
             subcategory: None,
-            version: "1.0".to_string(),
+            version: String::from("1.0"),
         }
     }
 
@@ -53,9 +53,9 @@ impl std::fmt::Display for PrimalType {
 impl Default for PrimalType {
     fn default() -> Self {
         Self {
-            category: "unknown".to_string(),
+            category: String::from("unknown"),
             subcategory: None,
-            version: "1.0".to_string(),
+            version: String::from("1.0"),
         }
     }
 }
@@ -242,10 +242,10 @@ mod tests {
     #[test]
     fn primal_capability_and_requirement_serde_roundtrip() {
         let mut params = HashMap::new();
-        params.insert("k".to_string(), serde_json::json!(42));
+        params.insert(String::from("k"), serde_json::json!(42));
         let cap = PrimalCapability {
-            capability_type: "inference".to_string(),
-            version: "2".to_string(),
+            capability_type: String::from("inference"),
+            version: String::from("2"),
             parameters: params,
             qos_metrics: QosMetrics::default(),
         };
@@ -254,8 +254,8 @@ mod tests {
         assert_eq!(back, cap);
 
         let req = CapabilityRequirement {
-            capability_type: "compute".to_string(),
-            minimum_version: "1.0.0".to_string(),
+            capability_type: String::from("compute"),
+            minimum_version: String::from("1.0.0"),
             required_qos: Some(QosMetrics {
                 latency_ms: Some(10.0),
                 throughput_ops_sec: None,
@@ -284,11 +284,11 @@ mod tests {
     #[test]
     fn discovered_capability_serde_roundtrip() {
         let d = DiscoveredCapability {
-            name: "n".to_string(),
-            version: "v".to_string(),
-            description: "d".to_string(),
-            provider: "p".to_string(),
-            endpoint: "e".to_string(),
+            name: String::from("n"),
+            version: String::from("v"),
+            description: String::from("d"),
+            provider: String::from("p"),
+            endpoint: String::from("e"),
             qos_metrics: QosMetrics::default(),
             health_status: HealthStatus::Healthy,
         };

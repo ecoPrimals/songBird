@@ -52,7 +52,7 @@ impl Default for LineageRelayConfig {
         // 255.255.255.255:<port> = broadcast address
         let node_id = songbird_process_env::var("SONGBIRD_NODE_ID")
             .or_else(|_| songbird_process_env::var("NODE_ID"))
-            .unwrap_or_else(|_| "songbird-default".to_string());
+            .unwrap_or_else(|_| String::from("songbird-default"));
         Self {
             my_id: NodeId::from(node_id.as_str()),
             birdsong_bind: SocketAddr::from(([0, 0, 0, 0], birdsong_port)),
@@ -177,7 +177,7 @@ impl LineageRelayCoordinator {
         use tokio::net::UdpSocket;
 
         let server_str = songbird_process_env::var("SONGBIRD_TURN_SERVER")
-            .map_err(|_| "SONGBIRD_TURN_SERVER not set".to_string())?;
+            .map_err(|_| String::from("SONGBIRD_TURN_SERVER not set"))?;
         let server_addr: SocketAddr =
             server_str.parse().map_err(|e| format!("SONGBIRD_TURN_SERVER invalid: {e}"))?;
 
@@ -301,7 +301,7 @@ impl LineageRelayCoordinator {
             }
             Err(_) => {
                 warn!("⏱️  Direct connection timeout after {:?}", self.config.direct_timeout);
-                Err(LineageRelayError::Timeout("Direct connection attempt timed out".to_string()))
+                Err(LineageRelayError::Timeout(String::from("Direct connection attempt timed out")))
             }
         }
     }
@@ -328,7 +328,7 @@ impl LineageRelayCoordinator {
     /// Returns error if relay service cannot be started
     pub async fn start_relay_service(&self) -> Result<()> {
         let relay_address = self.config.my_relay_address.ok_or_else(|| {
-            LineageRelayError::ConfigError("No relay address configured".to_string())
+            LineageRelayError::ConfigError(String::from("No relay address configured"))
         })?;
 
         info!("Starting relay service on {}", relay_address);
@@ -406,7 +406,7 @@ mod tests {
         let lineage_provider = Arc::new(MockLineageProvider::new());
         let crypto = Arc::new(BirdSongCrypto::from(MockBirdSongCrypto::new(
             lineage_provider.clone(),
-            "node-1".to_string(),
+            String::from("node-1"),
         )));
         let relay_authority =
             Arc::new(RelayAuthority::from(MockRelayAuthority::new(lineage_provider)));
@@ -438,7 +438,7 @@ mod tests {
         let lineage_provider = Arc::new(MockLineageProvider::new());
         let crypto = Arc::new(BirdSongCrypto::from(MockBirdSongCrypto::new(
             lineage_provider.clone(),
-            "node-1".to_string(),
+            String::from("node-1"),
         )));
         let relay_authority =
             Arc::new(RelayAuthority::from(MockRelayAuthority::new(lineage_provider)));
@@ -476,7 +476,7 @@ mod tests {
         let lineage_provider = Arc::new(MockLineageProvider::new());
         let crypto = Arc::new(BirdSongCrypto::from(MockBirdSongCrypto::new(
             lineage_provider.clone(),
-            "node-1".to_string(),
+            String::from("node-1"),
         )));
         let relay_authority =
             Arc::new(RelayAuthority::from(MockRelayAuthority::new(lineage_provider)));
@@ -509,7 +509,7 @@ mod tests {
         let lineage_provider = Arc::new(MockLineageProvider::new());
         let crypto = Arc::new(BirdSongCrypto::from(MockBirdSongCrypto::new(
             lineage_provider.clone(),
-            "node-1".to_string(),
+            String::from("node-1"),
         )));
         let relay_authority =
             Arc::new(RelayAuthority::from(MockRelayAuthority::new(lineage_provider)));
@@ -538,7 +538,7 @@ mod tests {
         let lineage_provider = Arc::new(MockLineageProvider::new());
         let crypto = Arc::new(BirdSongCrypto::from(MockBirdSongCrypto::new(
             lineage_provider.clone(),
-            "node-1".to_string(),
+            String::from("node-1"),
         )));
         let relay_authority =
             Arc::new(RelayAuthority::from(MockRelayAuthority::new(lineage_provider)));

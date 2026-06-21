@@ -173,7 +173,7 @@ fn recommend_tier(turn: &PathMetrics, tunnel: &PathMetrics) -> String {
         }
         (true, false) => ConnectionTier::TurnRelay.to_string(),
         (false, true) => ConnectionTier::EmergencyTunnel.to_string(),
-        (false, false) => "none".to_string(),
+        (false, false) => String::from("none"),
     }
 }
 
@@ -186,16 +186,16 @@ mod tests {
     #[test]
     fn recommend_tier_prefers_faster_when_both_succeed() {
         let turn = PathMetrics {
-            tier: "turn-relay".to_string(),
+            tier: String::from("turn-relay"),
             setup_duration_ms: 50,
-            relay_addr: Some("1.2.3.4:5".to_string()),
+            relay_addr: Some(String::from("1.2.3.4:5")),
             success: true,
             error: None,
         };
         let tunnel = PathMetrics {
-            tier: "emergency-tunnel".to_string(),
+            tier: String::from("emergency-tunnel"),
             setup_duration_ms: 200,
-            relay_addr: Some("https://foo.trycloudflare.com".to_string()),
+            relay_addr: Some(String::from("https://foo.trycloudflare.com")),
             success: true,
             error: None,
         };
@@ -208,18 +208,18 @@ mod tests {
     #[test]
     fn recommend_tier_picks_available_path() {
         let ok = PathMetrics {
-            tier: "turn-relay".to_string(),
+            tier: String::from("turn-relay"),
             setup_duration_ms: 100,
             relay_addr: None,
             success: true,
             error: None,
         };
         let fail = PathMetrics {
-            tier: "emergency-tunnel".to_string(),
+            tier: String::from("emergency-tunnel"),
             setup_duration_ms: 0,
             relay_addr: None,
             success: false,
-            error: Some("not found".to_string()),
+            error: Some(String::from("not found")),
         };
         assert_eq!(recommend_tier(&ok, &fail), "turn-relay");
         assert_eq!(recommend_tier(&fail, &ok), "emergency-tunnel");
@@ -228,11 +228,11 @@ mod tests {
     #[test]
     fn recommend_tier_none_when_both_fail() {
         let fail = PathMetrics {
-            tier: "x".to_string(),
+            tier: String::from("x"),
             setup_duration_ms: 0,
             relay_addr: None,
             success: false,
-            error: Some("err".to_string()),
+            error: Some(String::from("err")),
         };
         assert_eq!(recommend_tier(&fail, &fail), "none");
     }

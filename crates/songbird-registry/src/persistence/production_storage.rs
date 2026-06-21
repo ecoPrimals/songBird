@@ -142,7 +142,7 @@ fn delegate_subdir_from_uri_path(uri_path: &str) -> String {
     }
     s = s.trim_start_matches('/').replace('/', "__");
     if s.is_empty() {
-        "default".to_string()
+        String::from("default")
     } else {
         s
     }
@@ -546,9 +546,9 @@ mod tests {
         let now = Utc::now();
         ServiceInfo {
             service_id: id.to_string(),
-            name: "test-svc".to_string(),
-            version: "1.0.0".to_string(),
-            service_type: "unit".to_string(),
+            name: String::from("test-svc"),
+            version: String::from("1.0.0"),
+            service_type: String::from("unit"),
             description: None,
             endpoints: vec![],
             health_check_endpoint: None,
@@ -559,7 +559,7 @@ mod tests {
             created_at: now,
             updated_at: now,
             instance_id: format!("{id}-inst"),
-            host: "127.0.0.1".to_string(),
+            host: String::from("127.0.0.1"),
             port: 8080,
         }
     }
@@ -630,8 +630,8 @@ mod tests {
             last_saved: Utc::now(),
             schema_version: 1,
         };
-        data.services.insert("k".to_string(), sample_entry("k"));
-        data.service_info.insert("k".to_string(), sample_info("k"));
+        data.services.insert(String::from("k"), sample_entry("k"));
+        data.service_info.insert(String::from("k"), sample_info("k"));
 
         let json = serde_json::to_string(&data).expect("serialize");
         let back: PersistentServiceData = serde_json::from_str(&json).expect("deserialize");
