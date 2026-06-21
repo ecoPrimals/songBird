@@ -156,7 +156,7 @@ pub async fn create_genetic_tunnel(
             vec![], // capabilities (unknown at this point)
             genetic_families,
             TrustLevel::Elevated, // Genetic proof grants elevated trust
-            "genetic_tunnel".to_string(),
+            String::from("genetic_tunnel"),
         )
         .await;
 
@@ -171,10 +171,10 @@ pub async fn create_genetic_tunnel(
             info!("✅ BTSP tunnel established: {}", tunnel_id);
             Ok(CreateGeneticTunnelResponse {
                 tunnel_id,
-                status: "established".to_string(),
+                status: String::from("established"),
                 local_endpoint: None, // NOTE: Would require BTSP client integration (future: Arc<BtspClient> in handlers)
                 peer_endpoint: Some(peer_endpoint),
-                encryption: Some("ChaCha20-Poly1305".to_string()),
+                encryption: Some(String::from("ChaCha20-Poly1305")),
                 created_at: SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
                     .unwrap_or_default()
@@ -186,7 +186,7 @@ pub async fn create_genetic_tunnel(
             warn!("❌ Failed to establish BTSP tunnel: {}", e);
             Ok(CreateGeneticTunnelResponse {
                 tunnel_id: String::new(),
-                status: "failed".to_string(),
+                status: String::from("failed"),
                 local_endpoint: None,
                 peer_endpoint: Some(peer_endpoint),
                 encryption: None,
@@ -227,7 +227,7 @@ pub async fn announce_capabilities(
     info!("💡 To apply: Restart orchestrator with updated capabilities in config");
 
     Ok(AnnounceCapabilitiesResponse {
-        status: "updated".to_string(),
+        status: String::from("updated"),
         broadcasting: true,
         updated_at: SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -324,7 +324,7 @@ pub async fn create_genetic_tunnel_json(
             vec![], // capabilities (unknown at this point)
             genetic_families,
             TrustLevel::Elevated,
-            "genetic_tunnel".to_string(),
+            String::from("genetic_tunnel"),
         )
         .await;
 
@@ -339,10 +339,10 @@ pub async fn create_genetic_tunnel_json(
     let response = match result {
         Ok(()) => CreateGeneticTunnelResponse {
             tunnel_id,
-            status: "established".to_string(),
+            status: String::from("established"),
             local_endpoint: None,
             peer_endpoint: Some(peer_endpoint),
-            encryption: Some("ChaCha20-Poly1305".to_string()),
+            encryption: Some(String::from("ChaCha20-Poly1305")),
             created_at: timestamp,
         },
         Err(e) => CreateGeneticTunnelResponse {
@@ -383,7 +383,7 @@ pub async fn announce_capabilities_json(
     );
 
     let response = AnnounceCapabilitiesResponse {
-        status: "logged".to_string(), // Changed from "updated" to reflect reality
+        status: String::from("logged"), // Changed from "updated" to reflect reality
         broadcasting: true,
         updated_at: SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -424,27 +424,27 @@ mod tests {
 
     #[test]
     fn peer_matches_when_tag_contains_family_token() {
-        let tags = vec!["crypto:family:nat0:tower1".to_string()];
-        let families = vec!["nat0".to_string()];
+        let tags = vec![String::from("crypto:family:nat0:tower1")];
+        let families = vec![String::from("nat0")];
         assert!(peer_matches_family_tags(Some(&tags), &families));
     }
 
     #[test]
     fn peer_no_match_when_tags_missing() {
-        let families = vec!["nat0".to_string()];
+        let families = vec![String::from("nat0")];
         assert!(!peer_matches_family_tags(None, &families));
     }
 
     #[test]
     fn peer_no_match_when_family_list_nonmatching() {
-        let tags = vec!["crypto:family:other:node".to_string()];
-        let families = vec!["nat0".to_string()];
+        let tags = vec![String::from("crypto:family:other:node")];
+        let families = vec![String::from("nat0")];
         assert!(!peer_matches_family_tags(Some(&tags), &families));
     }
 
     #[test]
     fn empty_family_filter_matches_nothing_in_helper() {
-        let tags = vec!["x".to_string()];
+        let tags = vec![String::from("x")];
         let families: Vec<String> = vec![];
         assert!(!peer_matches_family_tags(Some(&tags), &families));
     }
@@ -470,7 +470,7 @@ mod tests {
         assert_eq!(node.node_id, "node-stable");
         assert_eq!(node.node_name, Some("east".into()));
         assert_eq!(node.genetic_families, vec!["tag-a"]);
-        assert_eq!(node.capabilities, vec!["compute".to_string()]);
+        assert_eq!(node.capabilities, vec![String::from("compute")]);
         assert_eq!(node.https_endpoint, "http://10.0.0.5:8443");
     }
 

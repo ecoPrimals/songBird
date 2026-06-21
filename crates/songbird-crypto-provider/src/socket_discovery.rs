@@ -25,7 +25,7 @@ pub fn neural_api_socket_path_in_biomeos_runtime(
     family_id: &str,
 ) -> PathBuf {
     let socket_name = if family_id.is_empty() {
-        "neural-api.sock".to_string()
+        String::from("neural-api.sock")
     } else {
         format!("neural-api-{family_id}.sock")
     };
@@ -47,7 +47,7 @@ pub fn security_socket_path_in_biomeos_runtime_with_family(
     family_id: &str,
 ) -> PathBuf {
     let socket_name = if family_id.is_empty() {
-        "security.sock".to_string()
+        String::from("security.sock")
     } else {
         format!("security-{family_id}.sock")
     };
@@ -66,7 +66,7 @@ pub fn legacy_beardog_socket_path_in_biomeos_runtime(
     family_id: &str,
 ) -> PathBuf {
     let socket_name = if family_id.is_empty() {
-        "beardog.sock".to_string()
+        String::from("beardog.sock")
     } else {
         format!("beardog-{family_id}.sock")
     };
@@ -77,7 +77,7 @@ pub fn legacy_beardog_socket_path_in_biomeos_runtime(
 #[must_use]
 pub fn crypto_socket_path_in_biomeos_runtime(xdg_runtime_dir: &str, family_id: &str) -> PathBuf {
     let socket_name = if family_id.is_empty() {
-        "crypto.sock".to_string()
+        String::from("crypto.sock")
     } else {
         format!("crypto-{family_id}.sock")
     };
@@ -322,7 +322,7 @@ mod tests {
     #[test]
     fn discover_neural_prefers_neural_api_socket_env() {
         let map: HashMap<&str, String> =
-            std::iter::once(("NEURAL_API_SOCKET", "/explicit/neural.sock".to_string())).collect();
+            std::iter::once(("NEURAL_API_SOCKET", String::from("/explicit/neural.sock"))).collect();
         let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |_p| false);
         assert_eq!(out, "/explicit/neural.sock");
     }
@@ -330,8 +330,8 @@ mod tests {
     #[test]
     fn discover_neural_neural_api_socket_wins_over_neurals_when_both_set() {
         let map: HashMap<&str, String> = [
-            ("NEURAL_API_SOCKET", "/primary.sock".to_string()),
-            ("NEURALS_SOCKET", "/secondary.sock".to_string()),
+            ("NEURAL_API_SOCKET", String::from("/primary.sock")),
+            ("NEURALS_SOCKET", String::from("/secondary.sock")),
         ]
         .into_iter()
         .collect();
@@ -356,7 +356,7 @@ mod tests {
     #[test]
     fn discover_neural_falls_back_to_neurals_socket() {
         let map: HashMap<&str, String> =
-            std::iter::once(("NEURALS_SOCKET", "/alt/neural.sock".to_string())).collect();
+            std::iter::once(("NEURALS_SOCKET", String::from("/alt/neural.sock"))).collect();
         let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |_p| false);
         assert_eq!(out, "/alt/neural.sock");
     }
@@ -385,7 +385,8 @@ mod tests {
     #[test]
     fn discover_neural_honors_beardog_socket() {
         let map: HashMap<&str, String> =
-            std::iter::once(("BEARDOG_SOCKET", "/run/beardog/security.sock".to_string())).collect();
+            std::iter::once(("BEARDOG_SOCKET", String::from("/run/beardog/security.sock")))
+                .collect();
         let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |_p| false);
         assert_eq!(out, "/run/beardog/security.sock");
     }
@@ -393,7 +394,7 @@ mod tests {
     #[test]
     fn discover_neural_honors_security_provider_socket() {
         let map: HashMap<&str, String> =
-            std::iter::once(("SECURITY_PROVIDER_SOCKET", "/run/security.sock".to_string()))
+            std::iter::once(("SECURITY_PROVIDER_SOCKET", String::from("/run/security.sock")))
                 .collect();
         let out = discover_neural_api_socket_with(|k| map.get(k).cloned(), |_p| false);
         assert_eq!(out, "/run/security.sock");
@@ -404,7 +405,7 @@ mod tests {
         let xdg = "/run/user/7777";
         let expected = neural_api_socket_path_in_biomeos_runtime(xdg, "fam");
         let map: HashMap<&str, String> =
-            [("XDG_RUNTIME_DIR", xdg.to_string()), ("FAMILY_ID", "fam".to_string())]
+            [("XDG_RUNTIME_DIR", xdg.to_string()), ("FAMILY_ID", String::from("fam"))]
                 .into_iter()
                 .collect();
         let out =
@@ -442,7 +443,7 @@ mod tests {
         let xdg = "/run/user/5555";
         let family_security = security_socket_path_in_biomeos_runtime_with_family(xdg, "nucleus01");
         let map: HashMap<&str, String> =
-            [("XDG_RUNTIME_DIR", xdg.to_string()), ("FAMILY_ID", "nucleus01".to_string())]
+            [("XDG_RUNTIME_DIR", xdg.to_string()), ("FAMILY_ID", String::from("nucleus01"))]
                 .into_iter()
                 .collect();
         let out = discover_security_socket_with(
@@ -462,7 +463,7 @@ mod tests {
         let xdg = "/run/user/6666";
         let beardog = legacy_beardog_socket_path_in_biomeos_runtime(xdg, "nucleus01");
         let map: HashMap<&str, String> =
-            [("XDG_RUNTIME_DIR", xdg.to_string()), ("FAMILY_ID", "nucleus01".to_string())]
+            [("XDG_RUNTIME_DIR", xdg.to_string()), ("FAMILY_ID", String::from("nucleus01"))]
                 .into_iter()
                 .collect();
         let out =
@@ -481,7 +482,7 @@ mod tests {
         let security = security_socket_path_in_biomeos_runtime_with_family(xdg, "nucleus01");
         let beardog = legacy_beardog_socket_path_in_biomeos_runtime(xdg, "nucleus01");
         let map: HashMap<&str, String> =
-            [("XDG_RUNTIME_DIR", xdg.to_string()), ("FAMILY_ID", "nucleus01".to_string())]
+            [("XDG_RUNTIME_DIR", xdg.to_string()), ("FAMILY_ID", String::from("nucleus01"))]
                 .into_iter()
                 .collect();
         let out = discover_security_socket_with(
@@ -500,8 +501,8 @@ mod tests {
     #[test]
     fn discover_security_prefers_security_provider_socket_env() {
         let map: HashMap<&str, String> = [
-            ("SECURITY_PROVIDER_SOCKET", "/cap/security.sock".to_string()),
-            ("BEARDOG_SOCKET", "/legacy/security-fallback.sock".to_string()),
+            ("SECURITY_PROVIDER_SOCKET", String::from("/cap/security.sock")),
+            ("BEARDOG_SOCKET", String::from("/legacy/security-fallback.sock")),
         ]
         .into_iter()
         .collect();
@@ -512,7 +513,7 @@ mod tests {
     #[test]
     fn discover_security_uses_crypto_provider_socket_env() {
         let map: HashMap<&str, String> =
-            std::iter::once(("CRYPTO_PROVIDER_SOCKET", "/cap/crypto.sock".to_string())).collect();
+            std::iter::once(("CRYPTO_PROVIDER_SOCKET", String::from("/cap/crypto.sock"))).collect();
         let out = discover_security_socket_with(|k| map.get(k).cloned(), |_p| false);
         assert_eq!(out, "/cap/crypto.sock");
     }
@@ -550,7 +551,7 @@ mod tests {
     #[test]
     fn discover_security_falls_back_to_legacy_socket_env() {
         let map: HashMap<&str, String> =
-            std::iter::once(("BEARDOG_SOCKET", "/legacy/security-fallback.sock".to_string()))
+            std::iter::once(("BEARDOG_SOCKET", String::from("/legacy/security-fallback.sock")))
                 .collect();
         let out = discover_security_socket_with(|k| map.get(k).cloned(), |_p| false);
         assert_eq!(

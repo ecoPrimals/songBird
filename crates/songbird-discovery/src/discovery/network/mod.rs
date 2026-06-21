@@ -185,30 +185,30 @@ impl NetworkManager {
         match ip {
             IpAddr::V4(ipv4) => {
                 if ipv4.is_private() {
-                    return "private".to_string();
+                    return String::from("private");
                 }
 
                 let octets = ipv4.octets();
                 match octets[0] {
-                    3 | 13 | 15 | 18 | 34 | 35 | 54 => "aws".to_string(),
-                    8 | 23 | 107 | 130 | 142 | 146 => "gcp".to_string(),
-                    20 | 40 | 51 | 65 | 68 | 70 => "azure".to_string(),
-                    162 | 172 | 173 | 188 | 190 | 197 | 198 => "cloudflare".to_string(),
+                    3 | 13 | 15 | 18 | 34 | 35 | 54 => String::from("aws"),
+                    8 | 23 | 107 | 130 | 142 | 146 => String::from("gcp"),
+                    20 | 40 | 51 | 65 | 68 | 70 => String::from("azure"),
+                    162 | 172 | 173 | 188 | 190 | 197 | 198 => String::from("cloudflare"),
                     _ => match octets[0] {
-                        0 => "reserved".to_string(),
-                        1..=23 => "us-east".to_string(),
-                        24..=39 => "us-west".to_string(),
-                        40..=79 => "europe".to_string(),
-                        80..=103 => "asia".to_string(),
-                        104..=127 => "oceania".to_string(),
-                        128..=159 => "us-central".to_string(),
-                        160..=191 => "europe-east".to_string(),
-                        192..=223 => "asia-east".to_string(),
-                        224..=255 => "multicast".to_string(),
+                        0 => String::from("reserved"),
+                        1..=23 => String::from("us-east"),
+                        24..=39 => String::from("us-west"),
+                        40..=79 => String::from("europe"),
+                        80..=103 => String::from("asia"),
+                        104..=127 => String::from("oceania"),
+                        128..=159 => String::from("us-central"),
+                        160..=191 => String::from("europe-east"),
+                        192..=223 => String::from("asia-east"),
+                        224..=255 => String::from("multicast"),
                     },
                 }
             }
-            IpAddr::V6(_) => "ipv6".to_string(),
+            IpAddr::V6(_) => String::from("ipv6"),
         }
     }
 
@@ -366,8 +366,8 @@ mod tests {
     async fn start_network_monitoring_returns_ok_without_io() {
         let (_tx, shutdown_rx) = tokio::sync::mpsc::channel::<()>(1);
         let res = NetworkManager::start_network_monitoring(
-            "n1".to_string(),
-            vec![("t1".to_string(), "127.0.0.1".to_string())],
+            String::from("n1"),
+            vec![(String::from("t1"), String::from("127.0.0.1"))],
             shutdown_rx,
         );
         assert!(res.is_ok());
@@ -457,11 +457,11 @@ mod tests {
     async fn start_network_monitoring_multiple_targets() {
         let (_tx, shutdown_rx) = tokio::sync::mpsc::channel::<()>(1);
         let targets = vec![
-            ("node-a".to_string(), "127.0.0.1".to_string()),
-            ("node-b".to_string(), "192.0.2.1".to_string()),
+            (String::from("node-a"), String::from("127.0.0.1")),
+            (String::from("node-b"), String::from("192.0.2.1")),
         ];
         let res =
-            NetworkManager::start_network_monitoring("monitor".to_string(), targets, shutdown_rx);
+            NetworkManager::start_network_monitoring(String::from("monitor"), targets, shutdown_rx);
         assert!(res.is_ok());
     }
 

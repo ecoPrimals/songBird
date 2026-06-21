@@ -108,13 +108,13 @@ mod tests {
             verbose: true,
             quiet: false,
             output_format: OutputFormat::Json,
-            config_path: Some("/etc/songbird.toml".to_string()),
+            config_path: Some(String::from("/etc/songbird.toml")),
         };
 
         assert!(config.verbose);
         assert!(!config.quiet);
         assert_eq!(config.output_format, OutputFormat::Json);
-        assert_eq!(config.config_path, Some("/etc/songbird.toml".to_string()));
+        assert_eq!(config.config_path, Some(String::from("/etc/songbird.toml")));
     }
 
     #[test]
@@ -123,7 +123,7 @@ mod tests {
             verbose: true,
             quiet: false,
             output_format: OutputFormat::Table,
-            config_path: Some("config.toml".to_string()),
+            config_path: Some(String::from("config.toml")),
         };
 
         let serialized = serde_json::to_string(&config).map_err(|e| {
@@ -146,7 +146,7 @@ mod tests {
             verbose: true,
             quiet: true,
             output_format: OutputFormat::Yaml,
-            config_path: Some("test.toml".to_string()),
+            config_path: Some(String::from("test.toml")),
         };
 
         let cloned = config.clone();
@@ -159,27 +159,27 @@ mod tests {
     #[test]
     fn test_command_context_creation() {
         let mut args = HashMap::new();
-        args.insert("name".to_string(), "test".to_string());
-        args.insert("value".to_string(), "123".to_string());
+        args.insert(String::from("name"), String::from("test"));
+        args.insert(String::from("value"), String::from("123"));
 
         let context = CommandContext {
-            command: "init".to_string(),
+            command: String::from("init"),
             args: args.clone(),
             timestamp: std::time::SystemTime::now(),
         };
 
         assert_eq!(context.command, "init");
-        assert_eq!(context.args.get("name"), Some(&"test".to_string()));
-        assert_eq!(context.args.get("value"), Some(&"123".to_string()));
+        assert_eq!(context.args.get("name"), Some(&String::from("test")));
+        assert_eq!(context.args.get("value"), Some(&String::from("123")));
     }
 
     #[test]
     fn test_command_context_clone() {
         let mut args = HashMap::new();
-        args.insert("key".to_string(), "value".to_string());
+        args.insert(String::from("key"), String::from("value"));
 
         let context = CommandContext {
-            command: "test".to_string(),
+            command: String::from("test"),
             args,
             timestamp: std::time::SystemTime::now(),
         };
@@ -191,10 +191,10 @@ mod tests {
 
     #[test]
     fn test_cli_result_success() {
-        let result = SongbirdResult::success("test data".to_string(), 100);
+        let result = SongbirdResult::success(String::from("test data"), 100);
 
         assert!(result.success);
-        assert_eq!(result.data, Some("test data".to_string()));
+        assert_eq!(result.data, Some(String::from("test data")));
         assert!(result.error.is_none());
         assert_eq!(result.execution_time_ms, 100);
     }
@@ -202,11 +202,11 @@ mod tests {
     #[test]
     fn test_cli_result_error() {
         let result: SongbirdResult<String> =
-            SongbirdResult::error("Something failed".to_string(), 50);
+            SongbirdResult::error(String::from("Something failed"), 50);
 
         assert!(!result.success);
         assert!(result.data.is_none());
-        assert_eq!(result.error, Some("Something failed".to_string()));
+        assert_eq!(result.error, Some(String::from("Something failed")));
         assert_eq!(result.execution_time_ms, 50);
     }
 
@@ -238,7 +238,7 @@ mod tests {
 
     #[test]
     fn test_cli_result_clone() {
-        let result = SongbirdResult::success("data".to_string(), 75);
+        let result = SongbirdResult::success(String::from("data"), 75);
         let cloned = result.clone();
 
         assert_eq!(result.success, cloned.success);
@@ -251,7 +251,7 @@ mod tests {
     fn test_progress_indicator_creation() {
         let progress = ProgressIndicator {
             progress: 50,
-            message: "Processing...".to_string(),
+            message: String::from("Processing..."),
             eta_seconds: Some(120),
         };
 
@@ -264,7 +264,7 @@ mod tests {
     fn test_progress_indicator_no_eta() {
         let progress = ProgressIndicator {
             progress: 100,
-            message: "Complete".to_string(),
+            message: String::from("Complete"),
             eta_seconds: None,
         };
 
@@ -277,7 +277,7 @@ mod tests {
     fn test_progress_indicator_clone() {
         let progress = ProgressIndicator {
             progress: 75,
-            message: "Almost done".to_string(),
+            message: String::from("Almost done"),
             eta_seconds: Some(30),
         };
 
@@ -291,14 +291,14 @@ mod tests {
     fn test_progress_indicator_boundary_values() {
         let start = ProgressIndicator {
             progress: 0,
-            message: "Starting".to_string(),
+            message: String::from("Starting"),
             eta_seconds: Some(300),
         };
         assert_eq!(start.progress, 0);
 
         let end = ProgressIndicator {
             progress: 100,
-            message: "Done".to_string(),
+            message: String::from("Done"),
             eta_seconds: Some(0),
         };
         assert_eq!(end.progress, 100);

@@ -128,9 +128,9 @@ pub async fn discover_mdns_services_with_timeout(
     #[cfg(not(feature = "mdns"))]
     {
         let _ = timeout;
-        Err(DiscoveryError::BackendUnavailable(
-            "mDNS support not enabled - compile with --features mdns".to_string(),
-        ))
+        Err(DiscoveryError::BackendUnavailable(String::from(
+            "mDNS support not enabled - compile with --features mdns",
+        )))
     }
 }
 
@@ -338,7 +338,7 @@ pub async fn discover_dns_sd_services() -> Result<Vec<DiscoveredPrimal>, Discove
         .build();
 
         let service_domain = songbird_process_env::var("SONGBIRD_SERVICE_DOMAIN")
-            .unwrap_or_else(|_| "local".to_string());
+            .unwrap_or_else(|_| String::from("local"));
 
         let mut primals = Vec::new();
 
@@ -370,7 +370,7 @@ pub async fn discover_dns_sd_services() -> Result<Vec<DiscoveredPrimal>, Discove
 
     #[cfg(not(feature = "dns-sd"))]
     {
-        Err(DiscoveryError::BackendUnavailable("DNS-SD support not enabled".to_string()))
+        Err(DiscoveryError::BackendUnavailable(String::from("DNS-SD support not enabled")))
     }
 }
 
@@ -431,28 +431,28 @@ fn infer_capabilities_from_name(name: &str) -> Vec<String> {
         || name_lower.contains("crypto")
         || name_lower.contains("auth")
     {
-        capabilities.push("security".to_string());
+        capabilities.push(String::from("security"));
     }
     if name_lower.contains("ai") || name_lower.contains("ml") || name_lower.contains("inference") {
-        capabilities.push("ai".to_string());
+        capabilities.push(String::from("ai"));
     }
     if name_lower.contains("discovery") || name_lower.contains("registry") {
-        capabilities.push("discovery".to_string());
+        capabilities.push(String::from("discovery"));
     }
     if name_lower.contains("storage")
         || name_lower.contains("data")
         || name_lower.contains("persist")
     {
-        capabilities.push("storage".to_string());
+        capabilities.push(String::from("storage"));
     }
     if name_lower.contains("orchestrat") || name_lower.contains("coordinat") {
-        capabilities.push("orchestration".to_string());
+        capabilities.push(String::from("orchestration"));
     }
     if name_lower.contains("compute")
         || name_lower.contains("worker")
         || name_lower.contains("exec")
     {
-        capabilities.push("compute".to_string());
+        capabilities.push(String::from("compute"));
     }
 
     capabilities
@@ -493,8 +493,8 @@ mod tests {
         use std::collections::HashMap;
 
         let mut records = HashMap::new();
-        records.insert("endpoint".to_string(), "http://mdns-host:8443".to_string());
-        records.insert("capabilities".to_string(), "compute,security".to_string());
+        records.insert(String::from("endpoint"), String::from("http://mdns-host:8443"));
+        records.insert(String::from("capabilities"), String::from("compute,security"));
         let p = parse_mdns_response("songbird-svc", records).expect("parsed primal");
         assert_eq!(p.name, "songbird-svc");
         assert_eq!(p.endpoint, "http://mdns-host:8443");
@@ -508,7 +508,7 @@ mod tests {
 
         assert!(parse_mdns_response("x", HashMap::new()).is_none());
         let mut partial = HashMap::new();
-        partial.insert("endpoint".to_string(), "http://h:1".to_string());
+        partial.insert(String::from("endpoint"), String::from("http://h:1"));
         assert!(parse_mdns_response("x", partial).is_none());
     }
 
@@ -576,14 +576,14 @@ mod tests {
     #[test]
     fn infer_capabilities_multi_match() {
         let caps = infer_capabilities_from_name("data-storage-persist");
-        assert!(caps.contains(&"storage".to_string()));
+        assert!(caps.contains(&String::from("storage")));
         assert_eq!(caps.len(), 1, "should not double-count");
     }
 
     #[test]
     fn infer_capabilities_compute_variants() {
-        assert!(infer_capabilities_from_name("compute-node").contains(&"compute".to_string()));
-        assert!(infer_capabilities_from_name("worker-pool").contains(&"compute".to_string()));
-        assert!(infer_capabilities_from_name("exec-runner").contains(&"compute".to_string()));
+        assert!(infer_capabilities_from_name("compute-node").contains(&String::from("compute")));
+        assert!(infer_capabilities_from_name("worker-pool").contains(&String::from("compute")));
+        assert!(infer_capabilities_from_name("exec-runner").contains(&String::from("compute")));
     }
 }

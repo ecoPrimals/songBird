@@ -105,15 +105,15 @@ fn optimize_gaming_network_lines(
     target_latency: u32,
     protocol: Option<GamingProtocol>,
 ) -> Vec<String> {
-    let mut lines = vec!["🎮 Optimizing gaming network...".to_string()];
+    let mut lines = vec![String::from("🎮 Optimizing gaming network...")];
     if game_mode {
-        lines.push("⚡ Gaming mode enabled".to_string());
+        lines.push(String::from("⚡ Gaming mode enabled"));
     }
     lines.push(format!("🎯 Target latency: {target_latency}ms"));
     if let Some(p) = protocol {
         lines.push(format!("🌐 Optimizing for protocol: {p:?}"));
     }
-    lines.push("✅ Gaming network optimization complete".to_string());
+    lines.push(String::from("✅ Gaming network optimization complete"));
     lines
 }
 
@@ -123,9 +123,9 @@ fn test_gaming_network_prefix_lines(
     server: Option<&str>,
     iterations: u32,
 ) -> Vec<String> {
-    let mut lines = vec!["🧪 Testing gaming network performance...".to_string()];
+    let mut lines = vec![String::from("🧪 Testing gaming network performance...")];
     if gaming_protocols {
-        lines.push("🎮 Testing gaming-specific protocols".to_string());
+        lines.push(String::from("🎮 Testing gaming-specific protocols"));
     }
     if let Some(s) = server {
         lines.push(format!("🌐 Testing against server: {s}"));
@@ -139,35 +139,35 @@ fn configure_gaming_ports_lines(
     auto_configure: bool,
     port_range: Option<&str>,
 ) -> Vec<String> {
-    let mut lines = vec!["🔌 Configuring gaming network ports...".to_string()];
+    let mut lines = vec![String::from("🔌 Configuring gaming network ports...")];
     if gaming {
-        lines.push("🎮 Gaming port configuration enabled".to_string());
+        lines.push(String::from("🎮 Gaming port configuration enabled"));
     }
     if auto_configure {
-        lines.push("🤖 Auto-configuring port forwarding".to_string());
+        lines.push(String::from("🤖 Auto-configuring port forwarding"));
     }
     if let Some(range) = port_range {
         lines.push(format!("🔢 Configuring port range: {range}"));
     }
-    lines.push("✅ Gaming port configuration complete".to_string());
+    lines.push(String::from("✅ Gaming port configuration complete"));
     lines
 }
 
 fn diagnose_gaming_network_lines(comprehensive: bool, export: Option<&str>) -> Vec<String> {
-    let mut lines = vec!["🔍 Diagnosing gaming network...".to_string()];
+    let mut lines = vec![String::from("🔍 Diagnosing gaming network...")];
     if comprehensive {
-        lines.push("🔬 Running comprehensive diagnostics".to_string());
+        lines.push(String::from("🔬 Running comprehensive diagnostics"));
     }
     lines.extend([
-        "✅ Network connectivity: OK".to_string(),
-        "✅ Gaming ports: Open".to_string(),
-        "✅ Protocol support: Available".to_string(),
-        "⚠️  High latency detected (>100ms)".to_string(),
+        String::from("✅ Network connectivity: OK"),
+        String::from("✅ Gaming ports: Open"),
+        String::from("✅ Protocol support: Available"),
+        String::from("⚠️  High latency detected (>100ms)"),
     ]);
     if let Some(path) = export {
         lines.push(format!("📄 Exporting diagnostic report to: {path}"));
     }
-    lines.push("✅ Gaming network diagnosis complete".to_string());
+    lines.push(String::from("✅ Gaming network diagnosis complete"));
     lines
 }
 
@@ -176,14 +176,14 @@ fn monitor_gaming_network_static_lines(
     protocol: Option<GamingProtocol>,
     continuous: bool,
 ) -> Vec<String> {
-    let mut lines = vec!["📊 Starting gaming network monitoring...".to_string()];
+    let mut lines = vec![String::from("📊 Starting gaming network monitoring...")];
     if let Some(p) = protocol {
         lines.push(format!("🌐 Monitoring protocol: {p:?}"));
     }
     if continuous {
-        lines.push("🔄 Continuous monitoring enabled (Ctrl+C to stop)".to_string());
+        lines.push(String::from("🔄 Continuous monitoring enabled (Ctrl+C to stop)"));
     } else {
-        lines.push("📈 Current gaming network metrics:".to_string());
+        lines.push(String::from("📈 Current gaming network metrics:"));
     }
     lines
 }

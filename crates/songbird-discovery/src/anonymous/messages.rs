@@ -142,7 +142,7 @@ impl AnonymousDiscoveryMessage {
     #[must_use]
     pub fn new(capabilities: Vec<String>, protocols: Vec<String>, port: u16) -> Self {
         Self {
-            version: "2.1".to_string(),
+            version: String::from("2.1"),
             node_id: None,
             node_name: None,
             session_id: Self::generate_session_id(),
@@ -181,11 +181,11 @@ impl AnonymousDiscoveryMessage {
             .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
 
         let protocols =
-            primary_endpoint.map_or_else(|| vec!["https".to_string()], |e| e.protocols.clone());
+            primary_endpoint.map_or_else(|| vec![String::from("https")], |e| e.protocols.clone());
 
         let session_id = Self::generate_session_id_from_node(&node_id);
         Self {
-            version: "3.0".to_string(),
+            version: String::from("3.0"),
             node_id: Some(node_id),
             node_name: Some(node_name),
             session_id,
@@ -321,8 +321,8 @@ mod tests {
     #[test]
     fn test_message_new_v2() {
         let msg = AnonymousDiscoveryMessage::new(
-            vec!["orchestration".to_string()],
-            vec!["https".to_string()],
+            vec![String::from("orchestration")],
+            vec![String::from("https")],
             8080,
         );
         assert_eq!(msg.version, "2.1");
@@ -333,30 +333,30 @@ mod tests {
     #[test]
     fn test_message_new_v3() {
         let endpoints = vec![TransportEndpointMessage {
-            interface_type: "ethernet".to_string(),
-            address: "192.168.1.100:8080".to_string(),
-            protocols: vec!["https".to_string()],
+            interface_type: String::from("ethernet"),
+            address: String::from("192.168.1.100:8080"),
+            protocols: vec![String::from("https")],
             preference: 255,
         }];
 
         let msg = AnonymousDiscoveryMessage::new_v3(
-            "test-node-id".to_string(),
-            "testnode".to_string(),
+            String::from("test-node-id"),
+            String::from("testnode"),
             endpoints,
-            vec!["orchestration".to_string()],
+            vec![String::from("orchestration")],
         );
 
         assert_eq!(msg.version, "3.0");
-        assert_eq!(msg.node_id, Some("test-node-id".to_string()));
-        assert_eq!(msg.node_name, Some("testnode".to_string()));
+        assert_eq!(msg.node_id, Some(String::from("test-node-id")));
+        assert_eq!(msg.node_name, Some(String::from("testnode")));
         assert!(msg.endpoints.is_some());
     }
 
     #[test]
     fn test_message_validation_v2() {
         let msg = AnonymousDiscoveryMessage::new(
-            vec!["orchestration".to_string()],
-            vec!["https".to_string()],
+            vec![String::from("orchestration")],
+            vec![String::from("https")],
             8080,
         );
         assert!(msg.validate().is_ok());
@@ -365,8 +365,8 @@ mod tests {
     #[test]
     fn test_message_validation_empty_capabilities() {
         let mut msg = AnonymousDiscoveryMessage::new(
-            vec!["orchestration".to_string()],
-            vec!["https".to_string()],
+            vec![String::from("orchestration")],
+            vec![String::from("https")],
             8080,
         );
         msg.capabilities.clear();
@@ -376,8 +376,8 @@ mod tests {
     #[test]
     fn test_message_serialization() {
         let msg = AnonymousDiscoveryMessage::new(
-            vec!["orchestration".to_string()],
-            vec!["https".to_string()],
+            vec![String::from("orchestration")],
+            vec![String::from("https")],
             8080,
         );
 

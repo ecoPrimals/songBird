@@ -34,32 +34,32 @@ impl SecurityValidator {
 
         let expected = self.auth_token.as_deref().ok_or_else(|| {
             SongbirdError::Security(SecurityError {
-                message: "No auth token configured".to_string(),
-                operation: Some("authentication".to_string()),
+                message: String::from("No auth token configured"),
+                operation: Some(String::from("authentication")),
                 required_permission: None,
                 context: None,
-                remediation: Some("Configure auth token in agent config".to_string()),
+                remediation: Some(String::from("Configure auth token in agent config")),
             })
         })?;
 
         let provided = provided_token.ok_or_else(|| {
             SongbirdError::Security(SecurityError {
-                message: "No auth token provided".to_string(),
-                operation: Some("authentication".to_string()),
-                required_permission: Some("valid_auth_token".to_string()),
+                message: String::from("No auth token provided"),
+                operation: Some(String::from("authentication")),
+                required_permission: Some(String::from("valid_auth_token")),
                 context: None,
-                remediation: Some("Provide auth token in request".to_string()),
+                remediation: Some(String::from("Provide auth token in request")),
             })
         })?;
 
         if provided != expected {
             warn!("Invalid authentication token provided");
             return Err(SongbirdError::Security(SecurityError {
-                message: "Invalid authentication token".to_string(),
-                operation: Some("authentication".to_string()),
-                required_permission: Some("valid_auth_token".to_string()),
+                message: String::from("Invalid authentication token"),
+                operation: Some(String::from("authentication")),
+                required_permission: Some(String::from("valid_auth_token")),
                 context: None,
-                remediation: Some("Use correct auth token".to_string()),
+                remediation: Some(String::from("Use correct auth token")),
             }));
         }
 
@@ -75,9 +75,9 @@ impl SecurityValidator {
         // Check for empty command
         if command.trim().is_empty() {
             return Err(SongbirdError::Validation {
-                message: "Empty command".to_string(),
-                field: Some("command".to_string()),
-                suggestion: Some("Provide a valid command".to_string()),
+                message: String::from("Empty command"),
+                field: Some(String::from("command")),
+                suggestion: Some(String::from("Provide a valid command")),
             });
         }
 
@@ -94,12 +94,12 @@ impl SecurityValidator {
                 warn!("Potentially dangerous command detected: {}", command);
                 return Err(SongbirdError::Security(SecurityError {
                     message: format!("Command contains dangerous pattern: {pattern}"),
-                    operation: Some("command_validation".to_string()),
+                    operation: Some(String::from("command_validation")),
                     required_permission: None,
                     context: Some(format!("command: {command}")),
-                    remediation: Some(
-                        "Avoid dangerous commands that could harm the system".to_string(),
-                    ),
+                    remediation: Some(String::from(
+                        "Avoid dangerous commands that could harm the system",
+                    )),
                 }));
             }
         }
@@ -120,19 +120,19 @@ mod tests {
 
     #[test]
     fn test_auth_valid_token() {
-        let validator = SecurityValidator::new(true, Some("secret123".to_string()));
+        let validator = SecurityValidator::new(true, Some(String::from("secret123")));
         assert!(validator.validate_auth(Some("secret123")).is_ok());
     }
 
     #[test]
     fn test_auth_invalid_token() {
-        let validator = SecurityValidator::new(true, Some("secret123".to_string()));
+        let validator = SecurityValidator::new(true, Some(String::from("secret123")));
         assert!(validator.validate_auth(Some("wrong")).is_err());
     }
 
     #[test]
     fn test_auth_missing_token() {
-        let validator = SecurityValidator::new(true, Some("secret123".to_string()));
+        let validator = SecurityValidator::new(true, Some(String::from("secret123")));
         assert!(validator.validate_auth(None).is_err());
     }
 
