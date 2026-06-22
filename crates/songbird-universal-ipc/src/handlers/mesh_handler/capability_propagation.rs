@@ -141,22 +141,54 @@ impl MeshHandler {
 
     /// Find the first reachable peer that advertises the given capability.
     ///
-    /// Searches the `peer_capabilities` map for a non-expired entry containing
-    /// the capability string. Returns `Some((node_id, capabilities))` for the
-    /// first match, or `None` if no peer provides it.
+    /// Searches the `peer_capabilities` map for non-expired entries containing
+    /// the capability string. When multiple peers provide the same capability,
+    /// selects the one with the lowest-cost path (overlay preferred, then latency).
+    /// Returns `Some((node_id, capabilities))` for the best match, or `None`.
     pub async fn find_peer_with_capability(
         &self,
         capability: &str,
     ) -> Option<(String, Vec<String>)> {
         let guard = self.peer_capabilities.read().await;
-        for (node_id, entry) in guard.iter() {
-            if entry.last_seen.elapsed() < CAPABILITY_TTL
-                && entry.capabilities.iter().any(|c| c == capability)
-            {
-                return Some((node_id.clone(), entry.capabilities.clone()));
+        let candidates: Vec<_> = guard
+            .iter()
+            .filter(|(_, entry)| {
+                entry.last_seen.elapsed() < CAPABILITY_TTL
+                    && entry.capabilities.iter().any(|c| c == capability)
+            })
+            .map(|(node_id, entry)| (node_id.clone(), entry.capabilities.clone()))
+            .collect();
+        drop(guard);
+
+        if candidates.is_empty() {
+            return None;
+        }
+        if candidates.len() == 1 {
+            return Some(candidates.into_iter().next().expect("checked non-empty"));
+        }
+
+        let mesh_guard = self.mesh.read().await;
+        let Some(ref mesh) = *mesh_guard else {
+            return Some(candidates.into_iter().next().expect("checked non-empty"));
+        };
+
+        let mut best: Option<(String, Vec<String>, u64)> = None;
+        for (node_id, caps) in candidates {
+            let cost = if let Some(path) = mesh.get_best_path(&node_id).await {
+                let priority_weight = u64::from(path.endpoint_type.priority()) * 10_000;
+                let latency_ms =
+                    path.latency.map_or(5000, |d| u64::try_from(d.as_millis()).unwrap_or(5000));
+                priority_weight + latency_ms
+            } else {
+                u64::MAX
+            };
+
+            if best.as_ref().is_none_or(|(_, _, best_cost)| cost < *best_cost) {
+                best = Some((node_id, caps, cost));
             }
         }
-        None
+
+        best.map(|(node_id, caps, _)| (node_id, caps))
     }
 
     /// Handle `mesh.capabilities_announce` — receive remote peer capabilities.

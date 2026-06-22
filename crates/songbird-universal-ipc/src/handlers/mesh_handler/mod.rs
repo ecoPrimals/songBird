@@ -24,6 +24,7 @@ pub(crate) mod capability_propagation;
 mod health_probing;
 mod json;
 pub mod persistence;
+pub(crate) mod topology_graph;
 mod udp_discovery;
 
 #[cfg(test)]
@@ -60,7 +61,7 @@ pub(super) struct ProbeResult {
 #[derive(Clone)]
 pub struct MeshHandler {
     /// Beacon mesh instance
-    pub(super) mesh: Arc<RwLock<Option<Arc<BeaconMesh>>>>,
+    pub(crate) mesh: Arc<RwLock<Option<Arc<BeaconMesh>>>>,
     /// Start time for uptime tracking
     start_time: Instant,
     /// Our node ID
@@ -247,17 +248,25 @@ impl MeshHandler {
         *self.node_id.write().await = node_id.clone();
 
         let peers_added = bootstrap_peers.len();
-        if !bootstrap_peers.is_empty() {
+        let overlay_for_health: Vec<(String, std::net::SocketAddr, String)> = overlay_peers
+            .iter()
+            .map(|(id, addr)| (id.clone(), *addr, String::from(overlay_name)))
+            .collect();
+
+        if !bootstrap_peers.is_empty() || !overlay_for_health.is_empty() {
             Self::spawn_peer_health_loop(
                 mesh_ref,
                 bootstrap_peers.clone(),
+                overlay_for_health,
                 Arc::clone(&self.peer_metadata),
             );
 
-            let node_id_owned = node_id.as_ref().to_string();
-            tokio::task::spawn_blocking(move || {
-                persistence::save_peers(&node_id_owned, &bootstrap_peers);
-            });
+            if !bootstrap_peers.is_empty() {
+                let node_id_owned = node_id.as_ref().to_string();
+                tokio::task::spawn_blocking(move || {
+                    persistence::save_peers(&node_id_owned, &bootstrap_peers);
+                });
+            }
         }
 
         Ok(json!({
@@ -528,7 +537,10 @@ impl MeshHandler {
     ///
     /// Returns nodes with their connections and path types, giving a
     /// graph-level view of the mesh for monitoring and visualization.
-    pub async fn handle_topology(&self, _params: Value) -> Result<Value, String> {
+    ///
+    /// When `include_gossip` is true (default), merges peer-reported reachability
+    /// into the graph, showing inferred edges from remote peer gossip.
+    pub async fn handle_topology(&self, params: Value) -> Result<Value, String> {
         let mesh = self
             .mesh
             .read()
@@ -540,6 +552,42 @@ impl MeshHandler {
         let node_id = self.node_id.read().await.clone();
         let reachable = mesh.get_reachable_nodes().await;
 
+        let include_gossip = params
+            .get("include_gossip")
+            .and_then(Value::as_bool)
+            .unwrap_or(true);
+
+        if include_gossip {
+            let meta = self.peer_metadata.read().await;
+            let mut local_latencies = std::collections::HashMap::new();
+            for peer_id in &reachable {
+                if let Some(path) = mesh.get_best_path(peer_id).await
+                    && let Some(lat) = path.latency
+                {
+                    local_latencies.insert(
+                        peer_id.clone(),
+                        u64::try_from(lat.as_millis()).unwrap_or(u64::MAX),
+                    );
+                }
+            }
+
+            let graph = topology_graph::build_topology(
+                node_id.as_ref(),
+                &reachable,
+                &meta,
+                &local_latencies,
+            );
+
+            let mut response = graph.to_json(node_id.as_ref(), self.start_time.elapsed().as_secs());
+            let partitioned = graph.partitioned_nodes();
+            if !partitioned.is_empty() {
+                response["partitioned_nodes"] =
+                    json!(partitioned.iter().map(|s| json!(s)).collect::<Vec<_>>());
+            }
+            return Ok(response);
+        }
+
+        // Legacy star-from-self view (include_gossip: false)
         let mut nodes = Vec::new();
         let mut edges = Vec::new();
 

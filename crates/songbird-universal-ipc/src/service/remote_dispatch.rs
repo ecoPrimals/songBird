@@ -18,8 +18,11 @@ use tracing::debug;
 impl IpcServiceHandler {
     /// Dispatch a capability call to a remote gate via mesh.
     ///
-    /// Called when local resolution fails and `routing` permits remote dispatch.
-    /// Tries direct TCP first, then TURN relay for each reachable peer.
+    /// Resolution strategy:
+    /// 1. Check cached `peer_capabilities` for a known holder (path-optimal selection)
+    /// 2. If known, target that peer directly via best path
+    /// 3. If unknown, fall back to probing reachable peers
+    /// 4. TURN relay as final fallback for NAT'd peers
     pub(super) async fn forward_to_remote_gate(
         &self,
         call: &CapabilityCallParams,
@@ -29,6 +32,53 @@ impl IpcServiceHandler {
         let mesh_guard = self.mesh_handler.mesh().await;
         let mesh =
             mesh_guard.as_ref().ok_or("Mesh not initialized — cannot discover remote gates")?;
+
+        // Fast path: resolve from cached capability announcements (path-optimal)
+        if let Some((holder_id, _)) =
+            self.mesh_handler.find_peer_with_capability(&call.capability).await
+            && let Some(path) = mesh.get_best_path(&holder_id).await
+        {
+            let peer_sock = path.endpoint_type.socket_addr().unwrap_or_else(|| {
+                let ip = path
+                    .endpoint_type
+                    .address()
+                    .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
+                std::net::SocketAddr::new(ip, DEFAULT_HTTP_PORT)
+            });
+
+            let tcp_endpoint = songbird_types::constants::jsonrpc_endpoint_url(&peer_sock);
+
+            match self.forward_to_remote_tcp(&tcp_endpoint, call).await {
+                Ok(result) => {
+                    let response = CapabilityCallResult {
+                        provider: format!("remote:{holder_id}"),
+                        gate: holder_id,
+                        result,
+                    };
+                    return serde_json::to_value(response)
+                        .map_err(|e| format!("Serialization error: {e}"));
+                }
+                Err(e) => {
+                    debug!(
+                        peer = %holder_id,
+                        error = %e,
+                        "Direct dispatch to cached capability holder failed, falling through"
+                    );
+                }
+            }
+        }
+
+        // Slow path: discover by probing reachable peers
+        self.discover_and_dispatch(mesh, call).await
+    }
+
+    /// Slow-path discovery: iterate reachable peers, probe capabilities, dispatch.
+    async fn discover_and_dispatch(
+        &self,
+        mesh: &std::sync::Arc<songbird_onion_relay::mesh::BeaconMesh>,
+        call: &CapabilityCallParams,
+    ) -> Result<Value, String> {
+        use songbird_types::defaults::ports::DEFAULT_HTTP_PORT;
 
         let reachable = mesh.get_reachable_nodes().await;
         if reachable.is_empty() {
@@ -45,8 +95,6 @@ impl IpcServiceHandler {
             let Some(path) = mesh.get_best_path(node_id).await else {
                 continue;
             };
-            // Use the peer's advertised socket address (includes port); fall back to
-            // DEFAULT_HTTP_PORT only if the endpoint type lacks port info.
             let peer_sock = path.endpoint_type.socket_addr().unwrap_or_else(|| {
                 let ip = path
                     .endpoint_type
@@ -85,25 +133,23 @@ impl IpcServiceHandler {
         }
 
         // TURN relay fallback for NAT'd peers
-        if !peer_addrs.is_empty() {
-            for (node_id, peer_addr) in &peer_addrs {
-                match self.forward_to_remote_via_turn(*peer_addr, call).await {
-                    Ok(result) => {
-                        let response = CapabilityCallResult {
-                            provider: format!("remote:{node_id}"),
-                            gate: node_id.clone(),
-                            result,
-                        };
-                        return serde_json::to_value(response)
-                            .map_err(|e| format!("Serialization error: {e}"));
-                    }
-                    Err(e) => {
-                        debug!(
-                            peer = %node_id,
-                            error = %e,
-                            "TURN relay dispatch also failed"
-                        );
-                    }
+        for (node_id, peer_addr) in &peer_addrs {
+            match self.forward_to_remote_via_turn(*peer_addr, call).await {
+                Ok(result) => {
+                    let response = CapabilityCallResult {
+                        provider: format!("remote:{node_id}"),
+                        gate: node_id.clone(),
+                        result,
+                    };
+                    return serde_json::to_value(response)
+                        .map_err(|e| format!("Serialization error: {e}"));
+                }
+                Err(e) => {
+                    debug!(
+                        peer = %node_id,
+                        error = %e,
+                        "TURN relay dispatch also failed"
+                    );
                 }
             }
         }
