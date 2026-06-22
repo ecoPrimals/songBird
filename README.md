@@ -4,7 +4,7 @@
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: June 21, 2026
+**Last Updated**: June 22, 2026
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
@@ -30,7 +30,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Build | Clean (zero errors, zero warnings) |
 | Formatting | Clean (`cargo fmt --check`; May 27 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >800 lines | **0** — Wave 121: `keys.rs` (801→555L via test extraction to `keys_tests.rs`); Wave 120: `federation.rs` (811→509L via `federation_config.rs` + test extraction), `plugin/mod.rs` (808→329L via `types.rs` + test extraction), `processor.rs` (805→472L via test extraction); Wave 111: `connection.rs` (815→472L via `session_protocol.rs` SRP extraction), `hardcoded_elimination.rs` (872→689L via `hardcoded_replace.rs` extraction); Wave 76: `mesh_handler/mod.rs` (1004→783L via `capability_propagation.rs` extraction); Wave 74: `multi_tier_coordinator.rs` (799→655L); Wave 209: `state.rs` (877→459L) |
+| Files >800 lines | **0** — Wave 123: `beacon.rs` (858→347L via test extraction to `beacon_tests.rs`); Wave 121: `keys.rs` (801→555L via test extraction to `keys_tests.rs`); Wave 120: `federation.rs` (811→509L via `federation_config.rs` + test extraction), `plugin/mod.rs` (808→329L via `types.rs` + test extraction), `processor.rs` (805→472L via test extraction); Wave 111: `connection.rs` (815→472L via `session_protocol.rs` SRP extraction), `hardcoded_elimination.rs` (872→689L via `hardcoded_replace.rs` extraction); Wave 76: `mesh_handler/mod.rs` (1004→783L via `capability_propagation.rs` extraction); Wave 74: `multi_tier_coordinator.rs` (799→655L); Wave 209: `state.rs` (877→459L) |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 33 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, lifecycle, inference, etc.) |
