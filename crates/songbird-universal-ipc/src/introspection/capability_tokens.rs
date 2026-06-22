@@ -96,6 +96,7 @@ const CALLABLE_METHODS: &[&str] = &[
     "relay.stop",
     "relay.status",
     "relay.allocate",
+    "relay.forward",
     // ── Discovery / rendezvous / peers ──
     "discovery.peers",
     "discovery.announce",
@@ -215,7 +216,7 @@ pub const CONSUMED_CAPABILITIES: &[&str] = &[
 pub const CAPABILITY_METHOD_MAP: &[(&str, &[&str])] = &[
     ("network.discovery", &["discovery.peers", "discovery.announce", "discovery.list_peers"]),
     ("network.federation", &["songbird.federation.peers", "songbird.federation.status"]),
-    ("network.relay", &["relay.serve", "relay.stop", "relay.status", "relay.allocate"]),
+    ("network.relay", &["relay.serve", "relay.stop", "relay.status", "relay.allocate", "relay.forward"]),
     (
         "network.stun",
         &["stun.serve", "stun.stop", "stun.status", "stun.get_public_address", "stun.bind"],

@@ -184,6 +184,7 @@ impl JsonRpcMethod {
             Self::Relay(RelayMethod::Stop) => "relay.stop",
             Self::Relay(RelayMethod::Status) => "relay.status",
             Self::Relay(RelayMethod::Allocate) => "relay.allocate",
+            Self::Relay(RelayMethod::Forward) => "relay.forward",
             Self::Discovery(DiscoveryMethod::Peers) => "discovery.peers",
             Self::Discovery(DiscoveryMethod::Announce) => "discovery.announce",
             Self::Discovery(DiscoveryMethod::ContentPeers) => "discovery.content_peers",
@@ -336,6 +337,7 @@ impl JsonRpcMethod {
             "relay.stop" => Self::Relay(RelayMethod::Stop),
             "relay.status" => Self::Relay(RelayMethod::Status),
             "relay.allocate" => Self::Relay(RelayMethod::Allocate),
+            "relay.forward" => Self::Relay(RelayMethod::Forward),
             "discovery.peers" | "discovery.find_primals" | "find_primals" => {
                 Self::Discovery(DiscoveryMethod::Peers)
             }

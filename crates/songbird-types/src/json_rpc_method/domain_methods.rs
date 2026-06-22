@@ -132,6 +132,9 @@ pub enum RelayMethod {
     Stop,
     Status,
     Allocate,
+    /// Forward a JSON-RPC payload to a remote peer via mesh relay infrastructure.
+    /// Accepts `{peer_id, capability, payload}` and routes through the mesh.
+    Forward,
 }
 
 /// `discovery.*` and legacy aliases.

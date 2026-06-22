@@ -37,7 +37,7 @@ pub fn identity(family_id: &str) -> Value {
             "birdsong.generate_encrypted_beacon", "birdsong.decrypt_beacon",
             "birdsong.verify_lineage", "birdsong.get_lineage",
             "birdsong.advertise", "birdsong.schema",
-            "relay.serve", "relay.status", "relay.allocate",
+            "relay.serve", "relay.status", "relay.allocate", "relay.forward",
             "mesh.status", "mesh.find_path", "mesh.peers",
             "mesh.topology", "mesh.auto_discover",
             "punch.request", "punch.coordinate", "punch.status",

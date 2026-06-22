@@ -13,7 +13,7 @@
 use super::{CapabilityCallParams, CapabilityCallResult, IpcServiceHandler};
 use serde_json::Value;
 use songbird_types::defaults::timeouts::DEFAULT_SOCKET_IO_TIMEOUT;
-use tracing::debug;
+use tracing::{debug, info, warn};
 
 impl IpcServiceHandler {
     /// Dispatch a capability call to a remote gate via mesh.
@@ -303,5 +303,59 @@ impl IpcServiceHandler {
 
         serde_json::from_slice(&body)
             .map_err(|e| format!("Invalid JSON from remote gate at {url}: {e}"))
+    }
+
+    /// Handle `relay.forward` — the transport graduation entry point.
+    ///
+    /// cellMembrane's `call_via_relay` sends `{peer_id, capability, payload}` to
+    /// the local songBird socket. This handler resolves the peer via the mesh,
+    /// then forwards the raw JSON-RPC payload to the target gate's songBird
+    /// instance using the existing remote dispatch infrastructure (TCP direct,
+    /// TURN relay fallback).
+    ///
+    /// This closes the integration gap between `TransportEndpoint::MeshRelay`
+    /// resolution in cellMembrane and songBird's cross-gate transport.
+    pub async fn handle_relay_forward(&self, params: Value) -> Result<Value, String> {
+        let peer_id = params
+            .get("peer_id")
+            .and_then(Value::as_str)
+            .ok_or("relay.forward: missing 'peer_id' parameter")?;
+
+        let capability = params
+            .get("capability")
+            .and_then(Value::as_str)
+            .ok_or("relay.forward: missing 'capability' parameter")?;
+
+        let payload_str = params
+            .get("payload")
+            .and_then(Value::as_str)
+            .ok_or("relay.forward: missing 'payload' parameter (raw JSON-RPC string)")?;
+
+        info!(
+            peer = %peer_id,
+            capability = %capability,
+            payload_len = payload_str.len(),
+            "relay.forward: routing envelope to remote gate"
+        );
+
+        let call = CapabilityCallParams {
+            capability: capability.to_string(),
+            operation: String::from("forward"),
+            params: serde_json::from_str(payload_str).unwrap_or_else(|_| {
+                serde_json::json!({ "_raw_payload": payload_str })
+            }),
+            routing: "any".to_string(),
+        };
+
+        match self.forward_to_remote_gate(&call).await {
+            Ok(result) => {
+                info!(peer = %peer_id, "relay.forward: delivery successful");
+                Ok(result)
+            }
+            Err(e) => {
+                warn!(peer = %peer_id, error = %e, "relay.forward: delivery failed");
+                Err(format!("relay.forward to {peer_id}: {e}"))
+            }
+        }
     }
 }
