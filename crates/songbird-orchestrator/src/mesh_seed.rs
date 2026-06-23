@@ -94,7 +94,73 @@ pub(crate) fn detect_overlay_address() -> Option<IpAddr> {
     None
 }
 
-/// Parse a peer specification string into `(node_id, address)` pairs.
+/// Discover mesh peers from WireGuard interface configuration.
+///
+/// Reads allowed-IPs from all `wg*` interfaces to extract peer overlay IPs.
+/// Each peer's overlay IP is used with the standard songbird port (8080) to form
+/// a mesh peer entry. The peer's public key truncated to 8 chars serves as the node_id.
+///
+/// Returns `None` if no WG interfaces exist or no peers have allowed-IPs in the
+/// overlay subnet.
+fn discover_wireguard_peers() -> Option<Vec<(String, String)>> {
+    let prefix = songbird_process_env::var("SONGBIRD_OVERLAY_SUBNET")
+        .unwrap_or_else(|_| String::from("10.13.37"));
+
+    let output = std::process::Command::new("wg")
+        .args(["show", "all", "dump"])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        debug!("wg show failed (not root or no WG interfaces)");
+        return None;
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let result = parse_wg_dump(&stdout, &prefix);
+    if result.is_empty() { None } else { Some(result) }
+}
+
+/// Parse `wg show all dump` output to extract overlay peers.
+///
+/// Separated from `discover_wireguard_peers` for testability.
+fn parse_wg_dump(dump: &str, subnet_prefix: &str) -> Vec<(String, String)> {
+    use songbird_types::defaults::ports::DEFAULT_HTTP_PORT;
+
+    let mut peers: Vec<(String, String)> = Vec::new();
+
+    for line in dump.lines() {
+        let fields: Vec<&str> = line.split('\t').collect();
+        // wg dump format — interface line: iface privkey pubkey listen-port fwmark
+        //                   peer line:     iface pubkey preshared endpoint allowed-ips ...
+        if fields.len() < 5 {
+            continue;
+        }
+        let allowed_ips = fields.get(4).unwrap_or(&"");
+        if allowed_ips.is_empty() || *allowed_ips == "(none)" {
+            continue;
+        }
+
+        let pubkey = fields[1];
+        // Interface lines have a private key in field 2; peer lines have "(none)" or preshared
+        if fields.get(2).is_some_and(|f| !f.is_empty() && *f != "(none)") {
+            continue;
+        }
+
+        for cidr in allowed_ips.split(',') {
+            let ip_str = cidr.trim().split('/').next().unwrap_or("");
+            if ip_str.starts_with(subnet_prefix) {
+                let addr = format!("{ip_str}:{DEFAULT_HTTP_PORT}");
+                let node_id = format!("wg-{}", &pubkey[..8.min(pubkey.len())]);
+                peers.push((node_id, addr));
+                debug!(peer_ip = %ip_str, node_id_prefix = &pubkey[..8.min(pubkey.len())], "Discovered WG peer");
+                break;
+            }
+        }
+    }
+
+    peers
+}
 ///
 /// Supports two formats:
 /// - `node_id@host:port` — explicit identity
@@ -193,8 +259,9 @@ async fn register_overlay_endpoints(
 /// Called after socket bind. Priority:
 /// 1. `SONGBIRD_PEERS` env var (explicit operator intent)
 /// 2. Persisted peers from `~/.local/share/songbird/peers.toml` (autonomous recovery)
+/// 3. WireGuard peer auto-detection from `wg show` (zero-config mesh on WG hosts)
 ///
-/// If neither is available, mesh requires explicit `mesh.init`.
+/// If none succeed, mesh requires explicit `mesh.init`.
 ///
 /// If `SONGBIRD_OVERLAY_PEERS` is set, overlay endpoints are registered post-init
 /// for the same node IDs, giving them priority-0 routing (WireGuard preference).
@@ -211,8 +278,14 @@ pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
                 "Restoring mesh from persisted peers (autonomous recovery)"
             );
             (converted, "persisted")
+        } else if let Some(wg_peers) = discover_wireguard_peers() {
+            info!(
+                peer_count = wg_peers.len(),
+                "Auto-discovered peers from WireGuard interface"
+            );
+            (wg_peers, "wireguard")
         } else {
-            debug!("No SONGBIRD_PEERS and no persisted peers — mesh requires explicit mesh.init");
+            debug!("No SONGBIRD_PEERS, no persisted peers, no WG peers — mesh requires explicit mesh.init");
             return;
         }
     } else {
@@ -240,7 +313,14 @@ pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
         "Auto-seeding mesh"
     );
 
+    // When source is "wireguard", the peers are already overlay IPs — register them as overlay
+    let overlay_peers = if overlay_peers.is_empty() && source == "wireguard" {
+        peers.clone()
+    } else {
+        overlay_peers
+    };
     let peers_for_trust = peers.clone();
+    let source_owned = String::from(source);
     tokio::spawn(async move {
         let bootstrap_peers: Vec<serde_json::Value> = peers
             .iter()
@@ -265,15 +345,14 @@ pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
                     .unwrap_or(0);
                 info!(
                     peers_added = added,
-                    "Mesh auto-seeded from SONGBIRD_PEERS — discovery.peers is live"
+                    source = %source_owned,
+                    "Mesh auto-seeded — discovery.peers is live"
                 );
 
-                // Register overlay endpoints for WG-preferred routing
                 if !overlay_peers.is_empty() {
                     register_overlay_endpoints(&mesh_handler, &overlay_peers, &overlay_name).await;
                 }
 
-                // Phase 2: auto-exchange trust keys with peers (BD-TRUST-01)
                 let peer_addrs: Vec<(String, std::net::SocketAddr)> = peers_for_trust
                     .iter()
                     .filter_map(|(nid, addr)| {
@@ -283,7 +362,7 @@ pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
                 crate::mesh_trust_exchange::spawn_trust_exchange(peer_addrs);
             }
             Err(e) => {
-                warn!(error = %e, "Failed to auto-seed mesh from SONGBIRD_PEERS");
+                warn!(error = %e, source = %source_owned, "Failed to auto-seed mesh");
             }
         }
     });
@@ -439,5 +518,52 @@ mod tests {
         assert_eq!(overlay.len(), 2);
         assert_eq!(overlay[0], (String::from("flock"), String::from("10.13.37.6:7700")));
         assert_eq!(overlay[1], (String::from("golgi"), String::from("10.13.37.1:7700")));
+    }
+
+    #[test]
+    fn parse_wg_dump_extracts_overlay_peers() {
+        // Realistic `wg show all dump` output (tab-separated)
+        let dump = "\
+wg0\tOURPUBKEY1234567890abcdef=\tOURPRIVKEY1234567890abcdef=\t51820\toff\n\
+wg0\tABCDEFGH12345678pubkey1=\t(none)\t10.13.37.1:51820\t10.13.37.1/32\t1719043200\t12345\t67890\t25\n\
+wg0\tIJKLMNOP87654321pubkey2=\t(none)\t10.13.37.5:51820\t10.13.37.5/32\t1719043200\t23456\t78901\t25\n\
+wg0\tQRSTUVWX11111111pubkey3=\t(none)\t203.0.113.50:51820\t10.13.37.6/32\t1719043200\t34567\t89012\t25";
+
+        let peers = parse_wg_dump(dump, "10.13.37");
+        assert_eq!(peers.len(), 3);
+        assert_eq!(peers[0].0, "wg-ABCDEFGH");
+        assert_eq!(peers[0].1, "10.13.37.1:8080");
+        assert_eq!(peers[1].0, "wg-IJKLMNOP");
+        assert_eq!(peers[1].1, "10.13.37.5:8080");
+        assert_eq!(peers[2].0, "wg-QRSTUVWX");
+        assert_eq!(peers[2].1, "10.13.37.6:8080");
+    }
+
+    #[test]
+    fn parse_wg_dump_skips_non_matching_subnet() {
+        let dump = "\
+wg0\tOURPUBKEY=\tPRIVKEY=\t51820\toff\n\
+wg0\tPEERKEY1234=\t(none)\t192.168.1.50:51820\t192.168.1.50/32\t1719043200\t100\t200\t25";
+
+        let peers = parse_wg_dump(dump, "10.13.37");
+        assert!(peers.is_empty());
+    }
+
+    #[test]
+    fn parse_wg_dump_empty_output() {
+        let peers = parse_wg_dump("", "10.13.37");
+        assert!(peers.is_empty());
+    }
+
+    #[test]
+    fn parse_wg_dump_handles_multiple_allowed_ips() {
+        let dump = "\
+wg0\tOUR=\tPRIV=\t51820\toff\n\
+wg0\tMULTIPEER1234567=\t(none)\t1.2.3.4:51820\t192.168.0.0/24,10.13.37.2/32\t0\t0\t0\t25";
+
+        let peers = parse_wg_dump(dump, "10.13.37");
+        assert_eq!(peers.len(), 1);
+        assert_eq!(peers[0].0, "wg-MULTIPEE");
+        assert_eq!(peers[0].1, "10.13.37.2:8080");
     }
 }

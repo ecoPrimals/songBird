@@ -276,17 +276,23 @@ impl MeshHandler {
         }))
     }
 
-    /// Handle `mesh.status` method - Get mesh network status
+    /// Handle `mesh.status` method - Get mesh network status.
+    ///
+    /// Returns initialization state even when mesh is not yet initialized,
+    /// allowing probers to distinguish "not running" from "running but empty".
     #[expect(clippy::too_many_lines, reason = "status aggregation across endpoint types")]
     pub async fn handle_status(&self, _params: Value) -> Result<Value, String> {
         let (reachable, direct_count, relay_count, onion_count, local_count, overlay_count) = {
-            let mesh = self
-                .mesh
-                .read()
-                .await
-                .as_ref()
-                .cloned()
-                .ok_or("Mesh not initialized (call mesh.init first)")?;
+            let Some(mesh) = self.mesh.read().await.as_ref().cloned() else {
+                let node_id = self.node_id.read().await.clone();
+                return Ok(json!({
+                    "initialized": false,
+                    "node_id": &*node_id,
+                    "status": "awaiting_init",
+                    "message": "Mesh not yet initialized — will auto-seed from SONGBIRD_PEERS, persisted state, or WireGuard peers",
+                    "uptime_seconds": self.start_time.elapsed().as_secs()
+                }));
+            };
 
             let reachable = mesh.get_reachable_nodes().await;
 
@@ -369,6 +375,7 @@ impl MeshHandler {
         drop(meta);
 
         let mut response = json!({
+            "initialized": true,
             "node_id": node_id.as_ref(),
             "reachable_peers": reachable.len(),
             "relay_enabled": true,

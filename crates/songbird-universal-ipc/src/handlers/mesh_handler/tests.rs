@@ -13,8 +13,10 @@ async fn test_mesh_handler_uninitialized() {
     let handler = MeshHandler::new();
 
     let result = handler.handle_status(json!({})).await;
-    assert!(result.is_err());
-    assert!(result.unwrap_err().contains("not initialized"));
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    assert_eq!(response["initialized"], false);
+    assert_eq!(response["status"], "awaiting_init");
 }
 
 #[tokio::test]

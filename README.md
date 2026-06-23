@@ -1,10 +1,10 @@
 # Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v0.2.1-wave113  
+**Version**: v0.2.1-wave124  
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: June 22, 2026
+**Last Updated**: June 23, 2026
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
