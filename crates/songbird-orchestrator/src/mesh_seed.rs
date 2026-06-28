@@ -94,31 +94,177 @@ pub(crate) fn detect_overlay_address() -> Option<IpAddr> {
     None
 }
 
-/// Discover mesh peers from WireGuard interface configuration.
+/// Discover mesh peers from WireGuard configuration.
 ///
-/// Reads allowed-IPs from all `wg*` interfaces to extract peer overlay IPs.
-/// Each peer's overlay IP is used with the standard songbird port (8080) to form
-/// a mesh peer entry. The peer's public key truncated to 8 chars serves as the node_id.
+/// Multi-tier approach (first success wins):
+/// 1. `wg show all dump` (requires root or `CAP_NET_ADMIN`)
+/// 2. WG config file (`SONGBIRD_WG_CONF` env or `/etc/wireguard/wg0.conf`)
+/// 3. User-accessible mesh peers file (`~/.config/songbird/mesh-peers.toml`)
 ///
-/// Returns `None` if no WG interfaces exist or no peers have allowed-IPs in the
-/// overlay subnet.
+/// Each peer's overlay IP is used with the standard songbird port to form a mesh
+/// peer entry. Returns `None` if no tier produces peers.
 fn discover_wireguard_peers() -> Option<Vec<(String, String)>> {
     let prefix = songbird_process_env::var("SONGBIRD_OVERLAY_SUBNET")
         .unwrap_or_else(|_| String::from("10.13.37"));
 
+    // Tier 1: `wg show all dump` (root/CAP_NET_ADMIN)
+    if let Some(peers) = discover_wg_from_command(&prefix) {
+        return Some(peers);
+    }
+
+    // Tier 2: WG config file
+    if let Some(peers) = discover_wg_from_config(&prefix) {
+        return Some(peers);
+    }
+
+    // Tier 3: User-accessible mesh-peers.toml
+    discover_wg_from_mesh_peers_file()
+}
+
+/// Tier 1: Run `wg show all dump` and parse output.
+fn discover_wg_from_command(subnet_prefix: &str) -> Option<Vec<(String, String)>> {
     let output = std::process::Command::new("wg")
         .args(["show", "all", "dump"])
         .output()
         .ok()?;
 
     if !output.status.success() {
-        debug!("wg show failed (not root or no WG interfaces)");
+        debug!("wg show failed (not root or no WG interfaces) — trying config file fallback");
         return None;
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let result = parse_wg_dump(&stdout, &prefix);
+    let result = parse_wg_dump(&stdout, subnet_prefix);
     if result.is_empty() { None } else { Some(result) }
+}
+
+/// Tier 2: Parse a WireGuard config file (INI-style).
+///
+/// Looks for `SONGBIRD_WG_CONF` env, then tries standard paths.
+fn discover_wg_from_config(subnet_prefix: &str) -> Option<Vec<(String, String)>> {
+    let paths_to_try: Vec<std::path::PathBuf> = if let Ok(custom) =
+        songbird_process_env::var("SONGBIRD_WG_CONF")
+    {
+        vec![std::path::PathBuf::from(custom)]
+    } else {
+        vec![
+            std::path::PathBuf::from("/etc/wireguard/wg0.conf"),
+            songbird_types::defaults::paths::config_dir().join("wg0.conf"),
+        ]
+    };
+
+    for path in &paths_to_try {
+        if let Ok(content) = std::fs::read_to_string(path) {
+            let result = parse_wg_conf(&content, subnet_prefix);
+            if !result.is_empty() {
+                info!(path = %path.display(), peers = result.len(), "Discovered peers from WG config file");
+                return Some(result);
+            }
+        }
+    }
+
+    debug!("No readable WG config file found");
+    None
+}
+
+/// Tier 3: Read a user-accessible `mesh-peers.toml` file.
+///
+/// Format:
+/// ```toml
+/// [[peers]]
+/// node_id = "east-gate"
+/// address = "10.13.37.5:8080"
+///
+/// [[peers]]
+/// node_id = "golgi"
+/// address = "10.13.37.1:8080"
+/// ```
+///
+/// Located at `$XDG_CONFIG_HOME/songbird/mesh-peers.toml` or
+/// `~/.config/songbird/mesh-peers.toml`.
+fn discover_wg_from_mesh_peers_file() -> Option<Vec<(String, String)>> {
+    let path = songbird_types::defaults::paths::config_dir().join("mesh-peers.toml");
+    let content = std::fs::read_to_string(&path).ok()?;
+
+    let parsed: MeshPeersFile = toml::from_str(&content).ok()?;
+    let peers: Vec<(String, String)> = parsed
+        .peers
+        .into_iter()
+        .filter(|p| !p.node_id.is_empty() && !p.address.is_empty())
+        .map(|p| (p.node_id, p.address))
+        .collect();
+
+    if peers.is_empty() {
+        return None;
+    }
+
+    info!(path = %path.display(), peers = peers.len(), "Discovered peers from mesh-peers.toml");
+    Some(peers)
+}
+
+/// Deserialization target for `mesh-peers.toml`.
+#[derive(serde::Deserialize)]
+struct MeshPeersFile {
+    #[serde(default)]
+    peers: Vec<MeshPeerEntry>,
+}
+
+/// A single peer entry in `mesh-peers.toml`.
+#[derive(serde::Deserialize)]
+struct MeshPeerEntry {
+    node_id: String,
+    address: String,
+}
+
+/// Parse a WireGuard INI-style config file to extract peer allowed-IPs.
+///
+/// Extracts `[Peer]` sections and their `AllowedIPs` lines, filtering to
+/// IPs matching the overlay subnet prefix.
+fn parse_wg_conf(content: &str, subnet_prefix: &str) -> Vec<(String, String)> {
+    use songbird_types::defaults::ports::DEFAULT_HTTP_PORT;
+
+    let mut peers: Vec<(String, String)> = Vec::new();
+    let mut in_peer_section = false;
+    let mut current_pubkey: Option<String> = None;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.eq_ignore_ascii_case("[peer]") {
+            in_peer_section = true;
+            current_pubkey = None;
+            continue;
+        }
+        if trimmed.starts_with('[') {
+            in_peer_section = false;
+            current_pubkey = None;
+            continue;
+        }
+        if !in_peer_section {
+            continue;
+        }
+
+        if let Some(val) = trimmed.strip_prefix("PublicKey") {
+            let val = val.trim_start_matches([' ', '=']).trim();
+            current_pubkey = Some(val.to_string());
+        } else if let Some(val) = trimmed.strip_prefix("AllowedIPs") {
+            let val = val.trim_start_matches([' ', '=']).trim();
+            for cidr in val.split(',') {
+                let ip_str = cidr.trim().split('/').next().unwrap_or("");
+                if ip_str.starts_with(subnet_prefix) {
+                    let node_id = if let Some(ref pk) = current_pubkey {
+                        format!("wg-{}", &pk[..8.min(pk.len())])
+                    } else {
+                        format!("wg-peer-{ip_str}")
+                    };
+                    let addr = format!("{ip_str}:{DEFAULT_HTTP_PORT}");
+                    peers.push((node_id, addr));
+                    break;
+                }
+            }
+        }
+    }
+
+    peers
 }
 
 /// Parse `wg show all dump` output to extract overlay peers.
@@ -161,6 +307,8 @@ fn parse_wg_dump(dump: &str, subnet_prefix: &str) -> Vec<(String, String)> {
 
     peers
 }
+
+/// Parse a peer specification string into `(node_id, address)` pairs.
 ///
 /// Supports two formats:
 /// - `node_id@host:port` — explicit identity
@@ -565,5 +713,121 @@ wg0\tMULTIPEER1234567=\t(none)\t1.2.3.4:51820\t192.168.0.0/24,10.13.37.2/32\t0\t
         assert_eq!(peers.len(), 1);
         assert_eq!(peers[0].0, "wg-MULTIPEE");
         assert_eq!(peers[0].1, "10.13.37.2:8080");
+    }
+
+    #[test]
+    fn parse_wg_conf_extracts_peers() {
+        let conf = "\
+[Interface]
+PrivateKey = aGVsbG8gd29ybGQ=
+Address = 10.13.37.6/24
+ListenPort = 51820
+
+[Peer]
+PublicKey = ABCDEFGH12345678pubkey1=
+AllowedIPs = 10.13.37.1/32
+Endpoint = 203.0.113.1:51820
+
+[Peer]
+PublicKey = IJKLMNOP87654321pubkey2=
+AllowedIPs = 10.13.37.5/32
+Endpoint = 203.0.113.5:51820
+
+[Peer]
+PublicKey = QRSTUVWX11111111pubkey3=
+AllowedIPs = 10.13.37.2/32
+Endpoint = 192.168.4.3:51820
+";
+
+        let peers = parse_wg_conf(conf, "10.13.37");
+        assert_eq!(peers.len(), 3);
+        assert_eq!(peers[0].0, "wg-ABCDEFGH");
+        assert_eq!(peers[0].1, "10.13.37.1:8080");
+        assert_eq!(peers[1].0, "wg-IJKLMNOP");
+        assert_eq!(peers[1].1, "10.13.37.5:8080");
+        assert_eq!(peers[2].0, "wg-QRSTUVWX");
+        assert_eq!(peers[2].1, "10.13.37.2:8080");
+    }
+
+    #[test]
+    fn parse_wg_conf_skips_non_overlay_peers() {
+        let conf = "\
+[Interface]
+PrivateKey = key=
+Address = 10.13.37.6/24
+
+[Peer]
+PublicKey = NOTMATCH12345678=
+AllowedIPs = 192.168.1.0/24
+Endpoint = 1.2.3.4:51820
+";
+
+        let peers = parse_wg_conf(conf, "10.13.37");
+        assert!(peers.is_empty());
+    }
+
+    #[test]
+    fn parse_wg_conf_handles_multiple_allowed_ips() {
+        let conf = "\
+[Interface]
+PrivateKey = key=
+Address = 10.13.37.6/24
+
+[Peer]
+PublicKey = MULTIIP12345=
+AllowedIPs = 192.168.0.0/16, 10.13.37.7/32
+Endpoint = 5.6.7.8:51820
+";
+
+        let peers = parse_wg_conf(conf, "10.13.37");
+        assert_eq!(peers.len(), 1);
+        assert_eq!(peers[0].0, "wg-MULTIIP1");
+        assert_eq!(peers[0].1, "10.13.37.7:8080");
+    }
+
+    #[test]
+    fn parse_wg_conf_empty_input() {
+        let peers = parse_wg_conf("", "10.13.37");
+        assert!(peers.is_empty());
+    }
+
+    #[test]
+    fn mesh_peers_toml_format_parses() {
+        let content = r#"
+[[peers]]
+node_id = "east-gate"
+address = "10.13.37.5:8080"
+
+[[peers]]
+node_id = "golgi"
+address = "10.13.37.1:8080"
+"#;
+        let parsed: MeshPeersFile = toml::from_str(content).unwrap();
+        assert_eq!(parsed.peers.len(), 2);
+        assert_eq!(parsed.peers[0].node_id, "east-gate");
+        assert_eq!(parsed.peers[0].address, "10.13.37.5:8080");
+        assert_eq!(parsed.peers[1].node_id, "golgi");
+        assert_eq!(parsed.peers[1].address, "10.13.37.1:8080");
+    }
+
+    #[test]
+    fn mesh_peers_toml_skips_empty_entries() {
+        let content = r#"
+[[peers]]
+node_id = ""
+address = "10.13.37.5:8080"
+
+[[peers]]
+node_id = "valid"
+address = "10.13.37.1:8080"
+"#;
+        let parsed: MeshPeersFile = toml::from_str(content).unwrap();
+        let filtered: Vec<_> = parsed
+            .peers
+            .into_iter()
+            .filter(|p| !p.node_id.is_empty() && !p.address.is_empty())
+            .collect();
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].node_id, "valid");
     }
 }

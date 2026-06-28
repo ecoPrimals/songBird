@@ -144,6 +144,23 @@ pub fn data_dir() -> PathBuf {
     PathBuf::from(DEFAULT_DATA_DIR)
 }
 
+/// Resolve config directory from environment, then XDG, then home fallback.
+///
+/// Priority: `SONGBIRD_CONFIG_DIR` > `$XDG_CONFIG_HOME/songbird` > `$HOME/.config/songbird`
+#[must_use]
+pub fn config_dir() -> PathBuf {
+    if let Ok(dir) = songbird_process_env::var("SONGBIRD_CONFIG_DIR") {
+        return PathBuf::from(dir);
+    }
+    if let Ok(xdg) = songbird_process_env::var("XDG_CONFIG_HOME") {
+        return PathBuf::from(xdg).join("songbird");
+    }
+    if let Ok(home) = songbird_process_env::var("HOME") {
+        return PathBuf::from(home).join(".config/songbird");
+    }
+    PathBuf::from("/etc/songbird")
+}
+
 /// IPC port file path under the OS temp directory (`songbird-ipc-port`).
 #[must_use]
 pub fn ipc_port_file_path() -> PathBuf {

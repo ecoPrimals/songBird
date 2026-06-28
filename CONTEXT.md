@@ -2,10 +2,10 @@
 
 **Primal**: Songbird
 **Role**: Network Orchestration & Discovery Primal
-**Phase**: Stadial (S1-S4 graduated, 5-gate mesh collective LIVE, auto-init from WG)
-**Version**: 0.2.1-wave124
+**Phase**: Stadial (S1-S4 graduated, 5-gate mesh collective LIVE, zero-config mesh init)
+**Version**: 0.2.1-wave128
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: June 23, 2026
+**Last Updated**: June 28, 2026
 
 ## What It Does
 
