@@ -160,7 +160,7 @@ chrono = { version = "0.4", features = ["serde"] }
 
 
 # HTTP
-hyper = { version = "1.0", features = ["full"] }
+hyper = { version = "1.0", features = ["http1", "client", "server"] }
 http-body-util = "0.1"
 bytes = "1.0"
 axum = "0.8"
@@ -189,7 +189,7 @@ gethostname = "0.4"
 hyper-util = { version = "0.1", features = ["tokio", "client-legacy", "http1"] }
 
 # RPC
-tarpc = { version = "0.34", features = ["full"] }
+tarpc = { version = "0.34", features = ["tokio1", "serde-transport", "serde-transport-bincode", "tcp"] }
 
 [profile.bench]
 opt-level = 3

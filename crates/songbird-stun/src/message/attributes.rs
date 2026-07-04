@@ -315,7 +315,7 @@ impl StunAttribute {
 
         // HMAC-SHA1 new_from_slice is infallible for any key length (SHA1 block size handles all).
         let Ok(mut mac) = HmacSha1::new_from_slice(key) else {
-            unreachable!()
+            unreachable!("HMAC-SHA1 new_from_slice is infallible for any key length")
         };
         mac.update(message_up_to_integrity);
         let result = mac.finalize();

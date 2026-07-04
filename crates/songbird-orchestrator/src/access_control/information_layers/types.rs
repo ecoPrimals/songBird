@@ -130,7 +130,7 @@ pub struct InfrastructureInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeFull {
     pub name: String,
-    pub internal_ip: String, // "192.0.2.10:8000"
+    pub internal_ip: String,
     pub uptime_hours: f64,
     pub temperature_c: Option<f32>,
 }

@@ -33,7 +33,11 @@ pub(super) async fn dispatch_introspection(
             Ok(crate::introspection::health_liveness())
         }
         JsonRpcMethod::Health(HealthMethod::Readiness) => {
-            Ok(crate::introspection::health_readiness())
+            let status = crate::introspection::SubsystemStatus {
+                ipc: true,
+                ..Default::default()
+            };
+            Ok(crate::introspection::health_readiness(&status))
         }
         JsonRpcMethod::Health(HealthMethod::Check) => handler.handle_health().await,
         JsonRpcMethod::Capabilities(CapabilitiesMethod::List) => {

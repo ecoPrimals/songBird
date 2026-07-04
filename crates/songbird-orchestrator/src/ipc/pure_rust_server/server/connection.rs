@@ -396,7 +396,14 @@ impl UnixSocketServer {
                     };
                     self.handle_btsp_on_stream(stream, &caller).await
                 }
-                _ => unreachable!(),
+                _ => {
+                    tracing::error!(
+                        tier = first_meaningful_byte,
+                        "riboCipher: unknown tier byte 0x{:02X} — dropping connection",
+                        first_meaningful_byte
+                    );
+                    Ok(())
+                }
             }
         } else if first_meaningful_byte == b'{' {
             // Wave 112: ERROR on unsignalled connections (deprecation escalation)

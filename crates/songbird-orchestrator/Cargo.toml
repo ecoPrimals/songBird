@@ -153,7 +153,7 @@ bytes = { workspace = true }
 hmac = { workspace = true }
 
 
-tarpc = { workspace = true, features = ["full"] }
+tarpc = { workspace = true }
 bincode = { workspace = true }
 tokio-util = { version = "0.7.17", features = ["codec"] }
 tokio-serde = { version = "0.8.0", features = ["bincode"] }

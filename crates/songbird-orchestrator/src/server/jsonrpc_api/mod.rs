@@ -208,7 +208,11 @@ async fn handle_jsonrpc_request(
             Ok(songbird_universal_ipc::introspection::health_liveness())
         }
         Ok(JsonRpcMethod::Health(HealthMethod::Readiness)) => {
-            Ok(songbird_universal_ipc::introspection::health_readiness())
+            let status = songbird_universal_ipc::introspection::SubsystemStatus {
+                ipc: true,
+                ..Default::default()
+            };
+            Ok(songbird_universal_ipc::introspection::health_readiness(&status))
         }
         Ok(JsonRpcMethod::BiomeOsHealth | JsonRpcMethod::Health(HealthMethod::Check)) => {
             handle_health_standard(&state).await

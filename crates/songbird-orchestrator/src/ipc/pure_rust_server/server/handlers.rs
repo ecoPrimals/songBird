@@ -58,10 +58,18 @@ impl UnixSocketServer {
                 Ok(songbird_universal_ipc::introspection::health_liveness())
             }
             Ok(JsonRpcMethod::Health(HealthMethod::Readiness)) => {
-                Ok(songbird_universal_ipc::introspection::health_readiness())
+                let status = songbird_universal_ipc::introspection::SubsystemStatus {
+                    ipc: true,
+                    ..Default::default()
+                };
+                Ok(songbird_universal_ipc::introspection::health_readiness(&status))
             }
             Ok(JsonRpcMethod::Health(HealthMethod::Check)) => {
-                Ok(songbird_universal_ipc::introspection::health_check())
+                let status = songbird_universal_ipc::introspection::SubsystemStatus {
+                    ipc: true,
+                    ..Default::default()
+                };
+                Ok(songbird_universal_ipc::introspection::health_check(&status, None))
             }
             Ok(JsonRpcMethod::Ipc(IpcMethod::Register)) => {
                 self.handlers.register_service_json(request.params).await
