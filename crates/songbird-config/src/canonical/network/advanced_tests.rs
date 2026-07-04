@@ -222,6 +222,7 @@ fn test_reverse_proxy_config_enabled() {
         enabled: true,
         upstream_timeout_secs: 60,
         max_upstream_connections: 200,
+        routes: vec![],
     };
 
     assert!(config.enabled);

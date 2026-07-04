@@ -163,6 +163,33 @@ pub struct ReverseProxyConfig {
     pub enabled: bool,
     pub upstream_timeout_secs: u64,
     pub max_upstream_connections: usize,
+    /// Capability-based proxy routes.
+    /// Each entry maps a capability name to a backend URL with optional config.
+    #[serde(default)]
+    pub routes: Vec<ProxyRouteEntry>,
+}
+
+/// A single proxy route entry (TOML-deserializable).
+///
+/// ```toml
+/// [[network.reverse_proxy.routes]]
+/// capability = "jupyter"
+/// base_url = "http://localhost:8000"
+/// api_key_env = "JUPYTER_TOKEN"
+/// timeout_ms = 30000
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProxyRouteEntry {
+    pub capability: String,
+    pub base_url: String,
+    #[serde(default)]
+    pub api_key_env: Option<String>,
+    #[serde(default = "default_proxy_timeout_ms")]
+    pub timeout_ms: u64,
+}
+
+fn default_proxy_timeout_ms() -> u64 {
+    30_000
 }
 
 impl Default for ReverseProxyConfig {
@@ -171,6 +198,7 @@ impl Default for ReverseProxyConfig {
             enabled: false,
             upstream_timeout_secs: 30,
             max_upstream_connections: 100,
+            routes: Vec::new(),
         }
     }
 }

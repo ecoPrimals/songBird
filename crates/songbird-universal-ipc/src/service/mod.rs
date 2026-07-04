@@ -108,6 +108,12 @@ impl IpcServiceHandler {
     pub fn mesh_handler(&self) -> &Arc<MeshHandler> {
         &self.mesh_handler
     }
+
+    /// Access the capability proxy router (for post-construction route registration).
+    #[must_use]
+    pub fn capability_router(&self) -> &Arc<CapabilityProxyRouter> {
+        &self.capability_router
+    }
 }
 
 /// All handler instances built by `build_handlers()`.

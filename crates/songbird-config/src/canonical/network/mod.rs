@@ -68,6 +68,7 @@ pub use advanced::{
 
     ProxyConfig,
     // Proxy and SSL
+    ProxyRouteEntry,
     ReverseProxyConfig,
     SelfAwareConfig,
     ServiceDiscoveryEndpoints,

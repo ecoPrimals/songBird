@@ -215,6 +215,12 @@ impl<'a> StartupOrchestrator<'a> {
             ));
         info!("✅ Shared IPC handler created (HTTP/UDS unified state)");
 
+        // Log proxy routes registered from SONGBIRD_PROXY_ROUTES env
+        let proxy_caps = shared_ipc_handler.capability_router().list_capabilities();
+        if !proxy_caps.is_empty() {
+            info!("🔀 http.proxy routes registered: {:?}", proxy_caps);
+        }
+
         // Start HTTP server with shared handler (needs to start first for port binding)
         info!("🌐 Starting HTTP server...");
         let bind_address = http_bind_socket_addr(
