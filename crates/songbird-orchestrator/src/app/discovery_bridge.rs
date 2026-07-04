@@ -366,23 +366,15 @@ impl SongbirdOrchestrator {
                                         }
                                     }
                                 } else {
-                                    // No security provider - fall back to anonymous trust (INSECURE - development only)
+                                    // No security provider - reject by default (fail closed)
                                     warn!(
-                                        "⚠️  No security provider configured - using anonymous trust (INSECURE)"
+                                        "⚠️  No security provider configured — rejecting peer (fail closed)"
                                     );
                                     warn!(
                                         "   Set SONGBIRD_SECURITY_PROVIDER for secure genetic lineage verification"
                                     );
 
-                                    // Use fully qualified path to avoid duplicate import
-                                    (
-                                        Some(crate::trust::peer_trust::PeerTrustDecision::AutoAccept {
-                                        reason: String::from("no_security_provider_configured"),
-                                        confidence: 0.0,
-                                        encryption_tag: None,
-                                    }),
-                                        None,
-                                    )
+                                    (None, None) // Reject (safe default)
                                 };
 
                                 match trust_decision_result {
