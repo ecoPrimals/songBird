@@ -143,7 +143,7 @@ pub async fn deploy_via_http<S: BuildHasher>(
 
     if !response.is_success() {
         let status = response.status();
-        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let error_text = response.text().await.unwrap_or_else(|_| String::from("Unknown error"));
         return Err(anyhow!("Deployment failed with status {status}: {error_text}"));
     }
 

@@ -103,14 +103,14 @@ mod tests {
 
     #[test]
     fn tor_client_holds_crypto_provider() {
-        let p = CryptoProvider::new("/tmp/songbird-tor-test.sock".to_string());
+        let p = CryptoProvider::new(String::from("/tmp/songbird-tor-test.sock"));
         let c = TorClient::new(p);
         let _ = c;
     }
 
     #[tokio::test]
     async fn tor_service_new_and_onion_address_pending() {
-        let p = CryptoProvider::new("/tmp/songbird-tor-test2.sock".to_string());
+        let p = CryptoProvider::new(String::from("/tmp/songbird-tor-test2.sock"));
         let svc = TorService::new(p, 9050).await.expect("service");
         assert_eq!(svc.onion_address(), None);
     }
@@ -124,7 +124,7 @@ mod tests {
 
     #[tokio::test]
     async fn tor_service_new_accepts_ephemeral_port() {
-        let p = CryptoProvider::new("/tmp/songbird-tor-test3.sock".to_string());
+        let p = CryptoProvider::new(String::from("/tmp/songbird-tor-test3.sock"));
         let svc = TorService::new(p, 49152).await.expect("service");
         assert_eq!(svc.onion_address(), None);
     }

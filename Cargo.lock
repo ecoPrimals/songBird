@@ -5168,6 +5168,7 @@ dependencies = [
  "songbird-igd",
  "songbird-network-federation",
  "songbird-observability",
+ "songbird-onion-relay",
  "songbird-process-env",
  "songbird-registry",
  "songbird-test-utils",
@@ -5843,7 +5844,6 @@ dependencies = [
  "futures-sink",
  "pin-project",
  "serde",
- "serde_json",
 ]
 
 [[package]]

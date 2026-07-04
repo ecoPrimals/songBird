@@ -206,7 +206,7 @@ mod tests {
     fn test_device_info() {
         let addr = Address::from_bytes([1, 2, 3, 4, 5, 6]);
         let mut info = DeviceInfo::new(addr);
-        info.name = Some("Test Device".to_string());
+        info.name = Some(String::from("Test Device"));
         info.rssi = -50;
 
         assert_eq!(info.address, addr);

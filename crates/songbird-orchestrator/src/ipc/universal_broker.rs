@@ -237,10 +237,10 @@ impl UniversalIpcBroker {
         let endpoint = match ipc::register(
             primal_names::SELF_NAME,
             vec![
-                "ipc".to_string(),
-                "discovery".to_string(),
-                "registry".to_string(),
-                "stun".to_string(),
+                String::from("ipc"),
+                String::from("discovery"),
+                String::from("registry"),
+                String::from("stun"),
             ],
         )
         .await
@@ -252,7 +252,7 @@ impl UniversalIpcBroker {
             Err(e) if e.to_string().contains("already registered") => {
                 warn!("⚠️  Songbird already registered, using existing registration");
                 VirtualEndpoint {
-                    path: "/primal/songbird".to_string(),
+                    path: String::from("/primal/songbird"),
                 }
             }
             Err(e) => {

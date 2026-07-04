@@ -196,10 +196,10 @@ mod tests {
     #[test]
     fn test_service_info_serialization() {
         let info = ServiceInfo {
-            id: "test-service".to_string(),
-            capability: "storage".to_string(),
-            endpoint: "tarpc://localhost:9001".to_string(),
-            status: "active".to_string(),
+            id: String::from("test-service"),
+            capability: String::from("storage"),
+            endpoint: String::from("tarpc://localhost:9001"),
+            status: String::from("active"),
             metadata: None,
         };
 
@@ -213,10 +213,10 @@ mod tests {
     #[test]
     fn test_registration_with_defaults() {
         let reg = ServiceRegistration {
-            service_id: "test".to_string(),
-            service_name: "Test Service".to_string(),
-            capability: "compute".to_string(),
-            endpoint: "tarpc://localhost:9002".to_string(),
+            service_id: String::from("test"),
+            service_name: String::from("Test Service"),
+            capability: String::from("compute"),
+            endpoint: String::from("tarpc://localhost:9002"),
             metadata: HashMap::new(),
             tower_id: None,
             tower_name: None,
@@ -229,8 +229,8 @@ mod tests {
     #[test]
     fn test_health_status() {
         let health = HealthStatus {
-            status: "healthy".to_string(),
-            version: "3.12.0".to_string(),
+            status: String::from("healthy"),
+            version: String::from("3.12.0"),
             uptime_seconds: 3600,
             services_count: 5,
         };
@@ -242,7 +242,7 @@ mod tests {
     #[test]
     fn test_protocol_info() {
         let proto = ProtocolInfo {
-            name: "tarpc".to_string(),
+            name: String::from("tarpc"),
             port: 9001,
             enabled: true,
             info: HashMap::new(),

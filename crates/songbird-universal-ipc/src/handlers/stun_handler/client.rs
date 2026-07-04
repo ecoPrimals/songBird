@@ -68,7 +68,7 @@ impl StunHandler {
             serde_json::from_value(servers_val.clone())
                 .map_err(|e| format!("Invalid 'servers' parameter: {e}"))?
         } else {
-            stun_server_list()
+            stun_server_list().to_vec()
         };
 
         if servers.is_empty() {
@@ -101,8 +101,8 @@ impl StunHandler {
         let stun_server = params.get("stun_server").and_then(|v| v.as_str()).map_or_else(
             || {
                 stun_server_list()
-                    .into_iter()
-                    .next()
+                    .first()
+                    .cloned()
                     .unwrap_or_else(|| DEFAULT_PRIMARY_STUN_SERVER.to_string())
             },
             str::to_owned,
@@ -134,8 +134,8 @@ impl StunHandler {
         let stun_server = params.get("stun_server").and_then(|v| v.as_str()).map_or_else(
             || {
                 stun_server_list()
-                    .into_iter()
-                    .next()
+                    .first()
+                    .cloned()
                     .unwrap_or_else(|| DEFAULT_PRIMARY_STUN_SERVER.to_string())
             },
             str::to_owned,
@@ -188,7 +188,7 @@ impl StunHandler {
             serde_json::from_value(servers_val.clone())
                 .map_err(|e| format!("Invalid 'servers' parameter: {e}"))?
         } else {
-            stun_server_list().into_iter().take(2).collect()
+            stun_server_list().iter().take(2).cloned().collect()
         };
 
         if servers.len() < 2 {

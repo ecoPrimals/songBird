@@ -14,16 +14,16 @@ use tokio::net::UnixStream;
 use tokio::net::windows::named_pipe;
 
 #[cfg(unix)]
-let stream = UnixStream::connect("/tmp/beardog.sock").await?;
+let stream = UnixStream::connect("/run/biomeos/security.sock").await?;
 #[cfg(windows)]
-let stream = ClientOptions::new().open(r"\\.\pipe\beardog")?;
+let stream = ClientOptions::new().open(r"\\.\pipe\security")?;
 ```
 
 **After** (universal!):
 ```rust
 use songbird_universal_ipc::ipc;
 
-let stream = ipc::connect("/primal/beardog").await?;
+let stream = ipc::connect("security").await?;
 // Works on Linux, macOS, Windows, RISC-V, everywhere!
 ```
 

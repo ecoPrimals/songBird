@@ -309,7 +309,7 @@ impl BtspSignatureVerifier for UnavailableVerifier {
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool, String>> + Send + '_>>
     {
         Box::pin(async {
-            Err("No crypto provider available — signature verification unavailable".to_string())
+            Err(String::from("No crypto provider available — signature verification unavailable"))
         })
     }
 }

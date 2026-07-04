@@ -64,7 +64,7 @@ impl SecurityBirdSongProvider {
     /// # async fn example() {
     /// let provider = SecurityBirdSongProvider::new(
     ///     "/tmp/security.sock",
-    ///     Some("ecoPrimals-family-123".to_string())
+    ///     Some(String::from("ecoPrimals-family-123"))
     /// );
     /// # }
     /// ```
@@ -151,9 +151,9 @@ impl SecurityBirdSongProvider {
 
         // Return result
         response.get("result").cloned().ok_or_else(|| {
-            crate::error::LineageRelayError::BirdSongError(
-                "No result in security provider response".to_string(),
-            )
+            crate::error::LineageRelayError::BirdSongError(String::from(
+                "No result in security provider response",
+            ))
         })
     }
 }
@@ -183,9 +183,9 @@ impl SecurityBirdSongProvider {
             .or_else(|| result.get("encrypted")) // v1 compatibility
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                crate::error::LineageRelayError::BirdSongError(
-                    "No ciphertext in security provider encrypt response".to_string(),
-                )
+                crate::error::LineageRelayError::BirdSongError(String::from(
+                    "No ciphertext in security provider encrypt response",
+                ))
             })?;
 
         let ciphertext = general_purpose::STANDARD.decode(ciphertext_b64).map_err(|e| {
@@ -233,9 +233,9 @@ impl SecurityBirdSongProvider {
 
         // Extract plaintext
         let plaintext_b64 = result.get("plaintext").and_then(|v| v.as_str()).ok_or_else(|| {
-            crate::error::LineageRelayError::BirdSongError(
-                "No plaintext in security provider decrypt response".to_string(),
-            )
+            crate::error::LineageRelayError::BirdSongError(String::from(
+                "No plaintext in security provider decrypt response",
+            ))
         })?;
 
         let plaintext = general_purpose::STANDARD.decode(plaintext_b64).map_err(|e| {
@@ -396,9 +396,9 @@ impl SecurityRelayAuthority {
         }
 
         response.get("result").cloned().ok_or_else(|| {
-            crate::error::LineageRelayError::BirdSongError(
-                "No result in security provider response".to_string(),
-            )
+            crate::error::LineageRelayError::BirdSongError(String::from(
+                "No result in security provider response",
+            ))
         })
     }
 
@@ -478,7 +478,7 @@ impl SecurityRelayAuthority {
                     masking_level: MaskingLevel::FullVisibility,
                     ttl_seconds: 0_u64,
                     issued_at: SystemTime::now(),
-                    audit_token: "security_provider_unavailable_deny".to_string(),
+                    audit_token: String::from("security_provider_unavailable_deny"),
                 })
             }
         }

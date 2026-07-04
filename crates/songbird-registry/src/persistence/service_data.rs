@@ -79,10 +79,10 @@ mod tests {
     fn minimal_service_info() -> ServiceInfo {
         let now = Utc::now();
         ServiceInfo {
-            service_id: "id-1".to_string(),
-            name: "svc".to_string(),
-            version: "1.0.0".to_string(),
-            service_type: "test".to_string(),
+            service_id: String::from("id-1"),
+            name: String::from("svc"),
+            version: String::from("1.0.0"),
+            service_type: String::from("test"),
             description: None,
             endpoints: vec![],
             health_check_endpoint: None,
@@ -92,8 +92,8 @@ mod tests {
             status: ServiceStatus::Running,
             created_at: now,
             updated_at: now,
-            instance_id: "inst-1".to_string(),
-            host: "127.0.0.1".to_string(),
+            instance_id: String::from("inst-1"),
+            host: String::from("127.0.0.1"),
             port: 8080,
         }
     }

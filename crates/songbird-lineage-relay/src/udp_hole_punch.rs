@@ -94,7 +94,7 @@ pub async fn udp_hole_punch(
     info!("🔗 Attempting UDP hole punch to {} ({})", peer_id, peer_addr);
     debug!(
         "   Local address: {}",
-        local_socket.local_addr().map_or_else(|_| "unavailable".to_string(), |a| a.to_string())
+        local_socket.local_addr().map_or_else(|_| String::from("unavailable"), |a| a.to_string())
     );
     debug!("   Max attempts: {}", config.max_attempts);
 

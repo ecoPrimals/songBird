@@ -327,7 +327,7 @@ mod tests {
     #[tokio::test]
     async fn processor_xor_encrypt_decrypt_round_trip() {
         let enc = BirdSongEncryption::ProcessorXor(Arc::new(ProcessorXorMock {
-            family_id: "fam".to_string(),
+            family_id: String::from("fam"),
             available: true,
         }));
         let plain = b"discovery-payload";
@@ -339,7 +339,7 @@ mod tests {
     #[tokio::test]
     async fn processor_xor_decrypt_returns_none_when_marked_unknown() {
         let enc = BirdSongEncryption::ProcessorXor(Arc::new(ProcessorXorMock {
-            family_id: "fam".to_string(),
+            family_id: String::from("fam"),
             available: true,
         }));
         let mut ct = vec![0xFF, 1, 2, 3];
@@ -362,7 +362,7 @@ mod tests {
     #[tokio::test]
     async fn unavailable_errors_on_crypto_ops() {
         let enc = BirdSongEncryption::Unavailable(Arc::new(UnavailableBirdSongMock {
-            family_id: Some("n/a".to_string()),
+            family_id: Some(String::from("n/a")),
         }));
         assert!(!enc.is_available());
         assert!(enc.encrypt_discovery(b"x").await.is_err());
@@ -372,7 +372,7 @@ mod tests {
     #[tokio::test]
     async fn protocol_passthrough_decrypt_none() {
         let enc = BirdSongEncryption::ProtocolPassthrough(Arc::new(ProtocolPassthroughMock {
-            family_id: "p".to_string(),
+            family_id: String::from("p"),
         }));
         let ct = enc.encrypt_discovery(b"hello").await.unwrap();
         assert_eq!(ct, b"hello");
@@ -382,7 +382,7 @@ mod tests {
     #[tokio::test]
     async fn cross_family_prefix_round_trip() {
         let enc = BirdSongEncryption::CrossFamily(Arc::new(CrossFamilyBirdSongMock {
-            family_id: Some("alpha".to_string()),
+            family_id: Some(String::from("alpha")),
         }));
         let plain = b"payload";
         let ct = enc.encrypt_discovery(plain).await.unwrap();
@@ -416,7 +416,7 @@ mod tests {
     #[tokio::test]
     async fn failing_mock_errors_after_budget() {
         let enc = BirdSongEncryption::Failing(Arc::new(FailingBirdSongMock::new(
-            Some("f".to_string()),
+            Some(String::from("f")),
             1,
         )));
         assert!(enc.encrypt_discovery(b"a").await.is_ok());
@@ -426,7 +426,7 @@ mod tests {
     #[test]
     fn chaotic_toggle_and_reset_affect_availability_and_counter() {
         let enc = BirdSongEncryption::Chaotic(Arc::new(ChaoticBirdSongMock::new(
-            Some("c".to_string()),
+            Some(String::from("c")),
             0.0,
         )));
         assert!(enc.is_available());

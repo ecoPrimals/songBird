@@ -157,16 +157,16 @@ impl Gateway {
             },
             manual_instructions: vec![
                 format!("1. Open http://{gateway_ip} in a browser"),
-                "2. Log in to your router admin panel".to_string(),
-                "3. Navigate to Firewall > NAT/Gaming (or Port Forwarding)".to_string(),
+                String::from("2. Log in to your router admin panel"),
+                String::from("3. Navigate to Firewall > NAT/Gaming (or Port Forwarding)"),
                 format!("4. Add rule: TCP port 3492 -> {local_ip}:3492"),
-                "5. Save and apply".to_string(),
-                "6. Optionally: Enable UPnP in the router settings for auto-config".to_string(),
+                String::from("5. Save and apply"),
+                String::from("6. Optionally: Enable UPnP in the router settings for auto-config"),
             ],
             alternative_tiers: vec![
-                "Sovereign onion: .onion address via onion.start (works everywhere)".to_string(),
-                "STUN hole-punch: punch.request (works for non-symmetric NAT)".to_string(),
-                "Family relay: mesh via another connected family device".to_string(),
+                String::from("Sovereign onion: .onion address via onion.start (works everywhere)"),
+                String::from("STUN hole-punch: punch.request (works for non-symmetric NAT)"),
+                String::from("Family relay: mesh via another connected family device"),
             ],
         };
 
@@ -264,7 +264,7 @@ impl Gateway {
         let local_ip = Self::get_local_ip()?;
 
         let req = PortMappingRequest::new(external_port, internal_port, local_ip, proto)
-            .with_description("Songbird sovereign beacon".to_string())
+            .with_description(String::from("Songbird sovereign beacon"))
             .with_lease_duration(ttl);
 
         match &self.protocol {
@@ -299,9 +299,9 @@ impl Gateway {
 
                 Ok(mapping)
             }
-            GatewayProtocol::None => Err(IgdError::ProtocolNotSupported(
-                "No IGD protocol available. Manual port forwarding required.".to_string(),
-            )),
+            GatewayProtocol::None => Err(IgdError::ProtocolNotSupported(String::from(
+                "No IGD protocol available. Manual port forwarding required.",
+            ))),
         }
     }
 
@@ -328,7 +328,7 @@ impl Gateway {
                 natpmp.delete_mapping(external_port, proto).await
             }
             GatewayProtocol::None => {
-                Err(IgdError::ProtocolNotSupported("No IGD protocol available".to_string()))
+                Err(IgdError::ProtocolNotSupported(String::from("No IGD protocol available")))
             }
         }
     }
@@ -354,7 +354,7 @@ impl Gateway {
                 Ok(IpAddr::V4(resp.ip))
             }
             GatewayProtocol::None => {
-                Err(IgdError::ProtocolNotSupported("No IGD protocol available".to_string()))
+                Err(IgdError::ProtocolNotSupported(String::from("No IGD protocol available")))
             }
         }
     }
@@ -427,7 +427,7 @@ impl Gateway {
                 r.service_type.contains("InternetGatewayDevice")
                     || r.service_type.contains("WANIPConnection")
             })
-            .ok_or_else(|| IgdError::SsdpError("No IGD device found via SSDP".to_string()))?;
+            .ok_or_else(|| IgdError::SsdpError(String::from("No IGD device found via SSDP")))?;
 
         // Step 2: Fetch device description XML from LOCATION URL
         let location = &igd.location;
@@ -465,7 +465,7 @@ impl Gateway {
         let natpmp = NatPmpClient::new(gateway_ip);
 
         if !natpmp.probe().await {
-            return Err(IgdError::NatPmpError("Gateway not responding on port 5351".to_string()));
+            return Err(IgdError::NatPmpError(String::from("Gateway not responding on port 5351")));
         }
 
         let external_ip = natpmp.get_external_ip().await.ok().map(|r| IpAddr::V4(r.ip));

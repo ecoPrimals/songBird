@@ -340,8 +340,11 @@ impl OnionService {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    #![allow(clippy::case_sensitive_file_extension_comparisons, reason = "checking .onion suffix")]
+    #![allow(clippy::unused_async, reason = "test helpers match async interface signatures")]
+
     use std::path::PathBuf;
 
     use super::storage_socket_from_endpoint;
@@ -381,6 +384,8 @@ mod tests {
 #[cfg(test)]
 mod service_lifecycle_tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::case_sensitive_file_extension_comparisons)]
+    #![allow(clippy::unused_async)]
 
     use super::OnionService;
     use crate::security_crypto::SecurityCryptoClient;

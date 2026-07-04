@@ -95,7 +95,7 @@ impl IpcOnionStorage {
             }
             v.get("result")
                 .cloned()
-                .ok_or_else(|| OnionError::RpcError("missing JSON-RPC result".to_string()))
+                .ok_or_else(|| OnionError::RpcError(String::from("missing JSON-RPC result")))
         })
     }
 
@@ -160,7 +160,7 @@ fn parse_list_keys(result: &Value) -> std::result::Result<Vec<String>, String> {
             .map(|v| {
                 v.as_str()
                     .map(std::string::ToString::to_string)
-                    .ok_or_else(|| "list: expected string keys".to_string())
+                    .ok_or_else(|| String::from("list: expected string keys"))
             })
             .collect();
     }
@@ -170,11 +170,11 @@ fn parse_list_keys(result: &Value) -> std::result::Result<Vec<String>, String> {
             .map(|v| {
                 v.as_str()
                     .map(std::string::ToString::to_string)
-                    .ok_or_else(|| "list.keys: expected strings".to_string())
+                    .ok_or_else(|| String::from("list.keys: expected strings"))
             })
             .collect();
     }
-    Err("storage.list: unexpected result shape".to_string())
+    Err(String::from("storage.list: unexpected result shape"))
 }
 
 impl OnionStorageBackend for IpcOnionStorage {

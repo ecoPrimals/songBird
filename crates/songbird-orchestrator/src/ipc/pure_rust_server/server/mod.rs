@@ -189,7 +189,7 @@ impl UnixSocketServer {
         info!("🔌 Starting IPC server (isomorphic mode)...");
         info!("   Socket path: {}", self.socket_path.display());
 
-        match self.clone().try_unix_server().await {
+        match Arc::clone(&self).try_unix_server().await {
             Ok(()) => Ok(()),
             Err(e) => {
                 if self.is_platform_constraint(&e) {
@@ -576,11 +576,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn mesh_without_init_returns_error() {
+    async fn mesh_without_init_returns_awaiting_status() {
         let server = test_server();
         let caller = CallerContext::from_unix();
         let resp = server.handle_jsonrpc_request(jsonrpc_req("mesh.status"), &caller).await;
-        assert!(resp.error.is_some(), "mesh.status without init should error");
+        assert!(resp.error.is_none(), "mesh.status should succeed even without init");
+        let result = resp.result.expect("should have result");
+        assert_eq!(result["initialized"], false);
+        assert_eq!(result["status"], "awaiting_init");
     }
 
     #[tokio::test]

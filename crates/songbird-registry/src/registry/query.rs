@@ -85,8 +85,8 @@ mod tests {
     fn test_query_builder() {
         let query = Query::new().with_name("test").with_author("developer").with_limit(10);
 
-        assert_eq!(query.name, Some("test".to_string()));
-        assert_eq!(query.author, Some("developer".to_string()));
+        assert_eq!(query.name, Some(String::from("test")));
+        assert_eq!(query.author, Some(String::from("developer")));
         assert_eq!(query.limit, 10);
     }
 

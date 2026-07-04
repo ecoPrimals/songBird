@@ -266,7 +266,7 @@ mod tests {
 
         assert_eq!(req.command, "echo hello");
         assert_eq!(req.working_dir, Some(PathBuf::from("/tmp")));
-        assert_eq!(req.env.get("KEY"), Some(&"value".to_string()));
+        assert_eq!(req.env.get("KEY"), Some(&String::from("value")));
         assert!(req.background);
         assert_eq!(req.timeout_seconds, Some(30));
     }

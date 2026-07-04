@@ -34,7 +34,7 @@ impl HttpRequest {
     /// Create a new HTTP GET request
     pub fn get(url: impl Into<String>) -> Self {
         Self {
-            method: "GET".to_string(),
+            method: String::from("GET"),
             url: url.into(),
             headers: HashMap::new(),
             body: None,
@@ -44,10 +44,10 @@ impl HttpRequest {
     /// Create a new HTTP POST request
     pub fn post(url: impl Into<String>, body: serde_json::Value) -> Self {
         let mut headers = HashMap::new();
-        headers.insert("content-type".to_string(), "application/json".to_string());
+        headers.insert(String::from("content-type"), String::from("application/json"));
 
         Self {
-            method: "POST".to_string(),
+            method: String::from("POST"),
             url: url.into(),
             headers,
             body: Some(body),
@@ -96,7 +96,7 @@ mod tests {
             .header("authorization", "Bearer token")
             .header("user-agent", "songbird");
 
-        assert_eq!(req.headers.get("authorization"), Some(&"Bearer token".to_string()));
-        assert_eq!(req.headers.get("user-agent"), Some(&"songbird".to_string()));
+        assert_eq!(req.headers.get("authorization"), Some(&String::from("Bearer token")));
+        assert_eq!(req.headers.get("user-agent"), Some(&String::from("songbird")));
     }
 }

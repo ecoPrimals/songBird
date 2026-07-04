@@ -411,7 +411,7 @@ mod tests {
             CapabilityMatcher::new().require(DiscoveryCapability::ServiceDiscovery),
         );
         let ids = registry.find_providers(&query).await.unwrap();
-        assert!(ids.contains(&"find-me".to_string()));
+        assert!(ids.contains(&String::from("find-me")));
     }
 
     #[tokio::test]

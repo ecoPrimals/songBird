@@ -11,10 +11,10 @@ pub fn unix_epoch_millis_u64() -> Result<u64> {
     u64::try_from(
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map_err(|_| OnionRelayError::Other("System time before UNIX epoch".to_string()))?
+            .map_err(|_| OnionRelayError::Other(String::from("System time before UNIX epoch")))?
             .as_millis(),
     )
-    .map_err(|_| OnionRelayError::Other("System time millis overflow".to_string()))
+    .map_err(|_| OnionRelayError::Other(String::from("System time millis overflow")))
 }
 
 /// Generate random nonce

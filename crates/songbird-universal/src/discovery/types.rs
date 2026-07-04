@@ -193,16 +193,16 @@ mod tests {
         let ctx = TestContext::new("discovered_primal");
         let cap = sample_capability();
         let p = DiscoveredPrimal::new(
-            "n".to_string(),
+            String::from("n"),
             PrimalType::new("security"),
-            "https://x".to_string(),
+            String::from("https://x"),
             vec![cap.clone()],
             DiscoveryMethod::Manual,
         )
-        .with_metadata("k".to_string(), "v".to_string());
+        .with_metadata(String::from("k"), String::from("v"));
         assert!(!p.is_healthy());
         assert!(p.has_capability(&cap));
-        assert_eq!(p.metadata.get("k"), Some(&"v".to_string()));
+        assert_eq!(p.metadata.get("k"), Some(&String::from("v")));
         assert!(!ctx.is_timeout());
     }
 
@@ -238,7 +238,7 @@ mod tests {
 
     #[test]
     fn discovery_error_display() {
-        let e = DiscoveryError::ConfigError("bad".to_string());
+        let e = DiscoveryError::ConfigError(String::from("bad"));
         let s = e.to_string();
         assert!(s.contains("bad"));
         let t = DiscoveryError::Timeout(Duration::from_secs(1));
@@ -249,9 +249,9 @@ mod tests {
     fn discovered_primal_serde_roundtrip() {
         let cap = sample_capability();
         let p = DiscoveredPrimal::new(
-            "p1".to_string(),
+            String::from("p1"),
             PrimalType::new("compute"),
-            "http://localhost:1".to_string(),
+            String::from("http://localhost:1"),
             vec![cap],
             DiscoveryMethod::Environment,
         );

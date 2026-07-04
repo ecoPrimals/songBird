@@ -212,7 +212,7 @@ mod tests {
             ClassificationStrategy::RuleBased,
             ClassificationStrategy::MachineLearning,
             ClassificationStrategy::Hybrid,
-            ClassificationStrategy::Custom("ml-v2".to_string()),
+            ClassificationStrategy::Custom(String::from("ml-v2")),
         ] {
             assert_json_roundtrip(&s);
         }

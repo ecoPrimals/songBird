@@ -127,15 +127,15 @@ impl Default for AvailableProtocols {
                 }),
             }),
             websocket: Some(ProtocolInfo {
-                version: "13".to_string(),
+                version: String::from("13"),
                 endpoints: HashMap::from([(
-                    "ws".to_string(),
+                    String::from("ws"),
                     format!("ws://[::]:{port}/api/ws/ws"),
                 )]),
                 features: vec![
-                    "bidirectional".to_string(),
-                    "low-latency".to_string(),
-                    "streaming".to_string(),
+                    String::from("bidirectional"),
+                    String::from("low-latency"),
+                    String::from("streaming"),
                 ],
                 performance: Some(PerformanceInfo {
                     latency_us: 500,
@@ -319,8 +319,8 @@ fn select_best_protocol(
 
     // If client prefers a high-performance protocol and it's available, honor it
     if HIGH_PERFORMANCE.contains(&preferred)
-        && client_protocols.contains(&preferred.to_string())
-        && available_protocols.contains(&preferred.to_string())
+        && client_protocols.iter().any(|p| p == preferred)
+        && available_protocols.iter().any(|p| p == preferred)
     {
         return preferred.to_string();
     }

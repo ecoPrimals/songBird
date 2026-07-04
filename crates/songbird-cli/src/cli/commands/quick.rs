@@ -55,12 +55,12 @@ pub struct ResourceLimits {
 impl Default for OrchestratorConfig {
     fn default() -> Self {
         let mut ports = HashMap::new();
-        ports.insert("api".to_string(), songbird_config::defaults::ports::orchestrator_port());
-        ports.insert("metrics".to_string(), songbird_config::defaults::ports::metrics_port());
+        ports.insert(String::from("api"), songbird_config::defaults::ports::orchestrator_port());
+        ports.insert(String::from("metrics"), songbird_config::defaults::ports::metrics_port());
 
         Self {
-            node_name: "songbird-node".to_string(),
-            capabilities: vec!["compute".to_string()],
+            node_name: String::from("songbird-node"),
+            capabilities: vec![String::from("compute")],
             discovery_endpoints: vec![format!(
                 "http://{}:{}",
                 songbird_types::constants::LOCALHOST_HOSTNAME,
@@ -192,7 +192,7 @@ pub async fn execute_quick_setup_api(
     // Step 2: Discover networks
     let discovery_params = DiscoveryParameters {
         methods: request.endpoint_preferences.as_ref().map_or_else(
-            || vec!["subnet".to_string(), "multicast".to_string()],
+            || vec![String::from("subnet"), String::from("multicast")],
             |p| p.preferred_discovery_methods.clone(),
         ),
         timeout_ms: request
@@ -226,8 +226,8 @@ pub async fn execute_quick_setup_api(
         discovered_networks.iter().map(|n| n.endpoint.clone()).collect();
 
     let mut ports = HashMap::new();
-    ports.insert("api".to_string(), songbird_config::defaults::ports::orchestrator_port());
-    ports.insert("metrics".to_string(), songbird_config::defaults::ports::metrics_port());
+    ports.insert(String::from("api"), songbird_config::defaults::ports::orchestrator_port());
+    ports.insert(String::from("metrics"), songbird_config::defaults::ports::metrics_port());
 
     let security = request.security_preferences.as_ref().map_or_else(
         || SecurityConfig {
@@ -271,11 +271,11 @@ pub async fn execute_quick_setup_api(
 /// Capability strings for a contribute type (pure mapping for config generation).
 fn capabilities_for_contribute_type(contribute_type: &ContributeType) -> Vec<String> {
     match contribute_type {
-        ContributeType::Compute => vec!["compute".to_string()],
-        ContributeType::Storage => vec!["storage".to_string()],
-        ContributeType::Data => vec!["data".to_string()],
+        ContributeType::Compute => vec![String::from("compute")],
+        ContributeType::Storage => vec![String::from("storage")],
+        ContributeType::Data => vec![String::from("data")],
         ContributeType::All => {
-            vec!["compute".to_string(), "storage".to_string(), "data".to_string()]
+            vec![String::from("compute"), String::from("storage"), String::from("data")]
         }
     }
 }
@@ -289,12 +289,12 @@ fn generate_next_steps(
 
     match networks.len() {
         0 => {
-            steps.push("Start a new Songbird network ".to_string());
-            steps.push("Configure firewall and network settings ".to_string());
+            steps.push(String::from("Start a new Songbird network "));
+            steps.push(String::from("Configure firewall and network settings "));
         }
         1 => {
             steps.push(format!("Join the '{}' network ", networks[0].name));
-            steps.push("Verify network connectivity ".to_string());
+            steps.push(String::from("Verify network connectivity "));
         }
         _ => {
             // Find the network with the highest compatibility score
@@ -304,29 +304,29 @@ fn generate_next_steps(
                     .unwrap_or(std::cmp::Ordering::Equal)
             }) {
                 steps.push(format!("Recommended: Join '{}' network", best_network.name));
-                steps.push("Alternative networks available".to_string());
+                steps.push(String::from("Alternative networks available"));
             } else {
-                steps.push("No networks available".to_string());
+                steps.push(String::from("No networks available"));
             }
         }
     }
 
     match contribute_type {
         ContributeType::Compute => {
-            steps.push("Enable compute sharing in configuration".to_string());
+            steps.push(String::from("Enable compute sharing in configuration"));
         }
         ContributeType::Storage => {
-            steps.push("Configure storage allocation limits".to_string());
+            steps.push(String::from("Configure storage allocation limits"));
         }
         ContributeType::Data => {
-            steps.push("Set up data sharing protocols".to_string());
+            steps.push(String::from("Set up data sharing protocols"));
         }
         ContributeType::All => {
-            steps.push("Configure resource sharing for all types".to_string());
+            steps.push(String::from("Configure resource sharing for all types"));
         }
     }
 
-    steps.push("Monitor system status via API".to_string());
+    steps.push(String::from("Monitor system status via API"));
     steps
 }
 
@@ -370,9 +370,9 @@ pub async fn execute_quick(contribute: ContributeType, name: Option<String>) -> 
         Ok(())
     } else {
         Err(CliError::Config {
-            message: "Quick setup failed".to_string(),
+            message: String::from("Quick setup failed"),
             field: None,
-            suggestion: Some("Check API response for details".to_string()),
+            suggestion: Some(String::from("Check API response for details")),
         }
         .into())
     }
@@ -391,7 +391,7 @@ mod tests {
         DiscoveredNetwork {
             name: name.to_string(),
             node_count: 1,
-            network_type: "test".to_string(),
+            network_type: String::from("test"),
             institution: None,
             endpoint: endpoint.to_string(),
             compatibility_score: score,
@@ -458,15 +458,15 @@ mod tests {
     fn capabilities_for_contribute_type_compute_storage_data() {
         assert_eq!(
             capabilities_for_contribute_type(&ContributeType::Compute),
-            vec!["compute".to_string()]
+            vec![String::from("compute")]
         );
         assert_eq!(
             capabilities_for_contribute_type(&ContributeType::Storage),
-            vec!["storage".to_string()]
+            vec![String::from("storage")]
         );
         assert_eq!(
             capabilities_for_contribute_type(&ContributeType::Data),
-            vec!["data".to_string()]
+            vec![String::from("data")]
         );
     }
 
@@ -474,7 +474,7 @@ mod tests {
     fn capabilities_for_contribute_type_all_ordering() {
         assert_eq!(
             capabilities_for_contribute_type(&ContributeType::All),
-            vec!["compute".to_string(), "storage".to_string(), "data".to_string()]
+            vec![String::from("compute"), String::from("storage"), String::from("data")]
         );
     }
 

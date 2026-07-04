@@ -181,7 +181,7 @@ impl Default for SecurityAdapterConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            discovery_mode: "auto".to_string(),
+            discovery_mode: String::from("auto"),
             endpoint: None,
             health_check: HealthCheckConfig::default(),
             timeout_ms: 30000,
@@ -195,7 +195,7 @@ impl Default for ComputeAdapterConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            discovery_mode: "auto".to_string(),
+            discovery_mode: String::from("auto"),
             endpoint: None,
             health_check: HealthCheckConfig::default(),
             timeout_ms: 30000,
@@ -209,7 +209,7 @@ impl Default for StorageAdapterConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            discovery_mode: "auto".to_string(),
+            discovery_mode: String::from("auto"),
             endpoint: None,
             health_check: HealthCheckConfig::default(),
             timeout_ms: 30000,
@@ -318,7 +318,7 @@ mod tests {
     fn storage_provider_config_serde_roundtrip() {
         let c = StorageProviderConfig {
             enabled: true,
-            endpoint: Some("https://store.example".to_string()),
+            endpoint: Some(String::from("https://store.example")),
             health_check: HealthCheckConfig::default(),
             priority: 7,
         };

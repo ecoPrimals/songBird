@@ -59,7 +59,7 @@ impl OnionCrypto {
         for (hop_idx, hop) in hops.iter().rev().enumerate() {
             // Generate IV: unique per hop and per cell
             let hop_idx_u32 = u32::try_from(hop_idx)
-                .map_err(|_| Error::Protocol("Hop index overflow".to_string()))?;
+                .map_err(|_| Error::Protocol(String::from("Hop index overflow")))?;
             let iv = Self::generate_iv(seq, hop_idx_u32);
 
             // Encrypt with this hop's forward key via security provider
@@ -95,7 +95,7 @@ impl OnionCrypto {
         for (hop_idx, hop) in hops.iter().enumerate() {
             // Generate IV: unique per hop and per cell
             let hop_idx_u32 = u32::try_from(hop_idx)
-                .map_err(|_| Error::Protocol("Hop index overflow".to_string()))?;
+                .map_err(|_| Error::Protocol(String::from("Hop index overflow")))?;
             let iv = Self::generate_iv(seq, hop_idx_u32);
 
             // Decrypt with this hop's backward key via security provider
@@ -262,9 +262,9 @@ mod tests {
 
     #[tokio::test]
     async fn encrypt_forward_with_zero_hops_is_passthrough_without_aes() {
-        let crypto = OnionCrypto::new(CryptoProvider::new(
-            "/tmp/songbird-tor-protocol-onion-empty-hops.sock".to_string(),
-        ));
+        let crypto = OnionCrypto::new(CryptoProvider::new(String::from(
+            "/tmp/songbird-tor-protocol-onion-empty-hops.sock",
+        )));
         let hops: Vec<CircuitHop> = vec![];
         let out = crypto.encrypt_forward(b"payload", &hops).await.expect("no-op encrypt");
         assert_eq!(out, b"payload");
@@ -273,9 +273,9 @@ mod tests {
 
     #[tokio::test]
     async fn decrypt_backward_with_zero_hops_is_passthrough_without_aes() {
-        let crypto = OnionCrypto::new(CryptoProvider::new(
-            "/tmp/songbird-tor-protocol-onion-empty-hops.sock".to_string(),
-        ));
+        let crypto = OnionCrypto::new(CryptoProvider::new(String::from(
+            "/tmp/songbird-tor-protocol-onion-empty-hops.sock",
+        )));
         let hops: Vec<CircuitHop> = vec![];
         let out = crypto.decrypt_backward(b"ciphertext", &hops).await.expect("no-op decrypt");
         assert_eq!(out, b"ciphertext");

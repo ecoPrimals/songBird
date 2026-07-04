@@ -325,7 +325,7 @@ mod tests {
         assert_eq!(p.len(), 1);
         assert_eq!(p[0].name, "tarpc");
         assert_eq!(p[0].port, 9001);
-        assert_eq!(p[0].info.get("k"), Some(&"v".to_string()));
+        assert_eq!(p[0].info.get("k"), Some(&String::from("v")));
         server.abort();
     }
 
@@ -506,7 +506,7 @@ mod tests {
         let bytes = bincode::serialize(&p).expect("serialize p");
         let back: ProtocolInfo = bincode::deserialize(&bytes).expect("deserialize p");
         assert_eq!(back.port, p.port);
-        assert_eq!(back.info.get("q"), Some(&"w".to_string()));
+        assert_eq!(back.info.get("q"), Some(&String::from("w")));
     }
 
     #[test]

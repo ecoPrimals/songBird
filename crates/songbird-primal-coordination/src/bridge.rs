@@ -202,9 +202,9 @@ impl DiscoveryBasedBridge {
         match response {
             PrimalResponse::Capabilities(caps) => Ok(caps),
             PrimalResponse::Error(e) => Err(crate::error::PrimalCoordinationError::PrimalError(e)),
-            _ => Err(crate::error::PrimalCoordinationError::UnexpectedResponse(
-                "Expected Capabilities response".to_string(),
-            )),
+            _ => Err(crate::error::PrimalCoordinationError::UnexpectedResponse(String::from(
+                "Expected Capabilities response",
+            ))),
         }
     }
 
@@ -334,7 +334,7 @@ impl CoordinatorTestBridge {
                 quality: crate::types::ServiceQuality::default(),
             }),
             Self::Mock => Ok(PrimalCapabilities {
-                services: vec!["security".to_string()],
+                services: vec![String::from("security")],
                 resources: std::collections::HashMap::new(),
                 metadata: std::collections::HashMap::new(),
                 quality: crate::types::ServiceQuality::default(),
@@ -371,15 +371,15 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn test_primal_connection_creation() {
         let caps = PrimalCapabilities {
-            services: vec!["security".to_string()],
+            services: vec![String::from("security")],
             resources: std::collections::HashMap::new(),
             metadata: std::collections::HashMap::new(),
             quality: ServiceQuality::default(),
         };
 
         let conn = PrimalConnection::new(
-            "test-conn-1".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("test-conn-1"),
+            String::from("http://localhost:8080"),
             caps,
         );
 
@@ -481,15 +481,15 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn test_capability_update() {
         let initial_caps = PrimalCapabilities {
-            services: vec!["security".to_string()],
+            services: vec![String::from("security")],
             resources: std::collections::HashMap::new(),
             metadata: std::collections::HashMap::new(),
             quality: ServiceQuality::default(),
         };
 
         let conn = PrimalConnection::new(
-            "test-conn-2".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("test-conn-2"),
+            String::from("http://localhost:8080"),
             initial_caps,
         );
 
@@ -499,7 +499,7 @@ mod tests {
 
         // Update capabilities
         let new_caps = PrimalCapabilities {
-            services: vec!["security".to_string(), "compute".to_string()],
+            services: vec![String::from("security"), String::from("compute")],
             resources: std::collections::HashMap::new(),
             metadata: std::collections::HashMap::new(),
             quality: ServiceQuality::default(),

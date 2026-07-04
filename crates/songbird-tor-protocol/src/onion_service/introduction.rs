@@ -131,9 +131,9 @@ impl IntroductionPoint {
         // AUTH_KEY
         let auth_key_end = 2 + auth_key_len;
         if data.len() < auth_key_end + 1 {
-            return Err(crate::error::Error::Protocol(
-                "INTRODUCE2 cell truncated at auth key".to_string(),
-            ));
+            return Err(crate::error::Error::Protocol(String::from(
+                "INTRODUCE2 cell truncated at auth key",
+            )));
         }
 
         // N_EXTENSIONS
@@ -143,9 +143,9 @@ impl IntroductionPoint {
         // Skip extensions
         for _ in 0..n_ext {
             if pos + 4 > data.len() {
-                return Err(crate::error::Error::Protocol(
-                    "INTRODUCE2 cell truncated in extensions".to_string(),
-                ));
+                return Err(crate::error::Error::Protocol(String::from(
+                    "INTRODUCE2 cell truncated in extensions",
+                )));
             }
             let ext_len = u16::from_be_bytes([data[pos + 2], data[pos + 3]]) as usize;
             pos += 4 + ext_len;

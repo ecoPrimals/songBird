@@ -181,7 +181,7 @@ mod tests {
                 assert_eq!(node_id.as_deref(), Some("east-gate"));
                 assert!(!signature_bytes.is_empty());
             }
-            _ => panic!("Expected Valid"),
+            BtspValidation::NoToken => panic!("Expected Valid"),
         }
     }
 

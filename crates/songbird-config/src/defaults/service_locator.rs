@@ -316,7 +316,7 @@ impl ServiceLocator {
         stream.set_write_timeout(Some(std::time::Duration::from_secs(2))).ok();
 
         let primal_id = songbird_process_env::var("SONGBIRD_PRIMAL_ID")
-            .unwrap_or_else(|_| "songbird".to_string());
+            .unwrap_or_else(|_| String::from(songbird_types::primal_names::SELF_NAME));
 
         let ip = advertise_addr.ip();
         let port = advertise_addr.port();

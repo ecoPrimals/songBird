@@ -55,45 +55,45 @@ mod tests {
 
     #[test]
     fn network_error_display() {
-        let e = CapabilityError::NetworkError("reset".to_string());
+        let e = CapabilityError::NetworkError(String::from("reset"));
         assert!(e.to_string().contains("reset"));
     }
 
     #[test]
     fn parse_error_display() {
-        let e = CapabilityError::ParseError("x".to_string());
+        let e = CapabilityError::ParseError(String::from("x"));
         assert!(e.to_string().contains("Parse"));
     }
 
     #[test]
     fn primal_not_found_display() {
-        let e = CapabilityError::PrimalNotFound("p".to_string());
+        let e = CapabilityError::PrimalNotFound(String::from("p"));
         assert!(e.to_string().contains('p'));
     }
 
     #[test]
     fn capability_unavailable_display() {
-        let e = CapabilityError::CapabilityUnavailable("cap".to_string());
+        let e = CapabilityError::CapabilityUnavailable(String::from("cap"));
         assert!(e.to_string().contains("cap"));
     }
 
     #[test]
     fn no_providers_display() {
         let e = CapabilityError::NoProvidersFound {
-            capability_type: "t".to_string(),
+            capability_type: String::from("t"),
         };
         assert!(e.to_string().contains('t'));
     }
 
     #[test]
     fn not_implemented_display() {
-        let e = CapabilityError::NotImplemented("x".to_string());
+        let e = CapabilityError::NotImplemented(String::from("x"));
         assert!(e.to_string().contains('x'));
     }
 
     #[test]
     fn error_source_is_none() {
-        let e = CapabilityError::NetworkError("n".to_string());
+        let e = CapabilityError::NetworkError(String::from("n"));
         assert!(std::error::Error::source(&e).is_none());
     }
 }

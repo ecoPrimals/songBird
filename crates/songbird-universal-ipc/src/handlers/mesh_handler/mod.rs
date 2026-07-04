@@ -21,9 +21,11 @@
 //! mesh state management while exposing capability via JSON-RPC.
 
 pub(crate) mod capability_propagation;
+mod discovery_federation;
 mod health_probing;
 mod json;
 pub mod persistence;
+pub(crate) mod topology_graph;
 mod udp_discovery;
 
 #[cfg(test)]
@@ -31,7 +33,7 @@ mod udp_discovery;
 mod tests;
 
 use serde_json::{Value, json};
-use songbird_onion_relay::mesh::{BeaconMesh, EndpointType, RelayEndpoint};
+use songbird_onion_relay::mesh::{BeaconMesh, EndpointType};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -60,7 +62,7 @@ pub(super) struct ProbeResult {
 #[derive(Clone)]
 pub struct MeshHandler {
     /// Beacon mesh instance
-    pub(super) mesh: Arc<RwLock<Option<Arc<BeaconMesh>>>>,
+    pub(crate) mesh: Arc<RwLock<Option<Arc<BeaconMesh>>>>,
     /// Start time for uptime tracking
     start_time: Instant,
     /// Our node ID
@@ -110,6 +112,9 @@ impl MeshHandler {
     /// `bootstrap_peers` enables cross-gate discovery by adding TCP-reachable peers
     /// to the mesh at init time (connection attempts are spawned asynchronously).
     ///
+    /// `overlay_peers` (optional) registers WireGuard/VPN endpoints for peers.
+    /// These get priority 0 (same as Local) so overlay paths are preferred when reachable.
+    ///
     /// # Request Example
     ///
     /// ```json
@@ -120,12 +125,20 @@ impl MeshHandler {
     ///     "node_id": "tower-abc123",
     ///     "bootstrap_onions": ["xyz.onion"],
     ///     "bootstrap_peers": [
-    ///       { "node_id": "west-gate", "address": "192.168.1.50:3492" }
-    ///     ]
+    ///       { "node_id": "west-gate", "address": "192.168.1.50:7700" }
+    ///     ],
+    ///     "overlay_peers": [
+    ///       { "node_id": "west-gate", "address": "10.13.37.2:7700" }
+    ///     ],
+    ///     "overlay_name": "wireguard"
     ///   },
     ///   "id": 1
     /// }
     /// ```
+    #[expect(
+        clippy::too_many_lines,
+        reason = "mesh.init handles bootstrap + overlay + health + persistence"
+    )]
     pub async fn handle_init(&self, params: Value) -> Result<Value, String> {
         use songbird_onion_relay::{EndpointType, RelayEndpoint};
 
@@ -191,22 +204,70 @@ impl MeshHandler {
             mesh.add_endpoint(peer_id.clone(), endpoint).await;
         }
 
+        // Register overlay endpoints (WireGuard/VPN — priority 0, preferred)
+        let overlay_name =
+            params.get("overlay_name").and_then(Value::as_str).unwrap_or("wireguard");
+        let overlay_peers: Vec<(String, std::net::SocketAddr)> = params
+            .get("overlay_peers")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|entry| {
+                        if let Some(obj_id) = entry.get("node_id").and_then(Value::as_str) {
+                            let addr_str = entry.get("address")?.as_str()?;
+                            let addr: std::net::SocketAddr = addr_str.parse().ok()?;
+                            return Some((obj_id.to_string(), addr));
+                        }
+                        let s = entry.as_str()?;
+                        if let Some((nid, addr_part)) = s.split_once('@') {
+                            let addr: std::net::SocketAddr = addr_part.parse().ok()?;
+                            Some((nid.to_string(), addr))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        for (peer_id, addr) in &overlay_peers {
+            let endpoint = RelayEndpoint {
+                node_id: peer_id.clone(),
+                endpoint_type: EndpointType::Overlay {
+                    addr: *addr,
+                    overlay_name: String::from(overlay_name),
+                },
+                latency: None,
+                last_seen: std::time::Instant::now(),
+                reachable: true,
+            };
+            mesh.add_endpoint(peer_id.clone(), endpoint).await;
+        }
+
         let mesh_ref = Arc::clone(&mesh);
         *self.mesh.write().await = Some(mesh);
         *self.node_id.write().await = node_id.clone();
 
         let peers_added = bootstrap_peers.len();
-        if !bootstrap_peers.is_empty() {
+        let overlay_for_health: Vec<(String, std::net::SocketAddr, String)> = overlay_peers
+            .iter()
+            .map(|(id, addr)| (id.clone(), *addr, String::from(overlay_name)))
+            .collect();
+
+        if !bootstrap_peers.is_empty() || !overlay_for_health.is_empty() {
             Self::spawn_peer_health_loop(
                 mesh_ref,
                 bootstrap_peers.clone(),
+                overlay_for_health,
                 Arc::clone(&self.peer_metadata),
             );
 
-            let node_id_owned = node_id.as_ref().to_string();
-            tokio::task::spawn_blocking(move || {
-                persistence::save_peers(&node_id_owned, &bootstrap_peers);
-            });
+            if !bootstrap_peers.is_empty() {
+                let node_id_owned = node_id.as_ref().to_string();
+                tokio::task::spawn_blocking(move || {
+                    persistence::save_peers(&node_id_owned, &bootstrap_peers);
+                });
+            }
         }
 
         Ok(json!({
@@ -216,16 +277,23 @@ impl MeshHandler {
         }))
     }
 
-    /// Handle `mesh.status` method - Get mesh network status
+    /// Handle `mesh.status` method - Get mesh network status.
+    ///
+    /// Returns initialization state even when mesh is not yet initialized,
+    /// allowing probers to distinguish "not running" from "running but empty".
+    #[expect(clippy::too_many_lines, reason = "status aggregation across endpoint types")]
     pub async fn handle_status(&self, _params: Value) -> Result<Value, String> {
-        let (reachable, direct_count, relay_count, onion_count, local_count) = {
-            let mesh = self
-                .mesh
-                .read()
-                .await
-                .as_ref()
-                .cloned()
-                .ok_or("Mesh not initialized (call mesh.init first)")?;
+        let (reachable, direct_count, relay_count, onion_count, local_count, overlay_count) = {
+            let Some(mesh) = self.mesh.read().await.as_ref().cloned() else {
+                let node_id = self.node_id.read().await.clone();
+                return Ok(json!({
+                    "initialized": false,
+                    "node_id": &*node_id,
+                    "status": "awaiting_init",
+                    "message": "Mesh not yet initialized — will auto-seed from SONGBIRD_PEERS, persisted state, or WireGuard peers",
+                    "uptime_seconds": self.start_time.elapsed().as_secs()
+                }));
+            };
 
             let reachable = mesh.get_reachable_nodes().await;
 
@@ -233,6 +301,7 @@ impl MeshHandler {
             let mut relay_count = 0;
             let mut onion_count = 0;
             let mut local_count = 0;
+            let mut overlay_count = 0;
 
             for peer_id in &reachable {
                 if let Some(path) = mesh.get_best_path(peer_id).await {
@@ -240,6 +309,9 @@ impl MeshHandler {
                         EndpointType::Local {
                             ..
                         } => local_count += 1,
+                        EndpointType::Overlay {
+                            ..
+                        } => overlay_count += 1,
                         EndpointType::Direct {
                             ..
                         } => direct_count += 1,
@@ -253,7 +325,14 @@ impl MeshHandler {
                 }
             }
 
-            Ok::<_, String>((reachable, direct_count, relay_count, onion_count, local_count))
+            Ok::<_, String>((
+                reachable,
+                direct_count,
+                relay_count,
+                onion_count,
+                local_count,
+                overlay_count,
+            ))
         }?;
 
         let node_id = self.node_id.read().await.clone();
@@ -297,6 +376,7 @@ impl MeshHandler {
         drop(meta);
 
         let mut response = json!({
+            "initialized": true,
             "node_id": node_id.as_ref(),
             "reachable_peers": reachable.len(),
             "relay_enabled": true,
@@ -304,6 +384,7 @@ impl MeshHandler {
             "version": our_version,
             "paths": {
                 "local": local_count,
+                "overlay": overlay_count,
                 "direct": direct_count,
                 "family_relay": relay_count,
                 "onion": onion_count
@@ -464,7 +545,10 @@ impl MeshHandler {
     ///
     /// Returns nodes with their connections and path types, giving a
     /// graph-level view of the mesh for monitoring and visualization.
-    pub async fn handle_topology(&self, _params: Value) -> Result<Value, String> {
+    ///
+    /// When `include_gossip` is true (default), merges peer-reported reachability
+    /// into the graph, showing inferred edges from remote peer gossip.
+    pub async fn handle_topology(&self, params: Value) -> Result<Value, String> {
         let mesh = self
             .mesh
             .read()
@@ -476,6 +560,42 @@ impl MeshHandler {
         let node_id = self.node_id.read().await.clone();
         let reachable = mesh.get_reachable_nodes().await;
 
+        let include_gossip = params
+            .get("include_gossip")
+            .and_then(Value::as_bool)
+            .unwrap_or(true);
+
+        if include_gossip {
+            let meta = self.peer_metadata.read().await;
+            let mut local_latencies = std::collections::HashMap::new();
+            for peer_id in &reachable {
+                if let Some(path) = mesh.get_best_path(peer_id).await
+                    && let Some(lat) = path.latency
+                {
+                    local_latencies.insert(
+                        peer_id.clone(),
+                        u64::try_from(lat.as_millis()).unwrap_or(u64::MAX),
+                    );
+                }
+            }
+
+            let graph = topology_graph::build_topology(
+                node_id.as_ref(),
+                &reachable,
+                &meta,
+                &local_latencies,
+            );
+
+            let mut response = graph.to_json(node_id.as_ref(), self.start_time.elapsed().as_secs());
+            let partitioned = graph.partitioned_nodes();
+            if !partitioned.is_empty() {
+                response["partitioned_nodes"] =
+                    json!(partitioned.iter().map(|s| json!(s)).collect::<Vec<_>>());
+            }
+            return Ok(response);
+        }
+
+        // Legacy star-from-self view (include_gossip: false)
         let mut nodes = Vec::new();
         let mut edges = Vec::new();
 
@@ -524,163 +644,6 @@ impl MeshHandler {
         }))
     }
 
-    /// Handle `mesh.auto_discover` method - Auto-discover peers on local network
-    pub async fn handle_auto_discover(&self, params: Value) -> Result<Value, String> {
-        let timeout_ms =
-            params.get("timeout_ms").and_then(serde_json::Value::as_u64).unwrap_or(3000);
-        let broadcast_port = u16::try_from(
-            params
-                .get("broadcast_port")
-                .and_then(serde_json::Value::as_u64)
-                .unwrap_or_else(|| u64::from(songbird_types::constants::MDNS_PORT)),
-        )
-        .unwrap_or(songbird_types::constants::MDNS_PORT);
-
-        let node_id = self.node_id.read().await.clone();
-        info!(
-            "🔍 Auto-discovering peers on local network (port {}, timeout {}ms)",
-            broadcast_port, timeout_ms
-        );
-
-        let discovered = udp_discovery::udp_multicast_discover(
-            node_id.as_ref(),
-            broadcast_port,
-            Duration::from_millis(timeout_ms),
-        )
-        .await;
-
-        let peers_found = {
-            let mesh = self
-                .mesh
-                .read()
-                .await
-                .as_ref()
-                .cloned()
-                .ok_or("Mesh not initialized (call mesh.init first)")?;
-
-            let mut peers_found = Vec::new();
-            for (peer_id, addr) in &discovered {
-                let peer_str = peer_id.as_ref().to_string();
-                let endpoint = RelayEndpoint {
-                    node_id: peer_str.clone(),
-                    endpoint_type: EndpointType::Local {
-                        addr: *addr,
-                    },
-                    latency: None,
-                    last_seen: Instant::now(),
-                    reachable: true,
-                };
-                mesh.add_endpoint(peer_str, endpoint).await;
-
-                peers_found.push(json!({
-                    "node_id": peer_id.as_ref(),
-                    "address": addr.to_string(),
-                    "path_type": "local"
-                }));
-            }
-
-            Ok::<_, String>(peers_found)
-        }?;
-
-        info!("🔍 Auto-discovery complete: found {} peers", peers_found.len());
-
-        Ok(json!({
-            "discovered": peers_found.len(),
-            "peers": peers_found,
-            "broadcast_port": broadcast_port,
-            "timeout_ms": timeout_ms
-        }))
-    }
-
-    /// Handle `mesh.discover_remotes` — discover remote gates and their content sources.
-    ///
-    /// Used by ecosystem signal graphs to find gates that can serve content.
-    /// Returns known remote peers with their advertised capabilities.
-    pub async fn handle_discover_remotes(&self, _params: Value) -> Result<Value, String> {
-        let mesh = self
-            .mesh
-            .read()
-            .await
-            .as_ref()
-            .cloned()
-            .ok_or("Mesh not initialized (call mesh.init first)")?;
-
-        let reachable = mesh.get_reachable_nodes().await;
-        let mut remotes = Vec::new();
-
-        for node_id in &reachable {
-            if let Some(path) = mesh.get_best_path(node_id).await {
-                let (path_type, address) = json::endpoint_to_strings(&path.endpoint_type);
-                remotes.push(json!({
-                    "node_id": node_id,
-                    "address": address,
-                    "reachable": path.reachable,
-                    "type": path_type
-                }));
-            }
-        }
-
-        info!("🌐 mesh.discover_remotes: {} remote gates found", remotes.len());
-        Ok(json!({
-            "remotes": remotes,
-            "count": remotes.len()
-        }))
-    }
-
-    /// Handle `mesh.mirror` — mirror content/repos to a remote target.
-    ///
-    /// Used by ecosystem.push signal graph to push content to remotes (e.g., GitHub).
-    /// Fire-and-forget: queues the mirror operation and returns immediately.
-    pub async fn handle_mirror(&self, params: Value) -> Result<Value, String> {
-        let target = params
-            .get("target")
-            .and_then(Value::as_str)
-            .ok_or("Missing required param: target")?
-            .to_string();
-
-        let refs: Vec<String> = params
-            .get("refs")
-            .and_then(Value::as_array)
-            .map(|arr| arr.iter().filter_map(Value::as_str).map(String::from).collect())
-            .unwrap_or_default();
-
-        info!("🪞 mesh.mirror: target={}, refs={}", target, refs.len());
-
-        Ok(json!({
-            "status": "queued",
-            "target": target,
-            "refs_count": refs.len(),
-            "message": "Mirror operation queued for async execution"
-        }))
-    }
-
-    /// Handle `mesh.publish` — publish freshness/drift status to the mesh.
-    ///
-    /// Used by ecosystem signal graphs to advertise sync state to the Plasmodium.
-    /// Broadcasts to all connected mesh peers (fire-and-forget).
-    pub async fn handle_publish(&self, params: Value) -> Result<Value, String> {
-        let topic = params.get("topic").and_then(Value::as_str).unwrap_or("status").to_string();
-
-        let payload = params.get("payload").cloned().unwrap_or(Value::Null);
-
-        let mesh = self
-            .mesh
-            .read()
-            .await
-            .as_ref()
-            .cloned()
-            .ok_or("Mesh not initialized (call mesh.init first)")?;
-
-        let peer_count = mesh.get_reachable_nodes().await.len();
-        info!("📢 mesh.publish: topic={}, broadcasting to {} peers", topic, peer_count);
-
-        Ok(json!({
-            "published": true,
-            "topic": topic,
-            "peers_notified": peer_count,
-            "payload_size": payload.to_string().len()
-        }))
-    }
 }
 
 impl Default for MeshHandler {
@@ -688,6 +651,9 @@ impl Default for MeshHandler {
         Self::new()
     }
 }
+
+#[cfg(test)]
+use songbird_onion_relay::mesh::RelayEndpoint;
 
 #[cfg(test)]
 impl MeshHandler {
@@ -715,7 +681,9 @@ impl MeshHandler {
                 peer_id.clone(),
                 RelayEndpoint {
                     node_id: peer_id.clone(),
-                    endpoint_type: EndpointType::Direct { addr: *addr },
+                    endpoint_type: EndpointType::Direct {
+                        addr: *addr,
+                    },
                     latency: None,
                     last_seen: Instant::now(),
                     reachable: *reachable,

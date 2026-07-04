@@ -404,12 +404,13 @@ mod tests {
     fn find_utctime_entries(der: &[u8]) -> Vec<String> {
         let mut results = Vec::new();
         for i in 0..der.len().saturating_sub(15) {
-            if der[i] == 0x17 && der[i + 1] == 13 {
-                if let Ok(s) = std::str::from_utf8(&der[i + 2..i + 15]) {
-                    if s.ends_with('Z') && s.len() == 13 {
-                        results.push(s.to_string());
-                    }
-                }
+            if der[i] == 0x17
+                && der[i + 1] == 13
+                && let Ok(s) = std::str::from_utf8(&der[i + 2..i + 15])
+                && s.ends_with('Z')
+                && s.len() == 13
+            {
+                results.push(s.to_string());
             }
         }
         results

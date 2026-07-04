@@ -155,13 +155,13 @@ mod tests {
         let from_any: GenesisError = anyhow_err.into();
         assert_eq!(from_any.to_string(), "boom");
 
-        let from_string: GenesisError = GenesisError::from("hello".to_string());
+        let from_string: GenesisError = GenesisError::from(String::from("hello"));
         assert_eq!(from_string.to_string(), "hello");
 
         let from_str: GenesisError = GenesisError::from("slice");
         assert_eq!(from_str.to_string(), "slice");
 
-        let other = GenesisError::Other("custom failure".to_string());
+        let other = GenesisError::Other(String::from("custom failure"));
         assert_eq!(other.to_string(), "custom failure");
     }
 

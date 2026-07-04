@@ -47,10 +47,10 @@ impl JobManager {
                     "Maximum concurrent jobs ({}) reached. Current: {}",
                     self.max_concurrent_jobs, running_count
                 ),
-                field: Some("max_concurrent_jobs".to_string()),
-                suggestion: Some(
-                    "Increase max_concurrent_jobs or wait for jobs to complete".to_string(),
-                ),
+                field: Some(String::from("max_concurrent_jobs")),
+                suggestion: Some(String::from(
+                    "Increase max_concurrent_jobs or wait for jobs to complete",
+                )),
             });
         }
 
@@ -70,7 +70,7 @@ impl JobManager {
         jobs.get(job_id).cloned().ok_or_else(|| SongbirdError::Registry {
             message: format!("Job not found: {job_id}"),
             service_name: Some(job_id.to_string()),
-            operation: "get".to_string(),
+            operation: String::from("get"),
         })
     }
 
@@ -88,7 +88,7 @@ impl JobManager {
         let job = jobs.get_mut(job_id).ok_or_else(|| SongbirdError::Registry {
             message: format!("Job not found: {job_id}"),
             service_name: Some(job_id.to_string()),
-            operation: "update".to_string(),
+            operation: String::from("update"),
         })?;
         update_fn(job);
         debug!("Updated job: {} (status: {})", job_id, job.status);
@@ -151,8 +151,8 @@ impl JobManager {
         let job = self.get_job(job_id).await?;
 
         let pid = job.pid.ok_or_else(|| SongbirdError::Runtime {
-            message: "Job has no PID (not running?)".to_string(),
-            component: Some("job_manager".to_string()),
+            message: String::from("Job has no PID (not running?)"),
+            component: Some(String::from("job_manager")),
             debug_info: None,
         })?;
 
@@ -165,12 +165,12 @@ impl JobManager {
             let pid_nix =
                 Pid::from_raw(i32::try_from(pid).map_err(|_| SongbirdError::Runtime {
                     message: format!("PID {pid} too large for conversion"),
-                    component: Some("job_manager".to_string()),
+                    component: Some(String::from("job_manager")),
                     debug_info: None,
                 })?);
             kill(pid_nix, Signal::SIGTERM).map_err(|e| SongbirdError::Runtime {
                 message: format!("Failed to send SIGTERM to process {pid}: {e}"),
-                component: Some("job_manager".to_string()),
+                component: Some(String::from("job_manager")),
                 debug_info: None,
             })?;
         }
@@ -178,8 +178,8 @@ impl JobManager {
         #[cfg(not(unix))]
         {
             return Err(SongbirdError::Runtime {
-                message: "Process stopping is only supported on Unix systems".to_string(),
-                component: Some("job_manager".to_string()),
+                message: String::from("Process stopping is only supported on Unix systems"),
+                component: Some(String::from("job_manager")),
                 debug_info: None,
             });
         }
@@ -330,7 +330,7 @@ mod tests {
         let job = create_test_job("test-1", ExecutionStatus::Running);
 
         manager.add_job(job).await.unwrap();
-        manager.complete_job("test-1", 0, "output".to_string(), String::new()).await.unwrap();
+        manager.complete_job("test-1", 0, String::from("output"), String::new()).await.unwrap();
 
         let updated = manager.get_job("test-1").await.unwrap();
         assert_eq!(updated.status, ExecutionStatus::Completed);

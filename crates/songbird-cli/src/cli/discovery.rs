@@ -75,9 +75,11 @@ impl NetworkScanner {
         // Parse subnet (e.g., "192.168.1" -> scan 192.168.1.1-254)"
         if subnet.split('.').count() != 3 {
             return Err(CliError::Network {
-                message: "Invalid subnet format. Use format like '192.168.1'".to_string(),
+                message: String::from("Invalid subnet format. Use format like '192.168.1'"),
                 interface: Some(subnet.to_string()),
-                suggestion: Some("Provide a valid subnet in the format 'xxx.xxx.xxx'".to_string()),
+                suggestion: Some(String::from(
+                    "Provide a valid subnet in the format 'xxx.xxx.xxx'",
+                )),
             }
             .into());
         }
@@ -112,11 +114,11 @@ impl NetworkScanner {
             }
             Err(_) => {
                 return Err(CliError::Network {
-                    message: "Subnet scan timed out".to_string(),
+                    message: String::from("Subnet scan timed out"),
                     interface: Some(subnet.to_string()),
-                    suggestion: Some(
-                        "Try increasing the timeout or checking network connectivity".to_string(),
-                    ),
+                    suggestion: Some(String::from(
+                        "Try increasing the timeout or checking network connectivity",
+                    )),
                 }
                 .into());
             }
@@ -140,7 +142,7 @@ impl NetworkScanner {
                 name: format!("🎭 [SIM] Node-{address}"),
                 address,
                 port,
-                version: Some("1.0.0-sim".to_string()),
+                version: Some(String::from("1.0.0-sim")),
                 node_type: NodeType::ServiceNode,
                 response_time_ms: 10 + (u64::from(port) % 50), // Deterministic "response time"
             }));
@@ -225,7 +227,7 @@ impl NetworkScanner {
         )
         .await
         .map_err(|_| CliError::Network {
-            message: "HTTP probe timed out".to_string(),
+            message: String::from("HTTP probe timed out"),
             interface: Some(url.to_string()),
             suggestion: None,
         })?

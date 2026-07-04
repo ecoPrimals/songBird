@@ -219,7 +219,7 @@ impl SecurityRpcClient {
 
         response
             .result
-            .ok_or_else(|| Error::SecurityProviderRpc("No result in response".to_string()))
+            .ok_or_else(|| Error::SecurityProviderRpc(String::from("No result in response")))
     }
 
     /// TRUE PRIMAL: Route through Neural API for semantic capability resolution
@@ -241,7 +241,7 @@ impl SecurityRpcClient {
 
         let request = JsonRpcRequest {
             jsonrpc: JSONRPC_VERSION.into(),
-            method: "capability.call".to_string(),
+            method: String::from("capability.call"),
             params: json!({
                 "capability": cap,
                 "operation": op,
@@ -291,7 +291,7 @@ impl SecurityRpcClient {
             Error::SecurityProviderRpc(format!("Failed to parse Neural API response: {e}"))
         })?;
 
-        let id_str = response.id.map_or_else(|| "null".to_string(), |id| id.to_string());
+        let id_str = response.id.map_or_else(|| String::from("null"), |id| id.to_string());
         trace!("← Neural API result for {} (id={})", capability, id_str);
 
         // Check for errors
@@ -309,7 +309,7 @@ impl SecurityRpcClient {
         debug!("✅ Neural API call successful: {}", capability);
         response.result.ok_or_else(|| {
             error!("❌ Missing result in Neural API response for {}", capability);
-            Error::SecurityProviderRpc("Missing result in response".to_string())
+            Error::SecurityProviderRpc(String::from("Missing result in response"))
         })
     }
 }

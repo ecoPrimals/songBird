@@ -125,14 +125,14 @@ mod tests {
     async fn sample_bridge_state() -> BridgeState {
         let http_client = IpcHttpClient::new().await.expect("IPC HTTP client for tests");
         let config = Arc::new(BridgeConfig {
-            host: "127.0.0.1".to_string(),
+            host: String::from("127.0.0.1"),
             port: 9000,
-            service_name: "Test Compute".to_string(),
-            service_type: "compute".to_string(),
-            node_id: "test-node-handlers".to_string(),
-            tower_id: "tower-test".to_string(),
+            service_name: String::from("Test Compute"),
+            service_type: String::from("compute"),
+            node_id: String::from("test-node-handlers"),
+            tower_id: String::from("tower-test"),
             songbird_endpoint: None,
-            capabilities: vec!["compute".to_string(), "cpu".to_string()],
+            capabilities: vec![String::from("compute"), String::from("cpu")],
             backend_url: None,
         });
         let service_info = Arc::new(ServiceInfo {
@@ -141,7 +141,7 @@ mod tests {
             gpu_count: 0,
             gpu_model: None,
             storage_gb: Some(100),
-            platform: "linux-x86_64".to_string(),
+            platform: String::from("linux-x86_64"),
         });
         BridgeState {
             config,
@@ -236,12 +236,12 @@ mod tests {
     async fn proxy_path_when_backend_configured_returns_bad_gateway_or_error() {
         let http_client = IpcHttpClient::new().await.expect("IPC HTTP client");
         let config = Arc::new(BridgeConfig {
-            host: "127.0.0.1".to_string(),
+            host: String::from("127.0.0.1"),
             port: 9000,
-            service_name: "Test".to_string(),
-            service_type: "compute".to_string(),
-            node_id: "n".to_string(),
-            tower_id: "t".to_string(),
+            service_name: String::from("Test"),
+            service_type: String::from("compute"),
+            node_id: String::from("n"),
+            tower_id: String::from("t"),
             songbird_endpoint: None,
             capabilities: vec!["compute".into()],
             backend_url: Some("http://127.0.0.1:1".into()),

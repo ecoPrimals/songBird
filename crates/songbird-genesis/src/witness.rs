@@ -170,9 +170,9 @@ impl WitnessVerifier {
 
         // Verify trust level is sufficient for genesis
         if witness.trust_level() < TrustLevel::Medium {
-            return Err(GenesisError::UnauthorizedWitness(
-                "Trust level too low for genesis ceremony".to_string(),
-            ));
+            return Err(GenesisError::UnauthorizedWitness(String::from(
+                "Trust level too low for genesis ceremony",
+            )));
         }
 
         Ok(())
@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn test_witness_creation() {
         let witness = GenesisWitness::new(
-            "test-device".to_string(),
+            String::from("test-device"),
             vec![1, 2, 3],
             PhysicalChannelType::HardwareKey,
         );
@@ -207,15 +207,15 @@ mod tests {
     #[test]
     fn test_trust_levels() {
         let hw_witness =
-            GenesisWitness::new("hw".to_string(), vec![], PhysicalChannelType::HardwareKey);
+            GenesisWitness::new(String::from("hw"), vec![], PhysicalChannelType::HardwareKey);
         assert_eq!(hw_witness.trust_level(), TrustLevel::Maximum);
 
         let qr_witness =
-            GenesisWitness::new("qr".to_string(), vec![], PhysicalChannelType::QrCodeWithOob);
+            GenesisWitness::new(String::from("qr"), vec![], PhysicalChannelType::QrCodeWithOob);
         assert_eq!(qr_witness.trust_level(), TrustLevel::High);
 
         let bt_witness =
-            GenesisWitness::new("bt".to_string(), vec![], PhysicalChannelType::Bluetooth);
+            GenesisWitness::new(String::from("bt"), vec![], PhysicalChannelType::Bluetooth);
         assert_eq!(bt_witness.trust_level(), TrustLevel::Medium);
     }
 
@@ -224,7 +224,7 @@ mod tests {
         let verifier = WitnessVerifier::new();
 
         let witness = GenesisWitness::new(
-            "trusted".to_string(),
+            String::from("trusted"),
             vec![1, 2, 3],
             PhysicalChannelType::HardwareKey,
         );
@@ -233,7 +233,7 @@ mod tests {
         assert!(!verifier.is_trusted(&witness).await);
 
         // Add to trusted set
-        verifier.add_trusted_witness("trusted".to_string(), vec![1, 2, 3]).await;
+        verifier.add_trusted_witness(String::from("trusted"), vec![1, 2, 3]).await;
 
         // Should now be trusted
         assert!(verifier.is_trusted(&witness).await);
@@ -243,7 +243,7 @@ mod tests {
     #[tokio::test]
     async fn verify_signature_empty_returns_false_without_error() {
         let witness =
-            GenesisWitness::new("dev".to_string(), vec![], PhysicalChannelType::HardwareKey);
+            GenesisWitness::new(String::from("dev"), vec![], PhysicalChannelType::HardwareKey);
         assert!(
             !witness
                 .verify_signature(b"payload")
@@ -257,7 +257,7 @@ mod tests {
     async fn verify_authority_rejects_untrusted_witness() {
         let verifier = WitnessVerifier::new();
         let witness =
-            GenesisWitness::new("unknown".to_string(), vec![1], PhysicalChannelType::HardwareKey);
+            GenesisWitness::new(String::from("unknown"), vec![1], PhysicalChannelType::HardwareKey);
         let err = verifier.verify_authority(&witness).await.expect_err("untrusted witness");
         match err {
             GenesisError::UnauthorizedWitness(msg) => {
@@ -270,7 +270,7 @@ mod tests {
     #[test]
     fn genesis_witness_serde_roundtrip() {
         let w =
-            GenesisWitness::new("d1".to_string(), vec![9, 8], PhysicalChannelType::QrCodeWithOob);
+            GenesisWitness::new(String::from("d1"), vec![9, 8], PhysicalChannelType::QrCodeWithOob);
         let json = serde_json::to_string(&w).expect("serialize witness");
         let back: GenesisWitness = serde_json::from_str(&json).expect("deserialize witness");
         assert_eq!(back.device_id, "d1");
@@ -282,7 +282,7 @@ mod tests {
     async fn witness_verifier_default_matches_new_empty() {
         let a = WitnessVerifier::new();
         let b = WitnessVerifier::default();
-        let w = GenesisWitness::new("x".to_string(), vec![], PhysicalChannelType::HardwareKey);
+        let w = GenesisWitness::new(String::from("x"), vec![], PhysicalChannelType::HardwareKey);
         assert!(!a.is_trusted(&w).await, "new() should start with no trusted witnesses");
         assert!(!b.is_trusted(&w).await, "default() should start with no trusted witnesses");
     }
@@ -290,9 +290,9 @@ mod tests {
     #[tokio::test]
     async fn add_trusted_witness_second_call_overwrites_entry() {
         let verifier = WitnessVerifier::new();
-        verifier.add_trusted_witness("dev".to_string(), vec![1]).await;
-        verifier.add_trusted_witness("dev".to_string(), vec![2, 2]).await;
-        let w = GenesisWitness::new("dev".to_string(), vec![1], PhysicalChannelType::HardwareKey);
+        verifier.add_trusted_witness(String::from("dev"), vec![1]).await;
+        verifier.add_trusted_witness(String::from("dev"), vec![2, 2]).await;
+        let w = GenesisWitness::new(String::from("dev"), vec![1], PhysicalChannelType::HardwareKey);
         assert!(
             verifier.is_trusted(&w).await,
             "re-adding same device_id should keep witness in trusted set"
@@ -303,8 +303,8 @@ mod tests {
     async fn verify_authority_accepts_minimum_trusted_medium_channel() {
         let verifier = WitnessVerifier::new();
         let witness =
-            GenesisWitness::new("edge".to_string(), vec![], PhysicalChannelType::Bluetooth);
-        verifier.add_trusted_witness("edge".to_string(), vec![]).await;
+            GenesisWitness::new(String::from("edge"), vec![], PhysicalChannelType::Bluetooth);
+        verifier.add_trusted_witness(String::from("edge"), vec![]).await;
         assert_eq!(witness.trust_level(), TrustLevel::Medium);
         verifier.verify_authority(&witness).await.expect("Medium should satisfy genesis gate");
     }
@@ -312,8 +312,9 @@ mod tests {
     #[tokio::test]
     async fn is_trusted_false_when_device_id_differs_by_case() {
         let verifier = WitnessVerifier::new();
-        verifier.add_trusted_witness("Case".to_string(), vec![1]).await;
-        let w = GenesisWitness::new("case".to_string(), vec![1], PhysicalChannelType::HardwareKey);
+        verifier.add_trusted_witness(String::from("Case"), vec![1]).await;
+        let w =
+            GenesisWitness::new(String::from("case"), vec![1], PhysicalChannelType::HardwareKey);
         assert!(!verifier.is_trusted(&w).await, "witness device_id matching must be exact");
     }
 
@@ -331,7 +332,7 @@ mod tests {
         w.metadata.insert("k".into(), "v".into());
         let json = serde_json::to_string(&w).expect("serialize");
         let back: GenesisWitness = serde_json::from_str(&json).expect("deserialize");
-        assert_eq!(back.metadata.get("k"), Some(&"v".to_string()));
+        assert_eq!(back.metadata.get("k"), Some(&String::from("v")));
     }
 
     #[tokio::test]

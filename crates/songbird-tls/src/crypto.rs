@@ -504,10 +504,10 @@ impl SecurityTlsCryptoClient {
         // Extract public_key and secret_key (base64 encoded)
         let public_key_b64 = result["public_key"]
             .as_str()
-            .ok_or_else(|| TlsError::CryptoError("Missing public_key in response".to_string()))?;
+            .ok_or_else(|| TlsError::CryptoError(String::from("Missing public_key in response")))?;
         let secret_key_b64 = result["secret_key"]
             .as_str()
-            .ok_or_else(|| TlsError::CryptoError("Missing secret_key in response".to_string()))?;
+            .ok_or_else(|| TlsError::CryptoError(String::from("Missing secret_key in response")))?;
 
         let public_key = general_purpose::STANDARD
             .decode(public_key_b64)
@@ -539,7 +539,7 @@ impl SecurityTlsCryptoClient {
         let result = self.call_capability("crypto", "derive_secret", params).await?;
 
         let shared_secret_b64 = result["shared_secret"].as_str().ok_or_else(|| {
-            TlsError::CryptoError("Missing shared_secret in response".to_string())
+            TlsError::CryptoError(String::from("Missing shared_secret in response"))
         })?;
 
         let shared_secret = general_purpose::STANDARD
@@ -576,13 +576,13 @@ impl SecurityTlsCryptoClient {
 
         let ciphertext_b64 = result["ciphertext"]
             .as_str()
-            .ok_or_else(|| TlsError::CryptoError("Missing ciphertext in response".to_string()))?;
+            .ok_or_else(|| TlsError::CryptoError(String::from("Missing ciphertext in response")))?;
         let nonce_b64 = result["nonce"]
             .as_str()
-            .ok_or_else(|| TlsError::CryptoError("Missing nonce in response".to_string()))?;
+            .ok_or_else(|| TlsError::CryptoError(String::from("Missing nonce in response")))?;
         let tag_b64 = result["tag"]
             .as_str()
-            .ok_or_else(|| TlsError::CryptoError("Missing tag in response".to_string()))?;
+            .ok_or_else(|| TlsError::CryptoError(String::from("Missing tag in response")))?;
 
         let ciphertext = general_purpose::STANDARD
             .decode(ciphertext_b64)
@@ -627,7 +627,7 @@ impl SecurityTlsCryptoClient {
 
         let plaintext_b64 = result["plaintext"]
             .as_str()
-            .ok_or_else(|| TlsError::CryptoError("Missing plaintext in response".to_string()))?;
+            .ok_or_else(|| TlsError::CryptoError(String::from("Missing plaintext in response")))?;
 
         let plaintext = general_purpose::STANDARD
             .decode(plaintext_b64)
@@ -654,7 +654,7 @@ impl SecurityTlsCryptoClient {
 
         let signature_b64 = result["signature"]
             .as_str()
-            .ok_or_else(|| TlsError::CryptoError("Missing signature in response".to_string()))?;
+            .ok_or_else(|| TlsError::CryptoError(String::from("Missing signature in response")))?;
 
         let signature = general_purpose::STANDARD
             .decode(signature_b64)
@@ -680,7 +680,7 @@ impl SecurityTlsCryptoClient {
 
         let mac_b64 = result["mac"]
             .as_str()
-            .ok_or_else(|| TlsError::CryptoError("Missing mac in response".to_string()))?;
+            .ok_or_else(|| TlsError::CryptoError(String::from("Missing mac in response")))?;
 
         let mac = general_purpose::STANDARD
             .decode(mac_b64)

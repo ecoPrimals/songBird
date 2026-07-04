@@ -434,7 +434,7 @@ impl Default for FeatureFlagConfig {
     fn default() -> Self {
         Self {
             default_user: ProviderConfig {
-                provider_type: "memory".to_string(),
+                provider_type: String::from("memory"),
                 endpoint: None,
                 api_key: None,
                 refresh_interval: Some(300),
@@ -530,7 +530,7 @@ mod tests {
     #[test]
     fn flag_type_variant_roundtrips_json() {
         let ft = FlagType::Variant {
-            variants: vec!["a".to_string(), "b".to_string()],
+            variants: vec![String::from("a"), String::from("b")],
         };
         let json = serde_json::to_string(&ft).unwrap();
         let back: FlagType = serde_json::from_str(&json).unwrap();
@@ -541,9 +541,9 @@ mod tests {
     fn feature_flag_roundtrips_json() {
         let now = Utc::now();
         let flag = FeatureFlag {
-            name: "rollout-x".to_string(),
-            description: "test".to_string(),
-            category: "net".to_string(),
+            name: String::from("rollout-x"),
+            description: String::from("test"),
+            category: String::from("net"),
             default_value: serde_json::json!(true),
             flag_type: FlagType::Boolean,
             rules: vec![],
@@ -551,7 +551,7 @@ mod tests {
             created_at: now,
             modified_at: now,
             enabled: true,
-            tags: vec!["t".to_string()],
+            tags: vec![String::from("t")],
         };
         let json = serde_json::to_string(&flag).unwrap();
         let back: FeatureFlag = serde_json::from_str(&json).unwrap();
@@ -563,7 +563,7 @@ mod tests {
     #[test]
     fn rule_operator_custom_roundtrips_json() {
         let op = RuleOperator::Custom {
-            function_name: "geo_match".to_string(),
+            function_name: String::from("geo_match"),
         };
         let json = serde_json::to_string(&op).unwrap();
         let back: RuleOperator = serde_json::from_str(&json).unwrap();
@@ -574,9 +574,9 @@ mod tests {
     fn flag_evaluation_roundtrips_json() {
         let ctx = EvaluationContext::default();
         let eval = FlagEvaluation {
-            feature_name: "f".to_string(),
+            feature_name: String::from("f"),
             value: serde_json::json!({"k": 1}),
-            matched_rule: Some("r1".to_string()),
+            matched_rule: Some(String::from("r1")),
             context: ctx,
             timestamp: Utc::now(),
             duration_ms: 12,
@@ -608,7 +608,7 @@ mod tests {
     #[test]
     fn flag_stats_roundtrips_json() {
         let mut dist = HashMap::new();
-        dist.insert("rule-a".to_string(), 5u64);
+        dist.insert(String::from("rule-a"), 5u64);
         let stats = FlagStats {
             total_evaluations: 100,
             true_evaluations: 60,
@@ -628,10 +628,10 @@ mod tests {
     #[test]
     fn evaluation_rule_with_condition_roundtrips_json() {
         let rule = EvaluationRule {
-            id: "r".to_string(),
-            description: "d".to_string(),
+            id: String::from("r"),
+            description: String::from("d"),
             conditions: vec![RuleCondition {
-                attribute: "env".to_string(),
+                attribute: String::from("env"),
                 operator: RuleOperator::Equals,
                 value: serde_json::json!("prod"),
                 negate: false,

@@ -112,7 +112,7 @@ impl KeySchedule {
         let client = self
             .crypto_client
             .as_ref()
-            .ok_or_else(|| TlsError::InternalError("Crypto client not set".to_string()))?;
+            .ok_or_else(|| TlsError::InternalError(String::from("Crypto client not set")))?;
 
         client.hmac_sha256(message, key).await
     }
@@ -194,9 +194,9 @@ impl KeySchedule {
             output.extend_from_slice(&t);
 
             if counter == u8::MAX {
-                return Err(TlsError::InternalError(
-                    "HKDF-Expand: too many iterations".to_string(),
-                ));
+                return Err(TlsError::InternalError(String::from(
+                    "HKDF-Expand: too many iterations",
+                )));
             }
             counter += 1;
         }
@@ -241,14 +241,14 @@ impl KeySchedule {
         let full_label = format!("tls13 {label}");
         hkdf_label.push(
             u8::try_from(full_label.len())
-                .map_err(|_| TlsError::InternalError("Label too long".to_string()))?,
+                .map_err(|_| TlsError::InternalError(String::from("Label too long")))?,
         );
         hkdf_label.extend_from_slice(full_label.as_bytes());
 
         // Context length + context
         hkdf_label.push(
             u8::try_from(context.len())
-                .map_err(|_| TlsError::InternalError("Context too long".to_string()))?,
+                .map_err(|_| TlsError::InternalError(String::from("Context too long")))?,
         );
         hkdf_label.extend_from_slice(context);
 
@@ -352,7 +352,7 @@ impl KeySchedule {
         let full_label = "tls13 iv";
         iv_label.push(
             u8::try_from(full_label.len())
-                .map_err(|_| TlsError::InternalError("IV label too long".to_string()))?,
+                .map_err(|_| TlsError::InternalError(String::from("IV label too long")))?,
         );
         iv_label.extend_from_slice(full_label.as_bytes());
         iv_label.push(0); // Empty context

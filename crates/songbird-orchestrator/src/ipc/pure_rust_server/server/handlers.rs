@@ -4,7 +4,8 @@
 //! JSON-RPC request routing and response construction for the pure Rust IPC server.
 
 use songbird_types::json_rpc_method::{
-    CapabilitiesMethod, DiscoveryMethod, HealthMethod, HttpMethod, IpcMethod, PrimalMethod,
+    CapabilitiesMethod, CoordinationMethod, DiscoveryMethod, GraphMethod, HealthMethod, HttpMethod,
+    IpcMethod, LegacyMethod, PrimalMethod,
 };
 use songbird_types::{JsonRpcMethod, normalize_json_rpc_method_name};
 
@@ -57,10 +58,18 @@ impl UnixSocketServer {
                 Ok(songbird_universal_ipc::introspection::health_liveness())
             }
             Ok(JsonRpcMethod::Health(HealthMethod::Readiness)) => {
-                Ok(songbird_universal_ipc::introspection::health_readiness())
+                let status = songbird_universal_ipc::introspection::SubsystemStatus {
+                    ipc: true,
+                    ..Default::default()
+                };
+                Ok(songbird_universal_ipc::introspection::health_readiness(&status))
             }
             Ok(JsonRpcMethod::Health(HealthMethod::Check)) => {
-                Ok(songbird_universal_ipc::introspection::health_check())
+                let status = songbird_universal_ipc::introspection::SubsystemStatus {
+                    ipc: true,
+                    ..Default::default()
+                };
+                Ok(songbird_universal_ipc::introspection::health_check(&status, None))
             }
             Ok(JsonRpcMethod::Ipc(IpcMethod::Register)) => {
                 self.handlers.register_service_json(request.params).await
@@ -112,41 +121,45 @@ impl UnixSocketServer {
                     .await
             }
             Ok(JsonRpcMethod::Mesh(m)) => self.handlers.mesh_dispatch(m, request.params).await,
+            Ok(JsonRpcMethod::Http(HttpMethod::Put)) => {
+                self.handlers
+                    .http_put(request.params.unwrap_or_else(|| serde_json::json!({})))
+                    .await
+            }
+            Ok(JsonRpcMethod::Http(HttpMethod::Delete)) => {
+                self.handlers
+                    .http_delete(request.params.unwrap_or_else(|| serde_json::json!({})))
+                    .await
+            }
+            Ok(JsonRpcMethod::Legacy(LegacyMethod::DiscoverByFamily)) => {
+                self.handlers.discover_by_family_json(request.params).await
+            }
+            Ok(JsonRpcMethod::Legacy(LegacyMethod::CreateGeneticTunnel)) => {
+                self.handlers.create_genetic_tunnel_json(request.params).await
+            }
+            Ok(JsonRpcMethod::Legacy(LegacyMethod::AnnounceCapabilities)) => {
+                self.handlers.announce_capabilities_json(request.params).await
+            }
+            Ok(JsonRpcMethod::Legacy(LegacyMethod::DiscoverByCapability)) => {
+                self.handlers.discover_by_capability_json(request.params).await
+            }
+            Ok(JsonRpcMethod::Legacy(LegacyMethod::GetServiceHealth)) => {
+                self.handlers.get_service_health_json(request.params).await
+            }
+            Ok(JsonRpcMethod::Graph(GraphMethod::Validate)) => {
+                self.handlers.validate_graph_json(request.params).await
+            }
+            Ok(JsonRpcMethod::Graph(GraphMethod::CheckAvailability)) => {
+                self.handlers.check_availability_json(request.params).await
+            }
+            Ok(JsonRpcMethod::Graph(GraphMethod::SuggestAlternatives)) => {
+                self.handlers.suggest_alternatives_json(request.params).await
+            }
+            Ok(JsonRpcMethod::Coordination(CoordinationMethod::ValidatePattern)) => {
+                self.handlers.validate_coordination_pattern_json(request.params).await
+            }
             Ok(_) => Err(JsonRpcError::method_not_found(normalized)),
-            Err(_) => match normalized {
-                "discover_by_family" => self.handlers.discover_by_family_json(request.params).await,
-                "create_genetic_tunnel" => {
-                    self.handlers.create_genetic_tunnel_json(request.params).await
-                }
-                "announce_capabilities" => {
-                    self.handlers.announce_capabilities_json(request.params).await
-                }
-                "discover_by_capability" => {
-                    self.handlers.discover_by_capability_json(request.params).await
-                }
-                "get_service_health" => self.handlers.get_service_health_json(request.params).await,
-                "graph.validate" => self.handlers.validate_graph_json(request.params).await,
-                "graph.check_availability" => {
-                    self.handlers.check_availability_json(request.params).await
-                }
-                "graph.suggest_alternatives" => {
-                    self.handlers.suggest_alternatives_json(request.params).await
-                }
-                "coordination.validate_pattern" => {
-                    self.handlers.validate_coordination_pattern_json(request.params).await
-                }
-                "http.put" => {
-                    self.handlers
-                        .http_put(request.params.unwrap_or_else(|| serde_json::json!({})))
-                        .await
-                }
-                "http.delete" => {
-                    self.handlers
-                        .http_delete(request.params.unwrap_or_else(|| serde_json::json!({})))
-                        .await
-                }
-                _ => Err(JsonRpcError::method_not_found(&request.method)),
-            },
+            Err(e) => Err(JsonRpcError::method_not_found(e.into_message())),
         };
 
         match result {

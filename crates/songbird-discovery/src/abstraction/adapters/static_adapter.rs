@@ -95,7 +95,7 @@ impl ProviderFactory for StaticProviderFactory {
             }
         ]);
 
-        parameters.insert("services".to_string(), example_services);
+        parameters.insert(String::from("services"), example_services);
 
         ProviderConfig {
             id,
@@ -121,7 +121,7 @@ impl StaticProviderAdapter {
         let metadata = ProviderMetadata {
             id: id.clone(),
             name: format!("Static Provider ({id})"),
-            version: "1.0.0".to_string(),
+            version: String::from("1.0.0"),
             capabilities: vec![
                 DiscoveryCapability::ServiceRegistration,
                 DiscoveryCapability::ServiceUnregistration,
@@ -133,10 +133,13 @@ impl StaticProviderAdapter {
             ],
             metadata: {
                 let mut meta = HashMap::new();
-                meta.insert("type".to_string(), "static".to_string());
-                meta.insert("protocol".to_string(), "memory".to_string());
-                meta.insert("vendor".to_string(), "songbird".to_string());
-                meta.insert("persistence".to_string(), "memory".to_string());
+                meta.insert(String::from("type"), String::from("static"));
+                meta.insert(String::from("protocol"), String::from("memory"));
+                meta.insert(
+                    String::from("vendor"),
+                    String::from(songbird_types::primal_names::SELF_NAME),
+                );
+                meta.insert(String::from("persistence"), String::from("memory"));
                 meta
             },
             healthy: true,
@@ -295,7 +298,7 @@ impl DiscoveryProvider for StaticProviderAdapter {
             preferred_instances,
             weights,
             health_scores,
-            locality_preferences: vec!["local".to_string()], // Static is always local
+            locality_preferences: vec![String::from("local")], // Static is always local
         })
     }
 
@@ -316,7 +319,7 @@ mod tests {
     #[tokio::test]
     async fn test_static_factory_creation() {
         let factory = StaticProviderFactory;
-        let config = factory.default_config("test".to_string(), "Test".to_string());
+        let config = factory.default_config(String::from("test"), String::from("Test"));
 
         assert!(factory.validate_config(&config).is_ok());
 
@@ -328,7 +331,7 @@ mod tests {
     async fn test_static_provider_operations() {
         let initial_services = vec![];
         let adapter =
-            StaticProviderAdapter::new_native("test-static".to_string(), initial_services);
+            StaticProviderAdapter::new_native(String::from("test-static"), initial_services);
 
         assert_eq!(adapter.metadata().id, "test-static");
         assert!(
@@ -344,7 +347,7 @@ mod tests {
         ServiceInfo {
             service_id: id.to_string(),
             name: name.to_string(),
-            version: "1.0.0".to_string(),
+            version: String::from("1.0.0"),
             service_type: service_type.to_string(),
             description: None,
             endpoints: vec![],
@@ -356,14 +359,14 @@ mod tests {
             created_at: Utc::now(),
             updated_at: Utc::now(),
             instance_id: format!("{id}-instance"),
-            host: "localhost".to_string(),
+            host: String::from("localhost"),
             port,
         }
     }
 
     #[tokio::test]
     async fn test_register_unregister_and_exists_lifecycle() {
-        let adapter = StaticProviderAdapter::new_native("lifecycle".to_string(), vec![]);
+        let adapter = StaticProviderAdapter::new_native(String::from("lifecycle"), vec![]);
         let service = sample_service("svc-1", "API", "api", 8080);
 
         adapter.register(service.clone()).await.unwrap();
@@ -378,7 +381,7 @@ mod tests {
         use crate::traits::ServiceQuery;
 
         let adapter = StaticProviderAdapter::new_native(
-            "filters".to_string(),
+            String::from("filters"),
             vec![
                 sample_service("api-1", "User API", "api", 8080),
                 sample_service("db-1", "Database", "storage", 5432),
@@ -386,13 +389,13 @@ mod tests {
         );
 
         let mut by_name = ServiceQuery::new();
-        by_name.name = Some("User API".to_string());
+        by_name.name = Some(String::from("User API"));
         let name_matches = adapter.discover(by_name).await.unwrap();
         assert_eq!(name_matches.len(), 1);
         assert_eq!(name_matches[0].service_id, "api-1");
 
         let mut by_type = ServiceQuery::new();
-        by_type.service_type = Some("storage".to_string());
+        by_type.service_type = Some(String::from("storage"));
         let type_matches = adapter.discover(by_type).await.unwrap();
         assert_eq!(type_matches.len(), 1);
         assert_eq!(type_matches[0].service_id, "db-1");
@@ -403,12 +406,12 @@ mod tests {
         use crate::traits::ServiceQuery;
 
         let adapter = StaticProviderAdapter::new_native(
-            "empty".to_string(),
+            String::from("empty"),
             vec![sample_service("svc-1", "API", "api", 8080)],
         );
 
         let mut query = ServiceQuery::new();
-        query.name = Some("Nonexistent".to_string());
+        query.name = Some(String::from("Nonexistent"));
         assert!(adapter.discover(query).await.unwrap().is_empty());
     }
 
@@ -417,7 +420,7 @@ mod tests {
         use std::collections::HashMap;
 
         let adapter = StaticProviderAdapter::new_native(
-            "list".to_string(),
+            String::from("list"),
             vec![sample_service("svc-1", "API", "api", 8080)],
         );
 
@@ -425,13 +428,13 @@ mod tests {
         assert_eq!(all.len(), 1);
 
         let mut meta = HashMap::new();
-        meta.insert("env".to_string(), "test".to_string());
+        meta.insert(String::from("env"), String::from("test"));
         adapter.update_metadata("svc-1", meta).await.unwrap();
 
         let updated = adapter.list_all().await.unwrap();
         assert_eq!(
             updated[0].metadata.get("env"),
-            Some(&serde_json::Value::String("test".to_string()))
+            Some(&serde_json::Value::String(String::from("test")))
         );
     }
 
@@ -440,7 +443,7 @@ mod tests {
         use crate::traits::discovery::ServiceHealthStatus;
 
         let adapter = StaticProviderAdapter::new_native(
-            "health".to_string(),
+            String::from("health"),
             vec![sample_service("svc-1", "API", "api", 8080)],
         );
 
@@ -455,7 +458,7 @@ mod tests {
     #[tokio::test]
     async fn test_load_balancing_hints_for_service_name() {
         let adapter = StaticProviderAdapter::new_native(
-            "lb".to_string(),
+            String::from("lb"),
             vec![
                 sample_service("api-1", "User API", "api", 8080),
                 sample_service("api-2", "User API", "api", 8081),
@@ -469,10 +472,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_initialize_and_shutdown_lifecycle() {
-        let mut adapter = StaticProviderAdapter::new_native("lifecycle-ops".to_string(), vec![]);
+        let mut adapter = StaticProviderAdapter::new_native(String::from("lifecycle-ops"), vec![]);
         let config = ProviderConfig {
-            id: "lifecycle-ops".to_string(),
-            name: "Lifecycle".to_string(),
+            id: String::from("lifecycle-ops"),
+            name: String::from("Lifecycle"),
             parameters: HashMap::new(),
             environment: HashMap::new(),
             timeout_ms: Some(1000),
@@ -486,9 +489,10 @@ mod tests {
     #[tokio::test]
     async fn test_factory_creates_provider_with_configured_services() {
         let factory = StaticProviderFactory;
-        let mut config = factory.default_config("configured".to_string(), "Configured".to_string());
+        let mut config =
+            factory.default_config(String::from("configured"), String::from("Configured"));
         config.parameters.insert(
-            "services".to_string(),
+            String::from("services"),
             serde_json::json!([{
                 "service_id": "custom-svc",
                 "name": "Custom",

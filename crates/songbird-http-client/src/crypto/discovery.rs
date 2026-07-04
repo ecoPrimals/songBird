@@ -108,9 +108,9 @@ pub async fn discover_crypto_capability() -> Result<Arc<SecurityCryptoProvider>>
 
     // Neural API `capability.discover("crypto")` is not used here yet; discovery stays path-based.
 
-    Err(Error::SecurityProviderRpc(
-        "No crypto capability provider found. Set CRYPTO_CAPABILITY_SOCKET or ensure a security provider is running.".to_string()
-    ))
+    Err(Error::SecurityProviderRpc(String::from(
+        "No crypto capability provider found. Set CRYPTO_CAPABILITY_SOCKET or ensure a security provider is running.",
+    )))
 }
 
 /// Discover crypto capability with explicit socket path

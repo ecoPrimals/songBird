@@ -126,8 +126,9 @@ impl RedirectHandler {
             base_url.parse().map_err(|e| Error::InvalidUrl(format!("Invalid base URL: {e}")))?;
 
         let scheme = base.scheme_str().unwrap_or("https");
-        let host =
-            base.host().ok_or_else(|| Error::InvalidUrl("Missing host in base URL".to_string()))?;
+        let host = base
+            .host()
+            .ok_or_else(|| Error::InvalidUrl(String::from("Missing host in base URL")))?;
         let port = base.port_u16();
 
         // Build new URL
@@ -226,13 +227,13 @@ mod tests {
         // Absolute URL
         assert_eq!(
             RedirectHandler::extract_host("https://example.com/path", "https://base.com"),
-            Some("example.com".to_string())
+            Some(String::from("example.com"))
         );
 
         // Relative path (uses base)
         assert_eq!(
             RedirectHandler::extract_host("/path", "https://base.com"),
-            Some("base.com".to_string())
+            Some(String::from("base.com"))
         );
     }
 
@@ -241,7 +242,7 @@ mod tests {
         let handler = RedirectHandler::new(5);
 
         let mut headers = HashMap::new();
-        headers.insert("location".to_string(), "/new".to_string());
+        headers.insert(String::from("location"), String::from("/new"));
 
         let response = HttpResponse {
             status: 302,
@@ -334,7 +335,7 @@ mod tests {
     fn test_should_follow_same_origin_mode_still_requires_location() {
         let handler = RedirectHandler::new(3);
         let mut headers = HashMap::new();
-        headers.insert("location".to_string(), "/ok".to_string());
+        headers.insert(String::from("location"), String::from("/ok"));
         let response = HttpResponse {
             status: 302,
             headers,
@@ -358,7 +359,7 @@ mod tests {
     #[test]
     fn test_extract_host_unparseable_location_uses_base_host() {
         let host = RedirectHandler::extract_host("%%%", "https://fallback.example");
-        assert_eq!(host, Some("fallback.example".to_string()));
+        assert_eq!(host, Some(String::from("fallback.example")));
     }
 
     #[test]
@@ -372,7 +373,7 @@ mod tests {
     fn should_follow_respects_max_minus_one() {
         let handler = RedirectHandler::new(3);
         let mut headers = HashMap::new();
-        headers.insert("location".to_string(), "/n".to_string());
+        headers.insert(String::from("location"), String::from("/n"));
         let response = HttpResponse {
             status: 302,
             headers,

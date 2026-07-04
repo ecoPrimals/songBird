@@ -162,9 +162,9 @@ impl HttpClientConfig {
     #[must_use]
     pub fn standard() -> Self {
         let mut default_headers = HashMap::new();
-        default_headers.insert("Accept".to_string(), "*/*".to_string());
-        default_headers.insert("Accept-Language".to_string(), "en-US,en;q=0.9".to_string());
-        default_headers.insert("Connection".to_string(), "keep-alive".to_string());
+        default_headers.insert(String::from("Accept"), String::from("*/*"));
+        default_headers.insert(String::from("Accept-Language"), String::from("en-US,en;q=0.9"));
+        default_headers.insert(String::from("Connection"), String::from("keep-alive"));
 
         Self {
             user_agent: default_user_agent(),
@@ -182,18 +182,20 @@ impl HttpClientConfig {
     #[must_use]
     pub fn browser_like() -> Self {
         let mut config = Self::standard();
-        config.user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36".to_string();
+        config.user_agent = String::from(
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        );
         config.default_headers.insert(
-            "Accept".to_string(),
-            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8".to_string(),
+            String::from("Accept"),
+            String::from("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"),
         );
         config
             .default_headers
-            .insert("Accept-Encoding".to_string(), "gzip, deflate, br".to_string());
-        config.default_headers.insert("Sec-Fetch-Dest".to_string(), "document".to_string());
-        config.default_headers.insert("Sec-Fetch-Mode".to_string(), "navigate".to_string());
-        config.default_headers.insert("Sec-Fetch-Site".to_string(), "none".to_string());
-        config.default_headers.insert("Upgrade-Insecure-Requests".to_string(), "1".to_string());
+            .insert(String::from("Accept-Encoding"), String::from("gzip, deflate, br"));
+        config.default_headers.insert(String::from("Sec-Fetch-Dest"), String::from("document"));
+        config.default_headers.insert(String::from("Sec-Fetch-Mode"), String::from("navigate"));
+        config.default_headers.insert(String::from("Sec-Fetch-Site"), String::from("none"));
+        config.default_headers.insert(String::from("Upgrade-Insecure-Requests"), String::from("1"));
         config
     }
 
@@ -201,8 +203,10 @@ impl HttpClientConfig {
     #[must_use]
     pub fn api() -> Self {
         let mut config = Self::standard();
-        config.default_headers.insert("Accept".to_string(), "application/json".to_string());
-        config.default_headers.insert("Content-Type".to_string(), "application/json".to_string());
+        config.default_headers.insert(String::from("Accept"), String::from("application/json"));
+        config
+            .default_headers
+            .insert(String::from("Content-Type"), String::from("application/json"));
         config.redirect_mode = RedirectMode::Follow;
         config
     }
@@ -212,56 +216,59 @@ impl HttpClientConfig {
         vec![
             // GitHub API requires User-Agent
             HeaderRule::new(
-                DomainPattern::Suffix(".github.com".to_string()),
+                DomainPattern::Suffix(String::from(".github.com")),
                 "GitHub API bot protection",
             )
             .with_header("Accept", "application/vnd.github+json")
             .with_priority(90),
             // crates.io requires User-Agent
             HeaderRule::new(
-                DomainPattern::Exact("crates.io".to_string()),
+                DomainPattern::Exact(String::from("crates.io")),
                 "crates.io bot protection",
             )
             .with_header("Accept", "application/json")
             .with_priority(90),
             // npm requires User-Agent
-            HeaderRule::new(DomainPattern::Suffix(".npmjs.org".to_string()), "npm registry")
+            HeaderRule::new(DomainPattern::Suffix(String::from(".npmjs.org")), "npm registry")
                 .with_priority(90),
-            HeaderRule::new(DomainPattern::Exact("registry.npmjs.org".to_string()), "npm registry")
-                .with_priority(90),
+            HeaderRule::new(
+                DomainPattern::Exact(String::from("registry.npmjs.org")),
+                "npm registry",
+            )
+            .with_priority(90),
             // Wikipedia blocks bots without User-Agent
             HeaderRule::new(
-                DomainPattern::Suffix(".wikipedia.org".to_string()),
+                DomainPattern::Suffix(String::from(".wikipedia.org")),
                 "Wikipedia bot protection",
             )
             .with_header("Accept", "text/html")
             .with_priority(80),
             // Reddit bot protection
             HeaderRule::new(
-                DomainPattern::Suffix(".reddit.com".to_string()),
+                DomainPattern::Suffix(String::from(".reddit.com")),
                 "Reddit bot protection",
             )
             .with_priority(80),
             // Stack Overflow
             HeaderRule::new(
-                DomainPattern::Suffix(".stackoverflow.com".to_string()),
+                DomainPattern::Suffix(String::from(".stackoverflow.com")),
                 "Stack Overflow",
             )
             .with_priority(80),
             HeaderRule::new(
-                DomainPattern::Exact("stackoverflow.com".to_string()),
+                DomainPattern::Exact(String::from("stackoverflow.com")),
                 "Stack Overflow",
             )
             .with_priority(80),
             // AI/ML APIs
-            HeaderRule::new(DomainPattern::Suffix(".openai.com".to_string()), "OpenAI API")
+            HeaderRule::new(DomainPattern::Suffix(String::from(".openai.com")), "OpenAI API")
                 .with_header("Accept", "application/json")
                 .with_priority(70),
-            HeaderRule::new(DomainPattern::Suffix(".anthropic.com".to_string()), "Anthropic API")
+            HeaderRule::new(DomainPattern::Suffix(String::from(".anthropic.com")), "Anthropic API")
                 .with_header("Accept", "application/json")
                 .with_priority(70),
             HeaderRule::new(
-                DomainPattern::Suffix(".huggingface.co".to_string()),
+                DomainPattern::Suffix(String::from(".huggingface.co")),
                 "HuggingFace API",
             )
             .with_header("Accept", "application/json")
@@ -272,13 +279,13 @@ impl HttpClientConfig {
     /// Known bot-protected domains
     fn known_bot_protected() -> Vec<String> {
         vec![
-            "github.com".to_string(),
-            "api.github.com".to_string(),
-            "crates.io".to_string(),
-            "registry.npmjs.org".to_string(),
-            "wikipedia.org".to_string(),
-            "reddit.com".to_string(),
-            "stackoverflow.com".to_string(),
+            String::from("github.com"),
+            String::from("api.github.com"),
+            String::from("crates.io"),
+            String::from("registry.npmjs.org"),
+            String::from("wikipedia.org"),
+            String::from("reddit.com"),
+            String::from("stackoverflow.com"),
         ]
     }
 
@@ -316,7 +323,7 @@ impl HttpClientConfig {
         // 2. Add User-Agent if not already set
         if !caller_headers.contains_key("User-Agent") && !caller_headers.contains_key("user-agent")
         {
-            headers.insert("User-Agent".to_string(), self.user_agent.clone());
+            headers.insert(String::from("User-Agent"), self.user_agent.clone());
         }
 
         // 3. Apply matching domain rules (highest priority first)
@@ -399,7 +406,7 @@ mod tests {
 
     #[test]
     fn test_domain_pattern_exact() {
-        let pattern = DomainPattern::Exact("github.com".to_string());
+        let pattern = DomainPattern::Exact(String::from("github.com"));
         assert!(pattern.matches("github.com"));
         assert!(pattern.matches("GITHUB.COM"));
         assert!(!pattern.matches("api.github.com"));
@@ -408,7 +415,7 @@ mod tests {
 
     #[test]
     fn test_domain_pattern_suffix() {
-        let pattern = DomainPattern::Suffix(".github.com".to_string());
+        let pattern = DomainPattern::Suffix(String::from(".github.com"));
         assert!(pattern.matches("api.github.com"));
         assert!(pattern.matches("raw.github.com"));
         assert!(!pattern.matches("github.com")); // No leading dot
@@ -417,7 +424,7 @@ mod tests {
 
     #[test]
     fn test_domain_pattern_contains() {
-        let pattern = DomainPattern::Contains("api".to_string());
+        let pattern = DomainPattern::Contains(String::from("api"));
         assert!(pattern.matches("api.github.com"));
         assert!(pattern.matches("myapi.com"));
         assert!(pattern.matches("the-api-server.net"));
@@ -448,7 +455,7 @@ mod tests {
     fn test_caller_headers_override() {
         let config = HttpClientConfig::standard();
         let mut caller_headers = HashMap::new();
-        caller_headers.insert("User-Agent".to_string(), "CustomAgent/1.0".to_string());
+        caller_headers.insert(String::from("User-Agent"), String::from("CustomAgent/1.0"));
 
         let headers = config.headers_for_domain("example.com", &caller_headers);
 
@@ -501,10 +508,10 @@ mod tests {
     #[test]
     fn test_add_rule_sorts_by_priority_descending() {
         let mut config = HttpClientConfig::minimal();
-        let low = HeaderRule::new(DomainPattern::Exact("a.com".to_string()), "low")
+        let low = HeaderRule::new(DomainPattern::Exact(String::from("a.com")), "low")
             .with_header("X-P", "1")
             .with_priority(10);
-        let high = HeaderRule::new(DomainPattern::Exact("a.com".to_string()), "high")
+        let high = HeaderRule::new(DomainPattern::Exact(String::from("a.com")), "high")
             .with_header("X-P", "2")
             .with_priority(90);
         config.add_rule(low);
@@ -518,9 +525,9 @@ mod tests {
     fn test_headers_for_domain_lowercase_user_agent_override() {
         let config = HttpClientConfig::standard();
         let mut caller = HashMap::new();
-        caller.insert("user-agent".to_string(), "LowercaseAgent/1".to_string());
+        caller.insert(String::from("user-agent"), String::from("LowercaseAgent/1"));
         let headers = config.headers_for_domain("example.com", &caller);
-        assert_eq!(headers.get("user-agent"), Some(&"LowercaseAgent/1".to_string()));
+        assert_eq!(headers.get("user-agent"), Some(&String::from("LowercaseAgent/1")));
     }
 
     #[test]

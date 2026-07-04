@@ -53,7 +53,7 @@ impl CircuitExtender {
         let ipv4 = match next_relay.address {
             IpAddr::V4(v4) => v4,
             IpAddr::V6(_) => {
-                return Err(Error::Protocol("IPv6 not yet supported for EXTEND2".to_string()));
+                return Err(Error::Protocol(String::from("IPv6 not yet supported for EXTEND2")));
             }
         };
 
@@ -104,7 +104,7 @@ impl CircuitExtender {
             stream_id: 0,
             digest: [0u8; 4], // Populated by OnionCrypto before encryption
             length: u16::try_from(payload.len())
-                .map_err(|_| Error::Protocol("EXTEND2 payload too long".to_string()))?,
+                .map_err(|_| Error::Protocol(String::from("EXTEND2 payload too long")))?,
             data: payload,
         };
 
@@ -173,7 +173,7 @@ mod tests {
 
     fn ipv4_relay(ntor: Option<[u8; 32]>) -> RelayInfo {
         RelayInfo {
-            nickname: "hop".to_string(),
+            nickname: String::from("hop"),
             fingerprint: [0x5Au8; 20],
             address: IpAddr::from([192, 0, 2, 1]),
             or_port: 443,
@@ -187,9 +187,9 @@ mod tests {
 
     #[test]
     fn circuit_extender_new_does_not_panic() {
-        let ext = CircuitExtender::new(CryptoProvider::new(
-            "/tmp/songbird-tor-protocol-circuit-extender.sock".to_string(),
-        ));
+        let ext = CircuitExtender::new(CryptoProvider::new(String::from(
+            "/tmp/songbird-tor-protocol-circuit-extender.sock",
+        )));
         assert_eq!(std::mem::size_of_val(&ext), std::mem::size_of::<CircuitExtender>());
     }
 
@@ -201,9 +201,9 @@ mod tests {
 
     #[tokio::test]
     async fn create_extend2_errors_without_ntor_key_before_any_socket_io() {
-        let ext = CircuitExtender::new(CryptoProvider::new(
-            "/tmp/songbird-tor-protocol-circuit-extender.sock".to_string(),
-        ));
+        let ext = CircuitExtender::new(CryptoProvider::new(String::from(
+            "/tmp/songbird-tor-protocol-circuit-extender.sock",
+        )));
         let circuit = Circuit::new(0x8000_0001, CircuitPurpose::General);
         let relay = ipv4_relay(None);
         let err = ext.create_extend2(&circuit, &relay).await.expect_err("missing ntor key");
@@ -215,9 +215,9 @@ mod tests {
 
     #[tokio::test]
     async fn create_extend2_rejects_ipv6_even_with_ntor_key() {
-        let ext = CircuitExtender::new(CryptoProvider::new(
-            "/tmp/songbird-tor-protocol-circuit-extender.sock".to_string(),
-        ));
+        let ext = CircuitExtender::new(CryptoProvider::new(String::from(
+            "/tmp/songbird-tor-protocol-circuit-extender.sock",
+        )));
         let circuit = Circuit::new(1, CircuitPurpose::General);
         let relay = RelayInfo {
             address: IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)),
@@ -234,9 +234,9 @@ mod tests {
 
     #[tokio::test]
     async fn process_extended2_rejects_non_extended_relay_command() {
-        let ext = CircuitExtender::new(CryptoProvider::new(
-            "/tmp/songbird-tor-protocol-circuit-extender.sock".to_string(),
-        ));
+        let ext = CircuitExtender::new(CryptoProvider::new(String::from(
+            "/tmp/songbird-tor-protocol-circuit-extender.sock",
+        )));
         let circuit = Circuit::new(1, CircuitPurpose::General);
         let state = HandshakeState {
             client_ephemeral_secret: [1u8; 32],
@@ -261,9 +261,9 @@ mod tests {
 
     #[tokio::test]
     async fn process_extended2_rejects_short_handshake_blob() {
-        let ext = CircuitExtender::new(CryptoProvider::new(
-            "/tmp/songbird-tor-protocol-circuit-extender.sock".to_string(),
-        ));
+        let ext = CircuitExtender::new(CryptoProvider::new(String::from(
+            "/tmp/songbird-tor-protocol-circuit-extender.sock",
+        )));
         let circuit = Circuit::new(1, CircuitPurpose::General);
         let state = HandshakeState {
             client_ephemeral_secret: [1u8; 32],

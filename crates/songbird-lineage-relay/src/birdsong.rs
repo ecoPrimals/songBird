@@ -187,9 +187,9 @@ impl BirdSongBroadcaster {
         })
         .await
         .map_err(|_| {
-            crate::error::LineageRelayError::NoRelayAvailable(
-                "Timed out waiting for message".to_string(),
-            )
+            crate::error::LineageRelayError::NoRelayAvailable(String::from(
+                "Timed out waiting for message",
+            ))
         })?
     }
 }
@@ -241,7 +241,7 @@ mod tests {
 
     #[test]
     fn birdsong_type_custom_roundtrip() {
-        let t = BirdSongType::Custom("app.v1".to_string());
+        let t = BirdSongType::Custom(String::from("app.v1"));
         let v = to_value(&t).unwrap();
         let back: BirdSongType = from_value(v.clone()).unwrap();
         assert_eq!(v, to_value(&back).unwrap());

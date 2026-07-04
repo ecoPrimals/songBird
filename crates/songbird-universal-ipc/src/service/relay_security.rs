@@ -59,7 +59,7 @@ impl BtspSignatureVerifier for CryptoProviderVerifier {
             response
                 .get("valid")
                 .and_then(serde_json::Value::as_bool)
-                .ok_or_else(|| "Missing 'valid' field in verify response".to_string())
+                .ok_or_else(|| String::from("Missing 'valid' field in verify response"))
         })
     }
 }
@@ -89,11 +89,11 @@ async fn call_crypto_rpc(
         buf_reader.read_line(&mut response_line),
     )
     .await
-    .map_err(|_| "crypto provider verify timeout (5s)".to_string())?
+    .map_err(|_| String::from("crypto provider verify timeout (5s)"))?
     .map_err(|e| format!("crypto provider read: {e}"))?;
 
     if read_result == 0 {
-        return Err("crypto provider closed connection".to_string());
+        return Err(String::from("crypto provider closed connection"));
     }
 
     let parsed: serde_json::Value = serde_json::from_str(response_line.trim())
@@ -108,7 +108,7 @@ async fn call_crypto_rpc(
     parsed
         .get("result")
         .cloned()
-        .ok_or_else(|| "Missing 'result' in crypto provider response".to_string())
+        .ok_or_else(|| String::from("Missing 'result' in crypto provider response"))
 }
 
 /// Phase 3.5 signature verification for a relay request.
@@ -186,7 +186,7 @@ mod tests {
 
     #[tokio::test]
     async fn crypto_provider_verifier_fails_gracefully_on_missing_socket() {
-        let verifier = CryptoProviderVerifier::new("/run/nonexistent/security.sock".to_string());
+        let verifier = CryptoProviderVerifier::new(String::from("/run/nonexistent/security.sock"));
         let result = verifier.verify("test-node", b"msg", b"sig").await;
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("crypto provider connect"));
@@ -216,7 +216,7 @@ mod tests {
             _: &[u8],
         ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool, String>> + Send + '_>>
         {
-            Box::pin(async { Err("crypto provider offline".to_string()) })
+            Box::pin(async { Err(String::from("crypto provider offline")) })
         }
     }
 

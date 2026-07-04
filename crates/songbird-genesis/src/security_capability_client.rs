@@ -70,7 +70,7 @@ impl SecurityCapabilityClient {
         let request = SignRequest {
             node_id: node_id.to_string(),
             data: hex::encode(data),
-            signature_type: "genesis".to_string(),
+            signature_type: String::from("genesis"),
         };
 
         let url = format!("{}/v1/sign", self.base_url);
@@ -491,6 +491,10 @@ mod tests {
     }
 
     #[tokio::test]
+    #[expect(
+        clippy::await_holding_lock,
+        reason = "env test serialization requires lock held across await"
+    )]
     async fn new_uses_security_endpoint_env_when_set() {
         use songbird_process_env::ScopedEnv;
         let _lock = ENV_LOCK.lock().unwrap();
@@ -500,6 +504,10 @@ mod tests {
     }
 
     #[tokio::test]
+    #[expect(
+        clippy::await_holding_lock,
+        reason = "env test serialization requires lock held across await"
+    )]
     async fn new_prefers_security_endpoint_over_legacy_beardog() {
         use songbird_process_env::ScopedEnv;
         let _lock = ENV_LOCK.lock().unwrap();

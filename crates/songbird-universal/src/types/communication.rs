@@ -116,9 +116,9 @@ mod tests {
     fn security_context_roundtrip() {
         let ctx = TestContext::new("comm_sec");
         let s = SecurityContext {
-            user_id: Some("u".to_string()),
-            session_id: "sess".to_string(),
-            permissions: vec!["read".to_string()],
+            user_id: Some(String::from("u")),
+            session_id: String::from("sess"),
+            permissions: vec![String::from("read")],
             security_level: SecurityLevel::High,
         };
         let j = serde_json::to_string(&s).unwrap();
@@ -130,12 +130,12 @@ mod tests {
     #[test]
     fn universal_request_roundtrip() {
         let mut params = HashMap::new();
-        params.insert("k".to_string(), serde_json::json!(1));
+        params.insert(String::from("k"), serde_json::json!(1));
         let r = UniversalRequest {
-            request_id: "r1".to_string(),
-            source: "a".to_string(),
-            target: "b".to_string(),
-            action: "act".to_string(),
+            request_id: String::from("r1"),
+            source: String::from("a"),
+            target: String::from("b"),
+            action: String::from("act"),
             parameters: params,
             security_context: None,
         };
@@ -167,11 +167,11 @@ mod tests {
     #[test]
     fn universal_response_roundtrip() {
         let r = UniversalResponse {
-            request_id: "id".to_string(),
+            request_id: String::from("id"),
             status: ResponseStatus::Pending,
             data: Some(serde_json::json!({"x": 1})),
             error: None,
-            metadata: HashMap::from([("m".to_string(), "v".to_string())]),
+            metadata: HashMap::from([(String::from("m"), String::from("v"))]),
         };
         let j = serde_json::to_string(&r).unwrap();
         let back: UniversalResponse = serde_json::from_str(&j).unwrap();
@@ -182,9 +182,9 @@ mod tests {
     #[test]
     fn universal_event_roundtrip() {
         let e = UniversalEvent {
-            event_id: "e1".to_string(),
-            event_type: "t".to_string(),
-            source: "s".to_string(),
+            event_id: String::from("e1"),
+            event_type: String::from("t"),
+            source: String::from("s"),
             timestamp: chrono::Utc::now(),
             payload: serde_json::json!({}),
         };
@@ -196,9 +196,9 @@ mod tests {
     #[test]
     fn protocol_characteristics_roundtrip() {
         let p = ProtocolCharacteristics {
-            name: "http".to_string(),
-            version: "1.1".to_string(),
-            serialization_formats: vec!["json".to_string()],
+            name: String::from("http"),
+            version: String::from("1.1"),
+            serialization_formats: vec![String::from("json")],
             max_message_size: Some(1024),
             streaming_supported: false,
         };

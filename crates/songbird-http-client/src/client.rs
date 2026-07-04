@@ -254,9 +254,9 @@ impl SongbirdHttpClient {
 
         let scheme = parsed_uri
             .scheme_str()
-            .ok_or_else(|| Error::InvalidUrl("Missing scheme".to_string()))?;
+            .ok_or_else(|| Error::InvalidUrl(String::from("Missing scheme")))?;
         let host =
-            parsed_uri.host().ok_or_else(|| Error::InvalidUrl("Missing host".to_string()))?;
+            parsed_uri.host().ok_or_else(|| Error::InvalidUrl(String::from("Missing host")))?;
         let port = parsed_uri.port_u16().unwrap_or(if scheme == "https" {
             443
         } else {
@@ -375,7 +375,7 @@ impl SongbirdHttpClient {
 
             // Extract Location header
             let location = response.headers.get("location").ok_or_else(|| {
-                Error::HttpProtocol("Redirect without Location header".to_string())
+                Error::HttpProtocol(String::from("Redirect without Location header"))
             })?;
 
             // Resolve relative URLs
@@ -477,7 +477,7 @@ impl SongbirdHttpClient {
     /// Returns an error if the request fails (see [`request`](Self::request) for details).
     pub async fn post(&self, url: &str, body: serde_json::Value) -> Result<HttpResponse> {
         let mut headers = HashMap::new();
-        headers.insert("Content-Type".to_string(), "application/json".to_string());
+        headers.insert(String::from("Content-Type"), String::from("application/json"));
         self.request("POST", url, headers, Some(body)).await
     }
 
@@ -488,7 +488,7 @@ impl SongbirdHttpClient {
     /// Returns an error if the request fails (see [`request`](Self::request) for details).
     pub async fn put(&self, url: &str, body: serde_json::Value) -> Result<HttpResponse> {
         let mut headers = HashMap::new();
-        headers.insert("Content-Type".to_string(), "application/json".to_string());
+        headers.insert(String::from("Content-Type"), String::from("application/json"));
         self.request("PUT", url, headers, Some(body)).await
     }
 
@@ -508,7 +508,7 @@ impl SongbirdHttpClient {
     /// Returns an error if the request fails (see [`request`](Self::request) for details).
     pub async fn patch(&self, url: &str, body: serde_json::Value) -> Result<HttpResponse> {
         let mut headers = HashMap::new();
-        headers.insert("Content-Type".to_string(), "application/json".to_string());
+        headers.insert(String::from("Content-Type"), String::from("application/json"));
         self.request("PATCH", url, headers, Some(body)).await
     }
 }
@@ -546,7 +546,7 @@ mod tests {
 
         let response = SongbirdHttpClient::parse_http_response(response_data).unwrap();
         assert_eq!(response.status, 200);
-        assert_eq!(response.headers.get("content-type"), Some(&"application/json".to_string()));
+        assert_eq!(response.headers.get("content-type"), Some(&String::from("application/json")));
     }
 
     #[test]
@@ -596,11 +596,11 @@ mod tests {
 
         // Absolute URL
         let host = RedirectHandler::extract_host("https://other.com/path", "https://example.com");
-        assert_eq!(host, Some("other.com".to_string()));
+        assert_eq!(host, Some(String::from("other.com")));
 
         // Relative URL should use base host
         let host = RedirectHandler::extract_host("/new-path", "https://example.com/old-path");
-        assert_eq!(host, Some("example.com".to_string()));
+        assert_eq!(host, Some(String::from("example.com")));
     }
 
     #[test]

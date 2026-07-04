@@ -236,7 +236,7 @@ impl TlsRecordLayer {
                     return Err(Error::TlsAlert(alert.to_string()));
                 }
                 error!("Unrecognised TLS alert: {:02x?}", &alert_data[..2]);
-                return Err(Error::TlsRecord("Unrecognised TLS alert".to_string()));
+                return Err(Error::TlsRecord(String::from("Unrecognised TLS alert")));
             }
         }
 
@@ -407,7 +407,7 @@ impl TlsRecordLayer {
                 }
                 Err(e) => {
                     error!("Malformed TLS alert ({} bytes): {e}", plaintext.len());
-                    return Err(Error::TlsAlert("Server sent malformed TLS alert".to_string()));
+                    return Err(Error::TlsAlert(String::from("Server sent malformed TLS alert")));
                 }
             }
         }

@@ -103,6 +103,8 @@ pub mod discovery_mode;
 /// Federation coordinator, node metadata, and multi-node configuration.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod federation;
+/// Federation configuration types and node info structures.
+pub mod federation_config;
 /// Bridge between the network stack and federation-aware coordination.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod integration;
@@ -132,7 +134,8 @@ pub mod zero_copy_registry;
 /// `security provider` Secure Tunnel Protocol configuration and provider traits.
 pub use btsp::{BtspConfig, BtspProvider, BtspProviderImpl, LocalBtspProvider};
 /// Federation coordinator, node metadata, and configuration for multi-node setups.
-pub use federation::{FederationConfig, FederationCoordinator, NodeInfo};
+pub use federation::FederationCoordinator;
+pub use federation_config::{FederationConfig, NodeInfo};
 /// Bridge between network stack and federation-aware coordination.
 pub use integration::NetworkFederationBridge;
 /// Network manager traits and configuration for binding and transport selection.

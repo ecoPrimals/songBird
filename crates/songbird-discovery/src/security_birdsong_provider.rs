@@ -166,13 +166,13 @@ impl SecurityBirdSongProvider {
     /// // Unix socket
     /// let provider = SecurityBirdSongProvider::new(
     ///     "/tmp/security.sock",
-    ///     Some("ecoPrimals-family-123".to_string())
+    ///     Some(String::from("ecoPrimals-family-123"))
     /// ).await.unwrap();
     ///
     /// // TCP socket (Android)
     /// let provider = SecurityBirdSongProvider::new(
     ///     "tcp:127.0.0.1:9900",
-    ///     Some("ecoPrimals-family-123".to_string())
+    ///     Some(String::from("ecoPrimals-family-123"))
     /// ).await.unwrap();
     /// # }
     /// ```
@@ -243,8 +243,10 @@ impl SecurityBirdSongProvider {
         P: Serialize,
         R: DeserializeOwned,
     {
-        let (host, port) =
-            self.tcp_endpoint.as_ref().ok_or_else(|| "TCP endpoint not configured".to_string())?;
+        let (host, port) = self
+            .tcp_endpoint
+            .as_ref()
+            .ok_or_else(|| String::from("TCP endpoint not configured"))?;
 
         trace!("TCP JSON-RPC call to {}:{} method: {}", host, port, method);
 
@@ -302,7 +304,7 @@ impl SecurityBirdSongProvider {
             return Err(format!("JSON-RPC error {}: {}", error.code, error.message));
         }
 
-        response.result.ok_or_else(|| "Missing result in response".to_string())
+        response.result.ok_or_else(|| String::from("Missing result in response"))
     }
 
     /// Async health check for security-provider availability
@@ -353,7 +355,7 @@ impl SecurityBirdSongProvider {
         } else if let Some(ref client) = self.client {
             client.call(method, params).await.map_err(|e| format!("{method} JSON-RPC failed: {e}"))
         } else {
-            Err("No security provider connection available".to_string())
+            Err(String::from("No security provider connection available"))
         }
     }
 
@@ -530,7 +532,7 @@ impl SecurityBirdSongProvider {
     /// Human-readable provider label (logging).
     #[must_use]
     pub fn provider_name(&self) -> String {
-        "Security provider".to_string()
+        String::from("Security provider")
     }
 
     /// Cached lineage family id, if known.

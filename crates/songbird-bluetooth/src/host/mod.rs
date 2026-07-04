@@ -45,7 +45,7 @@ pub struct HostConfig {
 impl Default for HostConfig {
     fn default() -> Self {
         Self {
-            device_name: "Songbird".to_string(),
+            device_name: String::from("Songbird"),
             scan_window_ms: 100,
             scan_interval_ms: 100,
             connection_timeout: Duration::from_secs(5),

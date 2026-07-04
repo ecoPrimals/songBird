@@ -19,6 +19,9 @@ use super::util::{rand_nonce, unix_epoch_millis_u64};
 impl HolePunchCoordinator {
     /// Runs the simultaneous-open punch flow toward a previously registered peer.
     ///
+    /// On LAN (peer has `local_addr` on same subnet), skips signaling and punches
+    /// the local address directly. On WAN, coordinates via signaling.
+    ///
     /// # Errors
     ///
     /// Returns when local/peer info is missing, signaling times out, or UDP operations fail.
@@ -27,7 +30,7 @@ impl HolePunchCoordinator {
 
         // Get our info
         let my_info = self.my_info.read().await.clone().ok_or_else(|| {
-            OnionRelayError::Other("Must discover public address first".to_string())
+            OnionRelayError::Other(String::from("Must discover public address first"))
         })?;
 
         // Get peer info
@@ -38,6 +41,37 @@ impl HolePunchCoordinator {
             .get(peer_node_id)
             .cloned()
             .ok_or_else(|| OnionRelayError::PeerNotFound(peer_node_id.to_string()))?;
+
+        // LAN fast path: if peer has a local_addr and it's a private IP, punch directly
+        // without signaling coordination (no NAT traversal needed on LAN)
+        if let Some(local_addr) = peer_info.local_addr {
+            let is_lan = match local_addr.ip() {
+                std::net::IpAddr::V4(v4) => {
+                    let o = v4.octets();
+                    o[0] == 10
+                        || (o[0] == 172 && (16..=31).contains(&o[1]))
+                        || (o[0] == 192 && o[1] == 168)
+                        || o[0] == 127
+                }
+                std::net::IpAddr::V6(_) => false,
+            };
+            if is_lan {
+                info!("🏠 LAN peer detected ({}), direct punch without signaling", local_addr);
+                let socket = Arc::new(
+                    UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR).await?,
+                );
+                let result = self.execute_punch(socket.clone(), local_addr).await;
+                if let Ok(latency) = result {
+                    info!("✅ LAN hole punch successful! Latency: {:?}", latency);
+                    return Ok(PunchResult::Direct {
+                        peer_addr: local_addr,
+                        local_socket: socket,
+                        latency,
+                    });
+                }
+                warn!("⚠️ LAN direct punch failed, trying WAN path");
+            }
+        }
 
         // Generate nonce for this attempt
         let nonce: [u8; 16] = rand_nonce();

@@ -280,12 +280,12 @@ impl ServiceDiscovery for UniversalServiceDiscoveryAdapter {
                 Ok(discovery_services)
             }
             Err(e) => Err(SongbirdError::Service {
-                service: "UniversalDiscovery".to_string(),
+                service: String::from("UniversalDiscovery"),
                 message: format!("Service discovery failed: {e}"),
                 suggested_alternatives: vec![],
                 recovery_actions: vec![
-                    "Check network connectivity".to_string(),
-                    "Verify service registry".to_string(),
+                    String::from("Check network connectivity"),
+                    String::from("Verify service registry"),
                 ],
             }),
         }

@@ -235,9 +235,9 @@ impl NfcDevice {
 
         #[cfg(not(any(target_os = "android", target_os = "ios", target_os = "linux")))]
         {
-            Err(NfcError::PlatformUnsupported(
-                "NFC backend not available for this target OS".to_string(),
-            ))
+            Err(NfcError::PlatformUnsupported(String::from(
+                "NFC backend not available for this target OS",
+            )))
         }
     }
 }

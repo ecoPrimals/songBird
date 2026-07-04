@@ -37,7 +37,7 @@ impl GenesisExchange {
                     }
                     Ok(key)
                 } else {
-                    Err(NfcError::Crypto("missing public_key".to_string()))
+                    Err(NfcError::Crypto(String::from("missing public_key")))
                 }
             }
             Err(e) => {
@@ -61,13 +61,17 @@ impl GenesisExchange {
             .await
         {
             Ok(result) => result.get("shared_secret").and_then(|v| v.as_str()).map_or_else(
-                || Err(NfcError::Crypto("missing shared_secret".to_string())),
+                || Err(NfcError::Crypto(String::from("missing shared_secret"))),
                 decode_hex_or_b64,
             ),
             Err(e) => {
                 #[cfg(test)]
                 {
                     tracing::warn!("Test mode: DH fallback to zero secret (provider: {e})");
+                    #[allow(
+                        clippy::needless_return,
+                        reason = "cfg(test) block requires explicit return"
+                    )]
                     return Ok(vec![0u8; 32]);
                 }
                 #[cfg(not(test))]
@@ -90,7 +94,7 @@ impl GenesisExchange {
             .await
         {
             Ok(result) => result.get("bytes").and_then(|v| v.as_str()).map_or_else(
-                || Err(NfcError::Crypto("missing bytes".to_string())),
+                || Err(NfcError::Crypto(String::from("missing bytes"))),
                 |n| {
                     let bytes = decode_hex_or_b64(n)?;
                     let mut nonce = [0u8; NONCE_SIZE];
@@ -128,7 +132,7 @@ impl GenesisExchange {
             .await
         {
             Ok(result) => result.get("ciphertext").and_then(|v| v.as_str()).map_or_else(
-                || Err(NfcError::Crypto("missing ciphertext".to_string())),
+                || Err(NfcError::Crypto(String::from("missing ciphertext"))),
                 decode_hex_or_b64,
             ),
             Err(e) => {
@@ -159,7 +163,7 @@ impl GenesisExchange {
             .await
         {
             Ok(result) => result.get("plaintext").and_then(|v| v.as_str()).map_or_else(
-                || Err(NfcError::Crypto("missing plaintext".to_string())),
+                || Err(NfcError::Crypto(String::from("missing plaintext"))),
                 decode_hex_or_b64,
             ),
             Err(e) => {
@@ -192,7 +196,7 @@ impl GenesisExchange {
                     }
                     Ok(signature)
                 } else {
-                    Err(NfcError::Crypto("missing signature".to_string()))
+                    Err(NfcError::Crypto(String::from("missing signature")))
                 }
             }
             Err(e) => {
@@ -222,7 +226,7 @@ impl GenesisExchange {
                 if valid {
                     Ok(())
                 } else {
-                    Err(NfcError::Crypto("Signature verification failed".to_string()))
+                    Err(NfcError::Crypto(String::from("Signature verification failed")))
                 }
             }
             Err(e) => {
@@ -270,7 +274,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_keypair_fallback_when_unavailable() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-security-provider.sock".to_string(),
+            String::from("/tmp/nonexistent-security-provider.sock"),
             RoutingMode::Direct,
         ));
         let key = ex.generate_x25519_keypair().await.unwrap();
@@ -280,7 +284,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_nonce_fallback_when_unavailable() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-security-provider.sock".to_string(),
+            String::from("/tmp/nonexistent-security-provider.sock"),
             RoutingMode::Direct,
         ));
         let nonce = ex.generate_nonce().await.unwrap();
@@ -290,7 +294,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_dh_fallback_in_test_mode() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-security-provider.sock".to_string(),
+            String::from("/tmp/nonexistent-security-provider.sock"),
             RoutingMode::Direct,
         ));
         let shared = ex.x25519_dh(&[0u8; 32]).await.unwrap();
@@ -300,7 +304,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_sign_fallback_when_unavailable() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-security-provider.sock".to_string(),
+            String::from("/tmp/nonexistent-security-provider.sock"),
             RoutingMode::Direct,
         ));
         let sig = ex.ed25519_sign(b"test data").await.unwrap();
@@ -310,7 +314,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_verify_fallback_when_unavailable() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-security-provider.sock".to_string(),
+            String::from("/tmp/nonexistent-security-provider.sock"),
             RoutingMode::Direct,
         ));
         ex.ed25519_verify(b"data", &[0u8; 64]).await.unwrap();
@@ -319,7 +323,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_encrypt_fallback_when_unavailable() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-security-provider.sock".to_string(),
+            String::from("/tmp/nonexistent-security-provider.sock"),
             RoutingMode::Direct,
         ));
         let ct = ex.encrypt(b"plaintext", &[0u8; 32], &[0u8; 24]).await.unwrap();
@@ -329,7 +333,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_decrypt_fallback_when_unavailable() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-security-provider.sock".to_string(),
+            String::from("/tmp/nonexistent-security-provider.sock"),
             RoutingMode::Direct,
         ));
         let pt = ex.decrypt(b"ciphertext", &[0u8; 32], &[0u8; 24]).await.unwrap();
@@ -339,7 +343,7 @@ mod tests {
     #[tokio::test]
     async fn test_crypto_destroy_fallback_when_unavailable() {
         let ex = GenesisExchange::for_test_with_provider(CryptoProvider::with_mode(
-            "/tmp/nonexistent-security-provider.sock".to_string(),
+            String::from("/tmp/nonexistent-security-provider.sock"),
             RoutingMode::Direct,
         ));
         ex.destroy_ephemeral_keys().await.unwrap();

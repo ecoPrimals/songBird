@@ -130,7 +130,10 @@ impl LineageRelayPrimalConnection {
     /// Returns error if the underlying connectivity handler fails.
     pub async fn send_request(&self, request: PrimalRequest) -> Result<PrimalResponse> {
         let params = match request {
-            PrimalRequest::Custom { params, .. } => params,
+            PrimalRequest::Custom {
+                params,
+                ..
+            } => params,
             other => {
                 return Ok(PrimalResponse::Error(format!(
                     "Invalid connectivity request: expected Custom variant, got {:?}",
@@ -150,6 +153,7 @@ impl LineageRelayPrimalConnection {
 }
 
 #[cfg(test)]
+#[allow(clippy::ip_constant)]
 mod tests {
     use super::*;
     use crate::birdsong::BirdSongBroadcaster;
@@ -163,7 +167,7 @@ mod tests {
         let lineage_provider = Arc::new(MockLineageProvider::new());
         let crypto = Arc::new(BirdSongCrypto::from(MockBirdSongCrypto::new(
             lineage_provider.clone(),
-            "node-1".to_string(),
+            String::from("node-1"),
         )));
         let relay_authority =
             Arc::new(RelayAuthority::from(MockRelayAuthority::new(lineage_provider)));
@@ -181,9 +185,7 @@ mod tests {
 
         let config = LineageRelayConfig::default();
         let coordinator = Arc::new(
-            LineageRelayCoordinator::new(config, broadcaster, relay_authority)
-                .await
-                .unwrap(),
+            LineageRelayCoordinator::new(config, broadcaster, relay_authority).await.unwrap(),
         );
 
         LineageRelayAdapter::new(coordinator)
@@ -192,10 +194,7 @@ mod tests {
     #[tokio::test]
     async fn test_relay_stats_request() {
         let adapter = make_adapter().await;
-        let response = adapter
-            .handle_request(ConnectivityRequest::GetRelayStats)
-            .await
-            .unwrap();
+        let response = adapter.handle_request(ConnectivityRequest::GetRelayStats).await.unwrap();
 
         match response {
             ConnectivityResponse::RelayStats {
@@ -307,7 +306,7 @@ mod tests {
                 assert_eq!(peer_id, "node-abc");
                 assert_eq!(peer_address, "10.0.0.1:8080");
             }
-            _ => panic!("Expected EstablishConnection"),
+            ConnectivityRequest::GetRelayStats => panic!("Expected EstablishConnection"),
         }
     }
 
@@ -319,7 +318,9 @@ mod tests {
         let json = serde_json::to_string(&resp).unwrap();
         let deserialized: ConnectivityResponse = serde_json::from_str(&json).unwrap();
         match deserialized {
-            ConnectivityResponse::ConnectionEstablished { connection_type } => {
+            ConnectivityResponse::ConnectionEstablished {
+                connection_type,
+            } => {
                 assert_eq!(connection_type, "direct");
             }
             _ => panic!("Expected ConnectionEstablished"),
@@ -331,6 +332,8 @@ mod tests {
         let resp = ConnectivityResponse::Error("something broke".into());
         let json = serde_json::to_string(&resp).unwrap();
         let deserialized: ConnectivityResponse = serde_json::from_str(&json).unwrap();
-        assert!(matches!(deserialized, ConnectivityResponse::Error(msg) if msg == "something broke"));
+        assert!(
+            matches!(deserialized, ConnectivityResponse::Error(msg) if msg == "something broke")
+        );
     }
 }

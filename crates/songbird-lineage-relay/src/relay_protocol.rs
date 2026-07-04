@@ -79,7 +79,7 @@ impl RelayProtocol {
     /// Returns error if message is malformed or unknown type.
     pub fn parse(bytes: &[u8]) -> Result<Self> {
         if bytes.is_empty() {
-            return Err(LineageRelayError::InvalidProtocol("Empty message".to_string()));
+            return Err(LineageRelayError::InvalidProtocol(String::from("Empty message")));
         }
 
         let msg_type = bytes[0];
@@ -107,9 +107,9 @@ impl RelayProtocol {
             0x10 => {
                 // DATA_PACKET - [session_id(16 bytes)][data]
                 if payload.len() < 16 {
-                    return Err(LineageRelayError::InvalidProtocol(
-                        "DATA_PACKET too short (need 16 bytes for session_id)".to_string(),
-                    ));
+                    return Err(LineageRelayError::InvalidProtocol(String::from(
+                        "DATA_PACKET too short (need 16 bytes for session_id)",
+                    )));
                 }
 
                 let session_id = Uuid::from_slice(&payload[0..16]).map_err(|e| {
@@ -126,9 +126,9 @@ impl RelayProtocol {
             0x20 => {
                 // REFRESH - [session_id(16 bytes)]
                 if payload.len() != 16 {
-                    return Err(LineageRelayError::InvalidProtocol(
-                        "REFRESH must have exactly 16 bytes for session_id".to_string(),
-                    ));
+                    return Err(LineageRelayError::InvalidProtocol(String::from(
+                        "REFRESH must have exactly 16 bytes for session_id",
+                    )));
                 }
 
                 let session_id = Uuid::from_slice(payload).map_err(|e| {
@@ -142,9 +142,9 @@ impl RelayProtocol {
             0x30 => {
                 // DEALLOCATE - [session_id(16 bytes)]
                 if payload.len() != 16 {
-                    return Err(LineageRelayError::InvalidProtocol(
-                        "DEALLOCATE must have exactly 16 bytes for session_id".to_string(),
-                    ));
+                    return Err(LineageRelayError::InvalidProtocol(String::from(
+                        "DEALLOCATE must have exactly 16 bytes for session_id",
+                    )));
                 }
 
                 let session_id = Uuid::from_slice(payload).map_err(|e| {
@@ -477,12 +477,12 @@ mod tests {
 
     #[test]
     fn test_allocation_response_error() {
-        let resp = AllocationResponse::error("Test error".to_string());
+        let resp = AllocationResponse::error(String::from("Test error"));
 
         assert!(!resp.success);
         assert_eq!(resp.session_id, None);
         assert_eq!(resp.relay_addr, None);
-        assert_eq!(resp.error, Some("Test error".to_string()));
+        assert_eq!(resp.error, Some(String::from("Test error")));
     }
 
     #[test]

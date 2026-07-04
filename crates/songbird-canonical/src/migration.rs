@@ -29,24 +29,25 @@ impl CanonicalMigrator {
     pub fn new() -> Self {
         let mut return_type_patterns = HashMap::new();
         let _ = return_type_patterns
-            .insert("SongbirdResult<T>>".to_string(), "SongbirdResult<T>".to_string());
+            .insert(String::from("SongbirdResult<T>>"), String::from("SongbirdResult<T>"));
         let _ = return_type_patterns
-            .insert("Result<T, SomeError>".to_string(), "SongbirdResult<T>".to_string());
+            .insert(String::from("Result<T, SomeError>"), String::from("SongbirdResult<T>"));
         let _ = return_type_patterns
-            .insert("SongbirdResult<T>".to_string(), "SongbirdResult<T>".to_string());
+            .insert(String::from("SongbirdResult<T>"), String::from("SongbirdResult<T>"));
 
         let mut error_patterns = HashMap::new();
         let _ = error_patterns
-            .insert("service_error!(".to_string(), "SongbirdError::service_error(".to_string());
-        let _ = error_patterns.insert("Ok(()".to_string(), "Ok(SongbirdResult::unit()".to_string());
+            .insert(String::from("service_error!("), String::from("SongbirdError::service_error("));
+        let _ =
+            error_patterns.insert(String::from("Ok(()"), String::from("Ok(SongbirdResult::unit()"));
 
         let mut config_field_patterns = HashMap::new();
         let _ = config_field_patterns
-            .insert("enable_connection_reuse".to_string(), "enable_async_batching".to_string());
-        let _ =
-            config_field_patterns.insert("max_batch_size".to_string(), "batch_size".to_string());
+            .insert(String::from("enable_connection_reuse"), String::from("enable_async_batching"));
         let _ = config_field_patterns
-            .insert("batch_timeout".to_string(), "batch_timeout_ms".to_string());
+            .insert(String::from("max_batch_size"), String::from("batch_size"));
+        let _ = config_field_patterns
+            .insert(String::from("batch_timeout"), String::from("batch_timeout_ms"));
 
         Self {
             return_type_patterns,

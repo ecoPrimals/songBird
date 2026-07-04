@@ -44,7 +44,7 @@ impl Capability {
         Some(Self {
             capability_type: capability_type.to_string(),
             name: s.to_string(),
-            version: "1.0.0".to_string(),
+            version: String::from("1.0.0"),
             parameters: HashMap::new(),
             qos_metrics: QoSMetrics::default(),
             available: true,

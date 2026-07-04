@@ -273,6 +273,10 @@ pub fn validate_onion_address(onion: &str) -> Result<VerifyingKey> {
 #[cfg(all(test, feature = "standalone"))]
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+    #![allow(
+        clippy::case_sensitive_file_extension_comparisons,
+        reason = "checking .onion suffix, not file paths"
+    )]
 
     use super::*;
     use ed25519_dalek::SigningKey;
@@ -384,6 +388,7 @@ mod tests {
 #[cfg(test)]
 mod security_provider_path_tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::case_sensitive_file_extension_comparisons)]
 
     use super::*;
     use crate::security_crypto::SecurityCryptoClient;

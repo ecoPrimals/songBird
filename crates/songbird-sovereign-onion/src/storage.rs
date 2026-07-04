@@ -281,9 +281,9 @@ mod tests {
 
     fn test_backend(storage: &OnionStorage) {
         let peer = PeerInfo {
-            onion_address: "test.onion".to_string(),
+            onion_address: String::from("test.onion"),
             last_seen: 1_234_567_890,
-            actual_addr: Some("192.168.1.100:9735".to_string()),
+            actual_addr: Some(String::from("192.168.1.100:9735")),
         };
 
         storage.store_peer(&peer).unwrap();
@@ -319,9 +319,9 @@ mod tests {
     #[test]
     fn peer_info_roundtrips_through_serde() {
         let p = PeerInfo {
-            onion_address: "peer.onion".to_string(),
+            onion_address: String::from("peer.onion"),
             last_seen: 100,
-            actual_addr: Some("127.0.0.1:1".to_string()),
+            actual_addr: Some(String::from("127.0.0.1:1")),
         };
         let json = serde_json::to_string(&p).expect("serialize");
         let q: PeerInfo = serde_json::from_str(&json).expect("deserialize");
@@ -383,12 +383,12 @@ mod tests {
     fn store_peer_overwrites_same_onion_address() {
         let storage = InMemoryOnionStorage::new();
         let a = PeerInfo {
-            onion_address: "dup.onion".to_string(),
+            onion_address: String::from("dup.onion"),
             last_seen: 1,
-            actual_addr: Some("10.0.0.1:1".to_string()),
+            actual_addr: Some(String::from("10.0.0.1:1")),
         };
         let b = PeerInfo {
-            onion_address: "dup.onion".to_string(),
+            onion_address: String::from("dup.onion"),
             last_seen: 2,
             actual_addr: None,
         };

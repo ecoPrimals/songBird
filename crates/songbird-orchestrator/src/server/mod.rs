@@ -101,23 +101,23 @@ impl ServerManager {
 
         // Check service registry health
         let service_registry_healthy = self.check_service_registry_health(orchestrator).await;
-        health_results.push(("Service Registry".to_string(), service_registry_healthy));
+        health_results.push((String::from("Service Registry"), service_registry_healthy));
 
         // Check gaming manager health
         let gaming_healthy = self.check_gaming_manager_health(orchestrator).await;
-        health_results.push(("Gaming Manager".to_string(), gaming_healthy));
+        health_results.push((String::from("Gaming Manager"), gaming_healthy));
 
         // Check federation manager health
         let federation_healthy = self.check_federation_manager_health(orchestrator).await;
-        health_results.push(("Federation Manager".to_string(), federation_healthy));
+        health_results.push((String::from("Federation Manager"), federation_healthy));
 
         // Check observability manager health
         let observability_healthy = self.check_observability_manager_health(orchestrator).await;
-        health_results.push(("Observability Manager".to_string(), observability_healthy));
+        health_results.push((String::from("Observability Manager"), observability_healthy));
 
         // Check security integration health
         let security_healthy = self.check_security_integration_health(orchestrator).await;
-        health_results.push(("Security Integration".to_string(), security_healthy));
+        health_results.push((String::from("Security Integration"), security_healthy));
 
         health_results
     }

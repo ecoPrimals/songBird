@@ -633,7 +633,7 @@ mod tests {
         let peers = client.query_peers(vec!["compute".into()]).await.unwrap();
         assert_eq!(peers.len(), 1);
         assert_eq!(peers[0].ephemeral_session_id, "peer-sess");
-        assert_eq!(peers[0].capabilities, vec!["compute".to_string()]);
+        assert_eq!(peers[0].capabilities, vec![String::from("compute")]);
         let _ = std::fs::remove_file(&path);
     }
 

@@ -684,7 +684,7 @@ mod tests {
         assert_eq!(
             te,
             TransportEndpoint::Uds {
-                path: "/run/membrane/beardog.sock".to_string()
+                path: String::from("/run/membrane/beardog.sock")
             }
         );
     }
@@ -696,7 +696,7 @@ mod tests {
         assert_eq!(
             te,
             TransportEndpoint::Uds {
-                path: "@biomeos_security".to_string()
+                path: String::from("@biomeos_security")
             }
         );
     }
@@ -708,7 +708,7 @@ mod tests {
         assert_eq!(
             te,
             TransportEndpoint::Tcp {
-                host: "127.0.0.1".to_string(),
+                host: String::from("127.0.0.1"),
                 port: 7700
             }
         );
@@ -721,7 +721,7 @@ mod tests {
         assert_eq!(
             te,
             TransportEndpoint::Tcp {
-                host: "127.0.0.1".to_string(),
+                host: String::from("127.0.0.1"),
                 port: 42
             }
         );

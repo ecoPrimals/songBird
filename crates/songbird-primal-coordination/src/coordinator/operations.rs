@@ -223,13 +223,13 @@ impl PrimalCoordinator {
                     capability: Arc::clone(capability),
                     endpoint: Arc::clone(&conn.endpoint),
                     healthy: false,
-                    version: "unknown".to_string(),
+                    version: String::from("unknown"),
                 },
                 Err(_) => PrimalHealthStatus {
                     capability: Arc::clone(capability),
                     endpoint: Arc::clone(&conn.endpoint),
                     healthy: false,
-                    version: "error".to_string(),
+                    version: String::from("error"),
                 },
             };
             statuses.push(status);

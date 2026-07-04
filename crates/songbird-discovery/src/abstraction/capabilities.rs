@@ -181,7 +181,7 @@ mod tests {
         let matcher = CapabilityMatcher::new()
             .require(DiscoveryCapability::ServiceRegistration)
             .prefer(DiscoveryCapability::HealthChecking)
-            .exclude(DiscoveryCapability::Custom("legacy".to_string()));
+            .exclude(DiscoveryCapability::Custom(String::from("legacy")));
 
         assert!(matcher.matches(&capabilities));
         assert_eq!(matcher.score(&capabilities), 110);
@@ -191,12 +191,12 @@ mod tests {
     fn test_capability_matcher_exclusion() {
         let capabilities = vec![
             DiscoveryCapability::ServiceRegistration,
-            DiscoveryCapability::Custom("legacy".to_string()),
+            DiscoveryCapability::Custom(String::from("legacy")),
         ];
 
         let matcher = CapabilityMatcher::new()
             .require(DiscoveryCapability::ServiceRegistration)
-            .exclude(DiscoveryCapability::Custom("legacy".to_string()));
+            .exclude(DiscoveryCapability::Custom(String::from("legacy")));
 
         assert!(!matcher.matches(&capabilities));
         assert_eq!(matcher.score(&capabilities), 0);

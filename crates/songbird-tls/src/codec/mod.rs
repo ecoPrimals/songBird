@@ -75,7 +75,7 @@ pub mod bytes {
         write_u8(
             buf,
             u8::try_from(data.len())
-                .map_err(|_| TlsError::InvalidParameter("Vec8 length overflow".to_string()))?,
+                .map_err(|_| TlsError::InvalidParameter(String::from("Vec8 length overflow")))?,
         );
         buf.extend_from_slice(data);
         Ok(())
@@ -96,7 +96,7 @@ pub mod bytes {
         write_u16(
             buf,
             u16::try_from(data.len())
-                .map_err(|_| TlsError::InvalidParameter("Vec16 length overflow".to_string()))?,
+                .map_err(|_| TlsError::InvalidParameter(String::from("Vec16 length overflow")))?,
         );
         buf.extend_from_slice(data);
         Ok(())
@@ -117,7 +117,7 @@ pub mod bytes {
         write_u24(
             buf,
             u32::try_from(data.len())
-                .map_err(|_| TlsError::InvalidParameter("Vec24 length overflow".to_string()))?,
+                .map_err(|_| TlsError::InvalidParameter(String::from("Vec24 length overflow")))?,
         );
         buf.extend_from_slice(data);
         Ok(())
@@ -130,7 +130,7 @@ pub mod bytes {
     /// Returns an error if the buffer is exhausted.
     pub fn read_u8(buf: &[u8], offset: &mut usize) -> Result<u8> {
         if *offset >= buf.len() {
-            return Err(TlsError::ProtocolError("Buffer underflow reading u8".to_string()));
+            return Err(TlsError::ProtocolError(String::from("Buffer underflow reading u8")));
         }
         let value = buf[*offset];
         *offset += 1;
@@ -144,7 +144,7 @@ pub mod bytes {
     /// Returns an error if the buffer is exhausted.
     pub fn read_u16(buf: &[u8], offset: &mut usize) -> Result<u16> {
         if *offset + 2 > buf.len() {
-            return Err(TlsError::ProtocolError("Buffer underflow reading u16".to_string()));
+            return Err(TlsError::ProtocolError(String::from("Buffer underflow reading u16")));
         }
         let bytes = [buf[*offset], buf[*offset + 1]];
         *offset += 2;
@@ -158,7 +158,7 @@ pub mod bytes {
     /// Returns an error if the buffer is exhausted.
     pub fn read_u24(buf: &[u8], offset: &mut usize) -> Result<u32> {
         if *offset + 3 > buf.len() {
-            return Err(TlsError::ProtocolError("Buffer underflow reading u24".to_string()));
+            return Err(TlsError::ProtocolError(String::from("Buffer underflow reading u24")));
         }
         let bytes = [0, buf[*offset], buf[*offset + 1], buf[*offset + 2]];
         *offset += 3;
@@ -172,7 +172,7 @@ pub mod bytes {
     /// Returns an error if the buffer is exhausted.
     pub fn read_u32(buf: &[u8], offset: &mut usize) -> Result<u32> {
         if *offset + 4 > buf.len() {
-            return Err(TlsError::ProtocolError("Buffer underflow reading u32".to_string()));
+            return Err(TlsError::ProtocolError(String::from("Buffer underflow reading u32")));
         }
         let bytes = [buf[*offset], buf[*offset + 1], buf[*offset + 2], buf[*offset + 3]];
         *offset += 4;
@@ -494,13 +494,13 @@ mod tests {
         let mut buf = Vec::new();
         write_u8(&mut buf, 0x01);
         write_u16(&mut buf, 0x0203);
-        write_u24(&mut buf, 0x040506);
+        write_u24(&mut buf, 0x04_0506);
         write_u32(&mut buf, 0x0708_090A);
 
         let mut off = 0;
         assert_eq!(read_u8(&buf, &mut off).unwrap(), 0x01);
         assert_eq!(read_u16(&buf, &mut off).unwrap(), 0x0203);
-        assert_eq!(read_u24(&buf, &mut off).unwrap(), 0x040506);
+        assert_eq!(read_u24(&buf, &mut off).unwrap(), 0x04_0506);
         assert_eq!(read_u32(&buf, &mut off).unwrap(), 0x0708_090A);
         assert_eq!(off, buf.len());
     }

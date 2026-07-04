@@ -412,6 +412,6 @@ async fn discover_public_address_racing_all_servers_fail() {
         "expected AllServersFailed, got {err:?}"
     );
     if let StunError::AllServersFailed(msg) = err {
-        assert!(msg.contains("2"), "error message should mention server count: {msg}");
+        assert!(msg.contains('2'), "error message should mention server count: {msg}");
     }
 }

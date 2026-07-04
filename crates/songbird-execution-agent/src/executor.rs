@@ -99,7 +99,7 @@ impl CommandExecutor {
     ) -> Result<(std::process::ExitStatus, Option<u32>, String, String), SongbirdError> {
         let mut child = command.spawn().map_err(|e| SongbirdError::Runtime {
             message: format!("Failed to spawn command: {e}"),
-            component: Some("command_executor".to_string()),
+            component: Some(String::from("command_executor")),
             debug_info: None,
         })?;
 
@@ -132,7 +132,7 @@ impl CommandExecutor {
 
         let status = child.wait().await.map_err(|e| SongbirdError::Runtime {
             message: format!("Failed to wait for command: {e}"),
-            component: Some("command_executor".to_string()),
+            component: Some(String::from("command_executor")),
             debug_info: None,
         })?;
 
@@ -241,7 +241,7 @@ impl CommandExecutor {
         // Spawn the command
         let child = command.spawn().map_err(|e| SongbirdError::Runtime {
             message: format!("Failed to spawn background command: {e}"),
-            component: Some("command_executor".to_string()),
+            component: Some(String::from("command_executor")),
             debug_info: None,
         })?;
 
@@ -267,9 +267,9 @@ impl CommandExecutor {
 
         if parts.is_empty() {
             return Err(SongbirdError::Validation {
-                message: "Empty command".to_string(),
-                field: Some("command".to_string()),
-                suggestion: Some("Provide a valid command to execute".to_string()),
+                message: String::from("Empty command"),
+                field: Some(String::from("command")),
+                suggestion: Some(String::from("Provide a valid command to execute")),
             });
         }
 

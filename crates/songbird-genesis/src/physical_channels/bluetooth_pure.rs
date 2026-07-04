@@ -9,7 +9,6 @@
 use super::PhysicalChannelProvider;
 use crate::error::{GenesisError, Result};
 use crate::types::{PhysicalChannelType, ProximityProof, TrustLevel};
-use chrono::Utc;
 use std::time::Duration;
 use tracing::{debug, info};
 
@@ -136,8 +135,12 @@ impl PureRustBluetoothChannel {
         debug!("Discovered {} services", services.len());
 
         // Demo credentials: Genesis service UUID / credential characteristic read not selected yet.
-        info!("✅ Genesis credentials retrieved (demo mode)");
-        Ok(b"pure_rust_genesis_credentials_v1".to_vec())
+        // SECURITY: Return error rather than fake credentials — real GATT read requires
+        // service UUID discovery + characteristic read from the witness device.
+        Err(GenesisError::PhysicalChannelError(String::from(
+            "BLE credential exchange not yet wired: GATT service discovery found services \
+             but genesis credential characteristic UUID is not configured",
+        )))
     }
 
     /// Disconnect from witness
@@ -156,29 +159,27 @@ impl PureRustBluetoothChannel {
 #[cfg(feature = "pure-bluetooth")]
 impl PhysicalChannelProvider for PureRustBluetoothChannel {
     async fn verify_proximity(&self) -> Result<ProximityProof> {
-        // BLE scanning verifies devices are in range
-        // RSSI can be used for distance estimation (implemented in scan)
-
-        info!("✅ Physical proximity verified via Pure Rust BLE");
-
-        Ok(ProximityProof {
-            channel_type: PhysicalChannelType::Bluetooth,
-            timestamp: Utc::now(),
-            proof_data: b"pure_rust_ble_proximity".to_vec(),
-            attestation: Some(b"songbird-bluetooth-v0.1.0".to_vec()),
-        })
+        // BLE scanning verifies devices are in range via RSSI measurement.
+        // Real implementation: scan, measure RSSI, require threshold for proximity attestation.
+        // Until RSSI thresholding is wired, return error rather than fabricated proof.
+        Err(GenesisError::PhysicalChannelError(String::from(
+            "BLE proximity verification not yet complete: RSSI threshold attestation pending",
+        )))
     }
 
     async fn secure_exchange(&self) -> Result<Vec<u8>> {
-        // Full implementation:
-        // 1. ✅ Scan for witness (done in verify_proximity)
-        // 2. ✅ Connect to witness
-        // 3. ✅ Read Genesis credentials via GATT
-        // 4. Credential signature verification is not performed on this path (security provider not wired).
-        // 5. ✅ Return credentials
-
-        info!("✅ Secure exchange complete via Pure Rust BLE");
-        Ok(b"pure_rust_genesis_credentials_v1".to_vec())
+        // Full implementation requires:
+        // 1. Scan for witness (done in verify_proximity)
+        // 2. Connect to witness
+        // 3. Read genesis credentials via GATT characteristic
+        // 4. Verify credential signature via security provider
+        // 5. Return verified credentials
+        //
+        // Currently steps 3-4 are not wired — fail honestly.
+        Err(GenesisError::PhysicalChannelError(String::from(
+            "BLE secure exchange not yet complete: credential GATT read + \
+             signature verification via security provider pending",
+        )))
     }
 
     fn trust_level(&self) -> TrustLevel {

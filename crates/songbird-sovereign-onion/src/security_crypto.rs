@@ -424,6 +424,7 @@ fn base64_decode(s: &str) -> Result<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+    #![allow(clippy::unused_async, reason = "test helpers match async interface signatures")]
 
     use super::*;
 

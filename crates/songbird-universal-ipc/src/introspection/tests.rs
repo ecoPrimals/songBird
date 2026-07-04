@@ -4,9 +4,10 @@
 #![allow(clippy::expect_used, reason = "test assertions")]
 
 use super::{
-    SONGBIRD_CAPABILITY_STRINGS, canonical_family_id, capabilities_list, discover_capabilities,
-    health, health_check, health_liveness, health_readiness, identity, identity_get,
-    normalize_method, primal_capabilities, primal_info, rpc_discover_standard, rpc_methods,
+    SONGBIRD_CAPABILITY_STRINGS, SubsystemStatus, canonical_family_id, capabilities_list,
+    discover_capabilities, health, health_check, health_liveness, health_readiness, identity,
+    identity_get, normalize_method, primal_capabilities, primal_info, rpc_discover_standard,
+    rpc_methods,
 };
 
 use std::collections::HashMap;
@@ -260,7 +261,12 @@ fn rpc_discover_standard_contains_capabilities_listing() {
 
 #[test]
 fn health_readiness_reports_ready_status() {
-    let v = health_readiness();
+    let status = SubsystemStatus {
+        ipc: true,
+        discovery: true,
+        ..Default::default()
+    };
+    let v = health_readiness(&status);
     assert_eq!(v["status"], "ready");
     assert!(v.get("subsystems").is_some());
     assert_eq!(v["subsystems"]["ipc"], "up");
@@ -268,7 +274,12 @@ fn health_readiness_reports_ready_status() {
 
 #[test]
 fn health_check_includes_primal_and_version() {
-    let v = health_check();
+    let status = SubsystemStatus {
+        ipc: true,
+        discovery: true,
+        ..Default::default()
+    };
+    let v = health_check(&status, None);
     assert_eq!(v["status"], "healthy");
     assert_eq!(v["primal"], "songbird");
     assert!(v.get("version").is_some());

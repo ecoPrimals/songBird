@@ -183,7 +183,7 @@ mod lib_tests {
             health_check_interval: std::time::Duration::from_secs(30),
             max_concurrent_requests: 100,
             auto_discovery: true,
-            discovery_endpoints: vec!["http://localhost:8080".to_string()],
+            discovery_endpoints: vec![String::from("http://localhost:8080")],
         };
 
         let adapter = create_universal_adapter_with_config(config);

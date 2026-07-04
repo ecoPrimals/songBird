@@ -357,21 +357,21 @@ mod tests {
             .with_body(serde_json::json!({"a": 1}))
             .with_client_info(ClientInfo {
                 ip: Some(addr),
-                user_agent: Some("ua".to_string()),
+                user_agent: Some(String::from("ua")),
                 client_id: None,
                 session_id: None,
                 request_count: None,
             })
             .with_auth_info(AuthInfo {
-                user_id: Some("u".to_string()),
-                roles: vec!["r".to_string()],
+                user_id: Some(String::from("u")),
+                roles: vec![String::from("r")],
                 permissions: vec![],
                 token_type: None,
                 expires_at: None,
                 scopes: vec![],
             });
-        assert_eq!(req.headers.get("X-Test"), Some(&"1".to_string()));
-        assert_eq!(req.query_params.get("q"), Some(&"x".to_string()));
+        assert_eq!(req.headers.get("X-Test"), Some(&String::from("1")));
+        assert_eq!(req.query_params.get("q"), Some(&String::from("x")));
         assert_eq!(req.body, Some(serde_json::json!({"a": 1})));
         assert!(req.client_info.is_some());
         assert!(req.auth_info.is_some());
@@ -394,7 +394,7 @@ mod tests {
             .with_header("H", "v")
             .with_body(serde_json::json!([]))
             .with_processing_time(Duration::from_millis(42));
-        assert_eq!(r.headers.get("H"), Some(&"v".to_string()));
+        assert_eq!(r.headers.get("H"), Some(&String::from("v")));
         assert_eq!(r.processing_time, Duration::from_millis(42));
     }
 
@@ -464,11 +464,11 @@ mod tests {
     #[test]
     fn service_endpoint_serde_roundtrip() {
         let ep = ServiceEndpoint {
-            path: "/x".to_string(),
-            method: "GET".to_string(),
+            path: String::from("/x"),
+            method: String::from("GET"),
             description: None,
             parameters: vec![EndpointParameter {
-                name: "id".to_string(),
+                name: String::from("id"),
                 param_type: ParameterType::String,
                 required: true,
                 description: None,

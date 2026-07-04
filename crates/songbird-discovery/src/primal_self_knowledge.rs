@@ -146,7 +146,7 @@ impl PrimalSelfKnowledge {
         }
 
         // Fall back to hostname
-        gethostname::gethostname().into_string().unwrap_or_else(|_| "unknown".to_string())
+        gethostname::gethostname().into_string().unwrap_or_else(|_| String::from("unknown"))
     }
 
     /// Introspect own capabilities through feature detection
@@ -162,26 +162,26 @@ impl PrimalSelfKnowledge {
     ) -> Vec<String> {
         let mut caps = vec![
             #[cfg(feature = "security")]
-            "security".to_string(),
+            String::from("security"),
             #[cfg(feature = "storage")]
-            "storage".to_string(),
+            String::from("storage"),
             #[cfg(feature = "compute")]
-            "compute".to_string(),
+            String::from("compute"),
             #[cfg(feature = "ai")]
-            "ai".to_string(),
+            String::from("ai"),
             #[cfg(feature = "discovery")]
-            "discovery".to_string(),
+            String::from("discovery"),
             #[cfg(feature = "orchestration")]
-            "orchestration".to_string(),
+            String::from("orchestration"),
         ];
 
         // Check environment hints
-        if env("ENABLE_SECURITY").is_ok() && !caps.contains(&"security".to_string()) {
-            caps.push("security".to_string());
+        if env("ENABLE_SECURITY").is_ok() && !caps.contains(&String::from("security")) {
+            caps.push(String::from("security"));
         }
 
-        if env("ENABLE_AI").is_ok() && !caps.contains(&"ai".to_string()) {
-            caps.push("ai".to_string());
+        if env("ENABLE_AI").is_ok() && !caps.contains(&String::from("ai")) {
+            caps.push(String::from("ai"));
         }
 
         // Detect capabilities from process name (self-knowledge)
@@ -193,29 +193,29 @@ impl PrimalSelfKnowledge {
                 || name_lower.contains("crypto")
                 || name_lower.contains("auth")
             {
-                caps.push("security".to_string());
+                caps.push(String::from("security"));
             } else if name_lower.contains("ai")
                 || name_lower.contains("inference")
                 || name_lower.contains("ml")
             {
-                caps.push("ai".to_string());
+                caps.push(String::from("ai"));
             } else if name_lower.contains("discovery")
                 || name_lower.contains("gateway")
                 || name_lower.contains("registry")
             {
-                caps.push("discovery".to_string());
+                caps.push(String::from("discovery"));
             } else if name_lower.contains("storage")
                 || name_lower.contains("data")
                 || name_lower.contains("persist")
             {
-                caps.push("storage".to_string());
+                caps.push(String::from("storage"));
             } else if name_lower.contains("compute")
                 || name_lower.contains("worker")
                 || name_lower.contains("exec")
             {
-                caps.push("compute".to_string());
+                caps.push(String::from("compute"));
             } else if name_lower.contains("orchestrat") || name_lower.contains("coordinat") {
-                caps.push("orchestration".to_string());
+                caps.push(String::from("orchestration"));
             }
         }
 
@@ -409,7 +409,7 @@ impl EnvironmentDiscovery {
             port,
             capabilities: vec![capability.to_string()],
             discovered_at: SystemTime::now(),
-            discovery_method: "environment".to_string(),
+            discovery_method: String::from("environment"),
         })
     }
 
@@ -468,7 +468,7 @@ impl DnsSrvDiscovery {
                     port: 8080,
                     capabilities: vec![capability.to_string()],
                     discovered_at: SystemTime::now(),
-                    discovery_method: "dns-srv".to_string(),
+                    discovery_method: String::from("dns-srv"),
                 });
             }
         }

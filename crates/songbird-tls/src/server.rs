@@ -101,7 +101,7 @@ impl TlsStream {
 
         if content_type != ContentType::Handshake as u8 {
             return Err(TlsError::UnexpectedMessage {
-                expected: "Handshake".to_string(),
+                expected: String::from("Handshake"),
                 got: format!("{content_type}"),
             });
         }
@@ -115,13 +115,13 @@ impl TlsStream {
 
         // Parse ClientHello from payload (skip handshake header: type(1) + length(3))
         if payload.len() < 4 {
-            return Err(TlsError::ProtocolError("Handshake message too short".to_string()));
+            return Err(TlsError::ProtocolError(String::from("Handshake message too short")));
         }
 
         let handshake_type = payload[0];
         if handshake_type != crate::HANDSHAKE_TYPE_CLIENT_HELLO {
             return Err(TlsError::UnexpectedMessage {
-                expected: "ClientHello".to_string(),
+                expected: String::from("ClientHello"),
                 got: format!("{handshake_type}"),
             });
         }
@@ -135,7 +135,9 @@ impl TlsStream {
         // Extract client's X25519 public key BEFORE moving client_hello
         let client_public_key = client_hello
             .get_key_share()
-            .ok_or_else(|| TlsError::HandshakeFailure("Client did not send key_share".to_string()))?
+            .ok_or_else(|| {
+                TlsError::HandshakeFailure(String::from("Client did not send key_share"))
+            })?
             .to_vec(); // Clone the key data
 
         // Process ClientHello (this moves client_hello)
@@ -179,7 +181,7 @@ impl TlsStream {
         let server_secret_key = handshake
             .key_schedule()
             .server_secret_key()
-            .ok_or_else(|| TlsError::InternalError("Server secret key not stored".to_string()))?;
+            .ok_or_else(|| TlsError::InternalError(String::from("Server secret key not stored")))?;
 
         // Derive ECDHE shared secret using the security provider
         let shared_secret = config
@@ -302,7 +304,7 @@ impl TlsStream {
         // Only decrypt if it's ApplicationData
         if content_type_byte != ContentType::ApplicationData as u8 {
             return Err(TlsError::UnexpectedMessage {
-                expected: "ApplicationData".to_string(),
+                expected: String::from("ApplicationData"),
                 got: format!("{content_type_byte}"),
             });
         }

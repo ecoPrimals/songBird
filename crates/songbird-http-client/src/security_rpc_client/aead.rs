@@ -50,7 +50,7 @@ impl SecurityRpcClient {
             })?;
 
         let ciphertext = result["ciphertext"].as_str().ok_or_else(|| {
-            Error::SecurityProviderRpc("Missing ciphertext in response".to_string())
+            Error::SecurityProviderRpc(String::from("Missing ciphertext in response"))
         })?;
 
         let decoded = BASE64_STANDARD
@@ -106,7 +106,7 @@ impl SecurityRpcClient {
             .await?;
 
         let ciphertext = result["ciphertext"].as_str().ok_or_else(|| {
-            Error::SecurityProviderRpc("Missing ciphertext in response".to_string())
+            Error::SecurityProviderRpc(String::from("Missing ciphertext in response"))
         })?;
 
         BASE64_STANDARD
@@ -155,7 +155,7 @@ impl SecurityRpcClient {
             .await?;
 
         let ciphertext = result["ciphertext"].as_str().ok_or_else(|| {
-            Error::SecurityProviderRpc("Missing ciphertext in response".to_string())
+            Error::SecurityProviderRpc(String::from("Missing ciphertext in response"))
         })?;
 
         BASE64_STANDARD
@@ -215,7 +215,7 @@ impl SecurityRpcClient {
             })?;
 
         let plaintext = result["plaintext"].as_str().ok_or_else(|| {
-            Error::SecurityProviderRpc("Missing plaintext in response".to_string())
+            Error::SecurityProviderRpc(String::from("Missing plaintext in response"))
         })?;
 
         let decoded = BASE64_STANDARD
@@ -245,9 +245,9 @@ impl SecurityRpcClient {
 
         // Validate lengths
         if ciphertext.len() < 16 {
-            return Err(Error::SecurityProviderRpc(
-                "Ciphertext too short for AES-128-GCM".to_string(),
-            ));
+            return Err(Error::SecurityProviderRpc(String::from(
+                "Ciphertext too short for AES-128-GCM",
+            )));
         }
         if key.len() != 16 {
             return Err(Error::SecurityProviderRpc(format!(
@@ -277,7 +277,7 @@ impl SecurityRpcClient {
             .await?;
 
         let plaintext = result["plaintext"].as_str().ok_or_else(|| {
-            Error::SecurityProviderRpc("Missing plaintext in response".to_string())
+            Error::SecurityProviderRpc(String::from("Missing plaintext in response"))
         })?;
 
         BASE64_STANDARD
@@ -304,9 +304,9 @@ impl SecurityRpcClient {
 
         // Validate lengths
         if ciphertext.len() < 16 {
-            return Err(Error::SecurityProviderRpc(
-                "Ciphertext too short for AES-256-GCM".to_string(),
-            ));
+            return Err(Error::SecurityProviderRpc(String::from(
+                "Ciphertext too short for AES-256-GCM",
+            )));
         }
         if key.len() != 32 {
             return Err(Error::SecurityProviderRpc(format!(
@@ -335,7 +335,7 @@ impl SecurityRpcClient {
             .await?;
 
         let plaintext = result["plaintext"].as_str().ok_or_else(|| {
-            Error::SecurityProviderRpc("Missing plaintext in response".to_string())
+            Error::SecurityProviderRpc(String::from("Missing plaintext in response"))
         })?;
 
         BASE64_STANDARD

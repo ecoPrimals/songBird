@@ -274,7 +274,7 @@ mod tests {
 
         let options = FederationOptions::from_env();
         let node_identity = NodeIdentity::new_or_load(None).expect("identity");
-        let federation_state = Arc::new(FederationState::new("test".to_string()));
+        let federation_state = Arc::new(FederationState::new(String::from("test")));
 
         let setup = setup_federation(&node_identity, federation_state, options).await.unwrap();
         assert!(
@@ -290,7 +290,7 @@ mod tests {
 
         let options = FederationOptions::from_env();
         let node_identity = NodeIdentity::new_or_load(None).expect("identity");
-        let federation_state = Arc::new(FederationState::new("test".to_string()));
+        let federation_state = Arc::new(FederationState::new(String::from("test")));
 
         let setup = setup_federation(&node_identity, federation_state, options).await.unwrap();
         assert!(
@@ -305,7 +305,7 @@ mod tests {
 
         let options = FederationOptions::from_env();
         let node_identity = NodeIdentity::new_or_load(None).expect("identity");
-        let federation_state = Arc::new(FederationState::new("test".to_string()));
+        let federation_state = Arc::new(FederationState::new(String::from("test")));
 
         let setup = setup_federation(&node_identity, federation_state, options).await.unwrap();
         assert!(setup.coordinator.is_none(), "Federation should be disabled without env signals");

@@ -156,7 +156,7 @@ impl StunAttribute {
 
     pub(crate) fn decode_with_tid(buf: &mut &[u8], transaction_id: &[u8; 12]) -> StunResult<Self> {
         if buf.remaining() < 4 {
-            return Err(StunError::InvalidResponse("Attribute too short".to_string()));
+            return Err(StunError::InvalidResponse(String::from("Attribute too short")));
         }
 
         let attr_type = buf.get_u16();
@@ -236,7 +236,7 @@ impl StunAttribute {
         transaction_id: &[u8; 12],
     ) -> StunResult<SocketAddr> {
         if data.len() < 4 {
-            return Err(StunError::InvalidResponse("Address attribute too short".to_string()));
+            return Err(StunError::InvalidResponse(String::from("Address attribute too short")));
         }
 
         let mut buf = data;
@@ -256,7 +256,7 @@ impl StunAttribute {
             0x01 => {
                 // IPv4
                 if buf.remaining() < 4 {
-                    return Err(StunError::InvalidResponse("IPv4 address too short".to_string()));
+                    return Err(StunError::InvalidResponse(String::from("IPv4 address too short")));
                 }
 
                 let ip_raw = buf.get_u32();
@@ -268,7 +268,7 @@ impl StunAttribute {
             0x02 => {
                 // IPv6
                 if buf.remaining() < 16 {
-                    return Err(StunError::InvalidResponse("IPv6 address too short".to_string()));
+                    return Err(StunError::InvalidResponse(String::from("IPv6 address too short")));
                 }
 
                 let mut octets = [0u8; 16];
@@ -315,7 +315,7 @@ impl StunAttribute {
 
         // HMAC-SHA1 new_from_slice is infallible for any key length (SHA1 block size handles all).
         let Ok(mut mac) = HmacSha1::new_from_slice(key) else {
-            unreachable!()
+            unreachable!("HMAC-SHA1 new_from_slice is infallible for any key length")
         };
         mac.update(message_up_to_integrity);
         let result = mac.finalize();

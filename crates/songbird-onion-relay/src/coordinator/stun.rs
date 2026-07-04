@@ -54,7 +54,7 @@ impl HolePunchCoordinator {
                         local_addr: Some(local_addr),
                         nat_type,
                         timestamp: SystemTime::now(),
-                        capabilities: vec!["relay".to_string()],
+                        capabilities: vec![String::from("relay")],
                     };
 
                     *self.my_info.write().await = Some(info.clone());
@@ -66,7 +66,7 @@ impl HolePunchCoordinator {
             }
         }
 
-        Err(OnionRelayError::StunFailed("All STUN servers failed".to_string()))
+        Err(OnionRelayError::StunFailed(String::from("All STUN servers failed")))
     }
 
     pub(super) async fn stun_bind(&self, socket: &UdpSocket, server: &str) -> Result<SocketAddr> {

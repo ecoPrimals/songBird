@@ -170,9 +170,9 @@ impl FederationClient {
                         let cap_str = c.as_str()?;
                         Some(DiscoveredCapability {
                             name: cap_str.to_string(),
-                            version: "1.0".to_string(),
+                            version: String::from("1.0"),
                             description: format!("{cap_str} capability"),
-                            provider: "federated".to_string(),
+                            provider: String::from("federated"),
                             endpoint: String::new(), // Will use service endpoint
                             qos_metrics: QosMetrics::default(),
                             health_status: HealthStatus::Healthy,
@@ -183,9 +183,9 @@ impl FederationClient {
                 Some(ServiceInfo {
                     name,
                     primal_type: PrimalType {
-                        category: "generic".to_string(),
+                        category: String::from("generic"),
                         subcategory: None,
-                        version: "1.0".to_string(),
+                        version: String::from("1.0"),
                     },
                     endpoint,
                     capabilities,
@@ -214,18 +214,18 @@ mod tests {
         assert!(!adapter.is_federation_enabled());
 
         let local_services = vec![ServiceInfo {
-            name: "Local Service".to_string(),
+            name: String::from("Local Service"),
             primal_type: PrimalType {
-                category: "test".to_string(),
+                category: String::from("test"),
                 subcategory: None,
-                version: "1.0".to_string(),
+                version: String::from("1.0"),
             },
-            endpoint: "http://localhost:8080".to_string(),
+            endpoint: String::from("http://localhost:8080"),
             capabilities: vec![DiscoveredCapability {
-                name: "test-capability".to_string(),
-                version: "1.0".to_string(),
-                description: "Test capability".to_string(),
-                provider: "local".to_string(),
+                name: String::from("test-capability"),
+                version: String::from("1.0"),
+                description: String::from("Test capability"),
+                provider: String::from("local"),
                 endpoint: String::new(),
                 qos_metrics: QosMetrics::default(),
                 health_status: HealthStatus::Healthy,
@@ -249,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_federation_client_construction() {
-        let client = FederationClient::new("http://localhost:8080".to_string());
+        let client = FederationClient::new(String::from("http://localhost:8080"));
         assert_eq!(client.base_url, "http://localhost:8080");
     }
 
@@ -261,7 +261,7 @@ mod tests {
 
     #[test]
     fn test_federated_adapter_with_federation() {
-        let client = Arc::new(FederationClient::new("http://localhost:8080".to_string()));
+        let client = Arc::new(FederationClient::new(String::from("http://localhost:8080")));
         let adapter = FederatedCapabilityAdapter::new().with_federation(client);
 
         assert!(adapter.is_federation_enabled());
@@ -269,7 +269,7 @@ mod tests {
 
     #[test]
     fn test_federated_adapter_clone() {
-        let client = Arc::new(FederationClient::new("http://localhost:8080".to_string()));
+        let client = Arc::new(FederationClient::new(String::from("http://localhost:8080")));
         let adapter = FederatedCapabilityAdapter::new().with_federation(client);
 
         let cloned = adapter;
@@ -298,18 +298,18 @@ mod tests {
 
         let local_services = vec![
             ServiceInfo {
-                name: "Service 1".to_string(),
+                name: String::from("Service 1"),
                 primal_type: PrimalType {
-                    category: "test".to_string(),
+                    category: String::from("test"),
                     subcategory: None,
-                    version: "1.0".to_string(),
+                    version: String::from("1.0"),
                 },
-                endpoint: "http://localhost:8080".to_string(),
+                endpoint: String::from("http://localhost:8080"),
                 capabilities: vec![DiscoveredCapability {
-                    name: "test-capability".to_string(),
-                    version: "1.0".to_string(),
-                    description: "Test capability".to_string(),
-                    provider: "local".to_string(),
+                    name: String::from("test-capability"),
+                    version: String::from("1.0"),
+                    description: String::from("Test capability"),
+                    provider: String::from("local"),
                     endpoint: String::new(),
                     qos_metrics: QosMetrics::default(),
                     health_status: HealthStatus::Healthy,
@@ -318,18 +318,18 @@ mod tests {
                 metadata: std::collections::HashMap::new(),
             },
             ServiceInfo {
-                name: "Service 2".to_string(),
+                name: String::from("Service 2"),
                 primal_type: PrimalType {
-                    category: "test".to_string(),
+                    category: String::from("test"),
                     subcategory: None,
-                    version: "1.0".to_string(),
+                    version: String::from("1.0"),
                 },
-                endpoint: "http://localhost:8081".to_string(),
+                endpoint: String::from("http://localhost:8081"),
                 capabilities: vec![DiscoveredCapability {
-                    name: "test-capability".to_string(),
-                    version: "1.0".to_string(),
-                    description: "Test capability".to_string(),
-                    provider: "local".to_string(),
+                    name: String::from("test-capability"),
+                    version: String::from("1.0"),
+                    description: String::from("Test capability"),
+                    provider: String::from("local"),
                     endpoint: String::new(),
                     qos_metrics: QosMetrics::default(),
                     health_status: HealthStatus::Healthy,
@@ -354,24 +354,24 @@ mod tests {
     async fn test_find_capability_providers_preserves_local_on_federation_failure()
     -> Result<(), Box<dyn std::error::Error>> {
         // Create client with invalid URL to force failure
-        let client = Arc::new(FederationClient::new(
-            "http://invalid-domain-that-does-not-exist-12345.com".to_string(),
-        ));
+        let client = Arc::new(FederationClient::new(String::from(
+            "http://invalid-domain-that-does-not-exist-12345.com",
+        )));
         let adapter = FederatedCapabilityAdapter::new().with_federation(client);
 
         let local_services = vec![ServiceInfo {
-            name: "Local Service".to_string(),
+            name: String::from("Local Service"),
             primal_type: PrimalType {
-                category: "test".to_string(),
+                category: String::from("test"),
                 subcategory: None,
-                version: "1.0".to_string(),
+                version: String::from("1.0"),
             },
-            endpoint: "http://localhost:8080".to_string(),
+            endpoint: String::from("http://localhost:8080"),
             capabilities: vec![DiscoveredCapability {
-                name: "test-capability".to_string(),
-                version: "1.0".to_string(),
-                description: "Test capability".to_string(),
-                provider: "local".to_string(),
+                name: String::from("test-capability"),
+                version: String::from("1.0"),
+                description: String::from("Test capability"),
+                provider: String::from("local"),
                 endpoint: String::new(),
                 qos_metrics: QosMetrics::default(),
                 health_status: HealthStatus::Healthy,
@@ -395,26 +395,26 @@ mod tests {
 
     #[test]
     fn test_federation_client_new() {
-        let client = FederationClient::new("http://api.example.com".to_string());
+        let client = FederationClient::new(String::from("http://api.example.com"));
         assert_eq!(client.base_url, "http://api.example.com");
     }
 
     #[test]
     fn test_federation_client_with_trailing_slash() {
-        let client = FederationClient::new("http://localhost:8080/".to_string());
+        let client = FederationClient::new(String::from("http://localhost:8080/"));
         assert_eq!(client.base_url, "http://localhost:8080/");
         // The implementation should handle this in the URL construction
     }
 
     #[test]
     fn test_federation_client_with_port() {
-        let client = FederationClient::new("http://localhost:9000".to_string());
+        let client = FederationClient::new(String::from("http://localhost:9000"));
         assert_eq!(client.base_url, "http://localhost:9000");
     }
 
     #[test]
     fn test_federation_client_https() {
-        let client = FederationClient::new("https://secure.example.com".to_string());
+        let client = FederationClient::new(String::from("https://secure.example.com"));
         assert_eq!(client.base_url, "https://secure.example.com");
     }
 
@@ -429,7 +429,7 @@ mod tests {
 
     #[test]
     fn test_adapter_builder_pattern() {
-        let client = Arc::new(FederationClient::new("http://localhost:8080".to_string()));
+        let client = Arc::new(FederationClient::new(String::from("http://localhost:8080")));
 
         // Test builder pattern fluent API
         let adapter = FederatedCapabilityAdapter::new().with_federation(client);
@@ -439,8 +439,8 @@ mod tests {
 
     #[test]
     fn test_adapter_multiple_with_federation_calls() -> SongbirdResult<()> {
-        let client1 = Arc::new(FederationClient::new("http://localhost:8080".to_string()));
-        let client2 = Arc::new(FederationClient::new("http://localhost:9000".to_string()));
+        let client1 = Arc::new(FederationClient::new(String::from("http://localhost:8080")));
+        let client2 = Arc::new(FederationClient::new(String::from("http://localhost:9000")));
 
         // Last call should win
         let adapter = FederatedCapabilityAdapter::new()
@@ -451,7 +451,7 @@ mod tests {
         // Verify it's using client2 (indirectly through base_url check)
         assert!(Arc::ptr_eq(
             &adapter.federation_client.ok_or_else(|| SongbirdError::configuration(
-                "Federation client should be present".to_string()
+                String::from("Federation client should be present")
             ))?,
             &client2
         ));

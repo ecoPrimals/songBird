@@ -59,11 +59,11 @@ impl BindingTransaction {
     pub fn parse_response(&self, response_bytes: &[u8]) -> StunResult<SocketAddr> {
         let response = StunMessage::decode(response_bytes)?;
         if response.transaction_id != self.request.transaction_id {
-            return Err(StunError::InvalidResponse("Transaction ID mismatch".to_string()));
+            return Err(StunError::InvalidResponse(String::from("Transaction ID mismatch")));
         }
-        response
-            .get_any_mapped_address()
-            .ok_or_else(|| StunError::InvalidResponse("No mapped address in response".to_string()))
+        response.get_any_mapped_address().ok_or_else(|| {
+            StunError::InvalidResponse(String::from("No mapped address in response"))
+        })
     }
 }
 
@@ -144,7 +144,7 @@ mod tests {
     #[test]
     fn with_credentials_produces_mi_and_fp() {
         let creds = crate::types::StunCredentials {
-            username: "beacon-user".to_string(),
+            username: String::from("beacon-user"),
             key: b"beacon-stun-key".to_vec(),
         };
         let txn = BindingTransaction::with_credentials(&creds);
@@ -169,7 +169,7 @@ mod tests {
     #[test]
     fn with_credentials_empty_key_omits_integrity() {
         let creds = crate::types::StunCredentials {
-            username: "user-no-key".to_string(),
+            username: String::from("user-no-key"),
             key: vec![],
         };
         let txn = BindingTransaction::with_credentials(&creds);
@@ -187,7 +187,7 @@ mod tests {
     #[test]
     fn with_credentials_username_in_request() {
         let creds = crate::types::StunCredentials {
-            username: "txn-user".to_string(),
+            username: String::from("txn-user"),
             key: b"secret-key".to_vec(),
         };
         let txn = BindingTransaction::with_credentials(&creds);

@@ -86,9 +86,9 @@ impl CloudflareDdnsProvider {
     /// Returns `DdnsError::ConfigError` if required env vars are missing.
     pub fn from_env(http: HttpExecutor) -> Result<Self, DdnsError> {
         let api_token = songbird_process_env::var("SONGBIRD_CF_API_TOKEN")
-            .map_err(|_| DdnsError::ConfigError("SONGBIRD_CF_API_TOKEN not set".to_string()))?;
+            .map_err(|_| DdnsError::ConfigError(String::from("SONGBIRD_CF_API_TOKEN not set")))?;
         let zone_id = songbird_process_env::var("SONGBIRD_CF_ZONE_ID")
-            .map_err(|_| DdnsError::ConfigError("SONGBIRD_CF_ZONE_ID not set".to_string()))?;
+            .map_err(|_| DdnsError::ConfigError(String::from("SONGBIRD_CF_ZONE_ID not set")))?;
         Ok(Self::new(api_token, zone_id, http))
     }
 
@@ -190,7 +190,7 @@ impl DdnsProvider for CloudflareDdnsProvider {
         let hostname = config
             .hostname
             .as_deref()
-            .ok_or_else(|| DdnsError::ConfigError("DDNS hostname not configured".to_string()))?;
+            .ok_or_else(|| DdnsError::ConfigError(String::from("DDNS hostname not configured")))?;
 
         let (record_type, content) = match new_ip {
             IpAddr::V4(v4) => ("A", v4.to_string()),
@@ -246,8 +246,8 @@ mod tests {
     #[test]
     fn provider_creation() {
         let p = CloudflareDdnsProvider::new(
-            "tok".to_string(),
-            "zone123".to_string(),
+            String::from("tok"),
+            String::from("zone123"),
             mock_http_ok("{}"),
         );
         assert_eq!(p.zone_id, "zone123");
@@ -256,8 +256,8 @@ mod tests {
     #[test]
     fn provider_debug_redacts_token() {
         let p = CloudflareDdnsProvider::new(
-            "super-secret".to_string(),
-            "z1".to_string(),
+            String::from("super-secret"),
+            String::from("z1"),
             mock_http_ok("{}"),
         );
         let dbg = format!("{p:?}");

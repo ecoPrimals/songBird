@@ -58,7 +58,7 @@
 ```bash
 cargo audit
 cargo deny check advisories
-cargo deny check                  # Full check: bans, licenses, advisories, sources (enforced in CI since Wave 134)
+cargo deny check                  # Full check: bans, licenses, advisories, sources (locally enforced since Wave 134; CI runs fmt + clippy + test)
 ```
 
 ### Known C Dependencies

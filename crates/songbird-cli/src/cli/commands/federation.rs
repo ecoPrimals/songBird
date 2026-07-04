@@ -125,9 +125,9 @@ pub enum MatchmakingAction {
 }
 
 fn init_federation_lines(gaming: bool, name: Option<&str>, region: Option<&str>) -> Vec<String> {
-    let mut lines = vec!["🚀 Initializing gaming federation...".to_string()];
+    let mut lines = vec![String::from("🚀 Initializing gaming federation...")];
     if gaming {
-        lines.push("🎮 Gaming-specific federation enabled".to_string());
+        lines.push(String::from("🎮 Gaming-specific federation enabled"));
     }
     if let Some(n) = name {
         lines.push(format!("📛 Federation node name: {n}"));
@@ -135,7 +135,7 @@ fn init_federation_lines(gaming: bool, name: Option<&str>, region: Option<&str>)
     if let Some(r) = region {
         lines.push(format!("🌍 Gaming region: {r}"));
     }
-    lines.push("✅ Federation initialization complete".to_string());
+    lines.push(String::from("✅ Federation initialization complete"));
     lines
 }
 
@@ -144,17 +144,17 @@ fn join_federation_lines(
     token_present: bool,
     auto_discover: bool,
 ) -> Vec<String> {
-    let mut lines = vec!["🤝 Joining gaming federation...".to_string()];
+    let mut lines = vec![String::from("🤝 Joining gaming federation...")];
     if let Some(ep) = gaming_endpoint {
         lines.push(format!("🌐 Gaming endpoint: {ep}"));
     }
     if token_present {
-        lines.push("🔐 Authentication token provided".to_string());
+        lines.push(String::from("🔐 Authentication token provided"));
     }
     if auto_discover {
-        lines.push("🔍 Auto-discovering federation nodes...".to_string());
+        lines.push(String::from("🔍 Auto-discovering federation nodes..."));
     }
-    lines.push("✅ Successfully joined federation".to_string());
+    lines.push(String::from("✅ Successfully joined federation"));
     lines
 }
 
@@ -170,22 +170,22 @@ fn lobby_action_lines(action: &LobbyAction) -> Vec<String> {
                 format!("👥 Max players: {max_players}"),
             ];
             if *gaming {
-                v.push("⚡ Gaming mode enabled".to_string());
+                v.push(String::from("⚡ Gaming mode enabled"));
             }
-            v.push("✅ Lobby created successfully".to_string());
+            v.push(String::from("✅ Lobby created successfully"));
             v
         }
         LobbyAction::List {
             game_type,
         } => {
-            let mut v = vec!["📋 Available gaming lobbies:".to_string()];
+            let mut v = vec![String::from("📋 Available gaming lobbies:")];
             if let Some(gt) = game_type {
                 v.push(format!("🎯 Filtered by: {gt}"));
             }
             v.extend([
-                "  1. Gaming Lobby Alpha (8/16 players,".to_string(),
-                "  2. Pro Gaming Arena (12/32 players,".to_string(),
-                "  3. Casual Gaming Room (4/8 players,".to_string(),
+                String::from("  1. Gaming Lobby Alpha (8/16 players,"),
+                String::from("  2. Pro Gaming Arena (12/32 players,"),
+                String::from("  3. Casual Gaming Room (4/8 players,"),
             ]);
             v
         }
@@ -194,11 +194,14 @@ fn lobby_action_lines(action: &LobbyAction) -> Vec<String> {
         } => {
             vec![
                 format!("🚪 Joining lobby: {lobby_id}"),
-                "✅ Successfully joined gaming lobby".to_string(),
+                String::from("✅ Successfully joined gaming lobby"),
             ]
         }
         LobbyAction::Leave => {
-            vec!["👋 Leaving current lobby".to_string(), "✅ Left lobby successfully".to_string()]
+            vec![
+                String::from("👋 Leaving current lobby"),
+                String::from("✅ Left lobby successfully"),
+            ]
         }
     }
 }
@@ -209,7 +212,7 @@ fn matchmaking_action_lines(action: &MatchmakingAction) -> Vec<String> {
             skill_level,
             region,
         } => {
-            let mut v = vec!["🎯 Starting gaming matchmaking...".to_string()];
+            let mut v = vec![String::from("🎯 Starting gaming matchmaking...")];
             if let Some(s) = skill_level {
                 v.push(format!("🎓 Skill level: {s}"));
             }
@@ -217,21 +220,24 @@ fn matchmaking_action_lines(action: &MatchmakingAction) -> Vec<String> {
                 v.push(format!("🌍 Preferred region: {r}"));
             }
             v.extend([
-                "🔍 Searching for suitable gaming matches...".to_string(),
-                "✅ Matchmaking started".to_string(),
+                String::from("🔍 Searching for suitable gaming matches..."),
+                String::from("✅ Matchmaking started"),
             ]);
             v
         }
         MatchmakingAction::Cancel => {
-            vec!["❌ Cancelling matchmaking".to_string(), "✅ Matchmaking cancelled".to_string()]
+            vec![
+                String::from("❌ Cancelling matchmaking"),
+                String::from("✅ Matchmaking cancelled"),
+            ]
         }
         MatchmakingAction::Status => {
             vec![
-                "📊 Matchmaking Status:".to_string(),
-                "  Status: Searching".to_string(),
-                "  Queue position: 5".to_string(),
-                "  Estimated wait: 2 minutes".to_string(),
-                "  Skill bracket: Intermediate".to_string(),
+                String::from("📊 Matchmaking Status:"),
+                String::from("  Status: Searching"),
+                String::from("  Queue position: 5"),
+                String::from("  Estimated wait: 2 minutes"),
+                String::from("  Skill bracket: Intermediate"),
             ]
         }
     }
@@ -239,29 +245,29 @@ fn matchmaking_action_lines(action: &MatchmakingAction) -> Vec<String> {
 
 fn federation_status_lines(detailed: bool, gaming_metrics: bool) -> Vec<String> {
     let mut lines = vec![
-        "📊 Gaming Federation Status:".to_string(),
-        "  Status: Connected".to_string(),
-        "  Active nodes: 24".to_string(),
-        "  Gaming sessions: 156".to_string(),
-        "  Total players: 3,842".to_string(),
+        String::from("📊 Gaming Federation Status:"),
+        String::from("  Status: Connected"),
+        String::from("  Active nodes: 24"),
+        String::from("  Gaming sessions: 156"),
+        String::from("  Total players: 3,842"),
     ];
     if detailed {
-        lines.push("\n📈 Detailed Information:".to_string());
+        lines.push(String::from("\n📈 Detailed Information:"));
         lines.extend([
-            "  Uptime: 48h 32m".to_string(),
-            "  Network latency: 24ms avg".to_string(),
-            "  Bandwidth usage: 125 Mbps".to_string(),
+            String::from("  Uptime: 48h 32m"),
+            String::from("  Network latency: 24ms avg"),
+            String::from("  Bandwidth usage: 125 Mbps"),
         ]);
     }
     if gaming_metrics {
-        lines.push("\n🎮 Gaming Metrics:".to_string());
+        lines.push(String::from("\n🎮 Gaming Metrics:"));
         lines.extend([
-            "  Active lobbies: 67".to_string(),
-            "  Matchmaking queue: 89 players".to_string(),
-            "  Average match time: 3.2 minutes".to_string(),
+            String::from("  Active lobbies: 67"),
+            String::from("  Matchmaking queue: 89 players"),
+            String::from("  Average match time: 3.2 minutes"),
         ]);
     }
-    lines.push("✅ Federation healthy".to_string());
+    lines.push(String::from("✅ Federation healthy"));
     lines
 }
 
@@ -362,7 +368,7 @@ mod tests {
     #[test]
     fn lobby_create_lines_includes_max_players() {
         let action = LobbyAction::Create {
-            name: "room".to_string(),
+            name: String::from("room"),
             max_players: 8,
             gaming: true,
         };
@@ -374,7 +380,7 @@ mod tests {
     #[test]
     fn lobby_list_with_filter() {
         let action = LobbyAction::List {
-            game_type: Some("fps".to_string()),
+            game_type: Some(String::from("fps")),
         };
         let lines = lobby_action_lines(&action);
         assert!(lines.iter().any(|l| l.contains("fps")));
@@ -383,7 +389,7 @@ mod tests {
     #[test]
     fn matchmaking_start_and_status() {
         let start = MatchmakingAction::Start {
-            skill_level: Some("pro".to_string()),
+            skill_level: Some(String::from("pro")),
             region: None,
         };
         let ls = matchmaking_action_lines(&start);
@@ -421,7 +427,7 @@ mod tests {
     #[test]
     fn lobby_join_and_leave_lines() {
         let join = lobby_action_lines(&LobbyAction::Join {
-            lobby_id: "lob-42".to_string(),
+            lobby_id: String::from("lob-42"),
         });
         assert!(join.iter().any(|l| l.contains("lob-42")));
 

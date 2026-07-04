@@ -128,15 +128,15 @@ async fn get_system_status() -> SongbirdResult<SystemStatus> {
     .any(|p| p.exists());
 
     let (orch_status, orch_health, orch_uptime) = if ipc_alive {
-        ("Running".to_string(), "Healthy".to_string(), None)
+        (String::from("Running"), String::from("Healthy"), None)
     } else {
-        ("Stopped".to_string(), "Unreachable".to_string(), None)
+        (String::from("Stopped"), String::from("Unreachable"), None)
     };
 
     let unreachable = ServiceStatus {
         name: String::new(),
-        status: "Unknown".to_string(),
-        health: "Unreachable".to_string(),
+        status: String::from("Unknown"),
+        health: String::from("Unreachable"),
         port: None,
         uptime: None,
         last_health_check: None,
@@ -146,7 +146,7 @@ async fn get_system_status() -> SongbirdResult<SystemStatus> {
 
     Ok(SystemStatus {
         orchestrator_status: ServiceStatus {
-            name: "Orchestrator".to_string(),
+            name: String::from("Orchestrator"),
             status: orch_status,
             health: orch_health,
             port: Some(orchestrator_port),
@@ -156,17 +156,17 @@ async fn get_system_status() -> SongbirdResult<SystemStatus> {
             restart_count: 0,
         },
         discovery_status: ServiceStatus {
-            name: "Discovery".to_string(),
+            name: String::from("Discovery"),
             port: Some(songbird_config::defaults::ports::discovery_port()),
             ..unreachable.clone()
         },
         load_balancer_status: ServiceStatus {
-            name: "Load Balancer".to_string(),
+            name: String::from("Load Balancer"),
             port: Some(songbird_config::defaults::ports::security_provider_port()),
             ..unreachable.clone()
         },
         monitoring_status: ServiceStatus {
-            name: "Monitoring".to_string(),
+            name: String::from("Monitoring"),
             port: Some(songbird_config::defaults::ports::metrics_port()),
             ..unreachable
         },
@@ -178,7 +178,7 @@ async fn get_system_status() -> SongbirdResult<SystemStatus> {
         network_throughput: 0,
         connected_nodes: 0,
         active_services: 0,
-        network_health: "Unknown".to_string(),
+        network_health: String::from("Unknown"),
         last_updated: now,
     })
 }
@@ -200,11 +200,11 @@ async fn display_table_status(status: &SystemStatus, detailed: bool) -> Songbird
     // Service status table
     subheader("Service Status");
     let mut table = Table::new().headers(vec![
-        "Service".to_string(),
-        "Status".to_string(),
-        "Health".to_string(),
-        "Port".to_string(),
-        "Uptime".to_string(),
+        String::from("Service"),
+        String::from("Status"),
+        String::from("Health"),
+        String::from("Port"),
+        String::from("Uptime"),
     ]);
 
     let services = [
@@ -219,8 +219,8 @@ async fn display_table_status(status: &SystemStatus, detailed: bool) -> Songbird
             service.name.clone(),
             format_health_status(&service.status),
             format_health_status(&service.health),
-            service.port.map_or_else(|| "N/A".to_string(), |p| p.to_string()),
-            service.uptime.map_or_else(|| "N/A".to_string(), format_duration),
+            service.port.map_or_else(|| String::from("N/A"), |p| p.to_string()),
+            service.uptime.map_or_else(|| String::from("N/A"), format_duration),
         ]);
     }
 
@@ -364,8 +364,8 @@ async fn display_yaml_status(status: &SystemStatus, detailed: bool) -> SongbirdR
     }))
     .map_err(|e| CliError::Config {
         message: format!("Failed to serialize status: {e}"),
-        field: Some("status".to_string()),
-        suggestion: Some("Check system status and try again".to_string()),
+        field: Some(String::from("status")),
+        suggestion: Some(String::from("Check system status and try again")),
     })?;
 
     if detailed {
@@ -382,8 +382,8 @@ async fn display_yaml_status(status: &SystemStatus, detailed: bool) -> SongbirdR
         }))
         .map_err(|e| CliError::Config {
             message: format!("Failed to serialize detailed status: {e}"),
-            field: Some("status".to_string()),
-            suggestion: Some("Check system status and try again".to_string()),
+            field: Some(String::from("status")),
+            suggestion: Some(String::from("Check system status and try again")),
         })?;
 
         output.push_str(&detailed_output);
@@ -468,9 +468,9 @@ mod tests {
 
     fn sample_service() -> ServiceStatus {
         ServiceStatus {
-            name: "Orchestrator".to_string(),
-            status: "Running".to_string(),
-            health: "Healthy".to_string(),
+            name: String::from("Orchestrator"),
+            status: String::from("Running"),
+            health: String::from("Healthy"),
             port: Some(8080),
             uptime: Some(Duration::from_secs(3600)),
             last_health_check: Some(
@@ -500,9 +500,9 @@ mod tests {
     #[test]
     fn service_to_json_serializes_none_optionals_as_null() {
         let s = ServiceStatus {
-            name: "X".to_string(),
-            status: "Stopped".to_string(),
-            health: "Unknown".to_string(),
+            name: String::from("X"),
+            status: String::from("Stopped"),
+            health: String::from("Unknown"),
             port: None,
             uptime: None,
             last_health_check: None,
@@ -519,9 +519,9 @@ mod tests {
     #[test]
     fn service_to_json_uptime_seconds_matches_duration() {
         let s = ServiceStatus {
-            name: "a".to_string(),
-            status: "b".to_string(),
-            health: "c".to_string(),
+            name: String::from("a"),
+            status: String::from("b"),
+            health: String::from("c"),
             port: None,
             uptime: Some(Duration::from_secs(999_999)),
             last_health_check: None,
@@ -550,9 +550,9 @@ mod tests {
             .with_timezone(&chrono::Utc);
         let expected = t.to_rfc3339();
         let s = ServiceStatus {
-            name: "n".to_string(),
-            status: "s".to_string(),
-            health: "h".to_string(),
+            name: String::from("n"),
+            status: String::from("s"),
+            health: String::from("h"),
             port: None,
             uptime: None,
             last_health_check: Some(t),
@@ -574,9 +574,9 @@ mod tests {
     #[test]
     fn service_to_json_serializes_max_port_and_zero_uptime() {
         let s = ServiceStatus {
-            name: "svc".to_string(),
-            status: "Idle".to_string(),
-            health: "Unknown".to_string(),
+            name: String::from("svc"),
+            status: String::from("Idle"),
+            health: String::from("Unknown"),
             port: Some(u16::MAX),
             uptime: Some(Duration::ZERO),
             last_health_check: None,

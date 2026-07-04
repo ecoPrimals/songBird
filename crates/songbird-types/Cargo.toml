@@ -32,7 +32,7 @@ serde_json = { workspace = true, optional = true }
 chrono = { workspace = true, optional = true }
 uuid = { workspace = true }
 bitflags = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true, features = ["net", "sync", "time"] }
 toml = { workspace = true }
 tracing = { workspace = true }
 # Added for consolidated traits Stream support

@@ -37,7 +37,7 @@ impl ProcessorXorMock {
 
     #[must_use]
     pub fn provider_name(&self) -> String {
-        "MockEncryption".to_string()
+        String::from("MockEncryption")
     }
 
     pub async fn encrypt_beacon(&self, payload: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
@@ -94,7 +94,7 @@ impl ProtocolPassthroughMock {
 
     #[must_use]
     pub fn provider_name(&self) -> String {
-        "mock-protocol-test".to_string()
+        String::from("mock-protocol-test")
     }
 
     pub async fn encrypt_beacon(&self, payload: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
@@ -177,12 +177,12 @@ impl DarkForestTestProvider {
 
     #[must_use]
     pub fn family_id(&self) -> Option<String> {
-        Some("test-family".to_string())
+        Some(String::from("test-family"))
     }
 
     #[must_use]
     pub fn provider_name(&self) -> String {
-        "MockDarkForestProvider".to_string()
+        String::from("MockDarkForestProvider")
     }
 
     pub async fn encrypt_beacon(&self, payload: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
@@ -235,12 +235,12 @@ impl LegacyBirdSongStub {
 
     #[must_use]
     pub fn family_id(&self) -> Option<String> {
-        Some("legacy".to_string())
+        Some(String::from("legacy"))
     }
 
     #[must_use]
     pub fn provider_name(&self) -> String {
-        "LegacyBirdSongStub".to_string()
+        String::from("LegacyBirdSongStub")
     }
 
     pub async fn encrypt_beacon(&self, payload: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
@@ -328,7 +328,7 @@ impl ChaoticBirdSongMock {
     }
 
     pub fn provider_name(&self) -> String {
-        "ChaoticProvider".to_string()
+        String::from("ChaoticProvider")
     }
 
     pub async fn encrypt_beacon(&self, payload: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
@@ -403,7 +403,7 @@ impl FailingBirdSongMock {
     }
 
     pub fn provider_name(&self) -> String {
-        "FailingProvider".to_string()
+        String::from("FailingProvider")
     }
 
     pub async fn encrypt_beacon(&self, payload: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
@@ -460,7 +460,7 @@ impl UnavailableBirdSongMock {
 
     #[must_use]
     pub fn provider_name(&self) -> String {
-        "UnavailableProvider".to_string()
+        String::from("UnavailableProvider")
     }
 
     pub async fn encrypt_beacon(&self, _payload: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
@@ -522,7 +522,7 @@ impl CrossFamilyBirdSongMock {
 
     #[must_use]
     pub fn provider_name(&self) -> String {
-        "MockProvider".to_string()
+        String::from("MockProvider")
     }
 
     pub async fn encrypt_beacon(&self, payload: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
@@ -585,7 +585,7 @@ impl OrchestratorPrefixMock {
 
     #[must_use]
     pub fn provider_name(&self) -> String {
-        "OrchestratorPrefixMock".to_string()
+        String::from("OrchestratorPrefixMock")
     }
 
     pub async fn encrypt_beacon(&self, payload: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {

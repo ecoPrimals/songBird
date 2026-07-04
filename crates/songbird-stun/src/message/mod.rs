@@ -106,9 +106,9 @@ impl StunMessage {
     /// Returns an error if the data is too short or malformed.
     pub fn decode(data: &[u8]) -> StunResult<Self> {
         if data.len() < 20 {
-            return Err(StunError::InvalidResponse(
-                "STUN message too short (< 20 bytes)".to_string(),
-            ));
+            return Err(StunError::InvalidResponse(String::from(
+                "STUN message too short (< 20 bytes)",
+            )));
         }
 
         let mut buf = data;

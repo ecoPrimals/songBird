@@ -1,7 +1,7 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 8,929 lib tests, 31 crates, 58+ JSON-RPC methods, riboCipher transport signal detection (Stream 7), HEALTH-01 compliant (13/13 ecosystem contract), topology-aware cross-gate routing (ipc.resolve mesh fallback), mesh persistence + autonomous reconnect, federation env-aware status + peer health loop, mesh partition tolerance (cross-gate reachability gossip), peer version negotiation (version_skew detection), real health probes (TCP/UDS/FS/Custom/JsonRpc), capability-first naming (SecurityProviderVerifier), workspace dep hoisting, 5-tier NAT traversal, cross-gate capability.call (HTTP POST + TURN relay), capability propagation (push model + retry queue + TTL expiry), peer-aware network detection, HTTP/UDS unified state, virtual relay Phase 2 (default mode), DH-1 compliant, zero clippy workspace-wide"
-date = 2026-06-19
+description = "Sovereign networking primal — 8,929+ lib tests, 31 crates, 62+ JSON-RPC methods, LAN direct-connect bypass (same-subnet TCP probe, skip UDP punch), federation port convergence (7700 default), riboCipher transport signal detection (Stream 7), HEALTH-01 compliant (13/13 ecosystem contract, honest SubsystemStatus), topology-aware cross-gate routing (ipc.resolve mesh fallback + path-optimal capability resolution), mesh persistence + autonomous reconnect, multi-tier WireGuard auto-discovery (wg command + config file + mesh-peers.toml — works without root), federation env-aware status + peer health loop, mesh partition tolerance (cross-gate reachability gossip + topology_graph module), peer version negotiation (version_skew detection), real health probes (TCP/UDS/FS/Custom/JsonRpc + overlay-aware WireGuard probing), capability-first naming (SecurityProviderVerifier), workspace dep hoisting, 5-tier NAT traversal, cross-gate capability.call (HTTP POST + TURN relay + cached holder fast-path), capability propagation (push model + retry queue + TTL expiry + path-optimal selection), peer-aware network detection, HTTP/UDS unified state, virtual relay Phase 2 (default mode), DH-1 compliant, zero clippy workspace-wide, typed exhaustive dispatch (62+ methods, zero legacy string fallback), dep diet (tarpc/hyper minimal features), fail-closed security (no fake credentials, reject untrusted peers)"
+date = 2026-07-04
 
 [taxonomies]
 primals = ["songbird"]
@@ -12,7 +12,7 @@ springs = ["primalspring"]
 
 - **8,929 lib tests** passed, 0 failures, 0 flaky (Wave 113 verified June 13, 2026)
 - **31 workspace crates**, ~422,000 lines of Rust (Edition 2024)
-- **58 JSON-RPC methods** across 15 capability domains (network, mesh, stun, relay, http, tor, onion, punch, discovery, birdsong, capability, ipc, primal, lifecycle, federation)
+- **62 JSON-RPC methods** across 17 capability domains (network, mesh, stun, relay, http, tor, onion, punch, discovery, birdsong, capability, ipc, primal, lifecycle, federation, graph, coordination)
 - **BTSP Phase 3 FULL** — ChaCha20-Poly1305 AEAD, HKDF-SHA256 session keys, bond type enforcement
 - **5-tier ConnectionFallbackChain**: direct → STUN → lineage relay → TURN → emergency tunnel
 - **`capability.call` cross-gate dispatch** (Wave 211+38): local UDS + remote mesh TCP + TURN relay fallback for NAT'd peers
@@ -25,8 +25,9 @@ springs = ["primalspring"]
 - **Zero unsafe blocks** (`forbid(unsafe_code)` on all 31 crates)
 - **Zero `async-trait`** — fully eliminated (141→0), enum dispatch throughout
 - **Zero production `unwrap()`/`panic!()`/`todo!()`**
-- **Clippy pedantic** clean (31/31 crates, `-D warnings`)
+- **Clippy pedantic** clean (31/31 crates, `-D warnings --all-targets`; Wave 121 zero errors)
 - **cargo-deny** passing (advisories, bans, licenses, sources)
+- **Zero `"literal".to_string()`** in production code (2,020→0, Wave 121 idiom evolution)
 
 ## Key Capabilities
 
@@ -47,7 +48,7 @@ springs = ["primalspring"]
 │ songbird (sovereign networking primal)                           │
 ├─────────────────────────────────────────────────────────────────┤
 │ Universal IPC (songbird.sock / network.sock)                    │
-│   ├── JSON-RPC dispatch (54 methods, typed enum routing)        │
+│   ├── JSON-RPC dispatch (62 methods, typed enum routing)        │
 │   ├── capability.call (local UDS + remote mesh TCP forward)     │
 │   ├── IPC registry (capability-first service discovery)         │
 │   └── BTSP Phase 3 encrypted framing (ChaCha20-Poly1305)       │

@@ -167,7 +167,7 @@ impl SovereignSecurity {
                 if !self.auth_tokens.contains(token) {
                     return Ok(SecurityDecision {
                         allowed: false,
-                        reason: Some("Invalid authentication token".to_string()),
+                        reason: Some(String::from("Invalid authentication token")),
                         confidence: 1.0, // We're certain about auth failures
                         mode: SecurityMode::Sovereign,
                     });
@@ -175,7 +175,7 @@ impl SovereignSecurity {
             } else {
                 return Ok(SecurityDecision {
                     allowed: false,
-                    reason: Some("Authentication required but not provided".to_string()),
+                    reason: Some(String::from("Authentication required but not provided")),
                     confidence: 1.0,
                     mode: SecurityMode::Sovereign,
                 });
@@ -374,9 +374,9 @@ impl SecurityProviderIntegration {
                 // Fallback to permissive decision (don't block on network errors)
                 Ok(SecurityDecision {
                     allowed: true,
-                    reason: Some(
-                        "security provider validation unavailable (network error)".to_string(),
-                    ),
+                    reason: Some(String::from(
+                        "security provider validation unavailable (network error)",
+                    )),
                     confidence: 0.5,
                     mode: SecurityMode::Sovereign,
                 })
@@ -502,10 +502,10 @@ mod tests {
         let validator = SovereignSecurityValidator::new(config);
 
         let request = SecurityRequest {
-            command: "echo hello".to_string(),
+            command: String::from("echo hello"),
             auth_token: None,
             timeout_seconds: Some(60),
-            requester: Some("test".to_string()),
+            requester: Some(String::from("test")),
         };
 
         let decision = validator.validate_request(&request).await.unwrap();
@@ -523,10 +523,10 @@ mod tests {
         let validator = SovereignSecurityValidator::new(config);
 
         let request = SecurityRequest {
-            command: "rm -rf /".to_string(),
+            command: String::from("rm -rf /"),
             auth_token: None,
             timeout_seconds: Some(60),
-            requester: Some("test".to_string()),
+            requester: Some(String::from("test")),
         };
 
         let decision = validator.validate_request(&request).await.unwrap();
@@ -538,7 +538,7 @@ mod tests {
     async fn test_auth_enforcement() {
         let config = SecurityConfig {
             enable_auth: true,
-            auth_tokens: vec!["secret123".to_string()],
+            auth_tokens: vec![String::from("secret123")],
             ..Default::default()
         };
 
@@ -546,10 +546,10 @@ mod tests {
 
         // Valid token
         let request = SecurityRequest {
-            command: "echo hello".to_string(),
-            auth_token: Some("secret123".to_string()),
+            command: String::from("echo hello"),
+            auth_token: Some(String::from("secret123")),
             timeout_seconds: Some(60),
-            requester: Some("test".to_string()),
+            requester: Some(String::from("test")),
         };
 
         let decision = validator.validate_request(&request).await.unwrap();
@@ -557,10 +557,10 @@ mod tests {
 
         // Invalid token
         let request = SecurityRequest {
-            command: "echo hello".to_string(),
-            auth_token: Some("wrong".to_string()),
+            command: String::from("echo hello"),
+            auth_token: Some(String::from("wrong")),
             timeout_seconds: Some(60),
-            requester: Some("test".to_string()),
+            requester: Some(String::from("test")),
         };
 
         let decision = validator.validate_request(&request).await.unwrap();

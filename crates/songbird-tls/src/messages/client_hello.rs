@@ -86,30 +86,30 @@ impl ClientHello {
     pub fn validate(&self) -> Result<()> {
         // Must have at least one cipher suite
         if self.cipher_suites.is_empty() {
-            return Err(TlsError::ProtocolError(
-                "ClientHello must contain at least one cipher suite".to_string(),
-            ));
+            return Err(TlsError::ProtocolError(String::from(
+                "ClientHello must contain at least one cipher suite",
+            )));
         }
 
         // Must have extensions in TLS 1.3
         if self.extensions.is_empty() {
-            return Err(TlsError::ProtocolError(
-                "ClientHello must contain extensions in TLS 1.3".to_string(),
-            ));
+            return Err(TlsError::ProtocolError(String::from(
+                "ClientHello must contain extensions in TLS 1.3",
+            )));
         }
 
         // Must have supported_versions extension
         if self.get_supported_version().is_none() {
-            return Err(TlsError::ProtocolError(
-                "ClientHello must contain supported_versions extension".to_string(),
-            ));
+            return Err(TlsError::ProtocolError(String::from(
+                "ClientHello must contain supported_versions extension",
+            )));
         }
 
         // Legacy session ID must be <= 32 bytes
         if self.legacy_session_id.len() > 32 {
-            return Err(TlsError::ProtocolError(
-                "Legacy session ID must be <= 32 bytes".to_string(),
-            ));
+            return Err(TlsError::ProtocolError(String::from(
+                "Legacy session ID must be <= 32 bytes",
+            )));
         }
 
         Ok(())
@@ -261,7 +261,7 @@ mod tests {
         let extensions = vec![
             Extension::SupportedVersions(vec![0x0303, 0x0304]),
             Extension::KeyShare(vec![0xCD; 32]),
-            Extension::ServerName("songbird.test".to_string()),
+            Extension::ServerName(String::from("songbird.test")),
             Extension::SignatureAlgorithms(vec![SIG_ED25519]),
             Extension::SupportedGroups(vec![GROUP_X25519]),
             Extension::Unknown {

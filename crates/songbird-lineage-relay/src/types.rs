@@ -264,7 +264,7 @@ mod tests {
     fn node_id_display_and_from_str() {
         let n: NodeId = "abc".into();
         assert_eq!(n.to_string(), "abc");
-        let n2 = NodeId::from("x".to_string());
+        let n2 = NodeId::from(String::from("x"));
         assert_eq!(n2.0, "x");
     }
 

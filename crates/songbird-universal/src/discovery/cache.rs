@@ -102,9 +102,9 @@ mod tests {
             primal_type: PrimalType::new("compute"),
             endpoint: endpoint.to_string(),
             capabilities: vec![Capability {
-                capability_type: "compute".to_string(),
-                name: "compute".to_string(),
-                version: "1.0".to_string(),
+                capability_type: String::from("compute"),
+                name: String::from("compute"),
+                version: String::from("1.0"),
                 parameters: Default::default(),
                 qos_metrics: Default::default(),
                 available: true,

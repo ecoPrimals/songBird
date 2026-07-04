@@ -400,7 +400,7 @@ fn build_infrastructure_full_node_info() {
     assert_eq!(infra.nodes.len(), 1);
     let n = &infra.nodes[0];
     assert_eq!(n.name, "node-full-1");
-    assert_eq!(n.internal_ip, "192.0.2.10:8000");
+    assert_eq!(n.internal_ip, "0.0.0.0");
     let expected_uptime = (started.timestamp() - created.timestamp()) as f64 / 3600.0;
     assert!((n.uptime_hours - expected_uptime).abs() < 1e-9);
     assert_eq!(n.temperature_c, Some(65.0));

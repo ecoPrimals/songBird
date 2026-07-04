@@ -338,10 +338,10 @@ mod tests {
         use chrono::Utc;
 
         let info = ServiceInfo {
-            service_id: "s".to_string(),
-            name: "n".to_string(),
-            version: "1".to_string(),
-            service_type: "t".to_string(),
+            service_id: String::from("s"),
+            name: String::from("n"),
+            version: String::from("1"),
+            service_type: String::from("t"),
             description: None,
             endpoints: vec![],
             health_check_endpoint: None,
@@ -351,8 +351,8 @@ mod tests {
             status: ServiceStatus::Running,
             created_at: Utc::now(),
             updated_at: Utc::now(),
-            instance_id: "i".to_string(),
-            host: "127.0.0.1".to_string(),
+            instance_id: String::from("i"),
+            host: String::from("127.0.0.1"),
             port: 8080,
         };
 
@@ -383,8 +383,8 @@ mod tests {
         assert_eq!(serde_json::to_string(&back).unwrap(), json);
 
         let etcd = DiscoveryBackend::Etcd {
-            endpoints: vec!["http://e:2379".to_string()],
-            username: Some("u".to_string()),
+            endpoints: vec![String::from("http://e:2379")],
+            username: Some(String::from("u")),
             password: None,
         };
         let json = serde_json::to_string(&etcd).unwrap();
@@ -395,7 +395,7 @@ mod tests {
     #[test]
     fn service_event_serde_roundtrip() {
         let ev = ServiceEvent::ServiceUnregistered {
-            service_id: "gone".to_string(),
+            service_id: String::from("gone"),
         };
         let json = serde_json::to_string(&ev).unwrap();
         let back: ServiceEvent = serde_json::from_str(&json).unwrap();
@@ -418,11 +418,11 @@ mod tests {
     #[test]
     fn service_query_serde_roundtrip() {
         let q = ServiceQuery {
-            name: Some("svc-*".to_string()),
+            name: Some(String::from("svc-*")),
             service_id: None,
-            service_type: Some("grpc".to_string()),
+            service_type: Some(String::from("grpc")),
             version: None,
-            tags: vec!["t".to_string()],
+            tags: vec![String::from("t")],
             metadata: HashMap::new(),
             health_status: Some(HealthStatus::Unknown),
             limit: Some(5),

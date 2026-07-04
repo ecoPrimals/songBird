@@ -610,10 +610,13 @@ mod ipc_handlers_tests {
     }
 
     #[tokio::test]
-    async fn mesh_status_requires_init() {
+    async fn mesh_status_before_init_returns_awaiting() {
         let handlers = test_handlers();
         let result = handlers.mesh_dispatch(MeshMethod::Status, None).await;
-        assert!(result.is_err(), "mesh.status should fail before mesh.init");
+        assert!(result.is_ok(), "mesh.status should succeed even before mesh.init");
+        let val = result.unwrap();
+        assert_eq!(val["initialized"], false);
+        assert_eq!(val["status"], "awaiting_init");
     }
 
     #[tokio::test]

@@ -100,6 +100,8 @@ pub enum HttpMethod {
     Request,
     Get,
     Post,
+    Put,
+    Delete,
 }
 
 /// `stun.*`
@@ -333,6 +335,32 @@ pub enum InferenceMethod {
     List,
     /// `inference.load`
     Load,
+}
+
+/// Legacy flat-namespace methods from the orchestrator's original IPC surface.
+///
+/// These predate the `domain.verb` convention and are retained for backward compatibility.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LegacyMethod {
+    DiscoverByFamily,
+    CreateGeneticTunnel,
+    AnnounceCapabilities,
+    DiscoverByCapability,
+    GetServiceHealth,
+}
+
+/// `graph.*` — dependency graph operations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GraphMethod {
+    Validate,
+    CheckAvailability,
+    SuggestAlternatives,
+}
+
+/// `coordination.*` — pattern validation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CoordinationMethod {
+    ValidatePattern,
 }
 
 /// Unix discovery encryption helpers (legacy names).

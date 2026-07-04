@@ -411,8 +411,8 @@ mod tests {
         assert_eq!(DelegationStrategy::FirstAvailable, DelegationStrategy::FirstAvailable);
         assert_ne!(DelegationStrategy::FirstAvailable, DelegationStrategy::LeastLoad);
         assert_eq!(
-            DelegationStrategy::Specific("test".to_string()),
-            DelegationStrategy::Specific("test".to_string())
+            DelegationStrategy::Specific(String::from("test")),
+            DelegationStrategy::Specific(String::from("test"))
         );
     }
 

@@ -27,7 +27,7 @@ impl SecurityRpcClient {
             .await?;
 
         let hash_b64 = result["hash"].as_str().ok_or_else(|| {
-            Error::SecurityProviderRpc("Missing hash in sha256 response".to_string())
+            Error::SecurityProviderRpc(String::from("Missing hash in sha256 response"))
         })?;
 
         BASE64_STANDARD
@@ -51,7 +51,7 @@ impl SecurityRpcClient {
             .await?;
 
         let hash_b64 = result["hash"].as_str().ok_or_else(|| {
-            Error::SecurityProviderRpc("Missing hash in sha384 response".to_string())
+            Error::SecurityProviderRpc(String::from("Missing hash in sha384 response"))
         })?;
 
         BASE64_STANDARD
@@ -78,7 +78,7 @@ impl SecurityRpcClient {
             .await?;
 
         let prk_b64 = result["prk"].as_str().ok_or_else(|| {
-            Error::SecurityProviderRpc("Missing prk in hkdf_extract response".to_string())
+            Error::SecurityProviderRpc(String::from("Missing prk in hkdf_extract response"))
         })?;
 
         BASE64_STANDARD
@@ -106,7 +106,7 @@ impl SecurityRpcClient {
             .await?;
 
         let okm_b64 = result["okm"].as_str().ok_or_else(|| {
-            Error::SecurityProviderRpc("Missing okm in hkdf_expand response".to_string())
+            Error::SecurityProviderRpc(String::from("Missing okm in hkdf_expand response"))
         })?;
 
         BASE64_STANDARD
@@ -161,7 +161,7 @@ mod tests {
 
     fn decode_prk_field(result: &serde_json::Value) -> crate::error::Result<Vec<u8>> {
         let prk_b64 = result["prk"].as_str().ok_or_else(|| {
-            Error::SecurityProviderRpc("Missing prk in hkdf_extract response".to_string())
+            Error::SecurityProviderRpc(String::from("Missing prk in hkdf_extract response"))
         })?;
         BASE64_STANDARD
             .decode(prk_b64)
@@ -177,7 +177,7 @@ mod tests {
 
     fn decode_okm_field(result: &serde_json::Value) -> crate::error::Result<Vec<u8>> {
         let okm_b64 = result["okm"].as_str().ok_or_else(|| {
-            Error::SecurityProviderRpc("Missing okm in hkdf_expand response".to_string())
+            Error::SecurityProviderRpc(String::from("Missing okm in hkdf_expand response"))
         })?;
         BASE64_STANDARD
             .decode(okm_b64)

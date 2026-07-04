@@ -591,7 +591,7 @@ impl TurnRelayServer {
                     None
                 }
             })
-            .ok_or_else(|| StunError::Config("Missing USERNAME attribute".to_string()))?;
+            .ok_or_else(|| StunError::Config(String::from("Missing USERNAME attribute")))?;
 
         let _key = self
             .credentials

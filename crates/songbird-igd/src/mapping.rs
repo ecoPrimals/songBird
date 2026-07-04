@@ -220,7 +220,7 @@ mod tests {
             IpAddr::V4(Ipv4Addr::new(192, 168, 1, 144)),
             Protocol::Tcp,
         )
-        .with_description("Test mapping".to_string())
+        .with_description(String::from("Test mapping"))
         .with_lease_duration(3600);
 
         assert_eq!(req.external_port, 3492);
@@ -272,7 +272,7 @@ mod tests {
             internal_client: IpAddr::V4(Ipv4Addr::LOCALHOST),
             external_ip: None,
             protocol: Protocol::Tcp,
-            description: "t".to_string(),
+            description: String::from("t"),
             lease_duration: lease_secs,
             created_at: Instant::now()
                 .checked_sub(created_offset)

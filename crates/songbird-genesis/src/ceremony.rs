@@ -162,9 +162,9 @@ impl GenesisCeremony {
         }
 
         if primal_lineages.is_empty() {
-            return Err(GenesisError::CoordinationFailed(
-                "No primals provided lineage".to_string(),
-            ));
+            return Err(GenesisError::CoordinationFailed(String::from(
+                "No primals provided lineage",
+            )));
         }
 
         Ok(GenesisLineage {
@@ -353,7 +353,7 @@ mod tests {
 
     fn sample_witness() -> GenesisWitness {
         GenesisWitness::new(
-            "test-witness".to_string(),
+            String::from("test-witness"),
             vec![1, 2, 3],
             crate::types::PhysicalChannelType::HardwareKey,
         )
@@ -368,16 +368,16 @@ mod tests {
 
         // Add mock primal coordinators
         ceremony.add_primal_coordinator(PrimalCoordinator::new(
-            "songbird".to_string(),
-            "http://localhost:8080".to_string(),
+            String::from("songbird"),
+            String::from("http://localhost:8080"),
         ));
         ceremony.add_primal_coordinator(PrimalCoordinator::new(
-            "security-provider".to_string(),
-            "http://localhost:9000".to_string(),
+            String::from("security-provider"),
+            String::from("http://localhost:9000"),
         ));
 
         // Conduct ceremony (will use fallback since no real primals are running)
-        let identity = ceremony.conduct("new-node-test".to_string()).await;
+        let identity = ceremony.conduct(String::from("new-node-test")).await;
 
         // Should succeed with fallback implementations
         assert!(identity.is_ok(), "Genesis ceremony failed: {:?}", identity.err());
@@ -395,7 +395,7 @@ mod tests {
         let channel = PhysicalChannel::Mock(MockPhysicalChannel::new());
         let ceremony = GenesisCeremony::new(channel, sample_witness());
         let err = ceremony
-            .conduct("orphan-node".to_string())
+            .conduct(String::from("orphan-node"))
             .await
             .expect_err("coordination must fail with zero primals");
         match err {
@@ -411,11 +411,11 @@ mod tests {
         let channel = PhysicalChannel::Mock(MockPhysicalChannel::failing());
         let mut ceremony = GenesisCeremony::new(channel, sample_witness());
         ceremony.add_primal_coordinator(PrimalCoordinator::new(
-            "songbird".to_string(),
-            "http://127.0.0.1:1".to_string(),
+            String::from("songbird"),
+            String::from("http://127.0.0.1:1"),
         ));
         let err = ceremony
-            .conduct("n".to_string())
+            .conduct(String::from("n"))
             .await
             .expect_err("proximity should fail before coordination");
         assert!(
@@ -426,7 +426,7 @@ mod tests {
 
     #[test]
     fn primal_coordinator_new_fields() {
-        let c = PrimalCoordinator::new("p".to_string(), "http://example/genesis".to_string());
+        let c = PrimalCoordinator::new(String::from("p"), String::from("http://example/genesis"));
         assert_eq!(c.primal_name, "p");
         assert_eq!(c.endpoint, "http://example/genesis");
         assert!(c.auth_token.is_none());
@@ -460,10 +460,10 @@ mod tests {
         let mut ceremony = GenesisCeremony::new(channel, sample_witness());
         ceremony.set_timeout(std::time::Duration::from_secs(3600));
         ceremony.add_primal_coordinator(PrimalCoordinator::new(
-            "songbird".to_string(),
-            "http://127.0.0.1:1".to_string(),
+            String::from("songbird"),
+            String::from("http://127.0.0.1:1"),
         ));
-        let identity = ceremony.conduct("timeout-smoke".to_string()).await;
+        let identity = ceremony.conduct(String::from("timeout-smoke")).await;
         assert!(
             identity.is_ok(),
             "custom timeout should not block successful ceremony: {identity:?}"

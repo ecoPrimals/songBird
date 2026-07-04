@@ -132,6 +132,10 @@ impl MeshHandler {
                     }
                     | EndpointType::Local {
                         addr,
+                    }
+                    | EndpointType::Overlay {
+                        addr,
+                        ..
                     } => Some(*addr),
                     _ => None,
                 };
@@ -141,7 +145,25 @@ impl MeshHandler {
                     let probe_result = Self::probe_peer_rtt(peer_addr, timeout).await;
                     match probe_result {
                         Ok(rtt) => {
-                            mesh.record_direct_connection(node_id.clone(), peer_addr, rtt).await;
+                            match &path.endpoint_type {
+                                EndpointType::Overlay { overlay_name, .. } => {
+                                    mesh.record_overlay_connection(
+                                        node_id.clone(),
+                                        peer_addr,
+                                        overlay_name,
+                                        rtt,
+                                    )
+                                    .await;
+                                }
+                                _ => {
+                                    mesh.record_direct_connection(
+                                        node_id.clone(),
+                                        peer_addr,
+                                        rtt,
+                                    )
+                                    .await;
+                                }
+                            }
                             let rtt_ms = u64::try_from(rtt.as_millis()).unwrap_or(u64::MAX);
                             results.push(json!({
                                 "node_id": node_id,
@@ -248,17 +270,22 @@ impl MeshHandler {
         })
     }
 
-    /// Background peer health loop: periodically re-probes bootstrap peers.
+    /// Background peer health loop: periodically re-probes bootstrap and overlay peers.
     ///
     /// When a peer is unreachable, applies exponential backoff (30s → 60s → 120s → cap 300s).
     /// When a previously-failed peer responds, records fresh latency and restores reachability.
     /// Also extracts peer version for version-skew detection.
     ///
+    /// Overlay peers (`WireGuard`) are probed alongside bootstrap peers and recorded with their
+    /// correct endpoint type so `get_best_path` reflects actual overlay latency.
+    ///
     /// Filters out self-connections: peers whose `node_id` matches our own or whose
     /// address matches our local bind address are skipped to prevent self-connect loops.
+    #[expect(clippy::too_many_lines, reason = "cohesive setup + probe loop with per-kind recording")]
     pub(super) fn spawn_peer_health_loop(
         mesh: Arc<BeaconMesh>,
         bootstrap_peers: Vec<(String, std::net::SocketAddr)>,
+        overlay_peers: Vec<(String, std::net::SocketAddr, String)>,
         peer_metadata: Arc<RwLock<HashMap<String, PeerMetadata>>>,
     ) {
         use std::collections::HashMap as StdHashMap;
@@ -266,10 +293,27 @@ impl MeshHandler {
         let our_node_id = mesh.node_id().to_string();
         let local_addrs = Self::detect_local_addresses();
 
-        // Filter out self-connections
-        let peers: Vec<_> = bootstrap_peers
+        #[derive(Clone)]
+        enum PeerKind {
+            Bootstrap,
+            Overlay { name: String },
+        }
+
+        let mut all_peers: Vec<(String, std::net::SocketAddr, PeerKind)> = bootstrap_peers
             .into_iter()
-            .filter(|(peer_id, addr)| {
+            .map(|(id, addr)| (id, addr, PeerKind::Bootstrap))
+            .collect();
+
+        for (id, addr, name) in overlay_peers {
+            if !all_peers.iter().any(|(existing_id, _, _)| existing_id == &id) {
+                all_peers.push((id, addr, PeerKind::Overlay { name }));
+            }
+        }
+
+        // Filter out self-connections
+        let peers: Vec<_> = all_peers
+            .into_iter()
+            .filter(|(peer_id, addr, _)| {
                 if peer_id == &our_node_id {
                     tracing::debug!(peer = %peer_id, "Skipping self in health loop (node_id match)");
                     return false;
@@ -292,28 +336,45 @@ impl MeshHandler {
         }
 
         tokio::spawn(async move {
-            let bootstrap_peers = peers;
             let base_interval = Duration::from_secs(30);
             let max_interval = Duration::from_secs(300);
             let probe_timeout = Duration::from_secs(5);
             let mut backoff: StdHashMap<String, u32> = StdHashMap::new();
-            let mut next_probe: StdHashMap<String, tokio::time::Instant> = bootstrap_peers
+            let mut next_probe: StdHashMap<String, tokio::time::Instant> = peers
                 .iter()
-                .map(|(id, _)| (id.clone(), tokio::time::Instant::now() + base_interval))
+                .map(|(id, _, _)| (id.clone(), tokio::time::Instant::now() + base_interval))
                 .collect();
 
             loop {
                 tokio::time::sleep(Duration::from_secs(10)).await;
 
                 let now = tokio::time::Instant::now();
-                for (peer_id, addr) in &bootstrap_peers {
+                for (peer_id, addr, kind) in &peers {
                     let due = next_probe.get(peer_id).copied().unwrap_or(now);
                     if now < due {
                         continue;
                     }
 
                     if let Ok(result) = Self::probe_peer_full(*addr, probe_timeout).await {
-                        mesh.record_direct_connection(peer_id.clone(), *addr, result.rtt).await;
+                        match kind {
+                            PeerKind::Bootstrap => {
+                                mesh.record_direct_connection(
+                                    peer_id.clone(),
+                                    *addr,
+                                    result.rtt,
+                                )
+                                .await;
+                            }
+                            PeerKind::Overlay { name } => {
+                                mesh.record_overlay_connection(
+                                    peer_id.clone(),
+                                    *addr,
+                                    name,
+                                    result.rtt,
+                                )
+                                .await;
+                            }
+                        }
                         backoff.remove(peer_id);
                         next_probe.insert(peer_id.clone(), now + base_interval);
 
@@ -333,6 +394,10 @@ impl MeshHandler {
                             peer = %peer_id,
                             latency_ms = %result.rtt.as_millis(),
                             version = ?result.version,
+                            kind = ?match kind {
+                                PeerKind::Bootstrap => "direct",
+                                PeerKind::Overlay { .. } => "overlay",
+                            },
                             "mesh health: peer alive"
                         );
                     } else {

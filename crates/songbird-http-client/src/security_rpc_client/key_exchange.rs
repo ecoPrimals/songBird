@@ -14,13 +14,13 @@ use tracing::debug;
 fn parse_x25519_keypair_from_value(result: &Value) -> Result<(Vec<u8>, Vec<u8>)> {
     let public_key = result["public_key"]
         .as_str()
-        .ok_or_else(|| Error::SecurityProviderRpc("Missing public_key".to_string()))?;
+        .ok_or_else(|| Error::SecurityProviderRpc(String::from("Missing public_key")))?;
     let private_key = result["secret_key"] // Provider returns "secret_key", not "private_key"
         .as_str()
         .ok_or_else(|| {
-            Error::SecurityProviderRpc(
-                "Missing secret_key in security provider response".to_string(),
-            )
+            Error::SecurityProviderRpc(String::from(
+                "Missing secret_key in security provider response",
+            ))
         })?;
 
     let public_key = BASE64_STANDARD
@@ -36,7 +36,7 @@ fn parse_x25519_keypair_from_value(result: &Value) -> Result<(Vec<u8>, Vec<u8>)>
 fn parse_ecdh_shared_secret_from_value(result: &Value) -> Result<Vec<u8>> {
     let shared_secret = result["shared_secret"]
         .as_str()
-        .ok_or_else(|| Error::SecurityProviderRpc("Missing shared_secret".to_string()))?;
+        .ok_or_else(|| Error::SecurityProviderRpc(String::from("Missing shared_secret")))?;
 
     BASE64_STANDARD
         .decode(shared_secret)

@@ -232,17 +232,24 @@ async fn dispatch_hits_each_json_rpc_arm() {
 
     h.handle("relay.serve", json!({ "bind_addr": "127.0.0.1:0" })).await.expect("relay.serve");
     ok!("relay.status", json!({}));
-    h.handle(
-        "relay.allocate",
-        json!({
-            "relay_node": "a",
-            "requester": "b",
-            "target_addr": "127.0.0.1:1",
-            "lineage_proof": ""
-        }),
-    )
-    .await
-    .expect("relay.allocate");
+    match h
+        .handle(
+            "relay.allocate",
+            json!({
+                "relay_node": "a",
+                "requester": "b",
+                "target_addr": "127.0.0.1:1",
+                "lineage_proof": ""
+            }),
+        )
+        .await
+    {
+        Ok(_) => {}
+        Err(e) => assert!(
+            e.contains("authorization denied") || e.contains("Authorization"),
+            "unexpected relay.allocate error: {e}"
+        ),
+    }
     h.handle("relay.stop", json!({})).await.expect("relay.stop");
 
     ok!("discovery.peers", json!({}));

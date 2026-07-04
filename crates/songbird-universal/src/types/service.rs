@@ -83,7 +83,7 @@ impl Default for ServiceEndpoint {
     fn default() -> Self {
         Self {
             url: String::new(),
-            protocol: "http".to_string(),
+            protocol: String::from("http"),
             tls_enabled: false,
             port: songbird_config::defaults::ports::orchestrator_port(),
         }

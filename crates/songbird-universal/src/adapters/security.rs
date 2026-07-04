@@ -200,13 +200,13 @@ impl SecurityAdapter {
     /// use songbird_universal::adapters::SecurityAdapter;
     ///
     /// // tarpc (PRIMARY - fastest)
-    /// let adapter1 = SecurityAdapter::new("tarpc://localhost:9001".to_string())?;
+    /// let adapter1 = SecurityAdapter::new(String::from("tarpc://localhost:9001"))?;
     ///
     /// // Unix socket (SECONDARY - port-free)
-    /// let adapter2 = SecurityAdapter::new("unix:///tmp/biomeos/security.sock".to_string())?;
+    /// let adapter2 = SecurityAdapter::new(String::from("unix:///tmp/biomeos/security.sock"))?;
     ///
     /// // HTTP endpoint (FALLBACK)
-    /// let adapter3 = SecurityAdapter::new("http://localhost:9000".to_string())?;
+    /// let adapter3 = SecurityAdapter::new(String::from("http://localhost:9000"))?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// # });
     /// ```
@@ -432,7 +432,7 @@ impl SecurityAdapter {
     /// use serde_json::json;
     ///
     /// # async fn example() -> songbird_types::SongbirdResult<()> {
-    /// let adapter = SecurityAdapter::new("tarpc://localhost:8765".to_string())?;
+    /// let adapter = SecurityAdapter::new(String::from("tarpc://localhost:8765"))?;
     ///
     /// let params = json!({
     ///     "target_peer_id": "tower-b",

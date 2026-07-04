@@ -166,7 +166,7 @@ mod tests {
 
     #[test]
     fn test_error_display() {
-        let err = TlsError::ProtocolError("test".to_string());
+        let err = TlsError::ProtocolError(String::from("test"));
         assert_eq!(err.to_string(), "Protocol error: test");
 
         let err = TlsError::DecryptError;
@@ -182,16 +182,16 @@ mod tests {
     #[test]
     fn test_alert_codes() {
         assert_eq!(TlsError::DecryptError.to_alert_code(), 51);
-        assert_eq!(TlsError::CertificateError("test".to_string()).to_alert_code(), 42);
-        assert_eq!(TlsError::HandshakeFailure("test".to_string()).to_alert_code(), 40);
+        assert_eq!(TlsError::CertificateError(String::from("test")).to_alert_code(), 42);
+        assert_eq!(TlsError::HandshakeFailure(String::from("test")).to_alert_code(), 40);
     }
 
     #[test]
     fn test_is_fatal() {
         // All errors are fatal in TLS 1.3
         assert!(TlsError::DecryptError.is_fatal());
-        assert!(TlsError::ProtocolError("test".to_string()).is_fatal());
-        assert!(TlsError::HandshakeFailure("test".to_string()).is_fatal());
+        assert!(TlsError::ProtocolError(String::from("test")).is_fatal());
+        assert!(TlsError::HandshakeFailure(String::from("test")).is_fatal());
     }
 
     #[test]
@@ -204,18 +204,18 @@ mod tests {
     #[test]
     fn test_all_display_variants() {
         let cases: Vec<(TlsError, &str)> = vec![
-            (TlsError::ProtocolError("bad msg".to_string()), "Protocol error: bad msg"),
+            (TlsError::ProtocolError(String::from("bad msg")), "Protocol error: bad msg"),
             (TlsError::DecryptError, "Decryption failed"),
-            (TlsError::CertificateError("bad cert".to_string()), "Certificate error: bad cert"),
-            (TlsError::HandshakeFailure("hsk".to_string()), "Handshake failure: hsk"),
-            (TlsError::Unsupported("feat".to_string()), "Unsupported: feat"),
-            (TlsError::IoError("conn reset".to_string()), "IO error: conn reset"),
-            (TlsError::CryptoError("hmac fail".to_string()), "Crypto error: hmac fail"),
+            (TlsError::CertificateError(String::from("bad cert")), "Certificate error: bad cert"),
+            (TlsError::HandshakeFailure(String::from("hsk")), "Handshake failure: hsk"),
+            (TlsError::Unsupported(String::from("feat")), "Unsupported: feat"),
+            (TlsError::IoError(String::from("conn reset")), "IO error: conn reset"),
+            (TlsError::CryptoError(String::from("hmac fail")), "Crypto error: hmac fail"),
             (
                 TlsError::CryptoUnavailable,
                 "Crypto unavailable: security provider backend not reachable",
             ),
-            (TlsError::InternalError("bug".to_string()), "Internal error: bug"),
+            (TlsError::InternalError(String::from("bug")), "Internal error: bug"),
             (
                 TlsError::BufferTooSmall {
                     required: 64,
@@ -223,7 +223,7 @@ mod tests {
                 },
                 "Buffer too small: required 64 bytes, available 8 bytes",
             ),
-            (TlsError::InvalidParameter("bad len".to_string()), "Invalid parameter: bad len"),
+            (TlsError::InvalidParameter(String::from("bad len")), "Invalid parameter: bad len"),
             (
                 TlsError::RecordTooLarge {
                     size: 20_000,
@@ -232,8 +232,8 @@ mod tests {
             ),
             (
                 TlsError::UnexpectedMessage {
-                    expected: "Finished".to_string(),
-                    got: "Alert".to_string(),
+                    expected: String::from("Finished"),
+                    got: String::from("Alert"),
                 },
                 "Unexpected message: expected Finished, got Alert",
             ),
@@ -305,8 +305,8 @@ mod tests {
         assert_eq!(alert_bucket(&TlsError::CryptoUnavailable), 80);
         assert_eq!(
             alert_bucket(&TlsError::UnexpectedMessage {
-                expected: "A".to_string(),
-                got: "B".to_string(),
+                expected: String::from("A"),
+                got: String::from("B"),
             }),
             10
         );
@@ -325,16 +325,16 @@ mod tests {
     fn test_std_error_trait_no_source_chain() {
         use std::error::Error;
 
-        let err = TlsError::InternalError("nested".to_string());
+        let err = TlsError::InternalError(String::from("nested"));
         let dyn_err: &dyn Error = &err;
         assert!(dyn_err.source().is_none());
     }
 
     #[test]
     fn test_all_alert_codes() {
-        assert_eq!(TlsError::Unsupported("v".to_string()).to_alert_code(), 70);
-        assert_eq!(TlsError::ProtocolError("p".to_string()).to_alert_code(), 10);
-        assert_eq!(TlsError::InvalidParameter("i".to_string()).to_alert_code(), 47);
+        assert_eq!(TlsError::Unsupported(String::from("v")).to_alert_code(), 70);
+        assert_eq!(TlsError::ProtocolError(String::from("p")).to_alert_code(), 10);
+        assert_eq!(TlsError::InvalidParameter(String::from("i")).to_alert_code(), 47);
         assert_eq!(
             TlsError::RecordTooLarge {
                 size: 20000
@@ -343,9 +343,9 @@ mod tests {
             22
         );
         assert_eq!(TlsError::CryptoUnavailable.to_alert_code(), 80);
-        assert_eq!(TlsError::CryptoError("c".to_string()).to_alert_code(), 80);
-        assert_eq!(TlsError::IoError("i".to_string()).to_alert_code(), 80);
-        assert_eq!(TlsError::InternalError("i".to_string()).to_alert_code(), 80);
+        assert_eq!(TlsError::CryptoError(String::from("c")).to_alert_code(), 80);
+        assert_eq!(TlsError::IoError(String::from("i")).to_alert_code(), 80);
+        assert_eq!(TlsError::InternalError(String::from("i")).to_alert_code(), 80);
         assert_eq!(
             TlsError::BufferTooSmall {
                 required: 1,
@@ -356,8 +356,8 @@ mod tests {
         );
         assert_eq!(
             TlsError::UnexpectedMessage {
-                expected: "x".to_string(),
-                got: "y".to_string(),
+                expected: String::from("x"),
+                got: String::from("y"),
             }
             .to_alert_code(),
             10

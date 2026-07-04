@@ -286,7 +286,7 @@ mod tests {
 
     #[test]
     fn extension_server_name_not_mandatory_for_tls13() {
-        let ext = Extension::ServerName("example.com".to_string());
+        let ext = Extension::ServerName(String::from("example.com"));
         assert!(!ext.is_mandatory_for_tls13());
         assert_eq!(ext.extension_type(), EXT_SERVER_NAME);
     }

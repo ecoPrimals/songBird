@@ -166,7 +166,7 @@ impl SsdpClient {
 
         // Extract required fields
         let location = headers.get("LOCATION")?.clone();
-        let server = headers.get("SERVER").cloned().unwrap_or_else(|| "Unknown".to_string());
+        let server = headers.get("SERVER").cloned().unwrap_or_else(|| String::from("Unknown"));
         let service_type = headers.get("ST")?.clone();
         let usn = headers.get("USN").cloned().unwrap_or_default();
 

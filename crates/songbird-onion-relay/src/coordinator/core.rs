@@ -137,7 +137,7 @@ mod tests {
             local_addr: None,
             nat_type: NatType::Unknown,
             timestamp: SystemTime::now(),
-            capabilities: vec!["relay".to_string()],
+            capabilities: vec![String::from("relay")],
         }
     }
 

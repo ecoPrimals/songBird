@@ -114,9 +114,9 @@ impl TurnClient {
 
         // Check for error response
         if response.message_type == MessageType::AllocateError {
-            return Err(StunError::InvalidResponse(
-                "TURN server rejected Allocate request".to_string(),
-            ));
+            return Err(StunError::InvalidResponse(String::from(
+                "TURN server rejected Allocate request",
+            )));
         }
 
         Self::parse_allocate_response(&response)
@@ -296,7 +296,7 @@ impl TurnClient {
 
     fn parse_allocate_response(response: &StunMessage) -> StunResult<TurnAllocation> {
         let mapped_addr = response.get_any_mapped_address().ok_or_else(|| {
-            StunError::InvalidResponse("Allocate response missing XOR-MAPPED-ADDRESS".to_string())
+            StunError::InvalidResponse(String::from("Allocate response missing XOR-MAPPED-ADDRESS"))
         })?;
 
         // Find XOR-RELAYED-ADDRESS (0x0016) in Unknown attributes
@@ -316,9 +316,9 @@ impl TurnClient {
                 }
             })
             .ok_or_else(|| {
-                StunError::InvalidResponse(
-                    "Allocate response missing XOR-RELAYED-ADDRESS".to_string(),
-                )
+                StunError::InvalidResponse(String::from(
+                    "Allocate response missing XOR-RELAYED-ADDRESS",
+                ))
             })?;
 
         let lifetime_secs = Self::parse_lifetime_from_response(response).unwrap_or(600);
@@ -342,7 +342,7 @@ impl TurnClient {
                 return Ok(u32::from_be_bytes([data[0], data[1], data[2], data[3]]));
             }
         }
-        Err(StunError::InvalidResponse("Response missing LIFETIME attribute".to_string()))
+        Err(StunError::InvalidResponse(String::from("Response missing LIFETIME attribute")))
     }
 }
 
@@ -391,7 +391,7 @@ mod tests {
     #[test]
     fn turn_client_creation() {
         let creds = StunCredentials {
-            username: "user".to_string(),
+            username: String::from("user"),
             key: b"secret".to_vec(),
         };
         let addr: SocketAddr = "192.0.2.1:3478".parse().unwrap();
@@ -403,7 +403,7 @@ mod tests {
     #[test]
     fn turn_client_with_timeout() {
         let creds = StunCredentials {
-            username: "u".to_string(),
+            username: String::from("u"),
             key: vec![],
         };
         let addr: SocketAddr = "10.0.0.1:3478".parse().unwrap();
@@ -438,7 +438,7 @@ mod tests {
     #[test]
     fn channel_bind_rejects_invalid_channel_number() {
         let creds = StunCredentials {
-            username: "u".to_string(),
+            username: String::from("u"),
             key: b"k".to_vec(),
         };
         let addr: SocketAddr = "10.0.0.1:3478".parse().unwrap();
@@ -483,7 +483,7 @@ mod tests {
         use std::sync::Arc;
 
         let mut store = StaticCredentialStore::new();
-        store.insert("turnuser".to_string(), b"turnkey456".to_vec());
+        store.insert(String::from("turnuser"), b"turnkey456".to_vec());
         let server = TurnRelayServer::new("127.0.0.1:0".parse().unwrap(), Arc::new(store));
         let (tx, rx) = tokio::sync::oneshot::channel();
         let handle = tokio::spawn(async move {
@@ -495,7 +495,7 @@ mod tests {
 
     fn turn_test_creds() -> StunCredentials {
         StunCredentials {
-            username: "turnuser".to_string(),
+            username: String::from("turnuser"),
             key: b"turnkey456".to_vec(),
         }
     }
@@ -531,7 +531,7 @@ mod tests {
     async fn turn_client_allocate_error_on_rejection() {
         let (handle, server_addr) = start_test_turn_server().await;
         let bad_creds = StunCredentials {
-            username: "wrong".to_string(),
+            username: String::from("wrong"),
             key: b"bad".to_vec(),
         };
         let client = TurnClient::new(server_addr, bad_creds);

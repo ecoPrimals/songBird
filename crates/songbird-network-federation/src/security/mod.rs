@@ -578,10 +578,8 @@ mod tests {
     #[tokio::test]
     async fn mock_encrypt_decrypt_roundtrip() {
         let p = SecurityProviderFactory::create_mock();
-        let encrypted = p
-            .encrypt_for_lineage(b"secret payload", LineageHint::Universal)
-            .await
-            .unwrap();
+        let encrypted =
+            p.encrypt_for_lineage(b"secret payload", LineageHint::Universal).await.unwrap();
         let decrypted = p.decrypt_birdsong(&encrypted).await.unwrap();
         assert_eq!(decrypted.as_deref(), Some(b"secret payload".as_slice()));
     }

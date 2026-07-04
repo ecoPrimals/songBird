@@ -154,7 +154,7 @@ impl SecurityRpcClient {
                     );
                 })
             })
-            .unwrap_or_else(|_| "api".to_string());
+            .unwrap_or_else(|_| String::from("api"));
 
         if mode.to_lowercase() == "direct" {
             let vps_fallback =

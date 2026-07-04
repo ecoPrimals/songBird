@@ -82,7 +82,7 @@ impl OnionServiceManager {
             let mut keys_lock = self
                 .keys
                 .write()
-                .map_err(|_| Error::Protocol("Failed to acquire keys lock".to_string()))?;
+                .map_err(|_| Error::Protocol(String::from("Failed to acquire keys lock")))?;
             *keys_lock = Some(keys.clone());
         }
 
@@ -101,10 +101,10 @@ impl OnionServiceManager {
         let keys = self
             .keys
             .read()
-            .map_err(|_| Error::Protocol("Failed to acquire keys lock".to_string()))?;
+            .map_err(|_| Error::Protocol(String::from("Failed to acquire keys lock")))?;
         Ok(keys
             .as_ref()
-            .ok_or_else(|| Error::Protocol("Service not initialized".to_string()))?
+            .ok_or_else(|| Error::Protocol(String::from("Service not initialized")))?
             .onion_address
             .clone())
     }
@@ -134,7 +134,7 @@ impl OnionServiceManager {
             let keys = self
                 .keys
                 .read()
-                .map_err(|_| Error::Protocol("Failed to acquire keys lock".to_string()))?;
+                .map_err(|_| Error::Protocol(String::from("Failed to acquire keys lock")))?;
             keys.clone()
         };
 
@@ -177,7 +177,7 @@ impl OnionServiceManager {
         let mut intro_points = self
             .intro_points
             .write()
-            .map_err(|_| Error::Protocol("Failed to acquire intro points lock".to_string()))?;
+            .map_err(|_| Error::Protocol(String::from("Failed to acquire intro points lock")))?;
         intro_points.extend(batch);
         drop(intro_points);
 
@@ -194,18 +194,17 @@ impl OnionServiceManager {
             let guard = self
                 .keys
                 .read()
-                .map_err(|_| Error::Protocol("Failed to acquire keys lock".to_string()))?;
+                .map_err(|_| Error::Protocol(String::from("Failed to acquire keys lock")))?;
             guard
                 .as_ref()
-                .ok_or_else(|| Error::Protocol("Service not initialized".to_string()))?
+                .ok_or_else(|| Error::Protocol(String::from("Service not initialized")))?
                 .clone()
         };
 
         let intro_points = {
-            let guard = self
-                .intro_points
-                .read()
-                .map_err(|_| Error::Protocol("Failed to acquire intro points lock".to_string()))?;
+            let guard = self.intro_points.read().map_err(|_| {
+                Error::Protocol(String::from("Failed to acquire intro points lock"))
+            })?;
             guard.clone()
         };
 
@@ -248,11 +247,11 @@ impl OnionServiceManager {
         let mut circuits = self
             .rendezvous_circuits
             .write()
-            .map_err(|_| Error::Protocol("Failed to acquire circuits lock".to_string()))?;
+            .map_err(|_| Error::Protocol(String::from("Failed to acquire circuits lock")))?;
 
         // Check for duplicate cookie
         if circuits.contains_key(rendezvous_cookie) {
-            return Err(Error::Protocol("Duplicate rendezvous cookie".to_string()));
+            return Err(Error::Protocol(String::from("Duplicate rendezvous cookie")));
         }
 
         // Create a placeholder circuit for this rendezvous
@@ -274,7 +273,7 @@ impl OnionServiceManager {
         let state = self
             .state
             .read()
-            .map_err(|_| Error::Protocol("Failed to acquire state lock".to_string()))?;
+            .map_err(|_| Error::Protocol(String::from("Failed to acquire state lock")))?;
         Ok(*state)
     }
 
@@ -283,7 +282,7 @@ impl OnionServiceManager {
         let mut state = self
             .state
             .write()
-            .map_err(|_| Error::Protocol("Failed to acquire state lock".to_string()))?;
+            .map_err(|_| Error::Protocol(String::from("Failed to acquire state lock")))?;
         *state = new_state;
         drop(state);
         Ok(())
@@ -308,7 +307,7 @@ impl OnionServiceManager {
             let mut circuits = self
                 .rendezvous_circuits
                 .write()
-                .map_err(|_| Error::Protocol("Failed to acquire circuits lock".to_string()))?;
+                .map_err(|_| Error::Protocol(String::from("Failed to acquire circuits lock")))?;
             let count = circuits.len();
             circuits.clear();
             drop(circuits);
@@ -319,10 +318,9 @@ impl OnionServiceManager {
 
         // Clear introduction points
         {
-            let mut intro_points = self
-                .intro_points
-                .write()
-                .map_err(|_| Error::Protocol("Failed to acquire intro points lock".to_string()))?;
+            let mut intro_points = self.intro_points.write().map_err(|_| {
+                Error::Protocol(String::from("Failed to acquire intro points lock"))
+            })?;
             let count = intro_points.len();
             intro_points.clear();
             drop(intro_points);
@@ -349,7 +347,7 @@ mod tests {
     use crate::error::Error;
 
     fn test_crypto() -> CryptoProvider {
-        CryptoProvider::new("/tmp/songbird-tor-protocol-onion-service-test.sock".to_string())
+        CryptoProvider::new(String::from("/tmp/songbird-tor-protocol-onion-service-test.sock"))
     }
 
     #[test]

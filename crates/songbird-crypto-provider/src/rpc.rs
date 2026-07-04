@@ -95,7 +95,7 @@ impl CryptoProvider {
                 trace!("🌐 Neural API: capability.call({}, {})", capability, operation);
                 JsonRpcRequest {
                     jsonrpc: JSONRPC_VERSION.into(),
-                    method: "capability.call".to_string(),
+                    method: String::from("capability.call"),
                     params: json!({
                         "capability": capability,
                         "operation": operation,
@@ -323,7 +323,7 @@ mod tests {
         });
         let req = JsonRpcRequest {
             jsonrpc: JSONRPC_VERSION.into(),
-            method: "capability.call".to_string(),
+            method: String::from("capability.call"),
             params: inner,
             id: 7,
         };

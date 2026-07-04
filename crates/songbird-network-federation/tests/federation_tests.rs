@@ -7,6 +7,7 @@
     clippy::await_holding_lock,
     clippy::float_cmp,
     clippy::needless_pass_by_value,
+    clippy::similar_names,
     reason = "test assertions and harness ergonomics"
 )]
 

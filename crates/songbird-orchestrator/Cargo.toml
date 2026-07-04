@@ -103,6 +103,7 @@ songbird-registry = { path = "../songbird-registry" }
 songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 songbird-universal = { path = "../songbird-universal" }
 songbird-universal-ipc = { path = "../songbird-universal-ipc" }  # NEW (Jan 19, 2026): Universal IPC broker service
+songbird-onion-relay = { path = "../songbird-onion-relay" }  # Mesh endpoint types for overlay registration
 songbird-igd = { path = "../songbird-igd" }  # IGD router auto-configure (Feb 8, 2026)
 
 # Runtime
@@ -152,7 +153,7 @@ bytes = { workspace = true }
 hmac = { workspace = true }
 
 
-tarpc = { workspace = true, features = ["full"] }
+tarpc = { workspace = true }
 bincode = { workspace = true }
 tokio-util = { version = "0.7.17", features = ["codec"] }
 tokio-serde = { version = "0.8.0", features = ["bincode"] }

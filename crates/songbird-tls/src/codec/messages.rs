@@ -25,7 +25,7 @@ impl Encode for Extension {
                 let mut data = Vec::new();
                 let len_bytes = versions.len() * 2;
                 let len_u8 = u8::try_from(len_bytes).map_err(|_| {
-                    TlsError::InvalidParameter("SupportedVersions too long".to_string())
+                    TlsError::InvalidParameter(String::from("SupportedVersions too long"))
                 })?;
                 write_u8(&mut data, len_u8); // Length in bytes
                 for version in versions {
@@ -52,12 +52,13 @@ impl Encode for Extension {
                 // Server name list length = type (1) + length (2) + name bytes
                 let list_len = name_bytes.len() + 3;
                 let list_len_u16 = u16::try_from(list_len).map_err(|_| {
-                    TlsError::InvalidParameter("Server name list too long".to_string())
+                    TlsError::InvalidParameter(String::from("Server name list too long"))
                 })?;
                 write_u16(&mut data, list_len_u16);
                 write_u8(&mut data, 0x00); // Type: host_name
-                let name_len_u16 = u16::try_from(name_bytes.len())
-                    .map_err(|_| TlsError::InvalidParameter("Server name too long".to_string()))?;
+                let name_len_u16 = u16::try_from(name_bytes.len()).map_err(|_| {
+                    TlsError::InvalidParameter(String::from("Server name too long"))
+                })?;
                 write_u16(&mut data, name_len_u16);
                 data.extend_from_slice(name_bytes);
 
@@ -66,7 +67,7 @@ impl Encode for Extension {
             Self::SignatureAlgorithms(algs) => {
                 let mut data = Vec::new();
                 let algs_len = u16::try_from(algs.len() * 2).map_err(|_| {
-                    TlsError::InvalidParameter("SignatureAlgorithms too long".to_string())
+                    TlsError::InvalidParameter(String::from("SignatureAlgorithms too long"))
                 })?;
                 write_u16(&mut data, algs_len);
                 for alg in algs {
@@ -77,7 +78,7 @@ impl Encode for Extension {
             Self::SupportedGroups(groups) => {
                 let mut data = Vec::new();
                 let groups_len = u16::try_from(groups.len() * 2).map_err(|_| {
-                    TlsError::InvalidParameter("SupportedGroups too long".to_string())
+                    TlsError::InvalidParameter(String::from("SupportedGroups too long"))
                 })?;
                 write_u16(&mut data, groups_len);
                 for group in groups {
@@ -131,7 +132,7 @@ impl Encode for ClientHello {
 
         // Cipher suites (u16 length + u16 values)
         let cipher_len = u16::try_from(self.cipher_suites.len() * 2)
-            .map_err(|_| TlsError::InvalidParameter("Cipher suites list too long".to_string()))?;
+            .map_err(|_| TlsError::InvalidParameter(String::from("Cipher suites list too long")))?;
         write_u16(buf, cipher_len);
         for suite in &self.cipher_suites {
             write_u16(buf, *suite);
@@ -169,9 +170,9 @@ impl Decode for ClientHello {
 
         // Random (32 bytes)
         if offset + 32 > buf.len() {
-            return Err(TlsError::ProtocolError(
-                "ClientHello: not enough data for random".to_string(),
-            ));
+            return Err(TlsError::ProtocolError(String::from(
+                "ClientHello: not enough data for random",
+            )));
         }
         let mut random = [0u8; 32];
         random.copy_from_slice(&buf[offset..offset + 32]);
@@ -183,9 +184,9 @@ impl Decode for ClientHello {
         // Cipher suites (each suite is 2 bytes, so length must be even)
         let cipher_suites_len = read_u16(buf, &mut offset)? as usize;
         if !cipher_suites_len.is_multiple_of(2) {
-            return Err(TlsError::ProtocolError(
-                "ClientHello: cipher suites length must be even".to_string(),
-            ));
+            return Err(TlsError::ProtocolError(String::from(
+                "ClientHello: cipher suites length must be even",
+            )));
         }
         let mut cipher_suites = Vec::new();
         for _ in 0..(cipher_suites_len / 2) {
@@ -292,9 +293,9 @@ impl Decode for ServerHello {
 
         // Random (32 bytes)
         if offset + 32 > buf.len() {
-            return Err(TlsError::ProtocolError(
-                "ServerHello: not enough data for random".to_string(),
-            ));
+            return Err(TlsError::ProtocolError(String::from(
+                "ServerHello: not enough data for random",
+            )));
         }
         let mut random = [0u8; 32];
         random.copy_from_slice(&buf[offset..offset + 32]);
@@ -452,7 +453,7 @@ mod tests {
     #[test]
     fn test_extension_server_name_encode() {
         // Test SNI encoding for "example.com"
-        let server_name = "example.com".to_string();
+        let server_name = String::from("example.com");
         let ext = Extension::ServerName(server_name.clone());
         let mut buf = Vec::new();
         ext.encode(&mut buf).unwrap();
@@ -498,7 +499,7 @@ mod tests {
 
     #[test]
     fn test_extension_server_name_encoded_size() {
-        let server_name = "example.com".to_string();
+        let server_name = String::from("example.com");
         let ext = Extension::ServerName(server_name);
 
         let mut buf = Vec::new();
@@ -530,7 +531,7 @@ mod tests {
             vec![
                 Extension::SupportedVersions(vec![0x0303, 0x0304]),
                 Extension::KeyShare(vec![0xAB; 32]),
-                Extension::ServerName("tls.example".to_string()),
+                Extension::ServerName(String::from("tls.example")),
                 Extension::SignatureAlgorithms(vec![0x0807]),
                 Extension::SupportedGroups(vec![0x001d]),
                 Extension::Unknown {

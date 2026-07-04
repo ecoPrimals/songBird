@@ -100,12 +100,12 @@ impl SecurityRpcClient {
 
         let session_token = result["session_token"]
             .as_str()
-            .ok_or_else(|| Error::SecurityProviderRpc("Missing session_token".to_string()))?
+            .ok_or_else(|| Error::SecurityProviderRpc(String::from("Missing session_token")))?
             .to_string();
 
         let server_ephemeral_pub = BASE64_STANDARD
             .decode(result["server_ephemeral_pub"].as_str().ok_or_else(|| {
-                Error::SecurityProviderRpc("Missing server_ephemeral_pub".to_string())
+                Error::SecurityProviderRpc(String::from("Missing server_ephemeral_pub"))
             })?)
             .map_err(|e| {
                 Error::SecurityProviderRpc(format!("Invalid server_ephemeral_pub base64: {e}"))
@@ -115,7 +115,7 @@ impl SecurityRpcClient {
             .decode(
                 result["challenge"]
                     .as_str()
-                    .ok_or_else(|| Error::SecurityProviderRpc("Missing challenge".to_string()))?,
+                    .ok_or_else(|| Error::SecurityProviderRpc(String::from("Missing challenge")))?,
             )
             .map_err(|e| Error::SecurityProviderRpc(format!("Invalid challenge base64: {e}")))?;
 
@@ -161,9 +161,9 @@ impl SecurityRpcClient {
             .await?;
 
         let verified = result["verified"].as_bool().ok_or_else(|| {
-            Error::SecurityProviderRpc(
-                "Missing 'verified' field in btsp.session.verify response".to_string(),
-            )
+            Error::SecurityProviderRpc(String::from(
+                "Missing 'verified' field in btsp.session.verify response",
+            ))
         })?;
 
         let session_id = result["session_id"].as_str().map(ToString::to_string);
@@ -200,9 +200,9 @@ impl SecurityRpcClient {
             .await?;
 
         let handshake_key_b64 = result["handshake_key"].as_str().ok_or_else(|| {
-            Error::SecurityProviderRpc(
-                "Missing 'handshake_key' in btsp.server.export_keys response".to_string(),
-            )
+            Error::SecurityProviderRpc(String::from(
+                "Missing 'handshake_key' in btsp.server.export_keys response",
+            ))
         })?;
 
         let raw = BASE64_STANDARD.decode(handshake_key_b64).map_err(|e| {
@@ -248,12 +248,12 @@ impl SecurityRpcClient {
         let negotiated_cipher = result["cipher"]
             .as_str()
             .ok_or_else(|| {
-                Error::SecurityProviderRpc("Missing cipher in btsp.session.negotiate".to_string())
+                Error::SecurityProviderRpc(String::from("Missing cipher in btsp.session.negotiate"))
             })?
             .to_string();
 
         let accepted = result["accepted"].as_bool().ok_or_else(|| {
-            Error::SecurityProviderRpc("Missing 'accepted' in btsp.session.negotiate".to_string())
+            Error::SecurityProviderRpc(String::from("Missing 'accepted' in btsp.session.negotiate"))
         })?;
 
         Ok(BtspNegotiation {

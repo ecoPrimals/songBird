@@ -429,7 +429,7 @@ mod tests {
 
     #[test]
     fn test_server_profile_learning() {
-        let mut profile = ServerProfile::new("test.com".to_string());
+        let mut profile = ServerProfile::new(String::from("test.com"));
 
         assert_eq!(profile.success_count, 0);
         assert_eq!(profile.failure_count, 0);

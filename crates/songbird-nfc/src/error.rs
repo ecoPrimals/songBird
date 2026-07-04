@@ -85,19 +85,19 @@ mod tests {
 
     #[test]
     fn malformed_frame_display() {
-        let e = NfcError::MalformedFrame("bad crc".to_string());
+        let e = NfcError::MalformedFrame(String::from("bad crc"));
         assert_eq!(e.to_string(), "Malformed frame: bad crc");
     }
 
     #[test]
     fn crypto_platform_and_timeout_display() {
-        assert_eq!(NfcError::Crypto("x".to_string()).to_string(), "Crypto error: x");
+        assert_eq!(NfcError::Crypto(String::from("x")).to_string(), "Crypto error: x");
         assert_eq!(
-            NfcError::Platform("nfc off".to_string()).to_string(),
+            NfcError::Platform(String::from("nfc off")).to_string(),
             "Platform error: nfc off"
         );
         assert_eq!(
-            NfcError::PlatformUnsupported("no driver".to_string()).to_string(),
+            NfcError::PlatformUnsupported(String::from("no driver")).to_string(),
             "Platform unsupported: no driver"
         );
         assert_eq!(NfcError::Timeout.to_string(), "Operation timed out");

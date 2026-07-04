@@ -290,10 +290,10 @@ impl UniversalAdapter {
                     provider_id: format!("mdns-{}-{}", capability, svc.address),
                     capabilities: svc.capabilities,
                     endpoint,
-                    protocol: "http".to_string(),
+                    protocol: String::from("http"),
                     metadata: {
                         let mut m = svc.metadata;
-                        m.insert("source".to_string(), "mdns".to_string());
+                        m.insert(String::from("source"), String::from("mdns"));
                         m
                     },
                     discovered_at: Instant::now(),

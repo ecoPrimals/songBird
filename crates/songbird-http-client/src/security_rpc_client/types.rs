@@ -71,8 +71,8 @@ mod tests {
     #[test]
     fn test_json_rpc_request_serialization() {
         let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            method: "test".to_string(),
+            jsonrpc: String::from("2.0"),
+            method: String::from("test"),
             params: serde_json::json!({}),
             id: 1,
         };

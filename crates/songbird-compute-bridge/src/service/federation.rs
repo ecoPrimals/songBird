@@ -27,16 +27,16 @@ pub async fn register_with_songbird(
     let info = &state.service_info;
 
     let mut metadata = HashMap::new();
-    metadata.insert("cpu_cores".to_string(), info.cpu_cores.to_string());
-    metadata.insert("memory_gb".to_string(), info.memory_gb.to_string());
-    metadata.insert("gpu_count".to_string(), info.gpu_count.to_string());
+    metadata.insert(String::from("cpu_cores"), info.cpu_cores.to_string());
+    metadata.insert(String::from("memory_gb"), info.memory_gb.to_string());
+    metadata.insert(String::from("gpu_count"), info.gpu_count.to_string());
     if let Some(ref gpu_model) = info.gpu_model {
-        metadata.insert("gpu_model".to_string(), gpu_model.clone());
+        metadata.insert(String::from("gpu_model"), gpu_model.clone());
     }
     if let Some(storage) = info.storage_gb {
-        metadata.insert("storage_gb".to_string(), storage.to_string());
+        metadata.insert(String::from("storage_gb"), storage.to_string());
     }
-    metadata.insert("platform".to_string(), info.platform.clone());
+    metadata.insert(String::from("platform"), info.platform.clone());
 
     let health = derive_health_status(config);
     let tower_id = config.tower_id.clone();

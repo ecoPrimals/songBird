@@ -196,3 +196,4 @@ primalBins/
 # Runtime socket files
 *.sock
 songbird-nat*
+@biomeos_*

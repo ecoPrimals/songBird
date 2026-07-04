@@ -101,7 +101,7 @@ mod tests {
     fn from_string_and_str() {
         let e: LineageRelayError = "hello".into();
         assert!(matches!(e, LineageRelayError::Other(ref s) if s == "hello"));
-        let e2: LineageRelayError = "x".to_string().into();
+        let e2: LineageRelayError = String::from("x").into();
         assert!(matches!(e2, LineageRelayError::Other(_)));
     }
 

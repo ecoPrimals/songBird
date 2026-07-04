@@ -60,9 +60,9 @@ impl RecordLayer {
     /// Returns an error if the buffer is too short, record is too large, or incomplete.
     pub fn parse_record(&mut self, buf: &[u8]) -> Result<(ContentType, Vec<u8>, usize)> {
         if buf.len() < 5 {
-            return Err(TlsError::ProtocolError(
-                "Record too short: need at least 5 bytes for header".to_string(),
-            ));
+            return Err(TlsError::ProtocolError(String::from(
+                "Record too short: need at least 5 bytes for header",
+            )));
         }
 
         let mut offset = 0;

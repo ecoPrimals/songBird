@@ -212,8 +212,8 @@ mod tests {
         GenesisCredentials {
             identity: vec![1, 2, 3],
             family_seed: vec![4, 5, 6],
-            lineage: vec!["root".to_string()],
-            beacons: vec!["b.onion".to_string()],
+            lineage: vec![String::from("root")],
+            beacons: vec![String::from("b.onion")],
             timestamp: 1_707_350_400_000,
         }
     }
@@ -271,7 +271,7 @@ mod tests {
         serde_json::json!({})
     }
 
-    async fn spawn_crypto_rpc_server(
+    fn spawn_crypto_rpc_server(
         listener: tokio::net::UnixListener,
         verify_valid: bool,
     ) -> tokio::task::JoinHandle<()> {
@@ -292,7 +292,7 @@ mod tests {
                     buf.extend_from_slice(&tmp[..n]);
                 }
                 let request: serde_json::Value =
-                    serde_json::from_slice(&buf).unwrap_or(serde_json::json!({}));
+                    serde_json::from_slice(&buf).unwrap_or_else(|_| serde_json::json!({}));
                 let method = request.get("method").and_then(|v| v.as_str()).unwrap_or("");
                 let id = request.get("id").and_then(serde_json::Value::as_u64).unwrap_or(1);
                 let result = mock_crypto_result(method, verify_valid);
@@ -642,7 +642,7 @@ mod tests {
         let sock = unique_socket_path();
         let _ = std::fs::remove_file(&sock);
         let listener = tokio::net::UnixListener::bind(&sock).expect("bind mock crypto socket");
-        let server = spawn_crypto_rpc_server(listener, false).await;
+        let server = spawn_crypto_rpc_server(listener, false);
         let provider = CryptoProvider::with_mode(
             sock.to_str().expect("temp socket path should be utf-8"),
             RoutingMode::Direct,

@@ -61,7 +61,7 @@ impl CircuitManager {
             let consensus = self
                 .consensus
                 .read()
-                .map_err(|_| Error::Protocol("Failed to acquire consensus lock".to_string()))?;
+                .map_err(|_| Error::Protocol(String::from("Failed to acquire consensus lock")))?;
             consensus.select_path()?
         };
 
@@ -77,7 +77,7 @@ impl CircuitManager {
             let mut circuits = self
                 .circuits
                 .write()
-                .map_err(|_| Error::Protocol("Failed to acquire circuits lock".to_string()))?;
+                .map_err(|_| Error::Protocol(String::from("Failed to acquire circuits lock")))?;
             circuits.insert(circuit_id, circuit);
         }
 
@@ -128,7 +128,7 @@ impl CircuitManager {
         payload.extend_from_slice(&[0x00, 0x02]); // HTYPE = ntor
         payload.extend_from_slice(
             &u16::try_from(create2_payload.len())
-                .map_err(|_| Error::Protocol("CREATE2 payload too long".to_string()))?
+                .map_err(|_| Error::Protocol(String::from("CREATE2 payload too long")))?
                 .to_be_bytes(),
         ); // HLEN
         payload.extend_from_slice(&create2_payload); // HDATA
@@ -170,7 +170,7 @@ impl CircuitManager {
         // 6. Parse CREATED2 payload
         // Format: HLEN (2 bytes) | HDATA
         if response.payload.len() < 2 {
-            return Err(Error::Protocol("CREATED2 payload too short".to_string()));
+            return Err(Error::Protocol(String::from("CREATED2 payload too short")));
         }
         let hlen = u16::from_be_bytes([response.payload[0], response.payload[1]]) as usize;
         if response.payload.len() < 2 + hlen {
@@ -234,7 +234,7 @@ impl CircuitManager {
             let circuits = self
                 .circuits
                 .read()
-                .map_err(|_| Error::Protocol("Failed to acquire circuits lock".to_string()))?;
+                .map_err(|_| Error::Protocol(String::from("Failed to acquire circuits lock")))?;
             circuits
                 .get(&circuit_id)
                 .ok_or_else(|| Error::Protocol(format!("Circuit {circuit_id} not found")))?
@@ -287,7 +287,7 @@ impl CircuitManager {
             // Parse EXTENDED2 relay cell
             // Relay cell format: command (1) | recognized (2) | stream_id (2) | digest (4) | length (2) | data
             if decrypted_payload.len() < 11 {
-                return Err(Error::Protocol("EXTENDED2 relay cell too short".to_string()));
+                return Err(Error::Protocol(String::from("EXTENDED2 relay cell too short")));
             }
 
             let relay_command = decrypted_payload[0];
@@ -301,7 +301,7 @@ impl CircuitManager {
             let data_len =
                 u16::from_be_bytes([decrypted_payload[9], decrypted_payload[10]]) as usize;
             if decrypted_payload.len() < 11 + data_len {
-                return Err(Error::Protocol("EXTENDED2 data too short".to_string()));
+                return Err(Error::Protocol(String::from("EXTENDED2 data too short")));
             }
 
             // Create mock relay cell for process_extended2
@@ -311,7 +311,7 @@ impl CircuitManager {
                 stream_id: 0,
                 digest: [0u8; 4],
                 length: u16::try_from(data_len)
-                    .map_err(|_| Error::Protocol("EXTENDED2 data length overflow".to_string()))?,
+                    .map_err(|_| Error::Protocol(String::from("EXTENDED2 data length overflow")))?,
                 data: decrypted_payload[11..11 + data_len].to_vec(),
             };
 
@@ -339,7 +339,7 @@ impl CircuitManager {
             let mut next_id = self
                 .next_circuit_id
                 .write()
-                .map_err(|_| Error::Protocol("Failed to acquire circuit ID lock".to_string()))?;
+                .map_err(|_| Error::Protocol(String::from("Failed to acquire circuit ID lock")))?;
             // Set MSB to 1 for client-initiated circuits (link v4+ requirement)
             let id = 0x8000_0000 | *next_id;
             *next_id += 1;
@@ -352,7 +352,7 @@ impl CircuitManager {
     fn add_hop_to_circuit(&self, circuit_id: u32, hop: CircuitHop) -> Result<()> {
         self.circuits
             .write()
-            .map_err(|_| Error::Protocol("Failed to acquire circuits lock".to_string()))?
+            .map_err(|_| Error::Protocol(String::from("Failed to acquire circuits lock")))?
             .get_mut(&circuit_id)
             .ok_or_else(|| Error::Protocol(format!("Circuit {circuit_id} not found")))?
             .add_hop(hop);
@@ -367,7 +367,7 @@ impl CircuitManager {
         let circuits = self
             .circuits
             .read()
-            .map_err(|_| Error::Protocol("Failed to acquire circuits lock".to_string()))?;
+            .map_err(|_| Error::Protocol(String::from("Failed to acquire circuits lock")))?;
         circuits
             .get(&circuit_id)
             .ok_or_else(|| Error::Circuit(format!("Circuit {circuit_id} not found")))
@@ -421,7 +421,7 @@ impl CircuitManager {
         // Remove from circuits
         self.circuits
             .write()
-            .map_err(|_| Error::Protocol("Failed to acquire circuits lock".to_string()))?
+            .map_err(|_| Error::Protocol(String::from("Failed to acquire circuits lock")))?
             .remove(&circuit_id);
 
         tracing::info!("Circuit {circuit_id} closed");
@@ -447,7 +447,7 @@ mod tests {
         use std::time::SystemTime;
 
         let beardog =
-            CryptoProvider::new("/tmp/songbird-tor-protocol-circuit-manager.sock".to_string());
+            CryptoProvider::new(String::from("/tmp/songbird-tor-protocol-circuit-manager.sock"));
         let now = SystemTime::now();
         let consensus = Consensus {
             valid_after: now,
@@ -465,7 +465,7 @@ mod tests {
         use std::time::SystemTime;
 
         let beardog =
-            CryptoProvider::new("/tmp/songbird-tor-protocol-circuit-manager.sock".to_string());
+            CryptoProvider::new(String::from("/tmp/songbird-tor-protocol-circuit-manager.sock"));
         let now = SystemTime::now();
         let consensus = Consensus {
             valid_after: now,
@@ -492,7 +492,7 @@ mod tests {
         use std::time::SystemTime;
 
         let manager = CircuitManager::new(
-            CryptoProvider::new("/tmp/songbird-tor-protocol-circuit-manager.sock".to_string()),
+            CryptoProvider::new(String::from("/tmp/songbird-tor-protocol-circuit-manager.sock")),
             Consensus {
                 valid_after: SystemTime::now(),
                 fresh_until: SystemTime::now(),
@@ -510,7 +510,7 @@ mod tests {
         use std::time::SystemTime;
 
         let manager = CircuitManager::new(
-            CryptoProvider::new("/tmp/songbird-tor-protocol-circuit-manager.sock".to_string()),
+            CryptoProvider::new(String::from("/tmp/songbird-tor-protocol-circuit-manager.sock")),
             Consensus {
                 valid_after: SystemTime::now(),
                 fresh_until: SystemTime::now(),
@@ -526,7 +526,7 @@ mod tests {
     #[test]
     fn allocate_circuit_id_increments_monotonically() {
         let manager = CircuitManager::new(
-            CryptoProvider::new("/tmp/songbird-tor-protocol-circuit-manager.sock".to_string()),
+            CryptoProvider::new(String::from("/tmp/songbird-tor-protocol-circuit-manager.sock")),
             Consensus {
                 valid_after: std::time::SystemTime::now(),
                 fresh_until: std::time::SystemTime::now(),
@@ -542,7 +542,7 @@ mod tests {
     #[tokio::test]
     async fn close_circuit_idempotent_without_panic() {
         let manager = CircuitManager::new(
-            CryptoProvider::new("/tmp/songbird-tor-protocol-circuit-manager.sock".to_string()),
+            CryptoProvider::new(String::from("/tmp/songbird-tor-protocol-circuit-manager.sock")),
             Consensus {
                 valid_after: std::time::SystemTime::now(),
                 fresh_until: std::time::SystemTime::now(),
