@@ -108,6 +108,9 @@ pub enum JsonRpcMethod {
     Storage(StorageMethod),
     Lifecycle(LifecycleMethod),
     Inference(InferenceMethod),
+    Graph(GraphMethod),
+    Coordination(CoordinationMethod),
+    Legacy(LegacyMethod),
     EncryptionDiscovery(EncryptionDiscoveryMethod),
 }
 
@@ -167,6 +170,8 @@ impl JsonRpcMethod {
             Self::Http(HttpMethod::Request) => "http.request",
             Self::Http(HttpMethod::Get) => "http.get",
             Self::Http(HttpMethod::Post) => "http.post",
+            Self::Http(HttpMethod::Put) => "http.put",
+            Self::Http(HttpMethod::Delete) => "http.delete",
             Self::Stun(StunMethod::Serve) => "stun.serve",
             Self::Stun(StunMethod::Stop) => "stun.stop",
             Self::Stun(StunMethod::Status) => "stun.status",
@@ -270,6 +275,17 @@ impl JsonRpcMethod {
             Self::Inference(InferenceMethod::Status) => "inference.status",
             Self::Inference(InferenceMethod::List) => "inference.list",
             Self::Inference(InferenceMethod::Load) => "inference.load",
+            Self::Graph(GraphMethod::Validate) => "graph.validate",
+            Self::Graph(GraphMethod::CheckAvailability) => "graph.check_availability",
+            Self::Graph(GraphMethod::SuggestAlternatives) => "graph.suggest_alternatives",
+            Self::Coordination(CoordinationMethod::ValidatePattern) => {
+                "coordination.validate_pattern"
+            }
+            Self::Legacy(LegacyMethod::DiscoverByFamily) => "discover_by_family",
+            Self::Legacy(LegacyMethod::CreateGeneticTunnel) => "create_genetic_tunnel",
+            Self::Legacy(LegacyMethod::AnnounceCapabilities) => "announce_capabilities",
+            Self::Legacy(LegacyMethod::DiscoverByCapability) => "discover_by_capability",
+            Self::Legacy(LegacyMethod::GetServiceHealth) => "get_service_health",
             Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Encrypt) => "encrypt_discovery",
             Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Decrypt) => "decrypt_discovery",
         }
@@ -319,6 +335,8 @@ impl JsonRpcMethod {
             "http.request" => Self::Http(HttpMethod::Request),
             "http.get" => Self::Http(HttpMethod::Get),
             "http.post" => Self::Http(HttpMethod::Post),
+            "http.put" => Self::Http(HttpMethod::Put),
+            "http.delete" => Self::Http(HttpMethod::Delete),
             "stun.serve" => Self::Stun(StunMethod::Serve),
             "stun.stop" => Self::Stun(StunMethod::Stop),
             "stun.status" => Self::Stun(StunMethod::Status),
@@ -432,6 +450,17 @@ impl JsonRpcMethod {
             "inference.load" => Self::Inference(InferenceMethod::Load),
             "encrypt_discovery" => Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Encrypt),
             "decrypt_discovery" => Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Decrypt),
+            "graph.validate" => Self::Graph(GraphMethod::Validate),
+            "graph.check_availability" => Self::Graph(GraphMethod::CheckAvailability),
+            "graph.suggest_alternatives" => Self::Graph(GraphMethod::SuggestAlternatives),
+            "coordination.validate_pattern" => {
+                Self::Coordination(CoordinationMethod::ValidatePattern)
+            }
+            "discover_by_family" => Self::Legacy(LegacyMethod::DiscoverByFamily),
+            "create_genetic_tunnel" => Self::Legacy(LegacyMethod::CreateGeneticTunnel),
+            "announce_capabilities" => Self::Legacy(LegacyMethod::AnnounceCapabilities),
+            "discover_by_capability" => Self::Legacy(LegacyMethod::DiscoverByCapability),
+            "get_service_health" => Self::Legacy(LegacyMethod::GetServiceHealth),
             _ => {
                 return Err(JsonRpcMethodParseError(format!("unknown JSON-RPC method: {s}")));
             }

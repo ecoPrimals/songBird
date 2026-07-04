@@ -471,10 +471,9 @@ impl FederationCoordinator {
                         );
 
                         // Extract connection info - build endpoint from protocols
-                        let endpoint = if peer.protocols.contains(&String::from("https")) {
-                            // In production, would negotiate actual endpoint
+                        let endpoint = if peer.protocols.iter().any(|p| p == "https") {
                             format!("https://peer-{}", &peer.ephemeral_session_id[..8])
-                        } else if peer.protocols.contains(&String::from("btsp")) {
+                        } else if peer.protocols.iter().any(|p| p == "btsp") {
                             format!("btsp://peer-{}", &peer.ephemeral_session_id[..8])
                         } else {
                             debug!(

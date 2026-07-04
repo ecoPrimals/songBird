@@ -285,7 +285,7 @@ impl ServiceRegistry {
 
         services
             .values()
-            .filter(|entry| entry.capabilities.contains(&capability.to_string()))
+            .filter(|entry| entry.capabilities.iter().any(|c| c == capability))
             .map(|entry| entry.virtual_endpoint.path.clone())
             .collect()
     }
@@ -298,7 +298,7 @@ impl ServiceRegistry {
         let services = self.services.read().await;
         services
             .iter()
-            .filter(|(_, entry)| entry.capabilities.contains(&capability.to_string()))
+            .filter(|(_, entry)| entry.capabilities.iter().any(|c| c == capability))
             .max_by_key(|(_, entry)| entry.last_seen)
             .map(|(name, entry)| (name.clone(), entry.clone()))
     }

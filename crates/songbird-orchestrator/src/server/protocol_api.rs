@@ -319,8 +319,8 @@ fn select_best_protocol(
 
     // If client prefers a high-performance protocol and it's available, honor it
     if HIGH_PERFORMANCE.contains(&preferred)
-        && client_protocols.contains(&preferred.to_string())
-        && available_protocols.contains(&preferred.to_string())
+        && client_protocols.iter().any(|p| p == preferred)
+        && available_protocols.iter().any(|p| p == preferred)
     {
         return preferred.to_string();
     }

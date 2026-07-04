@@ -15,7 +15,8 @@ pub const DEFAULT_PRIMARY_STUN_SERVER: &str = "stun.nextcloud.com:3478";
 /// Default STUN servers for IPC handlers, from `BIOMEOS_STUN_SERVERS` or built-in defaults.
 ///
 /// Parsed once per process; empty or whitespace-only env values use the defaults.
-pub fn stun_server_list() -> Vec<String> {
+/// Returns a static reference — no allocation per call.
+pub fn stun_server_list() -> &'static [String] {
     static SERVERS: LazyLock<Vec<String>> = LazyLock::new(|| {
         songbird_process_env::var("BIOMEOS_STUN_SERVERS").map_or_else(
             |_| default_stun_servers_fallback(),
@@ -34,7 +35,7 @@ pub fn stun_server_list() -> Vec<String> {
             },
         )
     });
-    SERVERS.clone()
+    &SERVERS
 }
 
 pub fn default_stun_servers_fallback() -> Vec<String> {
