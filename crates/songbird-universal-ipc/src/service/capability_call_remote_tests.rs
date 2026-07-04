@@ -9,11 +9,16 @@ use super::{CapabilityCallParams, IpcServiceHandler};
 use crate::endpoint::NativeEndpoint;
 use crate::registry::ServiceRegistry;
 use crate::tower_atomic::JsonRpcHandler;
+use http_body_util::{BodyExt, Full};
+use hyper::body::Bytes;
+use hyper::server::conn::http1;
+use hyper::service::service_fn;
+use hyper::{Request, Response};
+use hyper_util::rt::TokioIo;
 use serde_json::{Value, json};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use uuid::Uuid;
@@ -26,7 +31,7 @@ fn endpoint_url(port: u16) -> String {
     format!("http://127.0.0.1:{port}/jsonrpc")
 }
 
-/// Mock remote Songbird JSON-RPC gate (line-delimited TCP).
+/// Mock remote Songbird JSON-RPC gate (HTTP/1.1 server on `/jsonrpc`).
 struct MockRemoteGate {
     port: u16,
     connections: Arc<AtomicUsize>,
@@ -57,53 +62,62 @@ impl MockRemoteGate {
 
                 tokio::spawn(async move {
                     counter.fetch_add(1, Ordering::SeqCst);
-                    let (reader, mut writer) = stream.into_split();
-                    let mut buf_reader = BufReader::new(reader);
-                    let mut line = String::new();
-                    if buf_reader.read_line(&mut line).await.is_err() || line.is_empty() {
-                        return;
-                    }
+                    let io = TokioIo::new(stream);
+                    let svc = service_fn(move |req: Request<hyper::body::Incoming>| {
+                        let caps = caps.clone();
+                        let result = result.clone();
+                        let capture = capture.clone();
+                        async move {
+                            let body_bytes = req.collect().await.unwrap().to_bytes();
+                            let Ok(req_json) = serde_json::from_slice::<Value>(&body_bytes)
+                            else {
+                                let resp = json!({"jsonrpc":"2.0","error":{"code":-32700,"message":"parse error"},"id":null});
+                                return Ok::<_, hyper::Error>(Response::new(Full::new(
+                                    Bytes::from(serde_json::to_vec(&resp).unwrap()),
+                                )));
+                            };
+                            let method =
+                                req_json.get("method").and_then(Value::as_str).unwrap_or("");
+                            let id = req_json.get("id").cloned().unwrap_or_else(|| json!(1));
 
-                    let Ok(req) = serde_json::from_str::<Value>(line.trim()) else {
-                        return;
-                    };
-                    let method = req.get("method").and_then(Value::as_str).unwrap_or("");
-                    let id = req.get("id").cloned().unwrap_or_else(|| json!(1));
-
-                    let response = match method {
-                        "capabilities.list" => {
-                            if let Some(body) = caps {
-                                json!({ "jsonrpc": "2.0", "result": body, "id": id })
-                            } else {
-                                json!({ "jsonrpc": "2.0", "error": { "code": -32000, "message": "no list" }, "id": id })
-                            }
+                            let response = match method {
+                                "capabilities.list" => {
+                                    if let Some(body) = caps {
+                                        json!({ "jsonrpc": "2.0", "result": body, "id": id })
+                                    } else {
+                                        json!({ "jsonrpc": "2.0", "error": { "code": -32000, "message": "no list" }, "id": id })
+                                    }
+                                }
+                                "capability.call" => {
+                                    if let Some(cap) = &capture {
+                                        cap.lock().await.push(
+                                            req_json
+                                                .get("params")
+                                                .cloned()
+                                                .unwrap_or(Value::Null),
+                                        );
+                                    }
+                                    json!({
+                                        "jsonrpc": "2.0",
+                                        "result": {
+                                            "provider": "remote-mock",
+                                            "gate": "remote-mock",
+                                            "result": result
+                                        },
+                                        "id": id
+                                    })
+                                }
+                                _ => json!({
+                                    "jsonrpc": "2.0",
+                                    "error": { "code": -32601, "message": format!("unknown: {method}") },
+                                    "id": id
+                                }),
+                            };
+                            let bytes = serde_json::to_vec(&response).unwrap();
+                            Ok::<_, hyper::Error>(Response::new(Full::new(Bytes::from(bytes))))
                         }
-                        "capability.call" => {
-                            if let Some(cap) = &capture {
-                                cap.lock()
-                                    .await
-                                    .push(req.get("params").cloned().unwrap_or(Value::Null));
-                            }
-                            json!({
-                                "jsonrpc": "2.0",
-                                "result": {
-                                    "provider": "remote-mock",
-                                    "gate": "remote-mock",
-                                    "result": result
-                                },
-                                "id": id
-                            })
-                        }
-                        _ => json!({
-                            "jsonrpc": "2.0",
-                            "error": { "code": -32601, "message": format!("unknown: {method}") },
-                            "id": id
-                        }),
-                    };
-
-                    let mut bytes = serde_json::to_vec(&response).expect("serialize response");
-                    bytes.push(b'\n');
-                    let _ = writer.write_all(&bytes).await;
+                    });
+                    let _ = http1::Builder::new().serve_connection(io, svc).await;
                 });
             }
         });
@@ -221,7 +235,7 @@ async fn peer_has_capability_probe_failure_returns_err() {
         .await
         .expect_err("unreachable port should fail probe");
     assert!(
-        err.contains("probe connect") || err.contains("probe timeout"),
+        err.contains("probe:") || err.contains("Connect"),
         "unexpected probe error: {err}"
     );
 }

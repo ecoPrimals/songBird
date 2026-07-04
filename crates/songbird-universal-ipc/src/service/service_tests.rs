@@ -608,7 +608,7 @@ async fn ipc_resolve_returns_transport_endpoint_json_sourdough_wire_compat() {
             json!({
                 "primal_id": "beardog",
                 "capabilities": ["crypto.sign", "crypto.verify", "security"],
-                "endpoint": "/run/user/1000/biomeos/beardog.sock"
+                "endpoint": "/tmp/songbird-test-isolated/beardog.sock"
             }),
         )
         .await
@@ -636,7 +636,7 @@ async fn ipc_resolve_returns_transport_endpoint_json_sourdough_wire_compat() {
     let ep = &uds_result["endpoint"];
     assert_eq!(ep["transport"], "uds", "UDS endpoint must have transport='uds'");
     assert_eq!(
-        ep["path"], "/run/user/1000/biomeos/beardog.sock",
+        ep["path"], "/tmp/songbird-test-isolated/beardog.sock",
         "UDS path must match registered socket"
     );
     assert!(ep.get("host").is_none(), "UDS variant must not have 'host'");
@@ -684,7 +684,7 @@ async fn ipc_resolve_returns_transport_endpoint_json_sourdough_wire_compat() {
         .await
         .expect("resolve by name alias");
     assert_eq!(name_result["endpoint"]["transport"], "uds");
-    assert_eq!(name_result["endpoint"]["path"], "/run/user/1000/biomeos/beardog.sock");
+    assert_eq!(name_result["endpoint"]["path"], "/tmp/songbird-test-isolated/beardog.sock");
 
     // --- Verify `ipc.resolve_by_name` method alias ---
     let alias_result = handler
@@ -708,7 +708,7 @@ async fn capability_resolve_returns_transport_endpoint_json() {
             json!({
                 "primal_id": "beardog",
                 "capabilities": ["crypto.sign"],
-                "endpoint": "/run/user/1000/biomeos/beardog.sock"
+                "endpoint": "/tmp/songbird-test-isolated/beardog.sock"
             }),
         )
         .await
@@ -721,7 +721,7 @@ async fn capability_resolve_returns_transport_endpoint_json() {
 
     let ep = &result["endpoint"];
     assert_eq!(ep["transport"], "uds");
-    assert_eq!(ep["path"], "/run/user/1000/biomeos/beardog.sock");
+    assert_eq!(ep["path"], "/tmp/songbird-test-isolated/beardog.sock");
     assert_eq!(result["primal_id"], "beardog");
 }
 
@@ -739,7 +739,7 @@ async fn ipc_register_returns_transport_endpoint_in_response() {
             json!({
                 "primal_id": "beardog",
                 "capabilities": ["crypto"],
-                "endpoint": "/run/user/1000/biomeos/beardog.sock"
+                "endpoint": "/tmp/songbird-test-isolated/beardog.sock"
             }),
         )
         .await
@@ -747,7 +747,7 @@ async fn ipc_register_returns_transport_endpoint_in_response() {
 
     let t = &uds_reg["transport"];
     assert_eq!(t["transport"], "uds");
-    assert_eq!(t["path"], "/run/user/1000/biomeos/beardog.sock");
+    assert_eq!(t["path"], "/tmp/songbird-test-isolated/beardog.sock");
 
     // TCP registration
     let tcp_reg = handler

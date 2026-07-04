@@ -131,6 +131,9 @@ impl UnixSocketServer {
                     .http_delete(request.params.unwrap_or_else(|| serde_json::json!({})))
                     .await
             }
+            Ok(JsonRpcMethod::Http(HttpMethod::Proxy)) => Ok(serde_json::json!({
+                "error": "http.proxy not available on this transport path — use the Universal IPC socket"
+            })),
             Ok(JsonRpcMethod::Legacy(LegacyMethod::DiscoverByFamily)) => {
                 self.handlers.discover_by_family_json(request.params).await
             }
