@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-use super::{HandlerBundle, IpcServiceHandler, virtual_relay::VirtualRelayManager};
+use super::{
+    CapabilityProxyRouter, HandlerBundle, IpcServiceHandler, virtual_relay::VirtualRelayManager,
+};
 use crate::handlers::birdsong_handler::BirdSongHandler;
 use crate::handlers::discovery_bridge::DiscoveryListenerBridge;
 use crate::handlers::discovery_handler::DiscoveryHandler;
@@ -155,6 +157,7 @@ impl IpcServiceHandler {
                 VirtualRelayManager::default_base_dir(),
                 discover_crypto_signing_socket(),
             )),
+            capability_router: Arc::new(CapabilityProxyRouter::default()),
         }
     }
 

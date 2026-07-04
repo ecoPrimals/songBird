@@ -102,6 +102,7 @@ pub enum HttpMethod {
     Post,
     Put,
     Delete,
+    Proxy,
 }
 
 /// `stun.*`

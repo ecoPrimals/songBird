@@ -133,6 +133,37 @@ async fn http_post_body_not_string_errors_after_route() {
 }
 
 #[tokio::test]
+async fn http_put_missing_url_errors() {
+    let h = ipc_handler();
+    let err = h.handle("http.put", json!({})).await.expect_err("missing url");
+    assert!(err.contains("Missing 'url'"), "unexpected: {err}");
+}
+
+#[tokio::test]
+async fn http_delete_missing_url_errors() {
+    let h = ipc_handler();
+    let err = h.handle("http.delete", json!({})).await.expect_err("missing url");
+    assert!(err.contains("Missing 'url'"), "unexpected: {err}");
+}
+
+#[tokio::test]
+async fn http_proxy_missing_capability_errors() {
+    let h = ipc_handler();
+    let err = h.handle("http.proxy", json!({})).await.expect_err("missing capability");
+    assert!(err.contains("Missing 'capability'"), "unexpected: {err}");
+}
+
+#[tokio::test]
+async fn http_proxy_unknown_capability_errors() {
+    let h = ipc_handler();
+    let err = h
+        .handle("http.proxy", json!({ "capability": "nonexistent" }))
+        .await
+        .expect_err("no route");
+    assert!(err.contains("No route registered"), "unexpected: {err}");
+}
+
+#[tokio::test]
 async fn ipc_resolve_unknown_primal_formats_not_found() {
     let h = ipc_handler();
     let id = format!("no-such-primal-{}", Uuid::new_v4());
@@ -213,6 +244,13 @@ async fn dispatch_hits_each_json_rpc_arm() {
     ok!("ipc.list", json!({}));
 
     h.handle("http.get", json!({ "url": "https://example.com" })).await.ok();
+    h.handle("http.put", json!({ "url": "https://example.com" })).await.ok();
+    h.handle("http.delete", json!({ "url": "https://example.com" })).await.ok();
+    let proxy_err = h
+        .handle("http.proxy", json!({ "capability": "nonexistent" }))
+        .await
+        .expect_err("http.proxy no route");
+    assert!(proxy_err.contains("No route registered"), "unexpected: {proxy_err}");
 
     h.handle("stun.serve", json!({ "bind_addr": "127.0.0.1:0" })).await.expect("stun.serve");
     ok!("stun.status", json!({}));

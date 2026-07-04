@@ -29,7 +29,7 @@ pub fn identity(family_id: &str) -> Value {
         "family_id": family_id,
         "capabilities": [
             "ipc.register", "ipc.resolve", "ipc.discover", "ipc.list",
-            "http.request", "http.get", "http.post",
+            "http.request", "http.get", "http.post", "http.put", "http.delete", "http.proxy",
             "secure_http",
             "stun.get_public_address", "stun.bind",
             "stun.probe_port_pattern", "stun.detect_nat_type",

@@ -76,6 +76,9 @@ const CALLABLE_METHODS: &[&str] = &[
     "http.request",
     "http.get",
     "http.post",
+    "http.put",
+    "http.delete",
+    "http.proxy",
     // ── STUN / NAT traversal ──
     "stun.serve",
     "stun.stop",
@@ -226,7 +229,7 @@ pub const CAPABILITY_METHOD_MAP: &[(&str, &[&str])] = &[
         &["igd.discover", "igd.map_port", "igd.unmap_port", "igd.status", "igd.external_ip"],
     ),
     ("network.quic", &["health.readiness"]),
-    ("network.tls", &["http.request", "http.get", "http.post"]),
+    ("network.tls", &["http.request", "http.get", "http.post", "http.put", "http.delete", "http.proxy"]),
     ("network.tor", &["tor.status", "tor.connect", "tor.circuit.build"]),
     (
         "network.onion",

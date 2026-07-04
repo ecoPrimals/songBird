@@ -50,6 +50,7 @@ mod capability_dispatch;
 mod construction;
 mod dispatch;
 mod http;
+mod http_proxy;
 mod ipc_registry;
 mod meta;
 pub mod relay_security;
@@ -64,6 +65,7 @@ pub use crate::service_types::{
     RegisterResult, ResolveParams, ResolveResult, ServiceInfo, TransportEndpoint,
     ValidateConsumedResult,
 };
+pub use http_proxy::{CapabilityProxyRouter, ProxyRoute};
 
 /// Songbird IPC Service Handler
 ///
@@ -96,6 +98,8 @@ pub struct IpcServiceHandler {
     federation_state: Option<Arc<FederationState>>,
     /// Virtual endpoint relay manager (Phase 1: shadow mode).
     virtual_relay: Arc<virtual_relay::VirtualRelayManager>,
+    /// Capability-based HTTP proxy router for `http.proxy`.
+    capability_router: Arc<CapabilityProxyRouter>,
 }
 
 impl IpcServiceHandler {

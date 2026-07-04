@@ -47,6 +47,9 @@ impl IpcServiceDispatch for IpcServiceHandler {
             JsonRpcMethod::Http(HttpMethod::Request) => self.handle_http_request(params).await,
             JsonRpcMethod::Http(HttpMethod::Get) => self.handle_http_get(params).await,
             JsonRpcMethod::Http(HttpMethod::Post) => self.handle_http_post(params).await,
+            JsonRpcMethod::Http(HttpMethod::Put) => self.handle_http_put(params).await,
+            JsonRpcMethod::Http(HttpMethod::Delete) => self.handle_http_delete(params).await,
+            JsonRpcMethod::Http(HttpMethod::Proxy) => self.handle_http_proxy(params).await,
 
             JsonRpcMethod::Ipc(_)
             | JsonRpcMethod::Capabilities(CapabilitiesMethod::Resolve | CapabilitiesMethod::Call)

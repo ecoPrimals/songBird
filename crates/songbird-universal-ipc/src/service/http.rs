@@ -67,6 +67,140 @@ impl IpcServiceHandler {
 
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
+
+    /// Handle `http.put` method - PUT request via generic http.request path
+    pub(super) async fn handle_http_put(&self, params: Value) -> Result<Value, String> {
+        let url = params
+            .get("url")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| String::from("Missing 'url' parameter"))?;
+
+        let body = params.get("body").and_then(|v| v.as_str()).map(String::from);
+
+        let headers: std::collections::HashMap<String, String> = params
+            .get("headers")
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .unwrap_or_default();
+
+        info!("HTTP PUT via IPC: {}", url);
+
+        let request_params = HttpRequestParams {
+            url: url.to_string(),
+            method: String::from("PUT"),
+            headers,
+            body,
+            timeout_ms: 30_000,
+        };
+
+        let result = self
+            .http_handler
+            .handle_request(request_params)
+            .await
+            .map_err(|e| format!("HTTP PUT failed: {e}"))?;
+
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    }
+
+    /// Handle `http.delete` method - DELETE request via generic http.request path
+    pub(super) async fn handle_http_delete(&self, params: Value) -> Result<Value, String> {
+        let url = params
+            .get("url")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| String::from("Missing 'url' parameter"))?;
+
+        let headers: std::collections::HashMap<String, String> = params
+            .get("headers")
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .unwrap_or_default();
+
+        info!("HTTP DELETE via IPC: {}", url);
+
+        let request_params = HttpRequestParams {
+            url: url.to_string(),
+            method: String::from("DELETE"),
+            headers,
+            body: None,
+            timeout_ms: 30_000,
+        };
+
+        let result = self
+            .http_handler
+            .handle_request(request_params)
+            .await
+            .map_err(|e| format!("HTTP DELETE failed: {e}"))?;
+
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    }
+
+    /// Handle `http.proxy` method - Capability-routed reverse proxy
+    ///
+    /// Routes requests to backends based on capability, not raw URL.
+    /// Supports rate limiting, credential injection, and response caching.
+    ///
+    /// Params:
+    ///   - `capability`: Target capability to proxy to (e.g. "inference", "jupyter")
+    ///   - `method`: HTTP method (default: "POST")
+    ///   - `path`: Backend path suffix (optional)
+    ///   - `headers`: Additional headers (optional)
+    ///   - `body`: Request body (optional)
+    pub(super) async fn handle_http_proxy(&self, params: Value) -> Result<Value, String> {
+        let capability = params
+            .get("capability")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| String::from("Missing 'capability' parameter"))?;
+
+        let method = params
+            .get("method")
+            .and_then(|v| v.as_str())
+            .unwrap_or("POST");
+
+        let path = params.get("path").and_then(|v| v.as_str()).unwrap_or("");
+
+        let headers: std::collections::HashMap<String, String> = params
+            .get("headers")
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .unwrap_or_default();
+
+        let body = params.get("body").and_then(|v| v.as_str()).map(String::from);
+
+        info!("HTTP proxy via IPC: capability={}, method={}, path={}", capability, method, path);
+
+        let route = self
+            .capability_router
+            .route(capability)
+            .ok_or_else(|| format!("No route registered for capability: {capability}"))?;
+
+        let url = if path.is_empty() {
+            route.base_url.clone()
+        } else {
+            format!("{}/{}", route.base_url.trim_end_matches('/'), path.trim_start_matches('/'))
+        };
+
+        let mut merged_headers = route.default_headers.clone();
+        merged_headers.extend(headers);
+
+        if let Some(api_key) = &route.api_key_env
+            && let Ok(key) = songbird_process_env::var(api_key)
+        {
+            merged_headers.insert(String::from("Authorization"), format!("Bearer {key}"));
+        }
+
+        let request_params = HttpRequestParams {
+            url,
+            method: method.to_string(),
+            headers: merged_headers,
+            body,
+            timeout_ms: route.timeout_ms,
+        };
+
+        let result = self
+            .http_handler
+            .handle_request(request_params)
+            .await
+            .map_err(|e| format!("HTTP proxy failed: {e}"))?;
+
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    }
 }
 
 #[cfg(test)]
