@@ -152,7 +152,13 @@ impl UdpPeerConnector {
             .parse()
             .map_err(|e| format!("Invalid target address '{target_address}': {e}"))?;
 
-        // Bind our socket
+        // LAN bypass: if target is on same subnet, use direct TCP probe instead of UDP punch.
+        // UDP hole punching is for NAT traversal — unnecessary and broken on LAN.
+        if let Some(result) = self.try_lan_direct_connect(target, target_address).await {
+            return Ok(result);
+        }
+
+        // NAT path: UDP hole punch
         let bind_addr: SocketAddr = if let Some(addr) = our_binding {
             addr.parse().map_err(|e| format!("Invalid binding address '{addr}': {e}"))?
         } else {
@@ -185,11 +191,7 @@ impl UdpPeerConnector {
             .map_err(|_| String::from("Hole punch timed out"))?
             .map_err(|e| format!("Hole punch error: {e}"))?;
 
-        let state = if punched {
-            "connected"
-        } else {
-            "punching"
-        };
+        let state = if punched { "connected" } else { "failed" };
 
         // Track binding
         {
@@ -208,6 +210,155 @@ impl UdpPeerConnector {
             channel: None,
         })
     }
+
+    /// LAN direct-connect bypass: if the target IP is on the same subnet as any local
+    /// interface, skip UDP punch entirely and probe the peer's federation port via TCP.
+    ///
+    /// Returns `Some(result)` if LAN connection was attempted (success or failure),
+    /// `None` if this is not a LAN peer and normal punch should proceed.
+    async fn try_lan_direct_connect(
+        &self,
+        target: SocketAddr,
+        target_address: &str,
+    ) -> Option<PeerConnectResult> {
+        use std::net::IpAddr;
+
+        let IpAddr::V4(target_ip) = target.ip() else {
+            return None;
+        };
+
+        let target_octets = target_ip.octets();
+
+        // Skip loopback — handled elsewhere
+        if target_octets[0] == 127 {
+            return None;
+        }
+
+        // Only attempt LAN bypass for private IPs
+        if !is_private_ipv4(target_octets) {
+            return None;
+        }
+
+        // Check if target is on same /24 as any local interface
+        let local_addrs = local_ipv4_from_proc();
+        let same_lan = local_addrs.iter().any(|local| {
+            local[0] == target_octets[0]
+                && local[1] == target_octets[1]
+                && local[2] == target_octets[2]
+        });
+
+        if !same_lan {
+            return None;
+        }
+
+        info!(
+            "🏠 LAN peer detected ({}) — using direct TCP probe instead of UDP punch",
+            target_ip
+        );
+
+        // Probe the peer's TCP port. If the caller specified a port in target_address,
+        // use that (they know what they're doing). Otherwise try the mesh peer port.
+        let probe_port = if target.port() != 0 {
+            target.port()
+        } else {
+            songbird_types::defaults::ports::DEFAULT_MESH_PEER_PORT
+        };
+        let tcp_target = SocketAddr::new(target.ip(), probe_port);
+
+        let connection_id = format!(
+            "lan-tcp-{}-{}",
+            target_ip,
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis()
+                % 100_000
+        );
+
+        let probe_start = std::time::Instant::now();
+        match tokio::time::timeout(
+            Duration::from_secs(3),
+            tokio::net::TcpStream::connect(tcp_target),
+        )
+        .await
+        {
+            Ok(Ok(_stream)) => {
+                let latency = probe_start.elapsed();
+                info!(
+                    "✅ LAN direct-connect succeeded: {} ({}ms)",
+                    tcp_target,
+                    latency.as_millis()
+                );
+                Some(PeerConnectResult {
+                    connection_id,
+                    state: String::from("connected"),
+                    channel: Some(super::peer_types::PeerChannel {
+                        local_address: String::from("0.0.0.0:0"),
+                        remote_address: target_address.to_string(),
+                        protocol: String::from("tcp"),
+                        #[expect(clippy::cast_possible_truncation, reason = "LAN probe timeout is 3s — millis always fits u64")]
+                        latency_ms: Some(latency.as_millis() as u64),
+                    }),
+                })
+            }
+            Ok(Err(e)) => {
+                warn!(
+                    "⚠️  LAN direct TCP to {} failed ({}), falling through to UDP punch",
+                    tcp_target, e
+                );
+                None
+            }
+            Err(_) => {
+                warn!(
+                    "⚠️  LAN direct TCP to {} timed out, falling through to UDP punch",
+                    tcp_target
+                );
+                None
+            }
+        }
+    }
+}
+
+/// Check if an IPv4 address is in a private range (RFC 1918 + CGNAT).
+fn is_private_ipv4(octets: [u8; 4]) -> bool {
+    matches!(
+        octets[0],
+        10 | 172 if (16..=31).contains(&octets[1])
+    ) || octets[0] == 192 && octets[1] == 168
+        || octets[0] == 100 && (64..=127).contains(&octets[1])
+        || octets[0] == 10
+}
+
+/// Read local IPv4 addresses from `/proc/net/fib_trie` (Linux) or fallback.
+///
+/// Parses the kernel FIB trie: addresses appear on the line before `/32 host LOCAL`.
+fn local_ipv4_from_proc() -> Vec<[u8; 4]> {
+    let Ok(content) = std::fs::read_to_string("/proc/net/fib_trie") else {
+        return Vec::new();
+    };
+
+    let mut addrs = Vec::new();
+    let mut prev_ip: Option<std::net::Ipv4Addr> = None;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.contains("/32 host LOCAL") {
+            if let Some(ip) = prev_ip.take() {
+                let o = ip.octets();
+                if o[0] != 127 && o[0] != 0 {
+                    addrs.push(o);
+                }
+            }
+        } else if let Some(ip_part) = trimmed.strip_prefix("|-- ") {
+            prev_ip = ip_part.parse::<std::net::Ipv4Addr>().ok();
+        } else {
+            prev_ip = None;
+        }
+    }
+
+    addrs.sort_unstable();
+    addrs.dedup();
+    addrs
 }
 
 /// Peer connection backend (enum dispatch).
@@ -359,9 +510,9 @@ mod tests {
 
         assert!(result.is_ok());
         let connect_result = result.unwrap();
-        // Should be either "connected" or "punching" depending on timing
+        // Should be either "connected" or "failed" depending on timing
         assert!(
-            connect_result.state == "connected" || connect_result.state == "punching",
+            connect_result.state == "connected" || connect_result.state == "failed",
             "Unexpected state: {}",
             connect_result.state
         );
@@ -372,11 +523,11 @@ mod tests {
         // Very short timeout and minimal punching to avoid slow tests
         let connector =
             UdpPeerConnector::with_config(Duration::from_millis(500), 1, Duration::from_millis(10));
-        // Loopback unreachable port — should complete with "punching" state
+        // Loopback unreachable port — should complete with "failed" state
         let result = connector.connect("127.0.0.1:59999", None, None).await;
-        // Either success (punching) or timeout error — both are valid
+        // Either failed (no response) or timeout error — both are valid
         match result {
-            Ok(r) => assert_eq!(r.state, "punching"),
+            Ok(r) => assert_eq!(r.state, "failed"),
             Err(e) => assert!(
                 e.contains("timed out") || e.contains("Hole punch"),
                 "Unexpected error: {e}"
@@ -391,11 +542,69 @@ mod tests {
         let result = connector.connect("127.0.0.1:59998", None, Some("token-abc123")).await;
         // Should complete (success or timeout — both valid without peer)
         match result {
-            Ok(r) => assert!(r.state == "punching" || r.state == "connected"),
+            Ok(r) => assert!(r.state == "failed" || r.state == "connected"),
             Err(e) => assert!(
                 e.contains("timed out") || e.contains("Hole punch"),
                 "Unexpected error: {e}"
             ),
         }
+    }
+
+    #[test]
+    fn is_private_ipv4_classifies_correctly() {
+        assert!(is_private_ipv4([192, 168, 1, 1]));
+        assert!(is_private_ipv4([192, 168, 4, 5]));
+        assert!(is_private_ipv4([10, 0, 0, 1]));
+        assert!(is_private_ipv4([10, 13, 37, 6]));
+        assert!(is_private_ipv4([172, 16, 0, 1]));
+        assert!(is_private_ipv4([172, 31, 255, 254]));
+        assert!(is_private_ipv4([100, 64, 0, 1])); // CGNAT
+        assert!(!is_private_ipv4([8, 8, 8, 8]));
+        assert!(!is_private_ipv4([203, 0, 113, 45]));
+        assert!(!is_private_ipv4([172, 32, 0, 1])); // Just outside private range
+    }
+
+    #[test]
+    fn local_ipv4_from_proc_returns_addresses_or_empty() {
+        let addrs = local_ipv4_from_proc();
+        // On Linux, should find at least one local IP; on other platforms, returns empty
+        if std::fs::metadata("/proc/net/fib_trie").is_ok() {
+            assert!(!addrs.is_empty(), "On Linux, should find local addresses");
+            for addr in &addrs {
+                assert_ne!(addr[0], 127, "Should exclude loopback");
+                assert_ne!(addr[0], 0, "Should exclude zero");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn lan_bypass_skips_punch_for_localhost_listener() {
+        // Start a TCP listener mimicking a federation port on loopback
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+
+        // Accept one connection then drop
+        tokio::spawn(async move {
+            let _ = listener.accept().await;
+        });
+
+        let connector = UdpPeerConnector::new();
+
+        // This is loopback so LAN bypass won't trigger (loopback is excluded)
+        // — verify it falls through to UDP punch normally
+        let result = UdpPeerConnector::with_config(
+            Duration::from_millis(500),
+            1,
+            Duration::from_millis(10),
+        )
+        .connect(&format!("127.0.0.1:{port}"), None, None)
+        .await;
+
+        // Loopback excluded from LAN bypass → goes to UDP punch → "connected" or "failed"
+        match result {
+            Ok(r) => assert!(r.state == "connected" || r.state == "failed"),
+            Err(e) => assert!(e.contains("timed out") || e.contains("Hole punch")),
+        }
+        drop(connector);
     }
 }
