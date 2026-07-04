@@ -3,7 +3,7 @@
 **Primal**: Songbird
 **Role**: Network Orchestration & Discovery Primal
 **Phase**: Stadial (S1-S4 graduated, 5-gate mesh collective LIVE, zero-config mesh init)
-**Version**: 0.2.1-wave131
+**Version**: 0.2.1-wave131b
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
 **Last Updated**: July 4, 2026
 
@@ -38,8 +38,8 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Tests | 8,929 lib tests passed (0 failures, 0 flaky; Wave 113 verified June 13, 2026) |
 | Coverage | Line coverage **73.41%** (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | Edition | Rust 2024 |
-| Clippy | pedantic + nursery, zero warnings (`-D warnings`; Jul 4 verified) |
-| Files >800 LOC | **0** — all production code below threshold |
+| Clippy | pedantic + nursery, zero warnings (`-D warnings`; Jul 4 verified — 6 commits this session) |
+| Files >800 LOC | **0** — all production code below threshold (mesh_seed.rs: 518L production + 315L tests) |
 | Unsafe blocks | 0 (`forbid(unsafe_code)` all 31 crates) |
 | C dependencies | Zero in default build; `ring` in Cargo.lock is uncompiled lockfile artifact (banned in `deny.toml`); Bluetooth native deps only with `bluetooth` feature |
 | Hardcoded primal names | 0 in production discovery (capability-first); all paths env-driven or XDG-compliant; zero `/tmp/` writes |
