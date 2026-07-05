@@ -49,6 +49,7 @@ mod btsp_validation;
 mod capability_dispatch;
 mod construction;
 mod dispatch;
+pub mod drawbridge;
 mod http;
 mod http_proxy;
 mod ipc_registry;
@@ -66,6 +67,7 @@ pub use crate::service_types::{
     ValidateConsumedResult,
 };
 pub use http_proxy::{CapabilityProxyRouter, ProxyRoute};
+pub use drawbridge::{DrawbridgeConfig, DrawbridgeRoute, serve_drawbridge};
 
 /// Songbird IPC Service Handler
 ///
