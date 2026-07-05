@@ -8,7 +8,9 @@
 
 use anyhow::Result;
 use songbird_universal_ipc::registry::ServiceRegistry;
-use songbird_universal_ipc::service::IpcServiceHandler;
+use songbird_universal_ipc::service::{
+    CapabilityProxyRouter, DrawbridgeConfig, IpcServiceHandler, serve_drawbridge,
+};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -133,6 +135,23 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     tracing::info!("   Orchestrator: ✅ Started");
     tracing::info!("✅ Songbird ready!");
     tracing::info!("");
+
+    // Drawbridge HTTP listener (Gatehouse→Darkforest crossing)
+    let drawbridge_config = DrawbridgeConfig::from_env();
+    if !drawbridge_config.bind_addr.is_empty() {
+        let proxy_router = Arc::new(CapabilityProxyRouter::from_env());
+        let db_config = drawbridge_config.clone();
+        let db_router = Arc::clone(&proxy_router);
+        tracing::info!(
+            "🌉 Starting Drawbridge HTTP listener on {}...",
+            db_config.bind_addr
+        );
+        tokio::spawn(async move {
+            if let Err(e) = serve_drawbridge(db_config, db_router).await {
+                tracing::error!("Drawbridge listener failed: {}", e);
+            }
+        });
+    }
 
     let effective_listen = args.listen.clone().or_else(|| {
         if args.socket.is_none() {
