@@ -74,6 +74,20 @@ impl DrawbridgeConfig {
         }
         None
     }
+
+    /// Extract the unique capability names that this drawbridge can route to.
+    ///
+    /// Used by the mesh handler to auto-advertise these capabilities to peers
+    /// so that `capability.call` can discover them via federation.
+    #[must_use]
+    pub fn provided_capabilities(&self) -> Vec<String> {
+        let mut seen = std::collections::HashSet::new();
+        self.routes
+            .iter()
+            .filter(|r| seen.insert(&r.capability))
+            .map(|r| r.capability.clone())
+            .collect()
+    }
 }
 
 /// Start the drawbridge HTTP listener.
@@ -326,6 +340,30 @@ mod tests {
         assert_eq!(config.resolve_capability("/hub/login"), Some("jupyter"));
         assert_eq!(config.resolve_capability("/api/v1/models"), Some("inference"));
         assert_eq!(config.resolve_capability("/unknown"), None);
+    }
+
+    #[test]
+    fn provided_capabilities_deduplicates() {
+        let config = DrawbridgeConfig {
+            bind_addr: String::from("127.0.0.1:7780"),
+            routes: vec![
+                DrawbridgeRoute { path_prefix: String::from("/hub"), capability: String::from("jupyter") },
+                DrawbridgeRoute { path_prefix: String::from("/api"), capability: String::from("jupyter") },
+                DrawbridgeRoute { path_prefix: String::from("/user"), capability: String::from("jupyter") },
+                DrawbridgeRoute { path_prefix: String::from("/infer"), capability: String::from("inference") },
+            ],
+        };
+        let caps = config.provided_capabilities();
+        assert_eq!(caps, vec!["jupyter", "inference"]);
+    }
+
+    #[test]
+    fn provided_capabilities_empty_when_no_routes() {
+        let config = DrawbridgeConfig {
+            bind_addr: String::from("127.0.0.1:7780"),
+            routes: vec![],
+        };
+        assert!(config.provided_capabilities().is_empty());
     }
 
     #[test]

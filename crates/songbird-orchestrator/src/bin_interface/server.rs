@@ -138,6 +138,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
 
     // Drawbridge HTTP listener (Gatehouse→Darkforest crossing)
     let drawbridge_config = DrawbridgeConfig::from_env();
+    let drawbridge_capabilities = drawbridge_config.provided_capabilities();
     if !drawbridge_config.bind_addr.is_empty() {
         let proxy_router = Arc::new(CapabilityProxyRouter::from_env());
         let db_config = drawbridge_config.clone();
@@ -146,6 +147,12 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
             "🌉 Starting Drawbridge HTTP listener on {}...",
             db_config.bind_addr
         );
+        if !drawbridge_capabilities.is_empty() {
+            tracing::info!(
+                "   Routable capabilities: {:?} (will advertise to mesh peers)",
+                drawbridge_capabilities
+            );
+        }
         tokio::spawn(async move {
             if let Err(e) = serve_drawbridge(db_config, db_router).await {
                 tracing::error!("Drawbridge listener failed: {}", e);
@@ -167,8 +174,13 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         }
     });
     let socket_path_for_registration = args.socket.clone().or_else(|| effective_listen.clone());
-    let _ipc_handle =
-        spawn_ipc_listener(&args, effective_listen.as_ref(), family_identity.as_ref());
+    let shared_handler = create_shared_handler();
+    let _ipc_handle = spawn_ipc_listener(
+        &args,
+        effective_listen.as_ref(),
+        family_identity.as_ref(),
+        Arc::clone(&shared_handler),
+    );
 
     if socket_path_for_registration.is_some() {
         tracing::info!("");
@@ -177,6 +189,22 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
             tracing::warn!("⚠️  Failed to register capabilities: {}", e);
             tracing::warn!("   Songbird will continue without Neural API registration");
         }
+    }
+
+    // Auto-advertise drawbridge-routed capabilities to mesh peers.
+    // This bridges the gap between drawbridge HTTP routing (which works)
+    // and capability.call discovery (which requires peer advertisement).
+    if !drawbridge_capabilities.is_empty() {
+        let handler = Arc::clone(&shared_handler);
+        let caps = drawbridge_capabilities;
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            tracing::info!(
+                "📡 Auto-advertising drawbridge capabilities to mesh peers: {:?}",
+                caps
+            );
+            handler.announce_drawbridge_capabilities(caps).await;
+        });
     }
 
     tracing::info!("");
@@ -227,6 +255,7 @@ fn spawn_ipc_listener(
     args: &ServerArgs,
     effective_listen: Option<&String>,
     family_identity: Option<&String>,
+    shared_handler: Arc<IpcServiceHandler>,
 ) -> Option<tokio::task::JoinHandle<()>> {
     if let Some(listen_addr) = effective_listen {
         tracing::info!("");
@@ -244,8 +273,9 @@ fn spawn_ipc_listener(
         log_available_methods();
 
         let listen_clone = listen_addr.clone();
+        let handler = shared_handler;
         Some(tokio::spawn(async move {
-            match start_tcp_ipc_server(&listen_clone, &security_socket).await {
+            match start_tcp_ipc_server(&listen_clone, &security_socket, handler).await {
                 Ok(()) => tracing::info!("TCP IPC server stopped gracefully"),
                 Err(e) => tracing::error!("TCP IPC server error: {}", e),
             }
@@ -268,8 +298,9 @@ fn spawn_ipc_listener(
         #[cfg(unix)]
         {
             let socket_clone = socket_path.clone();
+            let handler = shared_handler;
             Some(tokio::spawn(async move {
-                match start_ipc_server(&socket_clone, &security_socket).await {
+                match start_ipc_server(&socket_clone, &security_socket, handler).await {
                     Ok(()) => tracing::info!("IPC server stopped gracefully"),
                     Err(e) => tracing::error!("IPC server error: {}", e),
                 }
@@ -310,9 +341,12 @@ fn log_available_methods() {
 }
 
 #[cfg(unix)]
-async fn start_ipc_server(socket_path: &str, security_socket: &str) -> Result<()> {
+async fn start_ipc_server(
+    socket_path: &str,
+    security_socket: &str,
+    shared_handler: Arc<IpcServiceHandler>,
+) -> Result<()> {
     let _ = std::fs::remove_file(socket_path);
-    let shared_handler = create_shared_handler();
     let security_client =
         Arc::new(songbird_http_client::SecurityRpcClient::new_direct(security_socket.to_owned()));
 
@@ -338,12 +372,15 @@ async fn start_ipc_server(socket_path: &str, security_socket: &str) -> Result<()
     }
 }
 
-async fn start_tcp_ipc_server(listen_addr: &str, security_socket: &str) -> Result<()> {
+async fn start_tcp_ipc_server(
+    listen_addr: &str,
+    security_socket: &str,
+    shared_handler: Arc<IpcServiceHandler>,
+) -> Result<()> {
     let addr: std::net::SocketAddr = listen_addr
         .parse()
         .map_err(|e| anyhow::anyhow!("Invalid listen address '{listen_addr}': {e}"))?;
 
-    let shared_handler = create_shared_handler();
     let security_client =
         Arc::new(songbird_http_client::SecurityRpcClient::new_direct(security_socket.to_owned()));
 

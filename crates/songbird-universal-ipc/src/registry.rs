@@ -290,6 +290,38 @@ impl ServiceRegistry {
             .collect()
     }
 
+    /// Register a drawbridge-routed capability so local `capability.resolve` can find it.
+    ///
+    /// Called at startup when `SONGBIRD_DRAWBRIDGE_ROUTES` maps path prefixes to
+    /// capabilities. The drawbridge itself handles HTTP routing; this registration
+    /// makes the capability discoverable via the IPC registry so that
+    /// `capability.call` can find it locally and `announce_capabilities_to_peers`
+    /// can propagate it to remote gates.
+    pub async fn register_drawbridge_capability(&self, capability: &str, drawbridge_addr: &str) {
+        let port: u16 = drawbridge_addr
+            .rsplit(':')
+            .next()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(7780);
+
+        let name = format!("drawbridge:{capability}");
+        let native_endpoint = NativeEndpoint::TcpLocal(port);
+        let virtual_endpoint = VirtualEndpoint::new(&name);
+
+        let entry = ServiceEntry {
+            virtual_endpoint,
+            native_endpoint,
+            capabilities: vec![capability.to_string()],
+            registered_at: Instant::now(),
+            last_seen: Instant::now(),
+            signature: None,
+            signed_payload: None,
+        };
+
+        let mut services = self.services.write().await;
+        services.insert(name, entry);
+    }
+
     /// Resolve a capability to the single best provider (most-recently-seen first).
     ///
     /// This is the IPC equivalent of DNS resolution: given a capability string,
