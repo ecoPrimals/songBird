@@ -116,31 +116,6 @@ impl IpcServiceHandler {
     pub fn capability_router(&self) -> &Arc<CapabilityProxyRouter> {
         &self.capability_router
     }
-
-    /// Auto-advertise drawbridge-routed capabilities to mesh peers.
-    ///
-    /// Called at startup when `SONGBIRD_DRAWBRIDGE_ROUTES` maps path prefixes to
-    /// capability names. Registers those capabilities into the local IPC registry
-    /// (so `capability.resolve` finds them) and announces to mesh peers (so remote
-    /// `capability.call` can discover and route to this gate's drawbridge).
-    pub async fn announce_drawbridge_capabilities(&self, capabilities: Vec<String>) {
-        use tracing::info;
-
-        let drawbridge_addr = songbird_process_env::var("SONGBIRD_DRAWBRIDGE_ADDR")
-            .unwrap_or_else(|_| String::from("127.0.0.1:7780"));
-
-        for cap in &capabilities {
-            let registry = self.registry.read().await;
-            registry.register_drawbridge_capability(cap, &drawbridge_addr).await;
-            info!(
-                capability = %cap,
-                drawbridge = %drawbridge_addr,
-                "Auto-registered drawbridge capability in local IPC registry"
-            );
-        }
-
-        self.mesh_handler.announce_capabilities_to_peers(capabilities).await;
-    }
 }
 
 /// All handler instances built by `build_handlers()`.

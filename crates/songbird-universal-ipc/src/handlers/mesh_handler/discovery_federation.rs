@@ -144,13 +144,12 @@ impl MeshHandler {
         }))
     }
 
-    /// Handle `mesh.publish` — publish freshness/drift status to the mesh.
+    /// Handle `mesh.publish` — broadcast a topic+payload to all reachable mesh peers.
     ///
-    /// Used by ecosystem signal graphs to advertise sync state to the Plasmodium.
-    /// Broadcasts to all connected mesh peers (fire-and-forget).
+    /// Fans out to every reachable peer via fire-and-forget HTTP POST.
+    /// Primary use: `depot.updated` after `plasmid.harvest` completes.
     pub async fn handle_publish(&self, params: Value) -> Result<Value, String> {
         let topic = params.get("topic").and_then(Value::as_str).unwrap_or("status").to_string();
-
         let payload = params.get("payload").cloned().unwrap_or(Value::Null);
 
         let mesh = self
@@ -161,14 +160,157 @@ impl MeshHandler {
             .cloned()
             .ok_or("Mesh not initialized (call mesh.init first)")?;
 
-        let peer_count = mesh.get_reachable_nodes().await.len();
-        info!("📢 mesh.publish: topic={}, broadcasting to {} peers", topic, peer_count);
+        let our_node_id = self.node_id.read().await.clone();
+        let reachable = mesh.get_reachable_nodes().await;
+        let mut notified = 0u32;
+        let mut failed = 0u32;
+
+        for node_id in &reachable {
+            if node_id.as_str() == our_node_id.as_ref() {
+                continue;
+            }
+            let Some(path) = mesh.get_best_path(node_id).await else {
+                continue;
+            };
+            let (_, address) = super::json::endpoint_to_strings(&path.endpoint_type);
+            let Some(addr) = address else {
+                continue;
+            };
+            if addr.is_empty() {
+                continue;
+            }
+
+            let peer_url = if addr.starts_with("http") {
+                addr.clone()
+            } else {
+                format!("http://{addr}")
+            };
+
+            let rpc_payload = json!({
+                "jsonrpc": "2.0",
+                "method": "mesh.subscribe",
+                "params": {
+                    "topic": &topic,
+                    "payload": &payload,
+                    "origin": our_node_id.as_ref(),
+                },
+                "id": null
+            });
+
+            let url = peer_url.clone();
+            let body = rpc_payload.clone();
+            let result = tokio::spawn(async move {
+                super::capability_propagation::post_jsonrpc_fire_and_forget(&url, &body).await
+            })
+            .await;
+
+            match result {
+                Ok(Ok(())) => notified += 1,
+                _ => failed += 1,
+            }
+        }
+
+        info!(
+            "📢 mesh.publish: topic={}, notified={}, failed={}, total_peers={}",
+            topic, notified, failed, reachable.len()
+        );
 
         Ok(json!({
             "published": true,
             "topic": topic,
-            "peers_notified": peer_count,
+            "peers_notified": notified,
+            "peers_failed": failed,
             "payload_size": payload.to_string().len()
         }))
+    }
+
+    /// Handle `mesh.subscribe` — receive a published event from a peer.
+    ///
+    /// When topic is `depot.updated`, spawns `membrane plasmid.auto_fetch`
+    /// to pull the updated ecobins (fire-and-forget).
+    pub async fn handle_subscribe(&self, params: Value) -> Result<Value, String> {
+        let topic = params.get("topic").and_then(Value::as_str).unwrap_or("unknown");
+        let origin = params
+            .get("origin")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        let payload = params.get("payload").cloned().unwrap_or(Value::Null);
+
+        info!(
+            "📬 mesh.subscribe: topic={}, origin={}, payload_size={}",
+            topic, origin, payload.to_string().len()
+        );
+
+        match topic {
+            "depot.updated" => {
+                let primals_updated: Vec<String> = payload
+                    .get("primals_updated")
+                    .and_then(Value::as_array)
+                    .map(|arr| arr.iter().filter_map(Value::as_str).map(String::from).collect())
+                    .unwrap_or_default();
+                let manifest_hash = payload
+                    .get("manifest_hash")
+                    .and_then(Value::as_str)
+                    .unwrap_or("unknown");
+                let builder = payload
+                    .get("builder")
+                    .and_then(Value::as_str)
+                    .unwrap_or(origin);
+
+                info!(
+                    "📦 depot.updated from {}: {} primals, hash={}",
+                    builder,
+                    primals_updated.len(),
+                    manifest_hash
+                );
+
+                let payload_json = payload.to_string();
+                tokio::spawn(async move {
+                    let result = tokio::process::Command::new("membrane")
+                        .args(["plasmid.auto_fetch", &payload_json])
+                        .stdout(std::process::Stdio::null())
+                        .stderr(std::process::Stdio::null())
+                        .spawn();
+                    match result {
+                        Ok(mut child) => {
+                            match tokio::time::timeout(
+                                Duration::from_secs(120),
+                                child.wait(),
+                            ).await {
+                                Ok(Ok(status)) => {
+                                    info!("plasmid.auto_fetch exited: {status}");
+                                }
+                                Ok(Err(e)) => {
+                                    info!("plasmid.auto_fetch wait error: {e}");
+                                }
+                                Err(_) => {
+                                    info!("plasmid.auto_fetch timed out (120s)");
+                                    let _ = child.kill().await;
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            info!("plasmid.auto_fetch spawn failed (membrane not in PATH?): {e}");
+                        }
+                    }
+                });
+
+                Ok(json!({
+                    "received": true,
+                    "topic": topic,
+                    "action": "auto_fetch_spawned",
+                    "primals": primals_updated,
+                    "manifest_hash": manifest_hash,
+                    "builder": builder
+                }))
+            }
+            _ => {
+                Ok(json!({
+                    "received": true,
+                    "topic": topic,
+                    "action": "logged"
+                }))
+            }
+        }
     }
 }

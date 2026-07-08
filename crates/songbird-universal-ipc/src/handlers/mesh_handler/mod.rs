@@ -398,6 +398,11 @@ impl MeshHandler {
             response["partition_warnings"] = json!(partition_warnings);
         }
 
+        let stale_peers = detect_stale_gate_heads();
+        if !stale_peers.is_empty() {
+            response["stale_peers"] = json!(stale_peers);
+        }
+
         Ok(response)
     }
 
@@ -694,4 +699,56 @@ impl MeshHandler {
         *self.mesh.write().await = Some(mesh);
         *self.node_id.write().await = Arc::from(node_id);
     }
+}
+
+/// Scan `wateringHole/heads/*.toml` for gate head files older than 24 hours.
+///
+/// Returns a list of `{ gate, age_hours, file }` entries for stale peers.
+/// Used by `mesh.status` to enrich the response with convergence health.
+fn detect_stale_gate_heads() -> Vec<serde_json::Value> {
+    const STALE_THRESHOLD_SECS: u64 = 24 * 3600;
+
+    let workspace = std::env::var("ECOPRIMALS_ROOT")
+        .unwrap_or_else(|_| String::from("/opt/ecoPrimals"));
+    let heads_dir = std::path::PathBuf::from(&workspace)
+        .join("infra")
+        .join("wateringHole")
+        .join("heads");
+
+    let Ok(entries) = std::fs::read_dir(&heads_dir) else {
+        return Vec::new();
+    };
+
+    let now = std::time::SystemTime::now();
+    let mut stale = Vec::new();
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("toml") {
+            continue;
+        }
+        let gate = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("unknown")
+            .to_string();
+
+        let Ok(meta) = std::fs::metadata(&path) else {
+            continue;
+        };
+        let Ok(modified) = meta.modified() else {
+            continue;
+        };
+        let age = now.duration_since(modified).unwrap_or_default();
+        if age.as_secs() > STALE_THRESHOLD_SECS {
+            let age_hours = age.as_secs() / 3600;
+            stale.push(serde_json::json!({
+                "gate": gate,
+                "age_hours": age_hours,
+                "file": path.display().to_string(),
+            }));
+        }
+    }
+
+    stale
 }

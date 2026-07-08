@@ -38,6 +38,7 @@ methods = [
     "mesh.discover_remotes",
     "mesh.mirror",
     "mesh.publish",
+    "mesh.subscribe",
 ]
 
 [capabilities.relay]

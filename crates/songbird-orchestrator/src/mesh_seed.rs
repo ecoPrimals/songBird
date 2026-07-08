@@ -49,7 +49,9 @@ fn parse_overlay_peers_env() -> Vec<(String, String)> {
 /// the ip address assignment.
 ///
 /// If `SONGBIRD_OVERLAY_SUBNET` is set (e.g. "10.13.37"), uses that as the
-/// canonical overlay subnet prefix for matching.
+/// canonical overlay subnet prefix for matching. The default "10.13.37"
+/// matches the WireGuard overlay defined in `ecosystem_manifest.toml`
+/// `[gates.*] wg_ip` fields.
 pub(crate) fn detect_overlay_address() -> Option<IpAddr> {
     if let Ok(addr) = songbird_process_env::var("SONGBIRD_OVERLAY_IP") {
         return addr.parse::<IpAddr>().ok();

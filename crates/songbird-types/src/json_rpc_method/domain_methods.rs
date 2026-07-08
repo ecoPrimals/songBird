@@ -191,6 +191,7 @@ pub enum MeshMethod {
     DiscoverRemotes,
     Mirror,
     Publish,
+    Subscribe,
     ProbeLatency,
     CapabilitiesAnnounce,
 }
