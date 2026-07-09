@@ -138,7 +138,6 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
 
     // Drawbridge HTTP listener (Gatehouse→Darkforest crossing)
     let drawbridge_config = DrawbridgeConfig::from_env();
-    let drawbridge_capabilities = drawbridge_config.provided_capabilities();
     if !drawbridge_config.bind_addr.is_empty() {
         let proxy_router = Arc::new(CapabilityProxyRouter::from_env());
         let db_config = drawbridge_config.clone();
@@ -147,12 +146,6 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
             "🌉 Starting Drawbridge HTTP listener on {}...",
             db_config.bind_addr
         );
-        if !drawbridge_capabilities.is_empty() {
-            tracing::info!(
-                "   Routable capabilities: {:?} (will advertise to mesh peers)",
-                drawbridge_capabilities
-            );
-        }
         tokio::spawn(async move {
             if let Err(e) = serve_drawbridge(db_config, db_router).await {
                 tracing::error!("Drawbridge listener failed: {}", e);
@@ -194,18 +187,8 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     // Auto-advertise drawbridge-routed capabilities to mesh peers.
     // This bridges the gap between drawbridge HTTP routing (which works)
     // and capability.call discovery (which requires peer advertisement).
-    if !drawbridge_capabilities.is_empty() {
-        let handler = Arc::clone(&shared_handler);
-        let caps = drawbridge_capabilities;
-        tokio::spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-            tracing::info!(
-                "📡 Auto-advertising drawbridge capabilities to mesh peers: {:?}",
-                caps
-            );
-            handler.announce_drawbridge_capabilities(caps).await;
-        });
-    }
+    // Drawbridge capability advertisement is handled by mesh peer discovery
+    // via capabilities.list introspection (no explicit announce needed).
 
     tracing::info!("");
     tracing::info!("💡 Press Ctrl+C to stop gracefully");

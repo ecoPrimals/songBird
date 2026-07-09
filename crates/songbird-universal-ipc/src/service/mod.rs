@@ -116,20 +116,6 @@ impl IpcServiceHandler {
     pub fn capability_router(&self) -> &Arc<CapabilityProxyRouter> {
         &self.capability_router
     }
-
-    /// Announce drawbridge-provided capabilities to mesh peers.
-    ///
-    /// Called at startup after drawbridge routes are parsed. Delegates to
-    /// `MeshHandler::announce_capabilities_to_peers()` so remote gates can
-    /// discover routable capabilities via `capability.call`.
-    pub async fn announce_drawbridge_capabilities(&self, capabilities: Vec<String>) {
-        if capabilities.is_empty() {
-            return;
-        }
-        self.mesh_handler
-            .announce_capabilities_to_peers(capabilities)
-            .await;
-    }
 }
 
 /// All handler instances built by `build_handlers()`.
