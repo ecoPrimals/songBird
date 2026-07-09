@@ -148,8 +148,18 @@ async fn handle_drawbridge_connection(
     }
 
     let method = parts[0];
-    let path = parts[1];
-    let _version = parts[2];
+    let raw_target = parts[1];
+    let _ = parts[2];
+
+    // Normalize request-target: handle both origin-form (/path) and
+    // absolute-form (http://host/path) per RFC 7230 §5.3
+    let path = if raw_target.starts_with("http://") || raw_target.starts_with("https://") {
+        raw_target.find('/')
+            .and_then(|i| raw_target[i + 2..].find('/').map(|j| &raw_target[i + 2 + j..]))
+            .unwrap_or("/")
+    } else {
+        raw_target
+    };
 
     let mut headers: Vec<(String, String)> = Vec::new();
     let mut host = String::new();
@@ -166,7 +176,7 @@ async fn handle_drawbridge_connection(
             let name_lower = name.trim().to_lowercase();
             let value = value.trim().to_string();
             if name_lower == "host" {
-                host = value.clone();
+                host.clone_from(&value);
             } else if name_lower == "content-length" {
                 content_length = value.parse().unwrap_or(0);
             }
@@ -219,8 +229,7 @@ fn build_backend_url(route: &ProxyRoute, request_path: &str, routes: &[Drawbridg
     let matched_prefix = routes
         .iter()
         .find(|r| request_path.starts_with(&r.path_prefix))
-        .map(|r| r.path_prefix.as_str())
-        .unwrap_or("");
+        .map_or("", |r| r.path_prefix.as_str());
 
     let suffix = if matched_prefix.is_empty() {
         request_path
@@ -274,11 +283,13 @@ async fn proxy_to_backend(
         if name_lower == "host" {
             continue;
         }
-        request_buf.push_str(&format!("{name}: {value}\r\n"));
+        use std::fmt::Write;
+        let _ = write!(request_buf, "{name}: {value}\r\n");
     }
 
     if let Some(b) = body {
-        request_buf.push_str(&format!("Content-Length: {}\r\n", b.len()));
+        use std::fmt::Write;
+        let _ = write!(request_buf, "Content-Length: {}\r\n", b.len());
     }
     request_buf.push_str("Connection: close\r\n\r\n");
 
@@ -358,5 +369,27 @@ mod tests {
             build_backend_url(&route, "/hub/api/status", &routes),
             "http://192.168.4.237:8000/api/status"
         );
+    }
+
+    #[test]
+    fn absolute_form_uri_normalized_to_path() {
+        let config = DrawbridgeConfig {
+            bind_addr: String::new(),
+            routes: vec![
+                DrawbridgeRoute { path_prefix: String::from("/hub"), capability: String::from("jupyter") },
+            ],
+        };
+
+        // Simulate absolute-form request target (as sent by some HTTP clients)
+        let absolute = "http://10.13.37.2:7780/hub/api";
+        let normalized = if absolute.starts_with("http://") || absolute.starts_with("https://") {
+            absolute.find('/')
+                .and_then(|i| absolute[i + 2..].find('/').map(|j| &absolute[i + 2 + j..]))
+                .unwrap_or("/")
+        } else {
+            absolute
+        };
+        assert_eq!(normalized, "/hub/api");
+        assert_eq!(config.resolve_capability(normalized), Some("jupyter"));
     }
 }
