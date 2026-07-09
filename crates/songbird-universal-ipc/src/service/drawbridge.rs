@@ -66,6 +66,17 @@ impl DrawbridgeConfig {
         Self { bind_addr, routes }
     }
 
+    /// Extract unique capability names from configured routes.
+    ///
+    /// Used at startup to announce routable capabilities to mesh peers.
+    #[must_use]
+    pub fn provided_capabilities(&self) -> Vec<String> {
+        let mut caps: Vec<String> = self.routes.iter().map(|r| r.capability.clone()).collect();
+        caps.sort();
+        caps.dedup();
+        caps
+    }
+
     fn resolve_capability(&self, path: &str) -> Option<&str> {
         for route in &self.routes {
             if path.starts_with(&route.path_prefix) {

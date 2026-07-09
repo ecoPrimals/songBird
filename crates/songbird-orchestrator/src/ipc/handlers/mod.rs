@@ -569,6 +569,7 @@ impl IpcHandlers {
             MeshMethod::CapabilitiesAnnounce => {
                 self.mesh_handler.handle_capabilities_announce(params).await
             }
+            MeshMethod::Subscribe => self.mesh_handler.handle_subscribe(params).await,
         };
         result.map_err(|e| crate::ipc::pure_rust_server::JsonRpcError::internal_error(e))
     }
