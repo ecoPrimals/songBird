@@ -22,6 +22,14 @@
 //! - `SONGBIRD_DRAWBRIDGE_TRUSTED_PEERS`: comma-separated CIDR ranges that bypass auth
 //!
 //! If no auth tokens are configured, the drawbridge operates in open mode (backward compat).
+//!
+//! ## External Proxy Allowlist (footPrint composition)
+//!
+//! Routes with capability `_external_proxy` enable domain-validated forward proxying:
+//! - `SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST`: comma-separated `service=base_url` pairs
+//! - Path format: `/<route_prefix>/<service>/<path>` → `<base_url>/<path>`
+//! - Only allowlisted services are reachable — all others return 403
+//! - Supported services: osm, fema, usgs, arcgis (configured per deployment)
 
 use super::http_proxy::{CapabilityProxyRouter, ProxyRoute};
 use std::fmt::Write;
@@ -170,12 +178,111 @@ impl AuthGate {
     }
 }
 
+/// Domain-validated external proxy allowlist.
+///
+/// Maps service names to permitted external base URLs. Only services in this list
+/// can be reached through the `_external_proxy` capability. This replaces Express
+/// `/api/proxy` for the footPrint composition.
+#[derive(Debug, Clone)]
+pub struct ExternalProxyAllowlist {
+    services: std::collections::HashMap<String, ExternalService>,
+}
+
+/// A permitted external service endpoint.
+#[derive(Debug, Clone)]
+pub struct ExternalService {
+    pub base_url: String,
+    pub name: String,
+}
+
+/// The reserved capability name for external proxy routes.
+pub const EXTERNAL_PROXY_CAPABILITY: &str = "_external_proxy";
+
+impl ExternalProxyAllowlist {
+    /// Load from `SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST` env var.
+    ///
+    /// Format: `service=base_url,service=base_url,...`
+    /// Example: `osm=https://tile.openstreetmap.org,fema=https://hazards.fema.gov`
+    #[must_use]
+    pub fn from_env() -> Self {
+        let mut services = std::collections::HashMap::new();
+
+        let raw = songbird_process_env::var("SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST")
+            .unwrap_or_default();
+
+        for entry in raw.split(',') {
+            let entry = entry.trim();
+            if let Some((name, url)) = entry.split_once('=') {
+                let name = name.trim();
+                let url = url.trim();
+                if !name.is_empty() && !url.is_empty() {
+                    services.insert(
+                        name.to_string(),
+                        ExternalService {
+                            base_url: url.trim_end_matches('/').to_string(),
+                            name: name.to_string(),
+                        },
+                    );
+                }
+            }
+        }
+
+        Self { services }
+    }
+
+    /// Check if the allowlist has any services configured.
+    #[must_use]
+    pub fn is_active(&self) -> bool {
+        !self.services.is_empty()
+    }
+
+    /// Resolve a service name to its external endpoint.
+    #[must_use]
+    pub fn resolve(&self, service_name: &str) -> Option<&ExternalService> {
+        self.services.get(service_name)
+    }
+
+    /// List all allowed service names.
+    #[must_use]
+    pub fn allowed_services(&self) -> Vec<&str> {
+        self.services.keys().map(String::as_str).collect()
+    }
+
+    /// Parse a request path into (`service_name`, `remaining_path`).
+    ///
+    /// Input: `/osm/16/32000/21000.png` → `Some(("osm", "/16/32000/21000.png"))`
+    /// Input: `/unknown/path` with "unknown" not in allowlist → `None`
+    #[must_use]
+    pub fn parse_and_validate<'a>(&'a self, path_after_prefix: &'a str) -> Option<(&'a ExternalService, &'a str)> {
+        let trimmed = path_after_prefix.trim_start_matches('/');
+        let (service_name, remainder) = match trimmed.find('/') {
+            Some(i) => (&trimmed[..i], &trimmed[i..]),
+            None => (trimmed, "/"),
+        };
+
+        self.services.get(service_name).map(move |svc| (svc, remainder))
+    }
+
+    /// Construct the full external URL for a validated request.
+    #[must_use]
+    pub fn build_url(service: &ExternalService, path: &str) -> String {
+        let base = &service.base_url;
+        let path = path.trim_start_matches('/');
+        if path.is_empty() {
+            format!("{base}/")
+        } else {
+            format!("{base}/{path}")
+        }
+    }
+}
+
 /// Drawbridge HTTP listener configuration.
 #[derive(Debug, Clone)]
 pub struct DrawbridgeConfig {
     pub bind_addr: String,
     pub routes: Vec<DrawbridgeRoute>,
     pub auth: AuthGate,
+    pub external_allowlist: ExternalProxyAllowlist,
 }
 
 impl DrawbridgeConfig {
@@ -214,7 +321,7 @@ impl DrawbridgeConfig {
             })
             .collect();
 
-        Self { bind_addr, routes, auth: AuthGate::from_env() }
+        Self { bind_addr, routes, auth: AuthGate::from_env(), external_allowlist: ExternalProxyAllowlist::from_env() }
     }
 
     fn resolve_route(&self, path: &str) -> Option<&DrawbridgeRoute> {
@@ -239,6 +346,8 @@ pub async fn serve_drawbridge(
         addr = %config.bind_addr,
         routes = ?config.routes.iter().map(|r| format!("{} → {}", r.path_prefix, r.capability)).collect::<Vec<_>>(),
         auth_enforcing = config.auth.is_enforcing(),
+        external_proxy = config.external_allowlist.is_active(),
+        allowed_services = ?config.external_allowlist.allowed_services(),
         "drawbridge HTTP listener active (Gatehouse→Darkforest crossing)"
     );
 
@@ -264,6 +373,7 @@ pub async fn serve_drawbridge(
     }
 }
 
+#[expect(clippy::too_many_lines, reason = "cohesive connection handler — splitting would scatter related logic")]
 async fn handle_drawbridge_connection(
     stream: tokio::net::TcpStream,
     peer: SocketAddr,
@@ -340,6 +450,35 @@ async fn handle_drawbridge_connection(
     }
 
     let capability = matched_route.map(|r| r.capability.as_str());
+
+    // External proxy handling — domain-validated forward proxy
+    if capability == Some(EXTERNAL_PROXY_CAPABILITY) {
+        let route_prefix = matched_route.map_or("", |r| r.path_prefix.as_str());
+        let path_after_prefix = &path[route_prefix.len()..];
+
+        let Some((service, remainder)) = config.external_allowlist.parse_and_validate(path_after_prefix) else {
+            debug!(peer = %peer, path, "drawbridge: external proxy — service not in allowlist");
+            let stream = reader.into_inner();
+            let mut stream = stream;
+            stream.write_all(
+                b"HTTP/1.1 403 Forbidden\r\n\
+                  Content-Type: text/plain\r\n\
+                  Content-Length: 30\r\n\r\n\
+                  Service not in proxy allowlist",
+            ).await?;
+            return Ok(());
+        };
+
+        let external_url = ExternalProxyAllowlist::build_url(service, remainder);
+        debug!(
+            peer = %peer,
+            service = %service.name,
+            external_url = %external_url,
+            "drawbridge: external proxy — forwarding to allowlisted service"
+        );
+
+        return proxy_to_external(reader.into_inner(), method, &external_url, &headers, body.as_deref()).await;
+    }
 
     let route = if let Some(cap) = capability {
         router.route(cap)
@@ -452,9 +591,41 @@ async fn proxy_to_backend(
     Ok(())
 }
 
+/// Forward a request to an external allowlisted service.
+///
+/// Validates that the URL uses HTTP (HTTPS outbound TLS is handled by the
+/// deployment's edge proxy — e.g. Caddy). Returns 502 for non-HTTP targets.
+async fn proxy_to_external(
+    mut client_stream: tokio::net::TcpStream,
+    method: &str,
+    external_url: &str,
+    headers: &[(String, String)],
+    body: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if !external_url.starts_with("http://") {
+        warn!(
+            url = %external_url,
+            "drawbridge: external proxy requires HTTP base URL (HTTPS outbound via edge proxy)"
+        );
+        client_stream.write_all(
+            b"HTTP/1.1 502 Bad Gateway\r\n\
+              Content-Type: text/plain\r\n\
+              Content-Length: 52\r\n\r\n\
+              External proxy: HTTPS outbound not yet supported",
+        ).await?;
+        return Ok(());
+    }
+
+    proxy_to_backend(client_stream, method, external_url, headers, body).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn empty_allowlist() -> ExternalProxyAllowlist {
+        ExternalProxyAllowlist { services: std::collections::HashMap::new() }
+    }
 
     #[test]
     fn config_from_env_defaults() {
@@ -463,10 +634,12 @@ mod tests {
         songbird_process_env::remove_var("SONGBIRD_DRAWBRIDGE_AUTH_TOKENS");
         songbird_process_env::remove_var("SONGBIRD_DRAWBRIDGE_PUBLIC_PATHS");
         songbird_process_env::remove_var("SONGBIRD_DRAWBRIDGE_TRUSTED_PEERS");
+        songbird_process_env::remove_var("SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST");
         let config = DrawbridgeConfig::from_env();
         assert_eq!(config.bind_addr, "127.0.0.1:7780");
         assert!(config.routes.is_empty());
         assert!(!config.auth.is_enforcing());
+        assert!(!config.external_allowlist.is_active());
     }
 
     #[test]
@@ -478,6 +651,7 @@ mod tests {
                 DrawbridgeRoute { path_prefix: String::from("/api"), capability: String::from("inference"), public: false },
             ],
             auth: AuthGate { tokens: vec![], public_paths: vec![], trusted_peers: vec![] },
+            external_allowlist: empty_allowlist(),
         };
         assert_eq!(config.routes.len(), 2);
         assert_eq!(config.routes[0].path_prefix, "/hub");
@@ -495,6 +669,7 @@ mod tests {
                 DrawbridgeRoute { path_prefix: String::from("/api"), capability: String::from("inference"), public: false },
             ],
             auth: AuthGate { tokens: vec![], public_paths: vec![], trusted_peers: vec![] },
+            external_allowlist: empty_allowlist(),
         };
         assert_eq!(config.resolve_route("/hub/login").map(|r| r.capability.as_str()), Some("jupyter"));
         assert_eq!(config.resolve_route("/api/v1/models").map(|r| r.capability.as_str()), Some("inference"));
@@ -647,10 +822,100 @@ mod tests {
                 public_paths: vec![],
                 trusted_peers: vec![],
             },
+            external_allowlist: empty_allowlist(),
         };
         let health_route = config.resolve_route("/health/check").unwrap();
         assert!(health_route.public);
         let hub_route = config.resolve_route("/hub/login").unwrap();
         assert!(!hub_route.public);
+    }
+
+    // ── External Proxy Allowlist Tests ───────────────────────────────────
+
+    #[test]
+    fn external_allowlist_empty_is_inactive() {
+        let al = empty_allowlist();
+        assert!(!al.is_active());
+        assert!(al.allowed_services().is_empty());
+    }
+
+    #[test]
+    fn external_allowlist_parses_services() {
+        let mut services = std::collections::HashMap::new();
+        services.insert(String::from("osm"), ExternalService {
+            base_url: String::from("http://127.0.0.1:7781"),
+            name: String::from("osm"),
+        });
+        services.insert(String::from("fema"), ExternalService {
+            base_url: String::from("http://127.0.0.1:7782"),
+            name: String::from("fema"),
+        });
+        let al = ExternalProxyAllowlist { services };
+
+        assert!(al.is_active());
+        assert_eq!(al.allowed_services().len(), 2);
+        assert!(al.resolve("osm").is_some());
+        assert!(al.resolve("fema").is_some());
+        assert!(al.resolve("evil").is_none());
+    }
+
+    #[test]
+    fn external_allowlist_parse_and_validate_path() {
+        let mut services = std::collections::HashMap::new();
+        services.insert(String::from("osm"), ExternalService {
+            base_url: String::from("http://127.0.0.1:7781"),
+            name: String::from("osm"),
+        });
+        services.insert(String::from("usgs"), ExternalService {
+            base_url: String::from("http://127.0.0.1:7783"),
+            name: String::from("usgs"),
+        });
+        let al = ExternalProxyAllowlist { services };
+
+        // Valid service
+        let (svc, remainder) = al.parse_and_validate("/osm/16/32000/21000.png").unwrap();
+        assert_eq!(svc.name, "osm");
+        assert_eq!(remainder, "/16/32000/21000.png");
+
+        let (svc, remainder) = al.parse_and_validate("/usgs/epqs/pqs.php").unwrap();
+        assert_eq!(svc.name, "usgs");
+        assert_eq!(remainder, "/epqs/pqs.php");
+
+        // Non-allowlisted service
+        assert!(al.parse_and_validate("/evil/data").is_none());
+        assert!(al.parse_and_validate("/arcgis/rest").is_none());
+    }
+
+    #[test]
+    fn external_allowlist_build_url() {
+        let svc = ExternalService {
+            base_url: String::from("http://127.0.0.1:7781"),
+            name: String::from("osm"),
+        };
+        assert_eq!(
+            ExternalProxyAllowlist::build_url(&svc, "/16/32000/21000.png"),
+            "http://127.0.0.1:7781/16/32000/21000.png"
+        );
+        assert_eq!(
+            ExternalProxyAllowlist::build_url(&svc, "/"),
+            "http://127.0.0.1:7781/"
+        );
+        assert_eq!(
+            ExternalProxyAllowlist::build_url(&svc, ""),
+            "http://127.0.0.1:7781/"
+        );
+    }
+
+    #[test]
+    fn external_allowlist_rejects_non_http_in_proxy() {
+        let mut services = std::collections::HashMap::new();
+        services.insert(String::from("bad"), ExternalService {
+            base_url: String::from("https://evil.example.com"),
+            name: String::from("bad"),
+        });
+        let al = ExternalProxyAllowlist { services };
+        let (svc, _) = al.parse_and_validate("/bad/path").unwrap();
+        let url = ExternalProxyAllowlist::build_url(svc, "/path");
+        assert!(url.starts_with("https://"));
     }
 }
