@@ -34,8 +34,8 @@ pub enum Commands {
         command: tower::TowerCommand,
     },
 
-    /// 🌐 Gaming network optimization
-    #[command(about = "🌐 Gaming network optimization and diagnostics")]
+    /// Mesh network probing and diagnostics
+    #[command(about = "Probe mesh peer connectivity and latency")]
     Network {
         #[command(subcommand)]
         command: network::NetworkCommand,

@@ -19,11 +19,6 @@ name = "songbird-cli"
 path = "src/bin/songbird.rs"
 
 [[bin]]
-name = "gaming-demo"
-path = "src/bin/gaming_demo.rs"
-doc = false
-
-[[bin]]
 name = "test-runner"
 path = "src/bin/test_runner.rs"
 doc = false
@@ -46,11 +41,9 @@ toml = { workspace = true }
 dirs = { workspace = true }
 whoami = "1.4"
 gethostname = { workspace = true }
-rand = { workspace = true }
 terminal_size = "0.4"
 # libc removed - not used, evolved to pure Rust alternatives
 tokio = { workspace = true }
-fastrand = { workspace = true }
 clap = { workspace = true }
 colored = { workspace = true }
 songbird-http-client = { path = "../songbird-http-client" }

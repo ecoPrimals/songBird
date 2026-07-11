@@ -1,383 +1,394 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! # 🌐 Gaming Network Commands
+//! Network probing commands — real TCP RTT measurement against mesh peers.
 //!
-//! **MODERN GAMING NETWORK OPTIMIZATION** ✅
+//! Parses `SONGBIRD_PEERS` environment variable to discover target peers
+//! and measures actual round-trip latency via TCP connect probes.
 
 #![allow(missing_docs, reason = "network clap enums document flags inline")]
 
 use crate::errors::SongbirdResult;
 use clap::Subcommand;
+use std::net::SocketAddr;
+use std::time::{Duration, Instant};
+
+const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum NetworkCommand {
-    /// Optimize network for gaming performance
-    #[command(about = "⚡ Optimize network settings for gaming")]
-    Optimize {
-        /// Enable gaming mode optimization
-        #[arg(long)]
-        game_mode: bool,
-
-        /// Target latency in milliseconds
-        #[arg(long, default_value = "50")]
-        target_latency: u32,
-
-        /// Gaming protocol to optimize for
-        #[arg(long, value_enum)]
-        protocol: Option<GamingProtocol>,
-    },
-
-    /// Test gaming network performance
-    #[command(about = "🧪 Test gaming network performance and latency")]
+    /// Probe mesh peers for real latency measurement
+    #[command(about = "Probe mesh peer latency via TCP connect")]
     Test {
-        /// Test gaming-specific protocols
+        /// Target specific peer (node_id or address)
         #[arg(long)]
-        gaming_protocols: bool,
+        target: Option<String>,
 
-        /// Target server for testing
-        #[arg(long)]
-        server: Option<String>,
-
-        /// Number of test iterations
+        /// Number of probe iterations
         #[arg(long, default_value = "10")]
         iterations: u32,
     },
 
-    /// Configure gaming network ports
-    #[command(about = "🔌 Configure gaming network ports and forwarding")]
-    Ports {
-        /// Enable gaming port configuration
-        #[arg(long)]
-        gaming: bool,
-
-        /// Auto-configure port forwarding
-        #[arg(long)]
-        auto_configure: bool,
-
-        /// Specific port range to configure
-        #[arg(long)]
-        port_range: Option<String>,
-    },
-
-    /// Monitor gaming network metrics
-    #[command(about = "📊 Monitor real-time gaming network metrics")]
+    /// Monitor network health continuously
+    #[command(about = "Monitor mesh peer health in real-time")]
     Monitor {
-        /// Update interval in seconds
-        #[arg(long, default_value = "1")]
+        /// Probe interval in seconds
+        #[arg(long, default_value = "5")]
         interval: u64,
 
-        /// Focus on specific gaming protocol
-        #[arg(long, value_enum)]
-        protocol: Option<GamingProtocol>,
-
-        /// Enable continuous monitoring
+        /// Run until interrupted
         #[arg(long)]
         continuous: bool,
     },
 
-    /// Diagnose gaming network issues
-    #[command(about = "🔍 Diagnose gaming network connectivity issues")]
+    /// Diagnose network connectivity
+    #[command(about = "Diagnose mesh connectivity and port reachability")]
     Diagnose {
-        /// Run comprehensive diagnostics
+        /// Run comprehensive checks (DNS, ports, sockets)
         #[arg(long)]
         comprehensive: bool,
-
-        /// Export diagnostic report
-        #[arg(long)]
-        export: Option<String>,
     },
-}
-
-#[derive(Debug, Clone, clap::ValueEnum)]
-pub enum GamingProtocol {
-    Udp,
-    Tcp,
-    Ipx,
-    DirectPlay,
-    NetBios,
-    All,
-}
-
-/// Lines printed by [`optimize_gaming_network`] (pure; used by tests).
-fn optimize_gaming_network_lines(
-    game_mode: bool,
-    target_latency: u32,
-    protocol: Option<GamingProtocol>,
-) -> Vec<String> {
-    let mut lines = vec![String::from("🎮 Optimizing gaming network...")];
-    if game_mode {
-        lines.push(String::from("⚡ Gaming mode enabled"));
-    }
-    lines.push(format!("🎯 Target latency: {target_latency}ms"));
-    if let Some(p) = protocol {
-        lines.push(format!("🌐 Optimizing for protocol: {p:?}"));
-    }
-    lines.push(String::from("✅ Gaming network optimization complete"));
-    lines
-}
-
-/// Prefix lines for [`test_gaming_network`] before per-iteration samples (pure).
-fn test_gaming_network_prefix_lines(
-    gaming_protocols: bool,
-    server: Option<&str>,
-    iterations: u32,
-) -> Vec<String> {
-    let mut lines = vec![String::from("🧪 Testing gaming network performance...")];
-    if gaming_protocols {
-        lines.push(String::from("🎮 Testing gaming-specific protocols"));
-    }
-    if let Some(s) = server {
-        lines.push(format!("🌐 Testing against server: {s}"));
-    }
-    lines.push(format!("🔄 Running {iterations} test iterations"));
-    lines
-}
-
-fn configure_gaming_ports_lines(
-    gaming: bool,
-    auto_configure: bool,
-    port_range: Option<&str>,
-) -> Vec<String> {
-    let mut lines = vec![String::from("🔌 Configuring gaming network ports...")];
-    if gaming {
-        lines.push(String::from("🎮 Gaming port configuration enabled"));
-    }
-    if auto_configure {
-        lines.push(String::from("🤖 Auto-configuring port forwarding"));
-    }
-    if let Some(range) = port_range {
-        lines.push(format!("🔢 Configuring port range: {range}"));
-    }
-    lines.push(String::from("✅ Gaming port configuration complete"));
-    lines
-}
-
-fn diagnose_gaming_network_lines(comprehensive: bool, export: Option<&str>) -> Vec<String> {
-    let mut lines = vec![String::from("🔍 Diagnosing gaming network...")];
-    if comprehensive {
-        lines.push(String::from("🔬 Running comprehensive diagnostics"));
-    }
-    lines.extend([
-        String::from("✅ Network connectivity: OK"),
-        String::from("✅ Gaming ports: Open"),
-        String::from("✅ Protocol support: Available"),
-        String::from("⚠️  High latency detected (>100ms)"),
-    ]);
-    if let Some(path) = export {
-        lines.push(format!("📄 Exporting diagnostic report to: {path}"));
-    }
-    lines.push(String::from("✅ Gaming network diagnosis complete"));
-    lines
-}
-
-/// Static lines for [`monitor_gaming_network`] excluding random metric samples.
-fn monitor_gaming_network_static_lines(
-    protocol: Option<GamingProtocol>,
-    continuous: bool,
-) -> Vec<String> {
-    let mut lines = vec![String::from("📊 Starting gaming network monitoring...")];
-    if let Some(p) = protocol {
-        lines.push(format!("🌐 Monitoring protocol: {p:?}"));
-    }
-    if continuous {
-        lines.push(String::from("🔄 Continuous monitoring enabled (Ctrl+C to stop)"));
-    } else {
-        lines.push(String::from("📈 Current gaming network metrics:"));
-    }
-    lines
 }
 
 /// Handle network commands
 pub async fn handle_network_command(command: NetworkCommand) -> SongbirdResult<()> {
     match command {
-        NetworkCommand::Optimize {
-            game_mode,
-            target_latency,
-            protocol,
-        } => optimize_gaming_network(game_mode, target_latency, protocol).await,
-        NetworkCommand::Test {
-            gaming_protocols,
-            server,
-            iterations,
-        } => test_gaming_network(gaming_protocols, server, iterations).await,
-        NetworkCommand::Ports {
-            gaming,
-            auto_configure,
-            port_range,
-        } => configure_gaming_ports(gaming, auto_configure, port_range).await,
+        NetworkCommand::Test { target, iterations } => probe_peers(target, iterations).await,
         NetworkCommand::Monitor {
             interval,
-            protocol,
             continuous,
-        } => monitor_gaming_network(interval, protocol, continuous).await,
-        NetworkCommand::Diagnose {
-            comprehensive,
-            export,
-        } => diagnose_gaming_network(comprehensive, export).await,
+        } => monitor_peers(interval, continuous).await,
+        NetworkCommand::Diagnose { comprehensive } => diagnose_connectivity(comprehensive).await,
     }
 }
 
-async fn optimize_gaming_network(
-    game_mode: bool,
-    target_latency: u32,
-    protocol: Option<GamingProtocol>,
-) -> SongbirdResult<()> {
-    for line in optimize_gaming_network_lines(game_mode, target_latency, protocol) {
-        println!("{line}");
+/// Peer endpoint parsed from `SONGBIRD_PEERS`.
+#[derive(Debug)]
+struct PeerTarget {
+    node_id: String,
+    addr: SocketAddr,
+}
+
+/// Parse `SONGBIRD_PEERS` env var (format: `node_id@host:port,...`).
+fn resolve_peers(filter: Option<&str>) -> Result<Vec<PeerTarget>, String> {
+    let raw = songbird_process_env::var("SONGBIRD_PEERS")
+        .map_err(|_| String::from("SONGBIRD_PEERS not set — no mesh peers configured"))?;
+    parse_peers_value(&raw, filter)
+}
+
+/// Pure parser for the `SONGBIRD_PEERS` format — testable without global state.
+fn parse_peers_value(raw: &str, filter: Option<&str>) -> Result<Vec<PeerTarget>, String> {
+    if raw.trim().is_empty() {
+        return Err(String::from(
+            "SONGBIRD_PEERS is empty — configure mesh peers first",
+        ));
     }
+
+    let mut peers = Vec::new();
+    for entry in raw.split(',') {
+        let entry = entry.trim();
+        if entry.is_empty() {
+            continue;
+        }
+        let Some((node_id, addr_str)) = entry.split_once('@') else {
+            continue;
+        };
+        let Ok(addr) = addr_str.parse::<SocketAddr>() else {
+            continue;
+        };
+        if let Some(f) = filter
+            && node_id != f && addr_str != f
+        {
+            continue;
+        }
+        peers.push(PeerTarget {
+            node_id: node_id.to_string(),
+            addr,
+        });
+    }
+
+    if peers.is_empty() {
+        return Err(if filter.is_some() {
+            String::from("No matching peer found in SONGBIRD_PEERS")
+        } else {
+            String::from("No valid peers parsed from SONGBIRD_PEERS")
+        });
+    }
+
+    Ok(peers)
+}
+
+/// Measure TCP connect RTT to an address.
+async fn tcp_probe(addr: SocketAddr) -> Result<Duration, String> {
+    let start = Instant::now();
+    tokio::time::timeout(PROBE_TIMEOUT, tokio::net::TcpStream::connect(addr))
+        .await
+        .map_err(|_| format!("timeout ({PROBE_TIMEOUT:?})"))?
+        .map_err(|e| format!("connect failed: {e}"))?;
+    Ok(start.elapsed())
+}
+
+/// Probe peers with real TCP latency measurement.
+async fn probe_peers(target: Option<String>, iterations: u32) -> SongbirdResult<()> {
+    let peers = match resolve_peers(target.as_deref()) {
+        Ok(p) => p,
+        Err(e) => {
+            println!("error: {e}");
+            println!("hint: set SONGBIRD_PEERS=node@host:port,... to configure mesh targets");
+            return Ok(());
+        }
+    };
+
+    println!(
+        "Probing {} peer(s), {} iterations each:",
+        peers.len(),
+        iterations
+    );
+    println!();
+
+    for peer in &peers {
+        println!("  {} ({})", peer.node_id, peer.addr);
+        let mut rtts: Vec<Duration> = Vec::with_capacity(iterations as usize);
+        let mut failures = 0u32;
+
+        for _ in 0..iterations {
+            match tcp_probe(peer.addr).await {
+                Ok(rtt) => rtts.push(rtt),
+                Err(_) => failures += 1,
+            }
+        }
+
+        if rtts.is_empty() {
+            println!("    unreachable ({failures}/{iterations} probes failed)");
+        } else {
+            let stats = compute_stats(&rtts);
+            println!(
+                "    latency: min={:.1}ms avg={:.1}ms max={:.1}ms jitter={:.1}ms loss={}/{iterations}",
+                stats.min, stats.avg, stats.max, stats.jitter, failures
+            );
+        }
+        println!();
+    }
+
     Ok(())
 }
 
-async fn test_gaming_network(
-    gaming_protocols: bool,
-    server: Option<String>,
-    iterations: u32,
-) -> SongbirdResult<()> {
-    for line in test_gaming_network_prefix_lines(gaming_protocols, server.as_deref(), iterations) {
-        println!("{line}");
+/// Monitor peers in a loop with real probes.
+async fn monitor_peers(interval: u64, continuous: bool) -> SongbirdResult<()> {
+    let peers = match resolve_peers(None) {
+        Ok(p) => p,
+        Err(e) => {
+            println!("error: {e}");
+            return Ok(());
+        }
+    };
+
+    let interval_dur = Duration::from_secs(interval);
+    let cycles = if continuous { u32::MAX } else { 1 };
+
+    for cycle in 0..cycles {
+        if cycle > 0 {
+            tokio::time::sleep(interval_dur).await;
+        }
+
+        let now = chrono::Utc::now().format("%H:%M:%S");
+        println!("[{now}] Mesh health:");
+
+        for peer in &peers {
+            match tcp_probe(peer.addr).await {
+                Ok(rtt) => {
+                    let ms = rtt.as_secs_f64() * 1000.0;
+                    println!("  {} ({}) — {ms:.1}ms", peer.node_id, peer.addr);
+                }
+                Err(e) => {
+                    println!("  {} ({}) — DOWN ({e})", peer.node_id, peer.addr);
+                }
+            }
+        }
+        println!();
     }
 
-    // Network testing implementation using canonical federation
-    for i in 1..=iterations {
-        let latency = fastrand::u32(10..100);
-        let jitter = fastrand::u32(1..10);
-        println!("📊 Test {i}/{iterations}: Latency: {latency}ms, Jitter: {jitter}ms");
-    }
-
-    println!("✅ Gaming network test complete");
     Ok(())
 }
 
-async fn configure_gaming_ports(
-    gaming: bool,
-    auto_configure: bool,
-    port_range: Option<String>,
-) -> SongbirdResult<()> {
-    for line in configure_gaming_ports_lines(gaming, auto_configure, port_range.as_deref()) {
-        println!("{line}");
-    }
-    Ok(())
-}
+/// Diagnose connectivity: check IPC socket, peer reachability, DNS.
+async fn diagnose_connectivity(comprehensive: bool) -> SongbirdResult<()> {
+    println!("Network diagnostics:");
+    println!();
 
-async fn monitor_gaming_network(
-    _interval: u64,
-    protocol: Option<GamingProtocol>,
-    continuous: bool,
-) -> SongbirdResult<()> {
-    for line in monitor_gaming_network_static_lines(protocol, continuous) {
-        println!("{line}");
-    }
+    // 1. Check IPC socket
+    let biomeos_dir = songbird_process_env::var("BIOMEOS_SOCKET_DIR")
+        .map(std::path::PathBuf::from)
+        .or_else(|_| {
+            songbird_process_env::var("XDG_RUNTIME_DIR").map(|xdg| {
+                std::path::PathBuf::from(xdg)
+                    .join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR)
+            })
+        })
+        .unwrap_or_else(|_| std::env::temp_dir());
 
-    if continuous {
-        // Continuous monitoring using canonical observability
-        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+    let socket_path =
+        biomeos_dir.join(format!("{}.sock", songbird_types::primal_names::SELF_NAME));
+    if socket_path.exists() {
+        println!("  IPC socket: OK ({})", socket_path.display());
     } else {
-        println!("  Latency: {}ms", fastrand::u32(10..50));
-        println!("  Jitter: {}ms", fastrand::u32(1..5));
-        println!("  Packet Loss: {:.2}%", fastrand::f32() * 0.1);
-        println!("  Bandwidth: {}Mbps", fastrand::u32(50..1000));
+        println!("  IPC socket: NOT FOUND ({})", socket_path.display());
+        println!("    hint: is the songBird orchestrator running?");
     }
 
-    println!("✅ Gaming network monitoring complete");
+    // 2. Check mesh peers
+    match resolve_peers(None) {
+        Ok(peers) => {
+            println!("  Configured peers: {}", peers.len());
+            for peer in &peers {
+                match tcp_probe(peer.addr).await {
+                    Ok(rtt) => {
+                        let ms = rtt.as_secs_f64() * 1000.0;
+                        println!("    {} ({}) — reachable ({ms:.1}ms)", peer.node_id, peer.addr);
+                    }
+                    Err(e) => {
+                        println!("    {} ({}) — UNREACHABLE ({e})", peer.node_id, peer.addr);
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            println!("  Mesh peers: {e}");
+        }
+    }
+
+    // 3. Comprehensive: DNS resolution check
+    if comprehensive {
+        println!();
+        println!("  DNS resolution:");
+        let test_hosts = ["dns.google", "one.one.one.one"];
+        for host in test_hosts {
+            match tokio::net::lookup_host(format!("{host}:443")).await {
+                Ok(mut addrs) => {
+                    if let Some(addr) = addrs.next() {
+                        println!("    {host} -> {addr} OK");
+                    } else {
+                        println!("    {host} -> no addresses");
+                    }
+                }
+                Err(e) => println!("    {host} -> FAILED ({e})"),
+            }
+        }
+
+        // Federation port check
+        let fed_port = songbird_process_env::var("SONGBIRD_FEDERATION_PORT")
+            .unwrap_or_else(|_| String::from("7700"));
+        println!();
+        println!("  Federation port: {fed_port}");
+        let bind_test: SocketAddr = format!("0.0.0.0:{fed_port}")
+            .parse()
+            .unwrap_or_else(|_| SocketAddr::from(([0, 0, 0, 0], 7700)));
+        match tokio::net::TcpListener::bind(bind_test).await {
+            Ok(_) => println!("    bind test: OK (port available)"),
+            Err(e) => println!("    bind test: IN USE or blocked ({e})"),
+        }
+    }
+
+    println!();
+    println!("Done.");
     Ok(())
 }
 
-async fn diagnose_gaming_network(
-    comprehensive: bool,
-    export: Option<String>,
-) -> SongbirdResult<()> {
-    for line in diagnose_gaming_network_lines(comprehensive, export.as_deref()) {
-        println!("{line}");
+struct ProbeStats {
+    min: f64,
+    avg: f64,
+    max: f64,
+    jitter: f64,
+}
+
+/// Compute min/avg/max/jitter (all in milliseconds) from a series of RTT durations.
+fn compute_stats(rtts: &[Duration]) -> ProbeStats {
+    let ms_values: Vec<f64> = rtts.iter().map(|d| d.as_secs_f64() * 1000.0).collect();
+    let min = ms_values.iter().copied().reduce(f64::min).unwrap_or(0.0);
+    let max = ms_values.iter().copied().reduce(f64::max).unwrap_or(0.0);
+    let avg = ms_values.iter().sum::<f64>() / ms_values.len() as f64;
+
+    let jitter = if ms_values.len() > 1 {
+        ms_values.iter().map(|v| (v - avg).abs()).sum::<f64>() / ms_values.len() as f64
+    } else {
+        0.0
+    };
+
+    ProbeStats {
+        min,
+        avg,
+        max,
+        jitter,
     }
-    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
-    use super::{
-        GamingProtocol, configure_gaming_ports_lines, diagnose_gaming_network_lines,
-        monitor_gaming_network_static_lines, optimize_gaming_network_lines,
-        test_gaming_network_prefix_lines,
-    };
+    use super::*;
 
     #[test]
-    fn optimize_lines_include_latency_and_protocol() {
-        let lines = optimize_gaming_network_lines(true, 50, Some(GamingProtocol::Udp));
-        assert!(lines[0].contains("Optimizing"));
-        assert!(lines.iter().any(|l| l.contains("Gaming mode")));
-        assert!(lines.iter().any(|l| l.contains("50ms")));
-        assert!(lines.iter().any(|l| l.contains("Udp")));
-        assert!(lines.last().unwrap().contains("complete"));
+    fn compute_stats_single_sample() {
+        let rtts = vec![Duration::from_millis(42)];
+        let stats = compute_stats(&rtts);
+        assert!((stats.avg - 42.0).abs() < 0.5);
+        assert!((stats.jitter).abs() < 0.01);
     }
 
     #[test]
-    fn optimize_lines_without_game_mode_omits_mode_line() {
-        let lines = optimize_gaming_network_lines(false, 10, None);
-        assert!(!lines.iter().any(|l| l.contains("Gaming mode enabled")));
+    fn compute_stats_multiple_samples() {
+        let rtts = vec![
+            Duration::from_millis(10),
+            Duration::from_millis(20),
+            Duration::from_millis(30),
+        ];
+        let stats = compute_stats(&rtts);
+        assert!((stats.min - 10.0).abs() < 0.5);
+        assert!((stats.max - 30.0).abs() < 0.5);
+        assert!((stats.avg - 20.0).abs() < 0.5);
+        assert!(stats.jitter > 0.0);
     }
 
     #[test]
-    fn test_prefix_lines_with_server() {
-        let lines = test_gaming_network_prefix_lines(true, Some("srv.example"), 3);
-        assert!(lines.iter().any(|l| l.contains("srv.example")));
-        assert!(lines.iter().any(|l| l.contains("3 test iterations")));
+    fn parse_empty_value_errors() {
+        let result = parse_peers_value("", None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("empty"));
     }
 
     #[test]
-    fn configure_ports_lines_all_flags() {
-        let lines = configure_gaming_ports_lines(true, true, Some("1000-2000"));
-        assert!(lines.iter().any(|l| l.contains("Gaming port configuration")));
-        assert!(lines.iter().any(|l| l.contains("Auto-configuring")));
-        assert!(lines.iter().any(|l| l.contains("1000-2000")));
+    fn parse_valid_entries() {
+        let peers = parse_peers_value("gate-a@192.168.1.1:7700,gate-b@192.168.1.2:7700", None).unwrap();
+        assert_eq!(peers.len(), 2);
+        assert_eq!(peers[0].node_id, "gate-a");
+        assert_eq!(peers[1].node_id, "gate-b");
     }
 
     #[test]
-    fn diagnose_lines_comprehensive_and_export() {
-        let lines = diagnose_gaming_network_lines(true, Some("/tmp/out.txt"));
-        assert!(lines.iter().any(|l| l.contains("comprehensive")));
-        assert!(lines.iter().any(|l| l.contains("/tmp/out.txt")));
-        assert!(lines.iter().any(|l| l.contains("High latency")));
+    fn parse_filters_by_node_id() {
+        let peers = parse_peers_value(
+            "gate-a@192.168.1.1:7700,gate-b@192.168.1.2:7700",
+            Some("gate-b"),
+        ).unwrap();
+        assert_eq!(peers.len(), 1);
+        assert_eq!(peers[0].node_id, "gate-b");
     }
 
     #[test]
-    fn monitor_static_continuous_vs_snapshot() {
-        let cont = monitor_gaming_network_static_lines(Some(GamingProtocol::Tcp), true);
-        assert!(cont.iter().any(|l| l.contains("Continuous")));
-        let snap = monitor_gaming_network_static_lines(None, false);
-        assert!(snap.iter().any(|l| l.contains("metrics")));
+    fn parse_skips_malformed_entries() {
+        let peers = parse_peers_value(
+            "good@10.0.0.1:7700,bad-no-at-sign,also-bad@not-a-socket",
+            None,
+        ).unwrap();
+        assert_eq!(peers.len(), 1);
+        assert_eq!(peers[0].node_id, "good");
     }
 
     #[test]
-    fn optimize_lines_minimal_no_mode_no_protocol() {
-        let lines = optimize_gaming_network_lines(false, 99, None);
-        assert_eq!(lines.len(), 3);
-        assert!(lines.iter().any(|l| l.contains("99ms")));
-        assert!(!lines.iter().any(|l| l.contains("protocol:")));
-    }
-
-    #[test]
-    fn test_prefix_lines_without_gaming_protocols_or_server() {
-        let lines = test_gaming_network_prefix_lines(false, None, 0);
-        assert!(!lines.iter().any(|l| l.contains("gaming-specific")));
-        assert!(lines.iter().any(|l| l.contains("0 test iterations")));
-    }
-
-    #[test]
-    fn configure_ports_lines_no_optional_sections() {
-        let lines = configure_gaming_ports_lines(false, false, None);
-        assert_eq!(lines.len(), 2);
-        assert!(lines.first().unwrap().contains("Configuring"));
-        assert!(lines.last().unwrap().contains("complete"));
-    }
-
-    #[test]
-    fn diagnose_lines_no_export_or_comprehensive() {
-        let lines = diagnose_gaming_network_lines(false, None);
-        assert!(!lines.iter().any(|l| l.contains("comprehensive")));
-        assert!(!lines.iter().any(|l| l.contains("Exporting")));
-        assert!(lines.iter().any(|l| l.contains("connectivity: OK")));
+    fn parse_filter_no_match_errors() {
+        let result = parse_peers_value("gate-a@10.0.0.1:7700", Some("nonexistent"));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("No matching"));
     }
 }
