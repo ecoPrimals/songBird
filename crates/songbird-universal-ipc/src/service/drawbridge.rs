@@ -274,6 +274,59 @@ impl ExternalProxyAllowlist {
             format!("{base}/{path}")
         }
     }
+
+    /// Validate a full URL against the allowlist by checking its host against
+    /// known service base URLs. Returns the URL unchanged if the domain matches
+    /// any allowlisted service.
+    ///
+    /// This provides backward compatibility with `?url=<encoded_url>` query-string
+    /// proxying (Express-style) while enforcing the same domain allowlist.
+    #[must_use]
+    pub fn validate_url(&self, url: &str) -> Option<&ExternalService> {
+        let host = extract_host_from_url(url)?;
+        self.services.values().find(|svc| {
+            extract_host_from_url(&svc.base_url).is_some_and(|svc_host| svc_host == host)
+        })
+    }
+}
+
+/// Extract the host portion from a URL (without port).
+fn extract_host_from_url(url: &str) -> Option<&str> {
+    let after_scheme = url.strip_prefix("https://")
+        .or_else(|| url.strip_prefix("http://"))?;
+    let host_port = after_scheme.split('/').next()?;
+    Some(host_port.split(':').next().unwrap_or(host_port))
+}
+
+/// Minimal percent-decoding for URL query parameters.
+fn percent_decode(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut chars = input.bytes();
+    while let Some(b) = chars.next() {
+        if b == b'%' {
+            let hi = chars.next().and_then(hex_val);
+            let lo = chars.next().and_then(hex_val);
+            if let (Some(h), Some(l)) = (hi, lo) {
+                out.push(char::from(h << 4 | l));
+            } else {
+                out.push('%');
+            }
+        } else if b == b'+' {
+            out.push(' ');
+        } else {
+            out.push(char::from(b));
+        }
+    }
+    out
+}
+
+fn hex_val(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
+    }
 }
 
 /// Drawbridge HTTP listener configuration.
@@ -456,7 +509,21 @@ async fn handle_drawbridge_connection(
         let route_prefix = matched_route.map_or("", |r| r.path_prefix.as_str());
         let path_after_prefix = &path[route_prefix.len()..];
 
-        let Some((service, remainder)) = config.external_allowlist.parse_and_validate(path_after_prefix) else {
+        let resolved = config.external_allowlist.parse_and_validate(path_after_prefix)
+            .map(|(service, remainder)| ExternalProxyAllowlist::build_url(service, remainder));
+
+        // Fallback: ?url=<encoded_url> query-string compatibility (Express-style proxy)
+        let external_url = resolved.or_else(|| {
+            let query = path_after_prefix.strip_prefix('?')
+                .or_else(|| path_after_prefix.find('?').map(|i| &path_after_prefix[i + 1..]))?;
+            let url_param = query.split('&')
+                .find_map(|p| p.strip_prefix("url="))?;
+            let decoded = percent_decode(url_param);
+            config.external_allowlist.validate_url(&decoded)?;
+            Some(decoded)
+        });
+
+        let Some(external_url) = external_url else {
             debug!(peer = %peer, path, "drawbridge: external proxy — service not in allowlist");
             let stream = reader.into_inner();
             let mut stream = stream;
@@ -468,11 +535,8 @@ async fn handle_drawbridge_connection(
             ).await?;
             return Ok(());
         };
-
-        let external_url = ExternalProxyAllowlist::build_url(service, remainder);
         debug!(
             peer = %peer,
-            service = %service.name,
             external_url = %external_url,
             "drawbridge: external proxy — forwarding to allowlisted service"
         );
@@ -917,5 +981,49 @@ mod tests {
         let (svc, _) = al.parse_and_validate("/bad/path").unwrap();
         let url = ExternalProxyAllowlist::build_url(svc, "/path");
         assert!(url.starts_with("https://"));
+    }
+
+    #[test]
+    fn validate_url_matches_allowlisted_domain() {
+        let mut services = std::collections::HashMap::new();
+        services.insert(String::from("osm"), ExternalService {
+            base_url: String::from("https://tile.openstreetmap.org"),
+            name: String::from("osm"),
+        });
+        services.insert(String::from("usgs"), ExternalService {
+            base_url: String::from("https://epqs.nationalmap.gov"),
+            name: String::from("usgs"),
+        });
+        let al = ExternalProxyAllowlist { services };
+
+        let svc = al.validate_url("https://tile.openstreetmap.org/16/32000/21000.png");
+        assert!(svc.is_some());
+        assert_eq!(svc.unwrap().name, "osm");
+
+        let svc = al.validate_url("https://epqs.nationalmap.gov/v1/json?x=-83&y=42");
+        assert!(svc.is_some());
+        assert_eq!(svc.unwrap().name, "usgs");
+
+        assert!(al.validate_url("https://evil.example.com/steal").is_none());
+        assert!(al.validate_url("not-a-url").is_none());
+    }
+
+    #[test]
+    fn percent_decode_works() {
+        assert_eq!(
+            super::percent_decode("https%3A%2F%2Ftile.openstreetmap.org%2F16%2F32000%2F21000.png"),
+            "https://tile.openstreetmap.org/16/32000/21000.png"
+        );
+        assert_eq!(super::percent_decode("hello+world"), "hello world");
+        assert_eq!(super::percent_decode("query%3Fx%3D1%26y%3D2"), "query?x=1&y=2");
+        assert_eq!(super::percent_decode("plain"), "plain");
+    }
+
+    #[test]
+    fn extract_host_from_url_works() {
+        assert_eq!(super::extract_host_from_url("https://example.com/path"), Some("example.com"));
+        assert_eq!(super::extract_host_from_url("http://host:8080/"), Some("host"));
+        assert_eq!(super::extract_host_from_url("ftp://bad"), None);
+        assert_eq!(super::extract_host_from_url("not-a-url"), None);
     }
 }

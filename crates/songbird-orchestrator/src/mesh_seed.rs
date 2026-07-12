@@ -175,11 +175,11 @@ fn discover_wg_from_config(subnet_prefix: &str) -> Option<Vec<(String, String)>>
 /// ```toml
 /// [[peers]]
 /// node_id = "east-gate"
-/// address = "10.13.37.5:8080"
+/// address = "10.13.37.5:7700"
 ///
 /// [[peers]]
 /// node_id = "golgi"
-/// address = "10.13.37.1:8080"
+/// address = "10.13.37.1:7700"
 /// ```
 ///
 /// Located at `$XDG_CONFIG_HOME/songbird/mesh-peers.toml` or
@@ -223,7 +223,7 @@ struct MeshPeerEntry {
 /// Extracts `[Peer]` sections and their `AllowedIPs` lines, filtering to
 /// IPs matching the overlay subnet prefix.
 fn parse_wg_conf(content: &str, subnet_prefix: &str) -> Vec<(String, String)> {
-    use songbird_types::defaults::ports::DEFAULT_HTTP_PORT;
+    use songbird_types::defaults::ports::DEFAULT_MESH_PEER_PORT;
 
     let mut peers: Vec<(String, String)> = Vec::new();
     let mut in_peer_section = false;
@@ -258,7 +258,7 @@ fn parse_wg_conf(content: &str, subnet_prefix: &str) -> Vec<(String, String)> {
                     } else {
                         format!("wg-peer-{ip_str}")
                     };
-                    let addr = format!("{ip_str}:{DEFAULT_HTTP_PORT}");
+                    let addr = format!("{ip_str}:{DEFAULT_MESH_PEER_PORT}");
                     peers.push((node_id, addr));
                     break;
                 }
@@ -273,7 +273,7 @@ fn parse_wg_conf(content: &str, subnet_prefix: &str) -> Vec<(String, String)> {
 ///
 /// Separated from `discover_wireguard_peers` for testability.
 fn parse_wg_dump(dump: &str, subnet_prefix: &str) -> Vec<(String, String)> {
-    use songbird_types::defaults::ports::DEFAULT_HTTP_PORT;
+    use songbird_types::defaults::ports::DEFAULT_MESH_PEER_PORT;
 
     let mut peers: Vec<(String, String)> = Vec::new();
 
@@ -298,7 +298,7 @@ fn parse_wg_dump(dump: &str, subnet_prefix: &str) -> Vec<(String, String)> {
         for cidr in allowed_ips.split(',') {
             let ip_str = cidr.trim().split('/').next().unwrap_or("");
             if ip_str.starts_with(subnet_prefix) {
-                let addr = format!("{ip_str}:{DEFAULT_HTTP_PORT}");
+                let addr = format!("{ip_str}:{DEFAULT_MESH_PEER_PORT}");
                 let node_id = format!("wg-{}", &pubkey[..8.min(pubkey.len())]);
                 peers.push((node_id, addr));
                 debug!(peer_ip = %ip_str, node_id_prefix = &pubkey[..8.min(pubkey.len())], "Discovered WG peer");
@@ -682,11 +682,11 @@ wg0\tQRSTUVWX11111111pubkey3=\t(none)\t203.0.113.50:51820\t10.13.37.6/32\t171904
         let peers = parse_wg_dump(dump, "10.13.37");
         assert_eq!(peers.len(), 3);
         assert_eq!(peers[0].0, "wg-ABCDEFGH");
-        assert_eq!(peers[0].1, "10.13.37.1:8080");
+        assert_eq!(peers[0].1, "10.13.37.1:7700");
         assert_eq!(peers[1].0, "wg-IJKLMNOP");
-        assert_eq!(peers[1].1, "10.13.37.5:8080");
+        assert_eq!(peers[1].1, "10.13.37.5:7700");
         assert_eq!(peers[2].0, "wg-QRSTUVWX");
-        assert_eq!(peers[2].1, "10.13.37.6:8080");
+        assert_eq!(peers[2].1, "10.13.37.6:7700");
     }
 
     #[test]
@@ -714,7 +714,7 @@ wg0\tMULTIPEER1234567=\t(none)\t1.2.3.4:51820\t192.168.0.0/24,10.13.37.2/32\t0\t
         let peers = parse_wg_dump(dump, "10.13.37");
         assert_eq!(peers.len(), 1);
         assert_eq!(peers[0].0, "wg-MULTIPEE");
-        assert_eq!(peers[0].1, "10.13.37.2:8080");
+        assert_eq!(peers[0].1, "10.13.37.2:7700");
     }
 
     #[test]
@@ -744,11 +744,11 @@ Endpoint = 192.168.4.3:51820
         let peers = parse_wg_conf(conf, "10.13.37");
         assert_eq!(peers.len(), 3);
         assert_eq!(peers[0].0, "wg-ABCDEFGH");
-        assert_eq!(peers[0].1, "10.13.37.1:8080");
+        assert_eq!(peers[0].1, "10.13.37.1:7700");
         assert_eq!(peers[1].0, "wg-IJKLMNOP");
-        assert_eq!(peers[1].1, "10.13.37.5:8080");
+        assert_eq!(peers[1].1, "10.13.37.5:7700");
         assert_eq!(peers[2].0, "wg-QRSTUVWX");
-        assert_eq!(peers[2].1, "10.13.37.2:8080");
+        assert_eq!(peers[2].1, "10.13.37.2:7700");
     }
 
     #[test]
@@ -784,7 +784,7 @@ Endpoint = 5.6.7.8:51820
         let peers = parse_wg_conf(conf, "10.13.37");
         assert_eq!(peers.len(), 1);
         assert_eq!(peers[0].0, "wg-MULTIIP1");
-        assert_eq!(peers[0].1, "10.13.37.7:8080");
+        assert_eq!(peers[0].1, "10.13.37.7:7700");
     }
 
     #[test]

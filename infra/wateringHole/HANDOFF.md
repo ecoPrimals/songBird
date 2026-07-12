@@ -1,8 +1,8 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave137  
-**Date**: July 11, 2026  
+**Version**: v0.2.1-wave137a  
+**Date**: July 12, 2026  
 **Gate**: flockGate (eastGate)
 
 ## Current State
@@ -21,6 +21,7 @@
 
 | Wave | Summary |
 |------|---------|
+| 137a | FLOCKGATE-MESH fix (WG auto-discovery port 8080→7700); FP-API `?url=` compat layer in drawbridge |
 | 137 | CLI fake metrics → real TCP RTT probes; dead code removal (-672L); dep diet (fastrand, rand removed from CLI) |
 | 136b | Drawbridge external proxy allowlist (footPrint composition); domain-validated forwarding |
 | 136a | Drawbridge auth-gate: bearer tokens, CIDR trusted peers, public paths, per-route `!public` |
@@ -48,7 +49,7 @@
 |------|-------------|--------|
 | TOPO-VIS mesh heartbeat data | petalTongue + nestGate | Ready (mesh.status, mesh.peers expose data) |
 | EXP-06-CADDY auth wiring | sporeGate | Auth-gate live, Caddy config pending sporeGate |
-| Drawbridge external proxy | footPrint composition | LIVE (Wave 136b) |
+| Drawbridge external proxy | footPrint composition | LIVE (Wave 136b), `?url=` compat added (Wave 137a) |
 
 ## Known Gaps (not blocking)
 
