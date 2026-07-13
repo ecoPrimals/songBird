@@ -13,6 +13,12 @@ pub struct PeerConnectParams {
     pub our_binding: Option<String>,
     /// Rendezvous token (if using rendezvous, optional)
     pub rendezvous_token: Option<String>,
+    /// Peer node ID — if provided, registers the peer in the mesh on success.
+    /// If omitted, a federation probe is attempted to discover it.
+    pub node_id: Option<String>,
+    /// Whether to register this peer in the mesh on successful connect.
+    /// Defaults to true when omitted.
+    pub register_mesh: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -23,6 +29,10 @@ pub struct PeerConnectResult {
     pub state: String, // "connecting", "connected", "failed"
     /// Established channel info (if connected)
     pub channel: Option<PeerChannel>,
+    /// Discovered or provided `node_id` (populated on successful mesh registration)
+    pub node_id: Option<String>,
+    /// Whether the peer was registered in the mesh
+    pub mesh_registered: bool,
 }
 
 #[derive(Debug, Serialize, Clone)]

@@ -222,7 +222,7 @@ impl MeshHandler {
     }
 
     /// Full probe returning RTT + version metadata.
-    pub(super) async fn probe_peer_full(
+    pub async fn probe_peer_full(
         addr: std::net::SocketAddr,
         timeout: Duration,
     ) -> Result<ProbeResult, String> {

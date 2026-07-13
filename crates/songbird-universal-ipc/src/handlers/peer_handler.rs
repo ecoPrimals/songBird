@@ -12,9 +12,12 @@
 //! Uses enum dispatch ([`PeerConnector`]) for production UDP and test doubles.
 
 use crate::error::{IpcError, IpcResult};
+use crate::handlers::mesh_handler::MeshHandler;
 use serde_json::Value;
+use songbird_onion_relay::mesh::{EndpointType, RelayEndpoint};
 use std::sync::Arc;
-use tracing::{info, warn};
+use std::time::{Duration, Instant};
+use tracing::{debug, info, warn};
 
 pub use super::peer_types::{PeerChannel, PeerConnectParams, PeerConnectResult};
 
@@ -26,25 +29,40 @@ use super::udp_peer_connector::PeerConnector;
 
 pub struct PeerHandler {
     connector: Arc<PeerConnector>,
+    mesh_handler: Option<Arc<MeshHandler>>,
 }
 
 impl PeerHandler {
-    /// Create new handler with given connector
+    /// Create new handler with given connector (no mesh registration).
     #[must_use]
     pub fn new(connector: Arc<PeerConnector>) -> Self {
         Self {
             connector,
+            mesh_handler: None,
         }
     }
 
-    /// Handle peer.connect
+    /// Create handler with mesh registration capability.
+    #[must_use]
+    pub fn with_mesh(connector: Arc<PeerConnector>, mesh_handler: Arc<MeshHandler>) -> Self {
+        Self {
+            connector,
+            mesh_handler: Some(mesh_handler),
+        }
+    }
+
+    /// Handle peer.connect — connects to peer and optionally registers in mesh.
     pub async fn handle_connect(&self, params: Value) -> IpcResult<PeerConnectResult> {
         let params: PeerConnectParams =
             serde_json::from_value(params).map_err(|e| IpcError::InvalidParams(e.to_string()))?;
 
+        let register_mesh = params.register_mesh.unwrap_or(true);
+
         info!(
-            "🔗 Initiating peer connection to: {} (binding: {:?}, token: {:?})",
-            params.target_address, params.our_binding, params.rendezvous_token
+            target_address = %params.target_address,
+            node_id = ?params.node_id,
+            register_mesh,
+            "peer.connect: initiating"
         );
 
         let result = self
@@ -57,20 +75,128 @@ impl PeerHandler {
             .await
             .map_err(|e| IpcError::Internal(format!("Peer connection failed: {e}")))?;
 
-        match result.state.as_str() {
-            "connected" => {
-                info!("✅ Peer connected successfully (connection_id: {})", result.connection_id);
+        let mut node_id = params.node_id.clone();
+        let mut mesh_registered = false;
+
+        if result.state == "connected" && register_mesh
+            && let Some(ref mesh_handler) = self.mesh_handler
+        {
+            let reg_result = self
+                .register_in_mesh(mesh_handler, &params.target_address, params.node_id.as_deref())
+                .await;
+            match reg_result {
+                Ok(discovered_id) => {
+                    node_id = Some(discovered_id);
+                    mesh_registered = true;
+                    info!(
+                        target_address = %params.target_address,
+                        node_id = ?node_id,
+                        "peer.connect: registered in mesh"
+                    );
+                }
+                Err(e) => {
+                    debug!(
+                        target_address = %params.target_address,
+                        error = %e,
+                        "peer.connect: mesh registration failed (peer still connected)"
+                    );
+                }
             }
-            "connecting" => {
-                info!("🔄 Peer connection in progress (connection_id: {})", result.connection_id);
-            }
-            "failed" => {
-                warn!("❌ Peer connection failed (connection_id: {})", result.connection_id);
-            }
-            _ => warn!("⚠️  Unknown connection state: {}", result.state),
         }
 
-        Ok(result)
+        match result.state.as_str() {
+            "connected" => info!(connection_id = %result.connection_id, "peer connected"),
+            "connecting" => info!(connection_id = %result.connection_id, "peer connecting"),
+            "failed" => warn!(connection_id = %result.connection_id, "peer connection failed"),
+            other => warn!(state = other, "peer unknown state"),
+        }
+
+        Ok(PeerConnectResult {
+            connection_id: result.connection_id,
+            state: result.state,
+            channel: result.channel,
+            node_id,
+            mesh_registered,
+        })
+    }
+
+    /// Perform federation probe and register peer in mesh.
+    ///
+    /// If `node_id` is provided, uses it directly. Otherwise discovers it via
+    /// health.ping federation probe.
+    async fn register_in_mesh(
+        &self,
+        mesh_handler: &MeshHandler,
+        target_address: &str,
+        provided_node_id: Option<&str>,
+    ) -> Result<String, String> {
+        let addr: std::net::SocketAddr = target_address
+            .parse()
+            .map_err(|e| format!("invalid address: {e}"))?;
+
+        // Discover node_id via federation probe if not provided
+        let node_id = if let Some(id) = provided_node_id {
+            id.to_string()
+        } else {
+            let probe_result = MeshHandler::probe_peer_full(addr, Duration::from_secs(5)).await
+                .map_err(|e| format!("federation probe failed: {e}"))?;
+
+            // Try to get node_id from identity.get
+            let discovered = self.discover_node_id(addr).await
+                .unwrap_or_else(|| format!("peer-{}", addr.ip()));
+
+            debug!(
+                addr = %addr,
+                node_id = %discovered,
+                version = ?probe_result.version,
+                "peer.connect: federation probe succeeded"
+            );
+            discovered
+        };
+
+        // Register in mesh if initialized
+        let mesh_guard = mesh_handler.mesh.read().await;
+        let mesh = mesh_guard.as_ref()
+            .ok_or_else(|| String::from("mesh not initialized"))?;
+
+        let endpoint = RelayEndpoint {
+            node_id: node_id.clone(),
+            endpoint_type: EndpointType::Direct { addr },
+            latency: None,
+            last_seen: Instant::now(),
+            reachable: true,
+        };
+
+        mesh.add_endpoint(node_id.clone(), endpoint).await;
+        Ok(node_id)
+    }
+
+    /// Attempt to discover `node_id` via `identity.get` RPC.
+    async fn discover_node_id(&self, addr: std::net::SocketAddr) -> Option<String> {
+        use songbird_types::constants::ribocipher;
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        use tokio::net::TcpStream;
+
+        let stream = tokio::time::timeout(
+            Duration::from_secs(3),
+            TcpStream::connect(addr),
+        ).await.ok()?.ok()?;
+
+        let (reader, mut writer) = stream.into_split();
+
+        writer.write_all(&ribocipher::MITO_PREFIX).await.ok()?;
+        writer.write_all(b"{\"jsonrpc\":\"2.0\",\"method\":\"identity.get\",\"id\":2}\n").await.ok()?;
+
+        let mut buf_reader = BufReader::new(reader);
+        let mut response = String::new();
+        tokio::time::timeout(Duration::from_secs(3), buf_reader.read_line(&mut response))
+            .await.ok()?.ok()?;
+
+        let val: serde_json::Value = serde_json::from_str(&response).ok()?;
+        // Try common identity response fields
+        val["result"]["node_id"].as_str()
+            .or_else(|| val["result"]["primal"].as_str())
+            .map(String::from)
     }
 }
 
@@ -198,6 +324,8 @@ mod tests {
             target_address: "198.51.100.2:4000".into(),
             our_binding: Some("0.0.0.0:5000".into()),
             rendezvous_token: Some("tok".into()),
+            node_id: None,
+            register_mesh: None,
         };
         let v = serde_json::to_value(&p).expect("serialize");
         let back: PeerConnectParams = serde_json::from_value(v).expect("deserialize");
@@ -235,6 +363,8 @@ mod tests {
             connection_id: "cid".into(),
             state: "connecting".into(),
             channel: None,
+            node_id: None,
+            mesh_registered: false,
         };
         let v = serde_json::to_value(&r).expect("json");
         assert_eq!(v["state"], "connecting");

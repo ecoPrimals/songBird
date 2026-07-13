@@ -208,6 +208,8 @@ impl UdpPeerConnector {
             connection_id,
             state: state.to_string(),
             channel: None,
+            node_id: None,
+            mesh_registered: false,
         })
     }
 
@@ -299,6 +301,8 @@ impl UdpPeerConnector {
                         #[expect(clippy::cast_possible_truncation, reason = "LAN probe timeout is 3s — millis always fits u64")]
                         latency_ms: Some(latency.as_millis() as u64),
                     }),
+                    node_id: None,
+                    mesh_registered: false,
                 })
             }
             Ok(Err(e)) => {
@@ -390,6 +394,8 @@ impl PeerConnector {
                 connection_id: "x".into(),
                 state: "negotiating".into(),
                 channel: None,
+                node_id: None,
+                mesh_registered: false,
             }),
         }
     }
@@ -445,12 +451,16 @@ impl MockPeerConnector {
                     protocol: String::from("udp"),
                     latency_ms: Some(25),
                 }),
+                node_id: None,
+                mesh_registered: false,
             })
         } else {
             Ok(PeerConnectResult {
                 connection_id,
                 state: String::from("failed"),
                 channel: None,
+                node_id: None,
+                mesh_registered: false,
             })
         }
     }

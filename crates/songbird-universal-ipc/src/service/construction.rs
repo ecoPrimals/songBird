@@ -61,13 +61,15 @@ impl IpcServiceHandler {
         let rendezvous_handler = Arc::new(RendezvousHandler::new(Arc::new(
             RendezvousClient::Http(HttpRendezvousClient::new()),
         )));
-        let peer_handler =
-            Arc::new(PeerHandler::new(Arc::new(PeerConnector::Udp(UdpPeerConnector::new()))));
+        let mesh_handler = Arc::new(MeshHandler::new());
+        let peer_handler = Arc::new(PeerHandler::with_mesh(
+            Arc::new(PeerConnector::Udp(UdpPeerConnector::new())),
+            Arc::clone(&mesh_handler),
+        ));
         let birdsong_handler = Arc::new(BirdSongHandler::new());
         let relay_handler = Arc::new(RelayHandler::new(Arc::new(RelayAuthority::from(
             SecurityRelayAuthority::new(),
         ))));
-        let mesh_handler = Arc::new(MeshHandler::new());
         let onion_handler = Arc::new(OnionHandler::new());
 
         // Create a real HolePunchCoordinator so punch.request works

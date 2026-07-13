@@ -45,7 +45,7 @@ use capability_propagation::PendingAnnounce;
 pub(crate) use capability_propagation::{PeerCapabilityEntry, PeerMetadata};
 
 /// Probe result including RTT and optional peer version.
-pub(super) struct ProbeResult {
+pub struct ProbeResult {
     pub(super) rtt: Duration,
     pub(super) version: Option<String>,
 }
