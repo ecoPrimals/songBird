@@ -1,7 +1,7 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave137d  
+**Version**: v0.2.1-wave137e  
 **Date**: July 13, 2026  
 **Gate**: flockGate (eastGate)
 
@@ -21,6 +21,7 @@
 
 | Wave | Summary |
 |------|---------|
+| 137e | Deep debt: `to_lowercase()` elimination (19 files total), zero-alloc domain matching, hot-path header parsing |
 | 137d | DRAWBRIDGE-CAP: Runtime capabilities in `capabilities.list`; `capability.call` drawbridge fallback; `capability.resolve` for proxy-router caps; Caddy config snippet (10 GIS hosts) |
 | 137c | FP-API COMPLETE: HTTPS outbound proxy (tokio-rustls + CA certs), drawbridge wired into server command, footPrint PROXY_PATH migrated to `/ext`, E2E verified |
 | 137b | UDS-HTTP-PROTOCOL fix: peer.connect → BeaconMesh registration (CRITICAL) |
