@@ -33,7 +33,7 @@ mod rpc;
 
 pub use capability_tokens::{
     CAPABILITY_METHOD_MAP, CONSUMED_CAPABILITIES, SONGBIRD_CAPABILITY_STRINGS, capabilities_list,
-    capabilities_methods,
+    capabilities_list_with_runtime, capabilities_methods,
 };
 pub use health_payloads::{SubsystemStatus, health, health_check, health_liveness, health_readiness};
 pub use identity_payloads::{canonical_family_id, identity, identity_get};

@@ -1,7 +1,7 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave137c  
+**Version**: v0.2.1-wave137d  
 **Date**: July 13, 2026  
 **Gate**: flockGate (eastGate)
 
@@ -21,6 +21,7 @@
 
 | Wave | Summary |
 |------|---------|
+| 137d | DRAWBRIDGE-CAP: Runtime capabilities in `capabilities.list`; `capability.call` drawbridge fallback; `capability.resolve` for proxy-router caps; Caddy config snippet (10 GIS hosts) |
 | 137c | FP-API COMPLETE: HTTPS outbound proxy (tokio-rustls + CA certs), drawbridge wired into server command, footPrint PROXY_PATH migrated to `/ext`, E2E verified |
 | 137b | UDS-HTTP-PROTOCOL fix: peer.connect → BeaconMesh registration (CRITICAL) |
 | 137a | FLOCKGATE-MESH fix (WG auto-discovery port 8080→7700); FP-API `?url=` compat layer in drawbridge |
@@ -39,11 +40,14 @@
 | `security.*` (Ed25519, X25519, ChaCha20) | bearDog | LIVE via IPC |
 | `primal.announce` | biomeOS Neural API | LIVE (optional) |
 
-## Provided Capabilities (15 tokens)
+## Provided Capabilities (15 native + runtime drawbridge)
 
-`network.discovery`, `network.federation`, `network.relay`, `network.stun`,
+**Native** (always): `network.discovery`, `network.federation`, `network.relay`, `network.stun`,
 `network.igd`, `network.quic`, `network.tls`, `network.tor`, `network.onion`,
 `network.btsp`, `ipc.jsonrpc`, `ipc.tarpc`, `crypto.delegate`, `nfc.genesis`, `bluetooth.pair`
+
+**Runtime** (from `SONGBIRD_PROXY_ROUTES` + `SONGBIRD_DRAWBRIDGE_ROUTES`): dynamically merged
+into `capabilities.list` response. Example: `jupyter`, `inference`, etc.
 
 ## Blocking Items for Other Teams
 

@@ -16,6 +16,15 @@ use tracing::debug;
 
 use super::ipc_registry::transport_endpoint_from_native;
 
+/// Parse `"host:port"` or `"host"` into components for `TransportEndpoint::Tcp`.
+fn parse_host_port(addr: &str) -> (String, u16) {
+    if let Some((h, p)) = addr.rsplit_once(':') {
+        (h.to_string(), p.parse().unwrap_or(80))
+    } else {
+        (addr.to_string(), 80)
+    }
+}
+
 impl IpcServiceHandler {
     /// Handle `capability.resolve` — single-step routing by capability.
     ///
@@ -44,6 +53,27 @@ impl IpcServiceHandler {
             return serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"));
         }
         drop(registry);
+
+        // Drawbridge weak bond: resolve capabilities served via proxy router
+        if let Some(route) = self.capability_router.route(&params.capability) {
+            debug!(
+                capability = %params.capability,
+                backend = %route.base_url,
+                "capability.resolve: resolved via drawbridge proxy route"
+            );
+            let (host, port) = parse_host_port(&route.base_url);
+            let result = CapabilityResolveResult {
+                primal_id: String::from("drawbridge"),
+                socket: None,
+                virtual_endpoint: String::new(),
+                native_endpoint: format!("http://{}", route.base_url),
+                endpoint: TransportEndpoint::Tcp { host, port },
+                capabilities: vec![params.capability.clone()],
+                signature: None,
+                signed_payload: None,
+            };
+            return serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"));
+        }
 
         if let Some((peer_id, peer_caps)) =
             self.mesh_handler.find_peer_with_capability(&params.capability).await
@@ -114,6 +144,75 @@ impl IpcServiceHandler {
             ));
         }
         drop(registry);
+
+        // Fallback: check if the capability is served by the proxy router (drawbridge weak bond).
+        // This covers capabilities registered via SONGBIRD_PROXY_ROUTES or SONGBIRD_DRAWBRIDGE_ROUTES
+        // that have no dedicated UDS provider.
+        if let Some(route) = self.capability_router.route(&call.capability) {
+            debug!(
+                capability = %call.capability,
+                backend = %route.base_url,
+                "capability.call → drawbridge proxy route"
+            );
+            let path = call
+                .params
+                .get("path")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let method = call
+                .params
+                .get("method")
+                .and_then(|v| v.as_str())
+                .unwrap_or("POST");
+            let body = call.params.get("body").and_then(|v| v.as_str()).map(String::from);
+            let headers: std::collections::HashMap<String, String> = call
+                .params
+                .get("headers")
+                .and_then(|v| serde_json::from_value(v.clone()).ok())
+                .unwrap_or_default();
+
+            let url = if path.is_empty() {
+                route.base_url.clone()
+            } else {
+                format!(
+                    "{}/{}",
+                    route.base_url.trim_end_matches('/'),
+                    path.trim_start_matches('/')
+                )
+            };
+
+            let mut merged_headers = route.default_headers.clone();
+            merged_headers.extend(headers);
+
+            if let Some(api_key) = &route.api_key_env
+                && let Ok(key) = songbird_process_env::var(api_key)
+            {
+                merged_headers.insert(String::from("Authorization"), format!("Bearer {key}"));
+            }
+
+            let request_params = crate::handlers::http_handler::HttpRequestParams {
+                url,
+                method: method.to_string(),
+                headers: merged_headers,
+                body,
+                timeout_ms: route.timeout_ms,
+            };
+
+            let result = self
+                .http_handler
+                .handle_request(request_params)
+                .await
+                .map_err(|e| format!("Drawbridge proxy failed: {e}"))?;
+
+            let response = CapabilityCallResult {
+                provider: String::from("drawbridge"),
+                gate: String::from("local"),
+                result: serde_json::to_value(result)
+                    .map_err(|e| format!("Serialization error: {e}"))?,
+            };
+            return serde_json::to_value(response)
+                .map_err(|e| format!("Serialization error: {e}"));
+        }
 
         if call.routing == "local" {
             return Err(format!(

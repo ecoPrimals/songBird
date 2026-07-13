@@ -160,6 +160,13 @@ pub fn callable_methods_list() -> Vec<Value> {
 /// per Capability Wire Standard v1.0 Level 3.
 #[must_use]
 pub fn capabilities_list() -> Value {
+    capabilities_list_with_runtime(&[])
+}
+
+/// Like [`capabilities_list`] but merges runtime-discovered capabilities
+/// (drawbridge routes, proxy router entries) into the response.
+#[must_use]
+pub fn capabilities_list_with_runtime(runtime_caps: &[String]) -> Value {
     let methods: Vec<Value> =
         CALLABLE_METHODS.iter().map(|s| Value::String((*s).to_string())).collect();
 
@@ -176,8 +183,15 @@ pub fn capabilities_list() -> Value {
         })
         .collect();
 
-    let capabilities: Vec<Value> =
+    let mut capabilities: Vec<Value> =
         SONGBIRD_CAPABILITY_STRINGS.iter().map(|s| Value::String((*s).to_string())).collect();
+
+    for cap in runtime_caps {
+        let val = Value::String(cap.clone());
+        if !capabilities.contains(&val) {
+            capabilities.push(val);
+        }
+    }
 
     json!({
         "primal": primal_names::SELF_NAME,

@@ -41,7 +41,8 @@ pub(super) async fn dispatch_introspection(
         }
         JsonRpcMethod::Health(HealthMethod::Check) => handler.handle_health().await,
         JsonRpcMethod::Capabilities(CapabilitiesMethod::List) => {
-            Ok(crate::introspection::capabilities_list())
+            let extra = handler.runtime_capabilities();
+            Ok(crate::introspection::capabilities_list_with_runtime(&extra))
         }
         JsonRpcMethod::Capabilities(CapabilitiesMethod::Methods) => {
             Ok(crate::introspection::capabilities_methods())

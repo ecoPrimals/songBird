@@ -5,9 +5,9 @@
 
 use super::{
     SONGBIRD_CAPABILITY_STRINGS, SubsystemStatus, canonical_family_id, capabilities_list,
-    discover_capabilities, health, health_check, health_liveness, health_readiness, identity,
-    identity_get, normalize_method, primal_capabilities, primal_info, rpc_discover_standard,
-    rpc_methods,
+    capabilities_list_with_runtime, discover_capabilities, health, health_check, health_liveness,
+    health_readiness, identity, identity_get, normalize_method, primal_capabilities, primal_info,
+    rpc_discover_standard, rpc_methods,
 };
 
 use std::collections::HashMap;
@@ -316,4 +316,44 @@ fn primal_capabilities_includes_mesh_and_onion() {
     let names: Vec<&str> = caps.iter().filter_map(|c| c["name"].as_str()).collect();
     assert!(names.contains(&"mesh"));
     assert!(names.contains(&"onion"));
+}
+
+#[test]
+fn capabilities_list_with_runtime_merges_extra_caps() {
+    let extras = vec![String::from("jupyter"), String::from("inference")];
+    let v = capabilities_list_with_runtime(&extras);
+
+    let caps = v["capabilities"].as_array().expect("capabilities array");
+    let strs: Vec<&str> = caps.iter().filter_map(|c| c.as_str()).collect();
+
+    // Native caps still present
+    assert!(strs.contains(&"network.discovery"));
+    assert!(strs.contains(&"ipc.jsonrpc"));
+    // Runtime caps merged in
+    assert!(strs.contains(&"jupyter"));
+    assert!(strs.contains(&"inference"));
+    // Count increased by 2
+    assert_eq!(strs.len(), SONGBIRD_CAPABILITY_STRINGS.len() + 2);
+}
+
+#[test]
+fn capabilities_list_with_runtime_deduplicates() {
+    // If a runtime cap matches a native cap, don't duplicate
+    let extras = vec![String::from("network.discovery"), String::from("jupyter")];
+    let v = capabilities_list_with_runtime(&extras);
+
+    let caps = v["capabilities"].as_array().expect("capabilities array");
+    let strs: Vec<&str> = caps.iter().filter_map(|c| c.as_str()).collect();
+
+    let discovery_count = strs.iter().filter(|&&s| s == "network.discovery").count();
+    assert_eq!(discovery_count, 1, "native cap must not be duplicated");
+    assert!(strs.contains(&"jupyter"));
+    assert_eq!(strs.len(), SONGBIRD_CAPABILITY_STRINGS.len() + 1);
+}
+
+#[test]
+fn capabilities_list_with_empty_runtime_equals_static() {
+    let static_v = capabilities_list();
+    let runtime_v = capabilities_list_with_runtime(&[]);
+    assert_eq!(static_v, runtime_v);
 }

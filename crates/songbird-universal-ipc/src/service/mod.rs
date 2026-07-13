@@ -116,6 +116,26 @@ impl IpcServiceHandler {
     pub fn capability_router(&self) -> &Arc<CapabilityProxyRouter> {
         &self.capability_router
     }
+
+    /// Return drawbridge and proxy-router capabilities advertised at runtime.
+    ///
+    /// These are capabilities registered via `SONGBIRD_PROXY_ROUTES` and
+    /// `SONGBIRD_DRAWBRIDGE_ROUTES` that should be included in `capabilities.list`
+    /// alongside the static native capabilities.
+    #[must_use]
+    pub fn runtime_capabilities(&self) -> Vec<String> {
+        let mut caps = self.capability_router.list_capabilities();
+
+        let drawbridge_config = DrawbridgeConfig::from_env();
+        for route in &drawbridge_config.routes {
+            let cap = &route.capability;
+            if !cap.starts_with('_') && !caps.contains(cap) {
+                caps.push(cap.clone());
+            }
+        }
+
+        caps
+    }
 }
 
 /// All handler instances built by `build_handlers()`.
