@@ -75,14 +75,14 @@ impl PeerHandler {
             .await
             .map_err(|e| IpcError::Internal(format!("Peer connection failed: {e}")))?;
 
-        let mut node_id = params.node_id.clone();
+        let mut node_id = params.node_id;
         let mut mesh_registered = false;
 
         if result.state == "connected" && register_mesh
             && let Some(ref mesh_handler) = self.mesh_handler
         {
             let reg_result = self
-                .register_in_mesh(mesh_handler, &params.target_address, params.node_id.as_deref())
+                .register_in_mesh(mesh_handler, &params.target_address, node_id.as_deref())
                 .await;
             match reg_result {
                 Ok(discovered_id) => {

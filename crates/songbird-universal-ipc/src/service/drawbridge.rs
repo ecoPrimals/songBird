@@ -198,6 +198,9 @@ pub struct ExternalService {
 /// The reserved capability name for external proxy routes.
 pub const EXTERNAL_PROXY_CAPABILITY: &str = "_external_proxy";
 
+/// Default drawbridge HTTP bind address.
+pub const DEFAULT_DRAWBRIDGE_ADDR: &str = "127.0.0.1:7780";
+
 impl ExternalProxyAllowlist {
     /// Load from `SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST` env var.
     ///
@@ -348,7 +351,7 @@ impl DrawbridgeConfig {
     #[must_use]
     pub fn from_env() -> Self {
         let bind_addr = songbird_process_env::var("SONGBIRD_DRAWBRIDGE_ADDR")
-            .unwrap_or_else(|_| String::from("127.0.0.1:7780"));
+            .unwrap_or_else(|_| String::from(DEFAULT_DRAWBRIDGE_ADDR));
 
         let routes = songbird_process_env::var("SONGBIRD_DRAWBRIDGE_ROUTES")
             .unwrap_or_default()
@@ -462,14 +465,14 @@ async fn handle_drawbridge_connection(
             break;
         }
         if let Some((name, value)) = header_line.split_once(':') {
-            let name_lower = name.trim().to_lowercase();
+            let name_trimmed = name.trim();
             let value = value.trim().to_string();
-            if name_lower == "host" {
+            if name_trimmed.eq_ignore_ascii_case("host") {
                 host.clone_from(&value);
-            } else if name_lower == "content-length" {
+            } else if name_trimmed.eq_ignore_ascii_case("content-length") {
                 content_length = value.parse().unwrap_or(0);
             }
-            headers.push((name.trim().to_string(), value));
+            headers.push((name_trimmed.to_string(), value));
         }
     }
 
@@ -487,7 +490,7 @@ async fn handle_drawbridge_connection(
 
     let auth_header = headers
         .iter()
-        .find(|(n, _)| n.to_lowercase() == "authorization")
+        .find(|(n, _)| n.eq_ignore_ascii_case("authorization"))
         .map(|(_, v)| v.as_str());
 
     if !route_is_public && !config.auth.is_authorized(peer.ip(), path, auth_header) {
@@ -611,13 +614,15 @@ async fn proxy_to_backend(
         None => (stripped, "/"),
     };
 
-    let addr = if authority.contains(':') {
-        authority.to_string()
+    let owned_addr;
+    let addr: &str = if authority.contains(':') {
+        authority
     } else {
-        format!("{authority}:80")
+        owned_addr = format!("{authority}:80");
+        &owned_addr
     };
 
-    let mut backend = match tokio::net::TcpStream::connect(&addr).await {
+    let mut backend = match tokio::net::TcpStream::connect(addr).await {
         Ok(s) => s,
         Err(e) => {
             warn!(backend = %addr, error = %e, "drawbridge: backend connect failed");
@@ -629,8 +634,10 @@ async fn proxy_to_backend(
     let mut request_buf = format!("{method} {path_and_query} HTTP/1.1\r\nHost: {authority}\r\n");
 
     for (name, value) in headers {
-        let name_lower = name.to_lowercase();
-        if matches!(name_lower.as_str(), "host" | "connection" | "content-length") {
+        if name.eq_ignore_ascii_case("host")
+            || name.eq_ignore_ascii_case("connection")
+            || name.eq_ignore_ascii_case("content-length")
+        {
             continue;
         }
         let _ = write!(request_buf, "{name}: {value}\r\n");
@@ -727,8 +734,10 @@ async fn proxy_to_external_tls(
     let mut request_buf = format!("{method} {path_and_query} HTTP/1.1\r\nHost: {authority}\r\n");
 
     for (name, value) in headers {
-        let name_lower = name.to_lowercase();
-        if matches!(name_lower.as_str(), "host" | "connection" | "content-length") {
+        if name.eq_ignore_ascii_case("host")
+            || name.eq_ignore_ascii_case("connection")
+            || name.eq_ignore_ascii_case("content-length")
+        {
             continue;
         }
         let _ = write!(request_buf, "{name}: {value}\r\n");
