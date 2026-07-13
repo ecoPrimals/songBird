@@ -68,22 +68,37 @@ impl std::str::FromStr for SecurityLevel {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "none" => Ok(Self::None),
-            "minimal" => Ok(Self::Minimal),
-            "basic" => Ok(Self::Basic),
-            "low" => Ok(Self::Low),
-            "medium" => Ok(Self::Medium),
-            "standard" => Ok(Self::Standard),
-            "public" => Ok(Self::Public),
-            "high" => Ok(Self::High),
-            "private" => Ok(Self::Private),
-            "critical" => Ok(Self::Critical),
-            "confidential" => Ok(Self::Confidential),
-            "enhanced" => Ok(Self::Enhanced),
-            "maximum" => Ok(Self::Maximum),
-            "classified" => Ok(Self::Classified),
-            _ => Err(format!("Invalid security level: {s}")),
+        let t = s.trim();
+        if t.eq_ignore_ascii_case("none") {
+            Ok(Self::None)
+        } else if t.eq_ignore_ascii_case("minimal") {
+            Ok(Self::Minimal)
+        } else if t.eq_ignore_ascii_case("basic") {
+            Ok(Self::Basic)
+        } else if t.eq_ignore_ascii_case("low") {
+            Ok(Self::Low)
+        } else if t.eq_ignore_ascii_case("medium") {
+            Ok(Self::Medium)
+        } else if t.eq_ignore_ascii_case("standard") {
+            Ok(Self::Standard)
+        } else if t.eq_ignore_ascii_case("public") {
+            Ok(Self::Public)
+        } else if t.eq_ignore_ascii_case("high") {
+            Ok(Self::High)
+        } else if t.eq_ignore_ascii_case("private") {
+            Ok(Self::Private)
+        } else if t.eq_ignore_ascii_case("critical") {
+            Ok(Self::Critical)
+        } else if t.eq_ignore_ascii_case("confidential") {
+            Ok(Self::Confidential)
+        } else if t.eq_ignore_ascii_case("enhanced") {
+            Ok(Self::Enhanced)
+        } else if t.eq_ignore_ascii_case("maximum") {
+            Ok(Self::Maximum)
+        } else if t.eq_ignore_ascii_case("classified") {
+            Ok(Self::Classified)
+        } else {
+            Err(format!("Invalid security level: {s}"))
         }
     }
 }

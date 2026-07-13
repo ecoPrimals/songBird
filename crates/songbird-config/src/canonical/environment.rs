@@ -24,11 +24,7 @@ fn env_get_bool(
 ) -> bool {
     env(key)
         .ok()
-        .and_then(|v| match v.to_lowercase().as_str() {
-            "true" | "1" | "yes" | "on" => Some(true),
-            "false" | "0" | "no" | "off" => Some(false),
-            _ => v.parse().ok(),
-        })
+        .and_then(|v| songbird_types::error_helpers::parse_bool_relaxed(&v))
         .unwrap_or(default)
 }
 
@@ -74,13 +70,19 @@ impl std::str::FromStr for Environment {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "development" | "dev" => Ok(Self::Development),
-            "staging" | "stage" => Ok(Self::Staging),
-            "production" | "prod" => Ok(Self::Production),
-            "testing" | "test" => Ok(Self::Testing),
-            "local" => Ok(Self::Local),
-            _ => Err(format!("Unknown environment: {s}")),
+        let t = s.trim();
+        if t.eq_ignore_ascii_case("development") || t.eq_ignore_ascii_case("dev") {
+            Ok(Self::Development)
+        } else if t.eq_ignore_ascii_case("staging") || t.eq_ignore_ascii_case("stage") {
+            Ok(Self::Staging)
+        } else if t.eq_ignore_ascii_case("production") || t.eq_ignore_ascii_case("prod") {
+            Ok(Self::Production)
+        } else if t.eq_ignore_ascii_case("testing") || t.eq_ignore_ascii_case("test") {
+            Ok(Self::Testing)
+        } else if t.eq_ignore_ascii_case("local") {
+            Ok(Self::Local)
+        } else {
+            Err(format!("Unknown environment: {s}"))
         }
     }
 }

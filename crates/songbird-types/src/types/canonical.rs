@@ -239,19 +239,25 @@ impl std::str::FromStr for CanonicalNodeType {
     type Err = SongbirdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "tower" => Ok(Self::Tower),
-            "edge" => Ok(Self::Edge),
-            "gateway" => Ok(Self::Gateway),
-            "storage" => Ok(Self::Storage),
-            "coordinator" => Ok(Self::Coordinator),
-            _ => Err(SongbirdError::Validation {
+        let s = s.trim();
+        if s.eq_ignore_ascii_case("tower") {
+            Ok(Self::Tower)
+        } else if s.eq_ignore_ascii_case("edge") {
+            Ok(Self::Edge)
+        } else if s.eq_ignore_ascii_case("gateway") {
+            Ok(Self::Gateway)
+        } else if s.eq_ignore_ascii_case("storage") {
+            Ok(Self::Storage)
+        } else if s.eq_ignore_ascii_case("coordinator") {
+            Ok(Self::Coordinator)
+        } else {
+            Err(SongbirdError::Validation {
                 message: String::from("Invalid node type"),
                 field: Some(String::from("node_type")),
                 suggestion: Some(String::from(
                     "Expected Tower, Edge, Gateway, Storage, or Coordinator",
                 )),
-            }),
+            })
         }
     }
 }

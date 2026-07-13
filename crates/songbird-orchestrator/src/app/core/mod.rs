@@ -490,7 +490,7 @@ impl SongbirdOrchestrator {
     /// tarpc provides a low-latency binary hot path for Rust-to-Rust calls.
     pub(crate) async fn start_tarpc_server(&self) -> Result<()> {
         let enabled = songbird_process_env::var("SONGBIRD_TARPC_ENABLED")
-            .map(|v| !matches!(v.to_lowercase().as_str(), "false" | "0" | "no"))
+            .map(|v| songbird_types::error_helpers::parse_bool_relaxed(&v).unwrap_or(true))
             .unwrap_or(true);
 
         if !enabled {

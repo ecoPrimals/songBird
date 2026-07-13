@@ -75,25 +75,35 @@ pub struct TrustTimeouts {
 
 impl Default for CanonicalFederationConfig {
     fn default() -> Self {
-        // Parse trust escalation policy from environment
         let trust_escalation_policy = songbird_process_env::var("SONGBIRD_TRUST_ESCALATION_POLICY")
             .ok()
-            .and_then(|v| match v.to_lowercase().as_str() {
-                "disabled" => Some(TrustEscalationPolicy::Disabled),
-                "capability" => Some(TrustEscalationPolicy::CapabilityOnly),
-                "progressive" => Some(TrustEscalationPolicy::Progressive),
-                _ => None,
+            .and_then(|v| {
+                let v = v.trim();
+                if v.eq_ignore_ascii_case("disabled") {
+                    Some(TrustEscalationPolicy::Disabled)
+                } else if v.eq_ignore_ascii_case("capability") {
+                    Some(TrustEscalationPolicy::CapabilityOnly)
+                } else if v.eq_ignore_ascii_case("progressive") {
+                    Some(TrustEscalationPolicy::Progressive)
+                } else {
+                    None
+                }
             })
             .unwrap_or_default();
 
-        // Parse acceptance policy from environment
         let acceptance_policy = songbird_process_env::var("SONGBIRD_FEDERATION_ACCEPTANCE")
             .ok()
-            .and_then(|v| match v.to_lowercase().as_str() {
-                "manual" => Some(FederationAcceptancePolicy::ManualOnly),
-                "lan_auto" => Some(FederationAcceptancePolicy::LanAutoWanManual),
-                "auto_all" => Some(FederationAcceptancePolicy::AutoAcceptAll),
-                _ => None,
+            .and_then(|v| {
+                let v = v.trim();
+                if v.eq_ignore_ascii_case("manual") {
+                    Some(FederationAcceptancePolicy::ManualOnly)
+                } else if v.eq_ignore_ascii_case("lan_auto") {
+                    Some(FederationAcceptancePolicy::LanAutoWanManual)
+                } else if v.eq_ignore_ascii_case("auto_all") {
+                    Some(FederationAcceptancePolicy::AutoAcceptAll)
+                } else {
+                    None
+                }
             })
             .unwrap_or_default();
 

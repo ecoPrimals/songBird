@@ -23,11 +23,7 @@ pub fn env_get_bool_with(
 ) -> bool {
     env(key)
         .ok()
-        .and_then(|v| match v.to_lowercase().as_str() {
-            "true" | "1" | "yes" | "on" => Some(true),
-            "false" | "0" | "no" | "off" => Some(false),
-            _ => v.parse().ok(),
-        })
+        .and_then(|v| songbird_types::error_helpers::parse_bool_relaxed(&v))
         .unwrap_or(default)
 }
 

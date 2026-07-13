@@ -43,7 +43,7 @@ impl Default for UnifiedFederationConfig {
     fn default() -> Self {
         let enabled = songbird_process_env::var("SONGBIRD_FEDERATION_ENABLED")
             .or_else(|_| songbird_process_env::var("FEDERATION_ENABLED"))
-            .map(|v| matches!(v.to_lowercase().as_str(), "true" | "1" | "yes" | "on"))
+            .map(|v| songbird_types::error_helpers::parse_bool_relaxed(&v).unwrap_or(false))
             .unwrap_or(false);
 
         Self {
@@ -206,7 +206,7 @@ impl Default for ClusterDiscoveryConfig {
     fn default() -> Self {
         Self {
             auto_discovery: songbird_process_env::var("SONGBIRD_AUTO_DISCOVERY")
-                .map(|v| v.to_lowercase() == "true")
+                .map(|v| songbird_types::error_helpers::parse_bool_relaxed(&v).unwrap_or(true))
                 .unwrap_or(true),
             discovery_interval_secs: songbird_process_env::var("SONGBIRD_DISCOVERY_INTERVAL")
                 .ok()

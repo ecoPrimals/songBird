@@ -197,7 +197,11 @@ impl HttpsConnection {
         let headers_str = String::from_utf8_lossy(&response_data[..headers_end]);
         if let Some(content_length) = headers_str
             .lines()
-            .find(|line| line.to_lowercase().starts_with("content-length:"))
+            .find(|line| {
+                line.len() >= 15
+                    && line.as_bytes()[14] == b':'
+                    && line[..14].eq_ignore_ascii_case("content-length")
+            })
             .and_then(|line| line.split(':').nth(1))
             .and_then(|val| val.trim().parse::<usize>().ok())
         {
@@ -296,7 +300,7 @@ impl HttpsConnection {
                     // This indicates end of chunked body
                 } else if let Some(content_length_line) = headers_str
                     .lines()
-                    .find(|line| line.to_lowercase().starts_with("content-length:"))
+                    .find(|line| line.get(..15).is_some_and(|prefix| prefix.eq_ignore_ascii_case("content-length:")))
                 {
                     if let Some(content_length) = content_length_line
                         .split(':')

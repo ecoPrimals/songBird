@@ -500,7 +500,9 @@ impl ServiceMonitor {
     async fn check_federation_connections_health() -> bool {
         let explicitly_disabled = songbird_process_env::var("SONGBIRD_FEDERATION_ENABLED")
             .or_else(|_| songbird_process_env::var("FEDERATION_ENABLED"))
-            .is_ok_and(|v| matches!(v.to_lowercase().as_str(), "false" | "0" | "no" | "off"));
+            .is_ok_and(|v| {
+                songbird_types::error_helpers::parse_bool_relaxed(&v) == Some(false)
+            });
         !explicitly_disabled
     }
 

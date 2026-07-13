@@ -81,17 +81,23 @@ pub struct CanonicalDiscoveryConfig {
 
 impl Default for CanonicalDiscoveryConfig {
     fn default() -> Self {
-        // Parse discovery mode from environment
         let mode = songbird_process_env::var("SONGBIRD_DISCOVERY_MODE")
             .ok()
-            .and_then(|v| match v.to_lowercase().as_str() {
-                "disabled" => Some(DiscoveryMode::Disabled),
-                "anonymous" => Some(DiscoveryMode::Anonymous),
-                "capability" => Some(DiscoveryMode::CapabilityAware),
-                "full" => Some(DiscoveryMode::FullDisclosure),
-                _ => None,
+            .and_then(|v| {
+                let v = v.trim();
+                if v.eq_ignore_ascii_case("disabled") {
+                    Some(DiscoveryMode::Disabled)
+                } else if v.eq_ignore_ascii_case("anonymous") {
+                    Some(DiscoveryMode::Anonymous)
+                } else if v.eq_ignore_ascii_case("capability") {
+                    Some(DiscoveryMode::CapabilityAware)
+                } else if v.eq_ignore_ascii_case("full") {
+                    Some(DiscoveryMode::FullDisclosure)
+                } else {
+                    None
+                }
             })
-            .unwrap_or_default(); // Anonymous by default
+            .unwrap_or_default();
 
         Self {
             mode,

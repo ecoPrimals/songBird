@@ -156,7 +156,7 @@ impl SecurityRpcClient {
             })
             .unwrap_or_else(|_| String::from("api"));
 
-        if mode.to_lowercase() == "direct" {
+        if mode.eq_ignore_ascii_case("direct") {
             let vps_fallback =
                 format!("{}/crypto.sock", songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR);
             let endpoint = socket_discovery::discover_ipc_endpoint(

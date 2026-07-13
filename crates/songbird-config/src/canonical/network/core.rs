@@ -82,14 +82,21 @@ impl std::str::FromStr for PeerType {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "client" => Ok(Self::Client),
-            "server" => Ok(Self::Server),
-            "peer" => Ok(Self::Peer),
-            "relay" => Ok(Self::Relay),
-            "gateway" => Ok(Self::Gateway),
-            "unknown" => Ok(Self::Unknown),
-            _ => Err(format!("Unknown peer type: {s}")),
+        let t = s.trim();
+        if t.eq_ignore_ascii_case("client") {
+            Ok(Self::Client)
+        } else if t.eq_ignore_ascii_case("server") {
+            Ok(Self::Server)
+        } else if t.eq_ignore_ascii_case("peer") {
+            Ok(Self::Peer)
+        } else if t.eq_ignore_ascii_case("relay") {
+            Ok(Self::Relay)
+        } else if t.eq_ignore_ascii_case("gateway") {
+            Ok(Self::Gateway)
+        } else if t.eq_ignore_ascii_case("unknown") {
+            Ok(Self::Unknown)
+        } else {
+            Err(format!("Unknown peer type: {s}"))
         }
     }
 }

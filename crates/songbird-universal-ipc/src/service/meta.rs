@@ -9,7 +9,7 @@ use serde_json::Value;
 fn federation_configured_via_env() -> bool {
     songbird_process_env::var("SONGBIRD_FEDERATION_ENABLED")
         .or_else(|_| songbird_process_env::var("FEDERATION_ENABLED"))
-        .map(|v| matches!(v.to_lowercase().as_str(), "true" | "1" | "yes" | "on"))
+        .map(|v| songbird_types::error_helpers::parse_bool_relaxed(&v).unwrap_or(false))
         .unwrap_or(false)
         || songbird_process_env::var("SONGBIRD_PEERS").is_ok()
         || songbird_process_env::var("SONGBIRD_FEDERATION_PORT").is_ok()

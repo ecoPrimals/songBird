@@ -98,24 +98,32 @@ impl<'de> Deserialize<'de> for TrustLevel {
                 "Invalid trust level integer: {n} (expected 0-3)",
             ))),
 
-            // String format (aliases for compatibility)
-            TrustLevelHelper::String(s) => match s.to_lowercase().as_str() {
-                // None: Primary and aliases
-                "none" | "anonymous" | "unknown" => Ok(Self::None),
-
-                // Limited: Primary and aliases
-                "limited" | "basic" => Ok(Self::Limited),
-
-                // Elevated: Primary and aliases
-                "elevated" | "medium" => Ok(Self::Elevated),
-
-                // Highest: Primary and aliases
-                "highest" | "explicit" | "full" => Ok(Self::Highest),
-
-                _ => Err(serde::de::Error::custom(format!(
-                    "Unknown trust level string: '{s}' (expected: none, limited, elevated, highest)"
-                ))),
-            },
+            TrustLevelHelper::String(s) => {
+                let t = s.trim();
+                if t.eq_ignore_ascii_case("none")
+                    || t.eq_ignore_ascii_case("anonymous")
+                    || t.eq_ignore_ascii_case("unknown")
+                {
+                    Ok(Self::None)
+                } else if t.eq_ignore_ascii_case("limited")
+                    || t.eq_ignore_ascii_case("basic")
+                {
+                    Ok(Self::Limited)
+                } else if t.eq_ignore_ascii_case("elevated")
+                    || t.eq_ignore_ascii_case("medium")
+                {
+                    Ok(Self::Elevated)
+                } else if t.eq_ignore_ascii_case("highest")
+                    || t.eq_ignore_ascii_case("explicit")
+                    || t.eq_ignore_ascii_case("full")
+                {
+                    Ok(Self::Highest)
+                } else {
+                    Err(serde::de::Error::custom(format!(
+                        "Unknown trust level string: '{s}' (expected: none, limited, elevated, highest)"
+                    )))
+                }
+            }
         }
     }
 }

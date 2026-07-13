@@ -12,6 +12,30 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 use std::time::Duration;
 
+/// Parse a string as a relaxed boolean (case-insensitive, no allocation).
+///
+/// Recognizes: `true/false`, `1/0`, `yes/no`, `on/off`.
+/// Returns `None` for unrecognized values.
+#[must_use]
+pub fn parse_bool_relaxed(s: &str) -> Option<bool> {
+    let trimmed = s.trim();
+    if trimmed.eq_ignore_ascii_case("true")
+        || trimmed.eq_ignore_ascii_case("yes")
+        || trimmed.eq_ignore_ascii_case("on")
+        || trimmed == "1"
+    {
+        Some(true)
+    } else if trimmed.eq_ignore_ascii_case("false")
+        || trimmed.eq_ignore_ascii_case("no")
+        || trimmed.eq_ignore_ascii_case("off")
+        || trimmed == "0"
+    {
+        Some(false)
+    } else {
+        None
+    }
+}
+
 /// Extension trait for Result types to eliminate unwrap patterns
 pub trait UnwrapElimination<T, E> {
     /// Convert to `SongbirdError` with configuration context
@@ -291,11 +315,7 @@ impl SafeEnv {
     pub fn get_bool(key: &str, default: bool) -> bool {
         songbird_process_env::var(key)
             .ok()
-            .and_then(|v| match v.to_lowercase().as_str() {
-                "true" | "1" | "yes" | "on" => Some(true),
-                "false" | "0" | "no" | "off" => Some(false),
-                _ => v.parse::<bool>().ok(),
-            })
+            .and_then(|v| parse_bool_relaxed(&v))
             .unwrap_or(default)
     }
 

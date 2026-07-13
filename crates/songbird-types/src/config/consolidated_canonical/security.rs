@@ -109,14 +109,19 @@ pub enum TrustLevel {
 
 impl Default for CanonicalSecurityConfig {
     fn default() -> Self {
-        // Parse security level from environment
         let security_level = songbird_process_env::var("SONGBIRD_SECURITY_LEVEL")
             .ok()
-            .and_then(|v| match v.to_lowercase().as_str() {
-                "minimal" => Some(SecurityLevel::Minimal),
-                "standard" => Some(SecurityLevel::Standard),
-                "paranoid" => Some(SecurityLevel::Paranoid),
-                _ => None,
+            .and_then(|v| {
+                let v = v.trim();
+                if v.eq_ignore_ascii_case("minimal") {
+                    Some(SecurityLevel::Minimal)
+                } else if v.eq_ignore_ascii_case("standard") {
+                    Some(SecurityLevel::Standard)
+                } else if v.eq_ignore_ascii_case("paranoid") {
+                    Some(SecurityLevel::Paranoid)
+                } else {
+                    None
+                }
             })
             .unwrap_or_default();
 
@@ -132,14 +137,19 @@ impl Default for CanonicalSecurityConfig {
 
 impl Default for TlsConfig {
     fn default() -> Self {
-        // Parse certificate policy from environment
         let cert_policy = songbird_process_env::var("SONGBIRD_TLS_CERT_POLICY")
             .ok()
-            .and_then(|v| match v.to_lowercase().as_str() {
-                "provided" => Some(TlsCertPolicy::ProvidedOnly),
-                "auto" => Some(TlsCertPolicy::AutoGenerate),
-                "auto_sans" => Some(TlsCertPolicy::AutoGenerateWithSans),
-                _ => None,
+            .and_then(|v| {
+                let v = v.trim();
+                if v.eq_ignore_ascii_case("provided") {
+                    Some(TlsCertPolicy::ProvidedOnly)
+                } else if v.eq_ignore_ascii_case("auto") {
+                    Some(TlsCertPolicy::AutoGenerate)
+                } else if v.eq_ignore_ascii_case("auto_sans") {
+                    Some(TlsCertPolicy::AutoGenerateWithSans)
+                } else {
+                    None
+                }
             })
             .unwrap_or_default();
 

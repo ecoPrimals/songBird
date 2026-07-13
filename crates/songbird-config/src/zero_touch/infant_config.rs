@@ -552,7 +552,7 @@ impl ZeroTouchConfig {
         read_env: &impl Fn(&str) -> Result<String, std::env::VarError>,
     ) -> BootstrapConfig {
         let enable_infant_discovery = read_env("ENABLE_INFANT_DISCOVERY")
-            .map(|v| v.to_lowercase() == "true" || v == "1")
+            .map(|v| songbird_types::error_helpers::parse_bool_relaxed(&v).unwrap_or(true))
             .unwrap_or(true);
 
         let discovery_phases = if enable_infant_discovery {
@@ -570,7 +570,7 @@ impl ZeroTouchConfig {
             read_env("MAX_BOOTSTRAP_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(60);
 
         let fail_on_missing = read_env("FAIL_ON_MISSING_CAPABILITIES")
-            .map(|v| v.to_lowercase() == "true" || v == "1")
+            .map(|v| songbird_types::error_helpers::parse_bool_relaxed(&v).unwrap_or(true))
             .unwrap_or(true);
 
         BootstrapConfig {
@@ -635,13 +635,22 @@ impl ZeroTouchConfig {
 
         let security_level = read_env(&sec_key)
             .ok()
-            .and_then(|s| match s.to_lowercase().as_str() {
-                "none" => Some(SecurityLevel::None),
-                "basic" => Some(SecurityLevel::Basic),
-                "encrypted" | "tls" => Some(SecurityLevel::Encrypted),
-                "strong" | "strong_auth" => Some(SecurityLevel::StrongAuth),
-                "maximum" | "max" => Some(SecurityLevel::Maximum),
-                _ => None,
+            .and_then(|s| {
+                let s = s.trim();
+                if s.eq_ignore_ascii_case("none") {
+                    Some(SecurityLevel::None)
+                } else if s.eq_ignore_ascii_case("basic") {
+                    Some(SecurityLevel::Basic)
+                } else if s.eq_ignore_ascii_case("encrypted") || s.eq_ignore_ascii_case("tls") {
+                    Some(SecurityLevel::Encrypted)
+                } else if s.eq_ignore_ascii_case("strong") || s.eq_ignore_ascii_case("strong_auth")
+                {
+                    Some(SecurityLevel::StrongAuth)
+                } else if s.eq_ignore_ascii_case("maximum") || s.eq_ignore_ascii_case("max") {
+                    Some(SecurityLevel::Maximum)
+                } else {
+                    None
+                }
             })
             .unwrap_or(SecurityLevel::Basic);
 
@@ -662,17 +671,24 @@ impl ZeroTouchConfig {
 
         read_env(var_name.as_str())
             .ok()
-            .and_then(|s| match s.to_lowercase().as_str() {
-                "fail" => Some(FallbackBehavior::Fail),
-                "retry" => Some(FallbackBehavior::Retry {
-                    max_attempts: 3,
-                    backoff_ms: 1000,
-                }),
-                "degraded" => Some(FallbackBehavior::DegradedMode {
-                    degraded_operations: vec![String::from("*")],
-                }),
-                "local" => Some(FallbackBehavior::LocalFallback),
-                _ => None,
+            .and_then(|s| {
+                let s = s.trim();
+                if s.eq_ignore_ascii_case("fail") {
+                    Some(FallbackBehavior::Fail)
+                } else if s.eq_ignore_ascii_case("retry") {
+                    Some(FallbackBehavior::Retry {
+                        max_attempts: 3,
+                        backoff_ms: 1000,
+                    })
+                } else if s.eq_ignore_ascii_case("degraded") {
+                    Some(FallbackBehavior::DegradedMode {
+                        degraded_operations: vec![String::from("*")],
+                    })
+                } else if s.eq_ignore_ascii_case("local") {
+                    Some(FallbackBehavior::LocalFallback)
+                } else {
+                    None
+                }
             })
             .unwrap_or(FallbackBehavior::Retry {
                 max_attempts: 3,
