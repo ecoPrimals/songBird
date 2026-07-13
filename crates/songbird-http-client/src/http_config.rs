@@ -64,13 +64,20 @@ pub enum DomainPattern {
 }
 
 impl DomainPattern {
-    /// Check if this pattern matches the given domain
+    /// Check if this pattern matches the given domain (case-insensitive for all variants).
     #[must_use]
     pub fn matches(&self, domain: &str) -> bool {
         match self {
             Self::Exact(pattern) => domain.eq_ignore_ascii_case(pattern),
-            Self::Suffix(suffix) => domain.to_lowercase().ends_with(&suffix.to_lowercase()),
-            Self::Contains(needle) => domain.to_lowercase().contains(&needle.to_lowercase()),
+            Self::Suffix(suffix) => {
+                domain.len() >= suffix.len()
+                    && domain[domain.len() - suffix.len()..].eq_ignore_ascii_case(suffix)
+            }
+            Self::Contains(needle) => {
+                domain.as_bytes().windows(needle.len()).any(|w| {
+                    w.eq_ignore_ascii_case(needle.as_bytes())
+                })
+            }
             Self::Any => true,
         }
     }
@@ -343,8 +350,9 @@ impl HttpClientConfig {
     /// Check if a domain is known to have bot protection
     #[must_use]
     pub fn is_bot_protected(&self, domain: &str) -> bool {
-        let domain_lower = domain.to_lowercase();
-        self.bot_protected_domains.iter().any(|d| domain_lower.contains(d))
+        self.bot_protected_domains.iter().any(|d| {
+            domain.as_bytes().windows(d.len()).any(|w| w.eq_ignore_ascii_case(d.as_bytes()))
+        })
     }
 
     /// Set custom User-Agent

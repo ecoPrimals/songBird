@@ -462,14 +462,14 @@ async fn handle_drawbridge_connection(
             break;
         }
         if let Some((name, value)) = header_line.split_once(':') {
-            let name_lower = name.trim().to_lowercase();
+            let name_trimmed = name.trim();
             let value = value.trim().to_string();
-            if name_lower == "host" {
+            if name_trimmed.eq_ignore_ascii_case("host") {
                 host.clone_from(&value);
-            } else if name_lower == "content-length" {
+            } else if name_trimmed.eq_ignore_ascii_case("content-length") {
                 content_length = value.parse().unwrap_or(0);
             }
-            headers.push((name.trim().to_string(), value));
+            headers.push((name_trimmed.to_string(), value));
         }
     }
 
@@ -487,7 +487,7 @@ async fn handle_drawbridge_connection(
 
     let auth_header = headers
         .iter()
-        .find(|(n, _)| n.to_lowercase() == "authorization")
+        .find(|(n, _)| n.eq_ignore_ascii_case("authorization"))
         .map(|(_, v)| v.as_str());
 
     if !route_is_public && !config.auth.is_authorized(peer.ip(), path, auth_header) {
@@ -629,8 +629,7 @@ async fn proxy_to_backend(
     let mut request_buf = format!("{method} {path_and_query} HTTP/1.1\r\nHost: {authority}\r\n");
 
     for (name, value) in headers {
-        let name_lower = name.to_lowercase();
-        if name_lower == "host" {
+        if name.eq_ignore_ascii_case("host") {
             continue;
         }
         let _ = write!(request_buf, "{name}: {value}\r\n");
