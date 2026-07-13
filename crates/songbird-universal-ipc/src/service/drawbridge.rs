@@ -198,9 +198,6 @@ pub struct ExternalService {
 /// The reserved capability name for external proxy routes.
 pub const EXTERNAL_PROXY_CAPABILITY: &str = "_external_proxy";
 
-/// Default drawbridge HTTP bind address.
-pub const DEFAULT_DRAWBRIDGE_ADDR: &str = "127.0.0.1:7780";
-
 impl ExternalProxyAllowlist {
     /// Load from `SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST` env var.
     ///
@@ -351,7 +348,7 @@ impl DrawbridgeConfig {
     #[must_use]
     pub fn from_env() -> Self {
         let bind_addr = songbird_process_env::var("SONGBIRD_DRAWBRIDGE_ADDR")
-            .unwrap_or_else(|_| String::from(DEFAULT_DRAWBRIDGE_ADDR));
+            .unwrap_or_else(|_| String::from("127.0.0.1:7780"));
 
         let routes = songbird_process_env::var("SONGBIRD_DRAWBRIDGE_ROUTES")
             .unwrap_or_default()
@@ -465,14 +462,14 @@ async fn handle_drawbridge_connection(
             break;
         }
         if let Some((name, value)) = header_line.split_once(':') {
-            let name_trimmed = name.trim();
+            let name_lower = name.trim().to_lowercase();
             let value = value.trim().to_string();
-            if name_trimmed.eq_ignore_ascii_case("host") {
+            if name_lower == "host" {
                 host.clone_from(&value);
-            } else if name_trimmed.eq_ignore_ascii_case("content-length") {
+            } else if name_lower == "content-length" {
                 content_length = value.parse().unwrap_or(0);
             }
-            headers.push((name_trimmed.to_string(), value));
+            headers.push((name.trim().to_string(), value));
         }
     }
 
@@ -490,7 +487,7 @@ async fn handle_drawbridge_connection(
 
     let auth_header = headers
         .iter()
-        .find(|(n, _)| n.eq_ignore_ascii_case("authorization"))
+        .find(|(n, _)| n.to_lowercase() == "authorization")
         .map(|(_, v)| v.as_str());
 
     if !route_is_public && !config.auth.is_authorized(peer.ip(), path, auth_header) {
@@ -614,15 +611,13 @@ async fn proxy_to_backend(
         None => (stripped, "/"),
     };
 
-    let owned_addr;
-    let addr: &str = if authority.contains(':') {
-        authority
+    let addr = if authority.contains(':') {
+        authority.to_string()
     } else {
-        owned_addr = format!("{authority}:80");
-        &owned_addr
+        format!("{authority}:80")
     };
 
-    let mut backend = match tokio::net::TcpStream::connect(addr).await {
+    let mut backend = match tokio::net::TcpStream::connect(&addr).await {
         Ok(s) => s,
         Err(e) => {
             warn!(backend = %addr, error = %e, "drawbridge: backend connect failed");
@@ -634,10 +629,8 @@ async fn proxy_to_backend(
     let mut request_buf = format!("{method} {path_and_query} HTTP/1.1\r\nHost: {authority}\r\n");
 
     for (name, value) in headers {
-        if name.eq_ignore_ascii_case("host")
-            || name.eq_ignore_ascii_case("connection")
-            || name.eq_ignore_ascii_case("content-length")
-        {
+        let name_lower = name.to_lowercase();
+        if name_lower == "host" {
             continue;
         }
         let _ = write!(request_buf, "{name}: {value}\r\n");
@@ -664,125 +657,30 @@ async fn proxy_to_backend(
 
 /// Forward a request to an external allowlisted service.
 ///
-/// Supports both HTTP and HTTPS outbound. HTTPS uses `tokio-rustls` with
-/// system CA certificates for TLS handshake to external services.
+/// Validates that the URL uses HTTP (HTTPS outbound TLS is handled by the
+/// deployment's edge proxy — e.g. Caddy). Returns 502 for non-HTTP targets.
 async fn proxy_to_external(
-    client_stream: tokio::net::TcpStream,
-    method: &str,
-    external_url: &str,
-    headers: &[(String, String)],
-    body: Option<&str>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    if external_url.starts_with("https://") {
-        proxy_to_external_tls(client_stream, method, external_url, headers, body).await
-    } else {
-        proxy_to_backend(client_stream, method, external_url, headers, body).await
-    }
-}
-
-/// HTTPS outbound proxy using `tokio-rustls` with system CA certificates.
-async fn proxy_to_external_tls(
     mut client_stream: tokio::net::TcpStream,
     method: &str,
     external_url: &str,
     headers: &[(String, String)],
     body: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    use rustls::pki_types::ServerName;
-    use tokio::io::AsyncReadExt;
-    use tokio_rustls::TlsConnector;
-
-    let stripped = external_url
-        .strip_prefix("https://")
-        .unwrap_or(external_url);
-
-    let (authority, path_and_query) = match stripped.find('/') {
-        Some(i) => (&stripped[..i], &stripped[i..]),
-        None => (stripped, "/"),
-    };
-
-    let (host, port) = if let Some(colon) = authority.rfind(':') {
-        (&authority[..colon], authority[colon + 1..].parse::<u16>().unwrap_or(443))
-    } else {
-        (authority, 443u16)
-    };
-
-    let addr = format!("{host}:{port}");
-    let tcp_stream = match tokio::net::TcpStream::connect(&addr).await {
-        Ok(s) => s,
-        Err(e) => {
-            warn!(backend = %addr, error = %e, "drawbridge: external TLS connect failed");
-            client_stream.write_all(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n").await?;
-            return Ok(());
-        }
-    };
-
-    let tls_config = build_tls_client_config()?;
-    let connector = TlsConnector::from(Arc::new(tls_config));
-    let server_name = ServerName::try_from(host.to_owned())
-        .map_err(|e| format!("invalid server name '{host}': {e}"))?;
-
-    let mut tls_stream = match connector.connect(server_name, tcp_stream).await {
-        Ok(s) => s,
-        Err(e) => {
-            warn!(backend = %host, error = %e, "drawbridge: TLS handshake failed");
-            client_stream.write_all(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n").await?;
-            return Ok(());
-        }
-    };
-
-    let mut request_buf = format!("{method} {path_and_query} HTTP/1.1\r\nHost: {authority}\r\n");
-
-    for (name, value) in headers {
-        if name.eq_ignore_ascii_case("host")
-            || name.eq_ignore_ascii_case("connection")
-            || name.eq_ignore_ascii_case("content-length")
-        {
-            continue;
-        }
-        let _ = write!(request_buf, "{name}: {value}\r\n");
+    if !external_url.starts_with("http://") {
+        warn!(
+            url = %external_url,
+            "drawbridge: external proxy requires HTTP base URL (HTTPS outbound via edge proxy)"
+        );
+        client_stream.write_all(
+            b"HTTP/1.1 502 Bad Gateway\r\n\
+              Content-Type: text/plain\r\n\
+              Content-Length: 52\r\n\r\n\
+              External proxy: HTTPS outbound not yet supported",
+        ).await?;
+        return Ok(());
     }
 
-    if let Some(b) = body {
-        let _ = write!(request_buf, "Content-Length: {}\r\n", b.len());
-    }
-    request_buf.push_str("Connection: close\r\n\r\n");
-
-    if let Some(b) = body {
-        request_buf.push_str(b);
-    }
-
-    tls_stream.write_all(request_buf.as_bytes()).await?;
-
-    let mut response_buf = Vec::with_capacity(8192);
-    tls_stream.read_to_end(&mut response_buf).await?;
-
-    client_stream.write_all(&response_buf).await?;
-
-    Ok(())
-}
-
-/// Build a rustls `ClientConfig` using system CA certificates.
-fn build_tls_client_config() -> Result<rustls::ClientConfig, Box<dyn std::error::Error + Send + Sync>> {
-    let mut root_store = rustls::RootCertStore::empty();
-
-    let native_certs = rustls_native_certs::load_native_certs();
-    for cert in native_certs.certs {
-        root_store.add(cert)?;
-    }
-
-    if root_store.is_empty() {
-        return Err("no system CA certificates found".into());
-    }
-
-    let config = rustls::ClientConfig::builder_with_provider(Arc::new(
-        rustls::crypto::ring::default_provider(),
-    ))
-    .with_safe_default_protocol_versions()?
-    .with_root_certificates(root_store)
-    .with_no_client_auth();
-
-    Ok(config)
+    proxy_to_backend(client_stream, method, external_url, headers, body).await
 }
 
 #[cfg(test)]
