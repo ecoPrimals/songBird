@@ -82,6 +82,11 @@ hyper = { workspace = true }
 hyper-util = { workspace = true }
 http-body-util = { workspace = true }
 
+# TLS for external proxy outbound (HTTPS → GIS services, CA roots, etc.)
+rustls = { version = "0.23", default-features = false, features = ["std", "ring"] }
+tokio-rustls = "0.26"
+rustls-native-certs = "0.8"
+
 # Windows named pipes (only on Windows)
 [target.'cfg(windows)'.dependencies]
 tokio = { workspace = true, features = ["net"] }

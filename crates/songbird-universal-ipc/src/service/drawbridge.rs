@@ -630,7 +630,7 @@ async fn proxy_to_backend(
 
     for (name, value) in headers {
         let name_lower = name.to_lowercase();
-        if name_lower == "host" {
+        if matches!(name_lower.as_str(), "host" | "connection" | "content-length") {
             continue;
         }
         let _ = write!(request_buf, "{name}: {value}\r\n");
@@ -657,30 +657,123 @@ async fn proxy_to_backend(
 
 /// Forward a request to an external allowlisted service.
 ///
-/// Validates that the URL uses HTTP (HTTPS outbound TLS is handled by the
-/// deployment's edge proxy — e.g. Caddy). Returns 502 for non-HTTP targets.
+/// Supports both HTTP and HTTPS outbound. HTTPS uses `tokio-rustls` with
+/// system CA certificates for TLS handshake to external services.
 async fn proxy_to_external(
+    client_stream: tokio::net::TcpStream,
+    method: &str,
+    external_url: &str,
+    headers: &[(String, String)],
+    body: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if external_url.starts_with("https://") {
+        proxy_to_external_tls(client_stream, method, external_url, headers, body).await
+    } else {
+        proxy_to_backend(client_stream, method, external_url, headers, body).await
+    }
+}
+
+/// HTTPS outbound proxy using `tokio-rustls` with system CA certificates.
+async fn proxy_to_external_tls(
     mut client_stream: tokio::net::TcpStream,
     method: &str,
     external_url: &str,
     headers: &[(String, String)],
     body: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    if !external_url.starts_with("http://") {
-        warn!(
-            url = %external_url,
-            "drawbridge: external proxy requires HTTP base URL (HTTPS outbound via edge proxy)"
-        );
-        client_stream.write_all(
-            b"HTTP/1.1 502 Bad Gateway\r\n\
-              Content-Type: text/plain\r\n\
-              Content-Length: 52\r\n\r\n\
-              External proxy: HTTPS outbound not yet supported",
-        ).await?;
-        return Ok(());
+    use rustls::pki_types::ServerName;
+    use tokio::io::AsyncReadExt;
+    use tokio_rustls::TlsConnector;
+
+    let stripped = external_url
+        .strip_prefix("https://")
+        .unwrap_or(external_url);
+
+    let (authority, path_and_query) = match stripped.find('/') {
+        Some(i) => (&stripped[..i], &stripped[i..]),
+        None => (stripped, "/"),
+    };
+
+    let (host, port) = if let Some(colon) = authority.rfind(':') {
+        (&authority[..colon], authority[colon + 1..].parse::<u16>().unwrap_or(443))
+    } else {
+        (authority, 443u16)
+    };
+
+    let addr = format!("{host}:{port}");
+    let tcp_stream = match tokio::net::TcpStream::connect(&addr).await {
+        Ok(s) => s,
+        Err(e) => {
+            warn!(backend = %addr, error = %e, "drawbridge: external TLS connect failed");
+            client_stream.write_all(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n").await?;
+            return Ok(());
+        }
+    };
+
+    let tls_config = build_tls_client_config()?;
+    let connector = TlsConnector::from(Arc::new(tls_config));
+    let server_name = ServerName::try_from(host.to_owned())
+        .map_err(|e| format!("invalid server name '{host}': {e}"))?;
+
+    let mut tls_stream = match connector.connect(server_name, tcp_stream).await {
+        Ok(s) => s,
+        Err(e) => {
+            warn!(backend = %host, error = %e, "drawbridge: TLS handshake failed");
+            client_stream.write_all(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n").await?;
+            return Ok(());
+        }
+    };
+
+    let mut request_buf = format!("{method} {path_and_query} HTTP/1.1\r\nHost: {authority}\r\n");
+
+    for (name, value) in headers {
+        let name_lower = name.to_lowercase();
+        if matches!(name_lower.as_str(), "host" | "connection" | "content-length") {
+            continue;
+        }
+        let _ = write!(request_buf, "{name}: {value}\r\n");
     }
 
-    proxy_to_backend(client_stream, method, external_url, headers, body).await
+    if let Some(b) = body {
+        let _ = write!(request_buf, "Content-Length: {}\r\n", b.len());
+    }
+    request_buf.push_str("Connection: close\r\n\r\n");
+
+    if let Some(b) = body {
+        request_buf.push_str(b);
+    }
+
+    tls_stream.write_all(request_buf.as_bytes()).await?;
+
+    let mut response_buf = Vec::with_capacity(8192);
+    tls_stream.read_to_end(&mut response_buf).await?;
+
+    client_stream.write_all(&response_buf).await?;
+
+    Ok(())
+}
+
+/// Build a rustls `ClientConfig` using system CA certificates.
+fn build_tls_client_config() -> Result<rustls::ClientConfig, Box<dyn std::error::Error + Send + Sync>> {
+    let mut root_store = rustls::RootCertStore::empty();
+
+    let native_certs = rustls_native_certs::load_native_certs();
+    for cert in native_certs.certs {
+        root_store.add(cert)?;
+    }
+
+    if root_store.is_empty() {
+        return Err("no system CA certificates found".into());
+    }
+
+    let config = rustls::ClientConfig::builder_with_provider(Arc::new(
+        rustls::crypto::ring::default_provider(),
+    ))
+    .with_safe_default_protocol_versions()?
+    .with_root_certificates(root_store)
+    .with_no_client_auth();
+
+    Ok(config)
 }
 
 #[cfg(test)]

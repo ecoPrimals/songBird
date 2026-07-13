@@ -6,10 +6,13 @@
 //! Provides `run_server()` with proper signal handling (SIGINT, SIGTERM),
 //! graceful shutdown, instance locking, and comprehensive logging.
 
+use std::sync::Arc;
+
 use anyhow::Result;
 use songbird_types::config::CanonicalSongbirdConfig;
 
 use crate::process_manager::ProcessManager;
+use songbird_universal_ipc::service::{CapabilityProxyRouter, DrawbridgeConfig, serve_drawbridge};
 
 /// Run Songbird orchestrator in server mode
 ///
@@ -91,6 +94,24 @@ pub async fn run_server(
     );
     tracing::info!("   Protocol: JSON-RPC 2.0 over Unix sockets");
     tracing::info!("   HTTP/TLS: Handled by external gateway component");
+
+    // Drawbridge HTTP listener (Gatehouse→Darkforest crossing)
+    let drawbridge_config = DrawbridgeConfig::from_env();
+    if !drawbridge_config.bind_addr.is_empty() {
+        let proxy_router = Arc::new(CapabilityProxyRouter::from_env());
+        let db_config = drawbridge_config.clone();
+        let db_router = Arc::clone(&proxy_router);
+        tracing::info!(
+            "🌉 Drawbridge HTTP listener on {}",
+            db_config.bind_addr
+        );
+        tokio::spawn(async move {
+            if let Err(e) = serve_drawbridge(db_config, db_router).await {
+                tracing::error!("Drawbridge listener failed: {}", e);
+            }
+        });
+    }
+
     tracing::info!("");
     tracing::info!("💡 Press Ctrl+C to stop gracefully");
 
