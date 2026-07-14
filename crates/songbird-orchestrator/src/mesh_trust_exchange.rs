@@ -246,15 +246,34 @@ fn discover_security_provider_socket() -> Result<String, String> {
     Ok(path)
 }
 
-/// Make a JSON-RPC call over a UDS and return the result.
+/// Make a JSON-RPC call over IPC and return the result.
 async fn call_uds_jsonrpc(socket_path: &str, request: &Value) -> Result<Value, String> {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    use tokio::net::UnixStream;
 
-    let mut stream = tokio::time::timeout(TRUST_EXCHANGE_TIMEOUT, UnixStream::connect(socket_path))
+    #[cfg(unix)]
+    let mut stream = tokio::time::timeout(
+        TRUST_EXCHANGE_TIMEOUT,
+        tokio::net::UnixStream::connect(socket_path),
+    )
+    .await
+    .map_err(|_| format!("Timeout connecting to {socket_path}"))?
+    .map_err(|e| format!("Cannot connect to {socket_path}: {e}"))?;
+
+    #[cfg(windows)]
+    let mut stream = {
+        let port: u16 = std::fs::read_to_string(socket_path)
+            .ok()
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
+        let addr = format!("127.0.0.1:{port}");
+        tokio::time::timeout(
+            TRUST_EXCHANGE_TIMEOUT,
+            tokio::net::TcpStream::connect(&addr),
+        )
         .await
-        .map_err(|_| format!("Timeout connecting to {socket_path}"))?
-        .map_err(|e| format!("Cannot connect to {socket_path}: {e}"))?;
+        .map_err(|_| format!("Timeout connecting to {addr}"))?
+        .map_err(|e| format!("Cannot connect to {addr}: {e}"))?
+    };
 
     let mut bytes = serde_json::to_vec(request).map_err(|e| format!("Serialize error: {e}"))?;
     bytes.push(b'\n');

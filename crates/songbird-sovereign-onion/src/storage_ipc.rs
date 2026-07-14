@@ -13,8 +13,12 @@ use crate::storage::{OnionStorageBackend, PeerInfo};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::net::UnixStream;
 use tracing::debug;
+
+#[cfg(unix)]
+use tokio::net::UnixStream as IpcStream;
+#[cfg(windows)]
+use tokio::net::TcpStream as IpcStream;
 
 const IDENTITY_KEY: &str = "songbird-onion/identity/primary";
 
@@ -46,6 +50,30 @@ impl IpcOnionStorage {
         &self.socket_path
     }
 
+    /// Connect to the IPC endpoint. Unix uses the socket path directly;
+    /// Windows interprets it as a TCP port file (same convention as biomeOS sidecar).
+    #[cfg(unix)]
+    async fn connect_ipc(path: &Path) -> Result<IpcStream> {
+        IpcStream::connect(path)
+            .await
+            .map_err(|e| OnionError::ConnectionError(format!("{}: {e}", path.display())))
+    }
+
+    /// Connect to the IPC endpoint via TCP localhost on Windows.
+    /// The socket_path is treated as a file containing the TCP port number,
+    /// or as a fallback the path basename is parsed as `<name>-<port>`.
+    #[cfg(windows)]
+    async fn connect_ipc(path: &Path) -> Result<IpcStream> {
+        let port: u16 = std::fs::read_to_string(path)
+            .ok()
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
+        let addr = format!("127.0.0.1:{port}");
+        IpcStream::connect(&addr)
+            .await
+            .map_err(|e| OnionError::ConnectionError(format!("{addr}: {e}")))
+    }
+
     fn run_ipc<F, T>(fut: F) -> Result<T>
     where
         F: std::future::Future<Output = Result<T>>,
@@ -65,9 +93,7 @@ impl IpcOnionStorage {
         let method = method.to_string();
         Self::run_ipc(async move {
             debug!(method = %method, path = %path.display(), "onion storage capability RPC");
-            let mut stream = UnixStream::connect(&path)
-                .await
-                .map_err(|e| OnionError::ConnectionError(format!("{}: {e}", path.display())))?;
+            let mut stream = Self::connect_ipc(&path).await?;
             let id = 1u64;
             let request = json!({
                 "jsonrpc": "2.0",

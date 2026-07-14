@@ -9,7 +9,6 @@
 
 use std::path::{Path, PathBuf};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::net::UnixStream;
 use tracing::{debug, info, warn};
 
 /// Resolve the biomeOS Neural API socket path using WAVE42 tiered discovery.
@@ -74,7 +73,18 @@ pub async fn announce_to_neural_api(neural_socket: &Path, own_socket: &str) {
     };
     request_bytes.push(b'\n');
 
-    let stream = match UnixStream::connect(neural_socket).await {
+    #[cfg(unix)]
+    let connect_result = tokio::net::UnixStream::connect(neural_socket).await;
+    #[cfg(windows)]
+    let connect_result = {
+        let port: u16 = std::fs::read_to_string(neural_socket)
+            .ok()
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
+        tokio::net::TcpStream::connect(format!("127.0.0.1:{port}")).await
+    };
+
+    let stream = match connect_result {
         Ok(s) => s,
         Err(e) => {
             debug!(

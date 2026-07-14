@@ -233,15 +233,23 @@ impl IpcServiceHandler {
 
         match endpoint {
             NativeEndpoint::UnixSocket(path) => {
-                let stream = tokio::time::timeout(
-                    DEFAULT_SOCKET_IO_TIMEOUT,
-                    tokio::net::UnixStream::connect(path),
-                )
-                .await
-                .ok()?
-                .ok()?;
+                #[cfg(unix)]
+                {
+                    let stream = tokio::time::timeout(
+                        DEFAULT_SOCKET_IO_TIMEOUT,
+                        tokio::net::UnixStream::connect(path),
+                    )
+                    .await
+                    .ok()?
+                    .ok()?;
 
-                Self::send_and_read(stream, req_bytes).await
+                    Self::send_and_read(stream, req_bytes).await
+                }
+                #[cfg(not(unix))]
+                {
+                    let _ = path;
+                    None
+                }
             }
             NativeEndpoint::TcpLocal(port) => {
                 let addr = format!("{}:{port}", songbird_types::constants::LOCALHOST);

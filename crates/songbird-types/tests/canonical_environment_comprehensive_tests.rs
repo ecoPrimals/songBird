@@ -85,10 +85,10 @@ fn test_environment_from_str_invalid() {
 
 #[test]
 fn test_environment_from_str_whitespace() {
-    // Should fail because we don't trim
-    assert!(Environment::from_str(" development").is_err());
-    assert!(Environment::from_str("production ").is_err());
-    assert!(Environment::from_str(" prod ").is_err());
+    // Whitespace-padded inputs are trimmed (robust for env var values)
+    assert_eq!(Environment::from_str(" development").unwrap(), Environment::Development);
+    assert_eq!(Environment::from_str("production ").unwrap(), Environment::Production);
+    assert_eq!(Environment::from_str(" prod ").unwrap(), Environment::Production);
 }
 
 // ============================================================================

@@ -15,8 +15,10 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 // **NOTE:** Modules compile on all platforms for maximum flexibility.
 // The actual platform selection happens at runtime.
 
+#[cfg(unix)]
 pub mod android; // Abstract sockets (Android, Linux)
 pub mod fallback;
+#[cfg(unix)]
 pub mod ios; // XPC (iOS, macOS)
 #[cfg(all(unix, not(target_os = "android")))]
 pub mod unix; // Unix domain sockets (Linux, macOS, BSD)

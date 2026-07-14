@@ -19,8 +19,12 @@ use crate::types::{LineageHint, MaskingLevel, NodeId, RelayAuthorization};
 use std::path::PathBuf;
 use std::time::SystemTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::UnixStream;
 use tracing::{debug, info};
+
+#[cfg(unix)]
+use tokio::net::UnixStream as IpcStream;
+#[cfg(windows)]
+use tokio::net::TcpStream as IpcStream;
 
 // Imports only used by mock implementations
 #[cfg(any(test, feature = "test-mocks"))]
@@ -96,22 +100,41 @@ impl SecurityBirdSongProvider {
         self.family_id.as_ref()
     }
 
-    /// Call security-provider JSON-RPC method via Unix socket
+    #[cfg(unix)]
+    async fn connect_ipc(path: &std::path::Path) -> Result<IpcStream> {
+        IpcStream::connect(path).await.map_err(|e| {
+            crate::error::LineageRelayError::BirdSongError(format!(
+                "Failed to connect to security provider at {}: {e}",
+                path.display(),
+            ))
+        })
+    }
+
+    #[cfg(windows)]
+    async fn connect_ipc(path: &std::path::Path) -> Result<IpcStream> {
+        let port: u16 = tokio::fs::read_to_string(path)
+            .await
+            .ok()
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
+        let addr = format!("127.0.0.1:{port}");
+        IpcStream::connect(&addr).await.map_err(|e| {
+            crate::error::LineageRelayError::BirdSongError(format!(
+                "Failed to connect to security provider at {addr}: {e}",
+            ))
+        })
+    }
+
+    /// Call security-provider JSON-RPC method via IPC socket
     ///
-    /// Pure Rust implementation using tokio `UnixStream`.
+    /// On Unix: connects to a Unix domain socket.
+    /// On Windows: connects via TCP localhost (port read from socket path file).
     async fn call_security_rpc(
         &self,
         method: &str,
         params: serde_json::Value,
     ) -> Result<serde_json::Value> {
-        // Connect to security provider Unix socket
-        let mut stream = UnixStream::connect(&self.socket_path).await.map_err(|e| {
-            crate::error::LineageRelayError::BirdSongError(format!(
-                "Failed to connect to security provider at {}: {}",
-                self.socket_path.display(),
-                e
-            ))
-        })?;
+        let mut stream = Self::connect_ipc(&self.socket_path).await?;
 
         // Build JSON-RPC request
         let request = serde_json::json!({
@@ -351,19 +374,38 @@ impl SecurityRelayAuthority {
         security_socket_default_path()
     }
 
-    /// Call security-provider JSON-RPC method via Unix socket
+    #[cfg(unix)]
+    async fn connect_ipc_relay(path: &std::path::Path) -> Result<IpcStream> {
+        IpcStream::connect(path).await.map_err(|e| {
+            crate::error::LineageRelayError::BirdSongError(format!(
+                "Failed to connect to security provider at {}: {e}",
+                path.display(),
+            ))
+        })
+    }
+
+    #[cfg(windows)]
+    async fn connect_ipc_relay(path: &std::path::Path) -> Result<IpcStream> {
+        let port: u16 = tokio::fs::read_to_string(path)
+            .await
+            .ok()
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
+        let addr = format!("127.0.0.1:{port}");
+        IpcStream::connect(&addr).await.map_err(|e| {
+            crate::error::LineageRelayError::BirdSongError(format!(
+                "Failed to connect to security provider at {addr}: {e}",
+            ))
+        })
+    }
+
+    /// Call security-provider JSON-RPC method via IPC.
     async fn call_security_rpc(
         &self,
         method: &str,
         params: serde_json::Value,
     ) -> Result<serde_json::Value> {
-        let mut stream = UnixStream::connect(&self.socket_path).await.map_err(|e| {
-            crate::error::LineageRelayError::BirdSongError(format!(
-                "Failed to connect to security provider at {}: {}",
-                self.socket_path.display(),
-                e
-            ))
-        })?;
+        let mut stream = Self::connect_ipc_relay(&self.socket_path).await?;
 
         let request = serde_json::json!({
             "jsonrpc": "2.0",

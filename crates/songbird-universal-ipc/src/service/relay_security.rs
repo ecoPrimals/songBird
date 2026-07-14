@@ -64,16 +64,29 @@ impl BtspSignatureVerifier for CryptoProviderVerifier {
     }
 }
 
-/// Low-level UDS JSON-RPC call to the crypto provider.
+/// Low-level IPC JSON-RPC call to the crypto provider.
 async fn call_crypto_rpc(
     socket_path: &str,
     request: &serde_json::Value,
 ) -> Result<serde_json::Value, String> {
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
+    #[cfg(unix)]
     let stream = tokio::net::UnixStream::connect(socket_path)
         .await
         .map_err(|e| format!("crypto provider connect ({socket_path}): {e}"))?;
+
+    #[cfg(windows)]
+    let stream = {
+        let port: u16 = std::fs::read_to_string(socket_path)
+            .ok()
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
+        let addr = format!("127.0.0.1:{port}");
+        tokio::net::TcpStream::connect(&addr)
+            .await
+            .map_err(|e| format!("crypto provider connect ({addr}): {e}"))?
+    };
 
     let (reader, mut writer) = stream.into_split();
     let mut buf_reader = BufReader::new(reader);

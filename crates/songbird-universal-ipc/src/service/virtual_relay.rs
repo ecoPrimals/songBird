@@ -12,11 +12,14 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+#[cfg(unix)]
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+#[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 
+#[cfg(unix)]
 use songbird_types::defaults::timeouts::DEFAULT_SOCKET_IO_TIMEOUT;
 
 /// Manages virtual relay listeners for registered primals.
@@ -134,6 +137,10 @@ impl VirtualRelayManager {
     ///
     /// Creates a UDS listener at `<base_dir>/<primal_name>.sock` that forwards all
     /// JSON-RPC requests to `native_socket_path`.
+    ///
+    /// On non-Unix platforms, virtual relays are not yet supported and this returns
+    /// an error immediately.
+    #[cfg(unix)]
     pub async fn start_relay(
         &self,
         primal_name: &str,
@@ -141,12 +148,10 @@ impl VirtualRelayManager {
     ) -> anyhow::Result<PathBuf> {
         let socket_path = self.relay_socket_path(primal_name);
 
-        // Ensure parent directory exists
         if let Some(parent) = socket_path.parent() {
             tokio::fs::create_dir_all(parent).await?;
         }
 
-        // Remove stale socket
         let _ = tokio::fs::remove_file(&socket_path).await;
 
         let listener = UnixListener::bind(&socket_path)?;
@@ -157,7 +162,7 @@ impl VirtualRelayManager {
             primal = primal_name,
             virtual_socket = %relay_path.display(),
             native_target = %native_target,
-            "Virtual relay listener started (Phase 1 shadow mode)"
+            "Virtual relay listener started"
         );
 
         let task = tokio::spawn(relay_accept_loop(
@@ -177,6 +182,16 @@ impl VirtualRelayManager {
         );
 
         Ok(relay_path)
+    }
+
+    /// Virtual relays require Unix domain sockets; unsupported on this platform.
+    #[cfg(not(unix))]
+    pub async fn start_relay(
+        &self,
+        _primal_name: &str,
+        _native_socket_path: &str,
+    ) -> anyhow::Result<PathBuf> {
+        anyhow::bail!("Virtual relays require Unix domain sockets (not available on this platform)")
     }
 
     /// Stop and remove a relay for the given primal.
@@ -236,6 +251,7 @@ impl Drop for VirtualRelayManager {
     }
 }
 
+#[cfg(unix)]
 /// Accept loop for a virtual relay listener.
 ///
 /// Each accepted connection is spawned as an independent relay task.
@@ -331,14 +347,12 @@ impl BtspSignatureVerifier for NoopSignatureVerifier {
     }
 }
 
+#[cfg(unix)]
 use super::btsp_validation::{BtspValidation, validate_btsp_session};
 
+#[cfg(unix)]
 /// Relay a single client connection: maintains a persistent native connection for the
 /// session lifetime. Requests stream from client → native, responses stream back.
-///
-/// Connection pooling: one native UDS connection is held open for the entire client
-/// session (NDJSON streaming). Reconnects automatically on native connection failure.
-/// Measures relay overhead (time spent in relay logic, excluding native I/O wait).
 async fn relay_connection(
     client_stream: UnixStream,
     native_target: &str,
@@ -431,6 +445,7 @@ async fn relay_connection(
     Ok(())
 }
 
+#[cfg(unix)]
 /// Forward on existing connection or fall back to a fresh one-shot connection.
 async fn forward_or_fallback(
     request_line: &str,
@@ -446,12 +461,14 @@ async fn forward_or_fallback(
     }
 }
 
+#[cfg(unix)]
 /// Persistent native connection state (writer + buffered reader).
 struct NativeConn {
     writer: tokio::net::unix::OwnedWriteHalf,
     reader: BufReader<tokio::net::unix::OwnedReadHalf>,
 }
 
+#[cfg(unix)]
 /// Establish a connection to the native endpoint.
 async fn connect_native(native_target: &str) -> anyhow::Result<NativeConn> {
     let stream =
@@ -467,6 +484,7 @@ async fn connect_native(native_target: &str) -> anyhow::Result<NativeConn> {
     })
 }
 
+#[cfg(unix)]
 /// Forward a request on a persistent native connection.
 async fn forward_on_persistent(
     request_line: &str,
@@ -496,6 +514,7 @@ async fn forward_on_persistent(
         .map_err(|e| anyhow::anyhow!("Invalid JSON from native provider: {e}"))
 }
 
+#[cfg(unix)]
 /// Fallback: open a fresh connection for a single request (no pooling).
 async fn forward_fresh(request_line: &str, native_target: &str) -> serde_json::Value {
     match forward_fresh_inner(request_line, native_target).await {
@@ -504,6 +523,7 @@ async fn forward_fresh(request_line: &str, native_target: &str) -> serde_json::V
     }
 }
 
+#[cfg(unix)]
 async fn forward_fresh_inner(
     request_line: &str,
     native_target: &str,
@@ -512,6 +532,7 @@ async fn forward_fresh_inner(
     forward_on_persistent(request_line, &mut conn).await
 }
 
+#[cfg(unix)]
 fn make_error_response(request_line: &str, error: &anyhow::Error) -> serde_json::Value {
     let id = serde_json::from_str::<serde_json::Value>(request_line)
         .ok()

@@ -224,7 +224,9 @@ impl IpcServiceHandler {
         self.forward_to_remote_gate(&call).await
     }
 
-    /// Forward an operation to a local provider via its UDS socket.
+    /// Forward an operation to a local provider via its IPC socket.
+    /// On Unix: connects to a Unix domain socket at `socket_path`.
+    /// On Windows: connects to TCP localhost, parsing the port from `socket_path`.
     pub(super) async fn forward_to_local_provider(
         &self,
         socket_path: &str,
@@ -232,13 +234,31 @@ impl IpcServiceHandler {
         params: &Value,
     ) -> Result<Value, String> {
         use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-        use tokio::net::UnixStream;
 
-        let stream =
-            tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, UnixStream::connect(socket_path))
-                .await
-                .map_err(|_| format!("Timeout connecting to provider at {socket_path}"))?
-                .map_err(|e| format!("Cannot connect to provider at {socket_path}: {e}"))?;
+        #[cfg(unix)]
+        let stream = tokio::time::timeout(
+            DEFAULT_SOCKET_IO_TIMEOUT,
+            tokio::net::UnixStream::connect(socket_path),
+        )
+        .await
+        .map_err(|_| format!("Timeout connecting to provider at {socket_path}"))?
+        .map_err(|e| format!("Cannot connect to provider at {socket_path}: {e}"))?;
+
+        #[cfg(windows)]
+        let stream = {
+            let port: u16 = std::fs::read_to_string(socket_path)
+                .ok()
+                .and_then(|s| s.trim().parse().ok())
+                .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
+            let addr = format!("127.0.0.1:{port}");
+            tokio::time::timeout(
+                DEFAULT_SOCKET_IO_TIMEOUT,
+                tokio::net::TcpStream::connect(&addr),
+            )
+            .await
+            .map_err(|_| format!("Timeout connecting to provider at {addr}"))?
+            .map_err(|e| format!("Cannot connect to provider at {addr}: {e}"))?
+        };
 
         let request = serde_json::json!({
             "jsonrpc": "2.0",

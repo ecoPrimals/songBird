@@ -199,14 +199,15 @@ impl ServiceLocator {
         rest.trim().parse().ok()
     }
 
-    fn discover_from_registry_with<F>(
-        capability: &str,
+    /// Connect to the songBird IPC socket. On Unix this is a Unix domain socket;
+    /// on Windows it falls back to TCP localhost on `SONGBIRD_IPC_PORT` (default 3492).
+    #[cfg(unix)]
+    fn connect_ipc_stream<F>(
         env_reader: &F,
-    ) -> SongbirdResult<Vec<SocketAddr>>
+    ) -> SongbirdResult<std::os::unix::net::UnixStream>
     where
         F: Fn(&str) -> Result<String, std::env::VarError>,
     {
-        use std::io::{Read, Write};
         use std::os::unix::net::UnixStream;
 
         let socket_path = env_reader("SONGBIRD_IPC_SOCKET").unwrap_or_else(|_| {
@@ -222,12 +223,46 @@ impl ServiceLocator {
             )
         });
 
-        let mut stream = UnixStream::connect(&socket_path).map_err(|e| {
+        UnixStream::connect(&socket_path).map_err(|e| {
             SongbirdError::configuration(format!(
                 "Cannot connect to songbird IPC at {socket_path}: {e}"
             ))
-        })?;
+        })
+    }
 
+    /// Connect to the songBird IPC via TCP localhost (Windows — no Unix sockets).
+    #[cfg(windows)]
+    fn connect_ipc_stream<F>(
+        env_reader: &F,
+    ) -> SongbirdResult<std::net::TcpStream>
+    where
+        F: Fn(&str) -> Result<String, std::env::VarError>,
+    {
+        use std::net::TcpStream;
+
+        let port: u16 = env_reader("SONGBIRD_IPC_PORT")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
+
+        let addr = format!("127.0.0.1:{port}");
+        TcpStream::connect(&addr).map_err(|e| {
+            SongbirdError::configuration(format!(
+                "Cannot connect to songbird IPC at {addr}: {e}"
+            ))
+        })
+    }
+
+    fn discover_from_registry_with<F>(
+        capability: &str,
+        env_reader: &F,
+    ) -> SongbirdResult<Vec<SocketAddr>>
+    where
+        F: Fn(&str) -> Result<String, std::env::VarError>,
+    {
+        use std::io::{Read, Write};
+
+        let mut stream = Self::connect_ipc_stream(env_reader)?;
         stream.set_read_timeout(Some(std::time::Duration::from_secs(2))).ok();
 
         let request = serde_json::json!({
@@ -292,27 +327,9 @@ impl ServiceLocator {
         advertise_addr: &SocketAddr,
     ) -> SongbirdResult<()> {
         use std::io::{Read, Write};
-        use std::os::unix::net::UnixStream;
 
-        let socket_path = songbird_process_env::var("SONGBIRD_IPC_SOCKET").unwrap_or_else(|_| {
-            let runtime_dir = songbird_process_env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
-                dirs::runtime_dir()
-                    .unwrap_or_else(default_runtime_fallback)
-                    .to_string_lossy()
-                    .into_owned()
-            });
-            format!(
-                "{runtime_dir}/{}/songbird.sock",
-                songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR
-            )
-        });
-
-        let mut stream = UnixStream::connect(&socket_path).map_err(|e| {
-            SongbirdError::configuration(format!(
-                "Cannot connect to songbird IPC at {socket_path}: {e}"
-            ))
-        })?;
-
+        let env_reader = |key: &str| songbird_process_env::var(key);
+        let mut stream = Self::connect_ipc_stream(&env_reader)?;
         stream.set_write_timeout(Some(std::time::Duration::from_secs(2))).ok();
 
         let primal_id = songbird_process_env::var("SONGBIRD_PRIMAL_ID")

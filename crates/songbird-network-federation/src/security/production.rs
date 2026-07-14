@@ -22,8 +22,12 @@ use anyhow::{Context, Result, anyhow};
 use serde_json::Value;
 use std::path::PathBuf;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::UnixStream;
 use tracing::{debug, info, warn};
+
+#[cfg(unix)]
+use tokio::net::UnixStream as IpcStream;
+#[cfg(windows)]
+use tokio::net::TcpStream as IpcStream;
 
 /// Production security provider via Unix socket JSON-RPC
 ///
@@ -60,17 +64,16 @@ impl ProductionSecurityProvider {
     pub async fn new(socket_path: impl Into<PathBuf>) -> Result<Self> {
         let socket_path = socket_path.into();
 
-        info!("🐻 Creating production security provider provider (Unix socket)");
+        info!("Creating production security provider (IPC)");
         info!("   Socket: {:?}", socket_path);
 
-        // Verify socket exists and is connectable
-        let _ = UnixStream::connect(&socket_path)
+        let _ = Self::connect_ipc(&socket_path)
             .await
             .context("security provider socket not accessible")?;
 
         Ok(Self {
             socket_path,
-            family_id: None, // Will be queried from env on first use
+            family_id: None,
         })
     }
 
@@ -84,12 +87,11 @@ impl ProductionSecurityProvider {
         let socket_path = socket_path.into();
         let family_id = family_id.into();
 
-        info!("🐻 Creating production security provider provider with family_id");
+        info!("Creating production security provider with family_id");
         info!("   Socket: {:?}", socket_path);
         info!("   Family: {}", family_id);
 
-        // Verify socket exists and is connectable
-        let _ = UnixStream::connect(&socket_path)
+        let _ = Self::connect_ipc(&socket_path)
             .await
             .context("security provider socket not accessible")?;
 
@@ -104,13 +106,27 @@ impl ProductionSecurityProvider {
         self.family_id = Some(family_id.into());
     }
 
-    /// Call security provider JSON-RPC method via Unix socket
-    ///
-    /// Pure Rust implementation using tokio `UnixStream`.
+    #[cfg(unix)]
+    async fn connect_ipc(path: &std::path::Path) -> Result<IpcStream> {
+        Ok(IpcStream::connect(path).await?)
+    }
+
+    #[cfg(windows)]
+    async fn connect_ipc(path: &std::path::Path) -> Result<IpcStream> {
+        let port: u16 = tokio::fs::read_to_string(path)
+            .await
+            .ok()
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
+        let addr = format!("127.0.0.1:{port}");
+        Ok(IpcStream::connect(&addr).await?)
+    }
+
+    /// Call security provider JSON-RPC method via IPC.
     async fn call_security_rpc(&self, method: &str, params: Value) -> Result<Value> {
         debug!("Calling security provider RPC: {}", method);
 
-        let mut stream = UnixStream::connect(&self.socket_path)
+        let mut stream = Self::connect_ipc(&self.socket_path)
             .await
             .context("Failed to connect to security provider socket")?;
 
