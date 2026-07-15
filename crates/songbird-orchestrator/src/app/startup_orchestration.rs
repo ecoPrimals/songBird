@@ -75,6 +75,7 @@ pub(super) const TRUST_CLEANUP_INTERVAL_SECS: u64 = 300;
 ///
 /// Primals may start after Songbird — a periodic re-scan ensures the
 /// `ipc.resolve` registry is self-healing without launcher assistance.
+#[cfg(any(unix, test))]
 pub(super) const SOCKET_RESCAN_INTERVAL_SECS: u64 = 30;
 
 /// Build the TCP bind address used for the HTTP server in Stage 2.

@@ -77,11 +77,7 @@ pub const ALL_BONDS: &[(&str, &str)] = &[
 /// environment variable value.
 #[must_use]
 pub fn format_allowlist(bonds: &[(&str, &str)]) -> String {
-    bonds
-        .iter()
-        .map(|(name, url)| format!("{name}={url}"))
-        .collect::<Vec<_>>()
-        .join(",")
+    bonds.iter().map(|(name, url)| format!("{name}={url}")).collect::<Vec<_>>().join(",")
 }
 
 #[cfg(test)]
@@ -118,10 +114,7 @@ mod tests {
     #[test]
     fn all_bonds_have_https() {
         for (name, url) in ALL_BONDS {
-            assert!(
-                url.starts_with("https://"),
-                "Bond '{name}' must use HTTPS: {url}"
-            );
+            assert!(url.starts_with("https://"), "Bond '{name}' must use HTTPS: {url}");
         }
     }
 

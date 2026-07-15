@@ -15,10 +15,10 @@ use std::path::{Path, PathBuf};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tracing::debug;
 
-#[cfg(unix)]
-use tokio::net::UnixStream as IpcStream;
 #[cfg(windows)]
 use tokio::net::TcpStream as IpcStream;
+#[cfg(unix)]
+use tokio::net::UnixStream as IpcStream;
 
 const IDENTITY_KEY: &str = "songbird-onion/identity/primary";
 

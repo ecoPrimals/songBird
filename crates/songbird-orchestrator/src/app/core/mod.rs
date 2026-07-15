@@ -18,7 +18,9 @@ use songbird_network_federation::{FederationConfig, FederationCoordinator};
 use songbird_observability::ObservabilityManager;
 use songbird_types::config::CanonicalSongbirdConfig;
 use std::sync::Arc;
-use tracing::{debug, error, info, warn};
+#[cfg(unix)]
+use tracing::error;
+use tracing::{debug, info, warn};
 
 use super::connection_manager::ConnectionManager;
 

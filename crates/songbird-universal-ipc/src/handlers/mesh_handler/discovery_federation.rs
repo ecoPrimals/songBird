@@ -212,7 +212,10 @@ impl MeshHandler {
 
         info!(
             "📢 mesh.publish: topic={}, notified={}, failed={}, total_peers={}",
-            topic, notified, failed, reachable.len()
+            topic,
+            notified,
+            failed,
+            reachable.len()
         );
 
         Ok(json!({
@@ -230,15 +233,14 @@ impl MeshHandler {
     /// to pull the updated ecobins (fire-and-forget).
     pub async fn handle_subscribe(&self, params: Value) -> Result<Value, String> {
         let topic = params.get("topic").and_then(Value::as_str).unwrap_or("unknown");
-        let origin = params
-            .get("origin")
-            .and_then(Value::as_str)
-            .unwrap_or("unknown");
+        let origin = params.get("origin").and_then(Value::as_str).unwrap_or("unknown");
         let payload = params.get("payload").cloned().unwrap_or(Value::Null);
 
         info!(
             "📬 mesh.subscribe: topic={}, origin={}, payload_size={}",
-            topic, origin, payload.to_string().len()
+            topic,
+            origin,
+            payload.to_string().len()
         );
 
         match topic {
@@ -248,14 +250,9 @@ impl MeshHandler {
                     .and_then(Value::as_array)
                     .map(|arr| arr.iter().filter_map(Value::as_str).map(String::from).collect())
                     .unwrap_or_default();
-                let manifest_hash = payload
-                    .get("manifest_hash")
-                    .and_then(Value::as_str)
-                    .unwrap_or("unknown");
-                let builder = payload
-                    .get("builder")
-                    .and_then(Value::as_str)
-                    .unwrap_or(origin);
+                let manifest_hash =
+                    payload.get("manifest_hash").and_then(Value::as_str).unwrap_or("unknown");
+                let builder = payload.get("builder").and_then(Value::as_str).unwrap_or(origin);
 
                 info!(
                     "📦 depot.updated from {}: {} primals, hash={}",
@@ -273,10 +270,8 @@ impl MeshHandler {
                         .spawn();
                     match result {
                         Ok(mut child) => {
-                            match tokio::time::timeout(
-                                Duration::from_secs(120),
-                                child.wait(),
-                            ).await {
+                            match tokio::time::timeout(Duration::from_secs(120), child.wait()).await
+                            {
                                 Ok(Ok(status)) => {
                                     info!("plasmid.auto_fetch exited: {status}");
                                 }
@@ -304,13 +299,11 @@ impl MeshHandler {
                     "builder": builder
                 }))
             }
-            _ => {
-                Ok(json!({
-                    "received": true,
-                    "topic": topic,
-                    "action": "logged"
-                }))
-            }
+            _ => Ok(json!({
+                "received": true,
+                "topic": topic,
+                "action": "logged"
+            })),
         }
     }
 }

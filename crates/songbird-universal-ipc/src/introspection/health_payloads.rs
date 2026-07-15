@@ -43,7 +43,11 @@ impl Default for SubsystemStatus {
 
 impl SubsystemStatus {
     fn status_str(ready: bool) -> &'static str {
-        if ready { "up" } else { "degraded" }
+        if ready {
+            "up"
+        } else {
+            "degraded"
+        }
     }
 
     fn is_ready(&self) -> bool {
@@ -57,7 +61,11 @@ impl SubsystemStatus {
 /// are up. Other subsystems may be degraded without blocking readiness.
 #[must_use]
 pub fn health_readiness(status: &SubsystemStatus) -> Value {
-    let overall = if status.is_ready() { "ready" } else { "not_ready" };
+    let overall = if status.is_ready() {
+        "ready"
+    } else {
+        "not_ready"
+    };
     serde_json::json!({
         "status": overall,
         "subsystems": {
@@ -74,7 +82,11 @@ pub fn health_readiness(status: &SubsystemStatus) -> Value {
 /// Reports detailed subsystem health including relay and mesh.
 #[must_use]
 pub fn health_check(status: &SubsystemStatus, uptime_secs: Option<u64>) -> Value {
-    let overall = if status.is_ready() { "healthy" } else { "degraded" };
+    let overall = if status.is_ready() {
+        "healthy"
+    } else {
+        "degraded"
+    };
     serde_json::json!({
         "status": overall,
         "primal": primal_names::SELF_NAME,

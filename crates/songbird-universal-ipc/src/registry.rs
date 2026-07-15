@@ -298,11 +298,8 @@ impl ServiceRegistry {
     /// `capability.call` can find it locally and `announce_capabilities_to_peers`
     /// can propagate it to remote gates.
     pub async fn register_drawbridge_capability(&self, capability: &str, drawbridge_addr: &str) {
-        let port: u16 = drawbridge_addr
-            .rsplit(':')
-            .next()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(7780);
+        let port: u16 =
+            drawbridge_addr.rsplit(':').next().and_then(|p| p.parse().ok()).unwrap_or(7780);
 
         let name = format!("drawbridge:{capability}");
         let native_endpoint = NativeEndpoint::TcpLocal(port);

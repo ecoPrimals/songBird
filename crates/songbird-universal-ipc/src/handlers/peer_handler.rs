@@ -78,7 +78,8 @@ impl PeerHandler {
         let mut node_id = params.node_id;
         let mut mesh_registered = false;
 
-        if result.state == "connected" && register_mesh
+        if result.state == "connected"
+            && register_mesh
             && let Some(ref mesh_handler) = self.mesh_handler
         {
             let reg_result = self
@@ -130,20 +131,20 @@ impl PeerHandler {
         target_address: &str,
         provided_node_id: Option<&str>,
     ) -> Result<String, String> {
-        let addr: std::net::SocketAddr = target_address
-            .parse()
-            .map_err(|e| format!("invalid address: {e}"))?;
+        let addr: std::net::SocketAddr =
+            target_address.parse().map_err(|e| format!("invalid address: {e}"))?;
 
         // Discover node_id via federation probe if not provided
         let node_id = if let Some(id) = provided_node_id {
             id.to_string()
         } else {
-            let probe_result = MeshHandler::probe_peer_full(addr, Duration::from_secs(5)).await
+            let probe_result = MeshHandler::probe_peer_full(addr, Duration::from_secs(5))
+                .await
                 .map_err(|e| format!("federation probe failed: {e}"))?;
 
             // Try to get node_id from identity.get
-            let discovered = self.discover_node_id(addr).await
-                .unwrap_or_else(|| format!("peer-{}", addr.ip()));
+            let discovered =
+                self.discover_node_id(addr).await.unwrap_or_else(|| format!("peer-{}", addr.ip()));
 
             debug!(
                 addr = %addr,
@@ -156,12 +157,13 @@ impl PeerHandler {
 
         // Register in mesh if initialized
         let mesh_guard = mesh_handler.mesh.read().await;
-        let mesh = mesh_guard.as_ref()
-            .ok_or_else(|| String::from("mesh not initialized"))?;
+        let mesh = mesh_guard.as_ref().ok_or_else(|| String::from("mesh not initialized"))?;
 
         let endpoint = RelayEndpoint {
             node_id: node_id.clone(),
-            endpoint_type: EndpointType::Direct { addr },
+            endpoint_type: EndpointType::Direct {
+                addr,
+            },
             latency: None,
             last_seen: Instant::now(),
             reachable: true,
@@ -177,24 +179,30 @@ impl PeerHandler {
         use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
         use tokio::net::TcpStream;
 
-        let stream = tokio::time::timeout(
-            Duration::from_secs(3),
-            TcpStream::connect(addr),
-        ).await.ok()?.ok()?;
+        let stream = tokio::time::timeout(Duration::from_secs(3), TcpStream::connect(addr))
+            .await
+            .ok()?
+            .ok()?;
 
         let (reader, mut writer) = stream.into_split();
 
         writer.write_all(&ribocipher::MITO_PREFIX).await.ok()?;
-        writer.write_all(b"{\"jsonrpc\":\"2.0\",\"method\":\"identity.get\",\"id\":2}\n").await.ok()?;
+        writer
+            .write_all(b"{\"jsonrpc\":\"2.0\",\"method\":\"identity.get\",\"id\":2}\n")
+            .await
+            .ok()?;
 
         let mut buf_reader = BufReader::new(reader);
         let mut response = String::new();
         tokio::time::timeout(Duration::from_secs(3), buf_reader.read_line(&mut response))
-            .await.ok()?.ok()?;
+            .await
+            .ok()?
+            .ok()?;
 
         let val: serde_json::Value = serde_json::from_str(&response).ok()?;
         // Try common identity response fields
-        val["result"]["node_id"].as_str()
+        val["result"]["node_id"]
+            .as_str()
             .or_else(|| val["result"]["primal"].as_str())
             .map(String::from)
     }

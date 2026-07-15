@@ -8,4 +8,5 @@ mod wire;
 
 pub use ipc_backend::IpcStorageBackend;
 
+#[cfg(unix)]
 pub(crate) use wire::storage_socket_path_from_endpoint;

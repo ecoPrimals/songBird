@@ -60,9 +60,7 @@ pub(super) async fn dispatch_network(
         JsonRpcMethod::Relay(RelayMethod::Allocate) => {
             handler.relay_handler.handle_allocate(params).await
         }
-        JsonRpcMethod::Relay(RelayMethod::Forward) => {
-            handler.handle_relay_forward(params).await
-        }
+        JsonRpcMethod::Relay(RelayMethod::Forward) => handler.handle_relay_forward(params).await,
 
         JsonRpcMethod::Birdsong(BirdsongMethod::GenerateEncryptedBeacon) => {
             handler.birdsong_handler.handle_generate_encrypted_beacon(params).await

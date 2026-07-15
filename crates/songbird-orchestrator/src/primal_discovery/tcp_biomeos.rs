@@ -4,6 +4,7 @@
 //! TCP discovery files, BiomeOS `*.sock` enumeration, and synchronous multi-strategy resolution.
 
 use anyhow::Result;
+#[cfg(unix)]
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
 
@@ -51,12 +52,7 @@ fn is_unix_socket_filetype(ft: &std::fs::FileType) -> bool {
     std::os::unix::fs::FileTypeExt::is_socket(ft)
 }
 
-#[cfg(not(unix))]
-#[inline]
-fn is_unix_socket_filetype(_ft: &std::fs::FileType) -> bool {
-    false
-}
-
+#[cfg(unix)]
 pub(super) fn list_biomeos_sock_paths<F>(env_reader: &F) -> Vec<PathBuf>
 where
     F: Fn(&str) -> Option<String>,

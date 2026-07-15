@@ -298,10 +298,10 @@ impl HttpsConnection {
                     info!("   📦 Transfer-Encoding: chunked detected");
                     // For chunked responses, look for terminator: 0\r\n\r\n
                     // This indicates end of chunked body
-                } else if let Some(content_length_line) = headers_str
-                    .lines()
-                    .find(|line| line.get(..15).is_some_and(|prefix| prefix.eq_ignore_ascii_case("content-length:")))
-                {
+                } else if let Some(content_length_line) = headers_str.lines().find(|line| {
+                    line.get(..15)
+                        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("content-length:"))
+                }) {
                     if let Some(content_length) = content_length_line
                         .split(':')
                         .nth(1)

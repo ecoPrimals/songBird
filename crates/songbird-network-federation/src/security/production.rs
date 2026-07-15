@@ -24,10 +24,10 @@ use std::path::PathBuf;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{debug, info, warn};
 
-#[cfg(unix)]
-use tokio::net::UnixStream as IpcStream;
 #[cfg(windows)]
 use tokio::net::TcpStream as IpcStream;
+#[cfg(unix)]
+use tokio::net::UnixStream as IpcStream;
 
 /// Production security provider via Unix socket JSON-RPC
 ///

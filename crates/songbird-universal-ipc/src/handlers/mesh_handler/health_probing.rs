@@ -146,7 +146,10 @@ impl MeshHandler {
                     match probe_result {
                         Ok(rtt) => {
                             match &path.endpoint_type {
-                                EndpointType::Overlay { overlay_name, .. } => {
+                                EndpointType::Overlay {
+                                    overlay_name,
+                                    ..
+                                } => {
                                     mesh.record_overlay_connection(
                                         node_id.clone(),
                                         peer_addr,
@@ -156,12 +159,8 @@ impl MeshHandler {
                                     .await;
                                 }
                                 _ => {
-                                    mesh.record_direct_connection(
-                                        node_id.clone(),
-                                        peer_addr,
-                                        rtt,
-                                    )
-                                    .await;
+                                    mesh.record_direct_connection(node_id.clone(), peer_addr, rtt)
+                                        .await;
                                 }
                             }
                             let rtt_ms = u64::try_from(rtt.as_millis()).unwrap_or(u64::MAX);
@@ -281,7 +280,10 @@ impl MeshHandler {
     ///
     /// Filters out self-connections: peers whose `node_id` matches our own or whose
     /// address matches our local bind address are skipped to prevent self-connect loops.
-    #[expect(clippy::too_many_lines, reason = "cohesive setup + probe loop with per-kind recording")]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "cohesive setup + probe loop with per-kind recording"
+    )]
     pub(super) fn spawn_peer_health_loop(
         mesh: Arc<BeaconMesh>,
         bootstrap_peers: Vec<(String, std::net::SocketAddr)>,
@@ -296,17 +298,23 @@ impl MeshHandler {
         #[derive(Clone)]
         enum PeerKind {
             Bootstrap,
-            Overlay { name: String },
+            Overlay {
+                name: String,
+            },
         }
 
-        let mut all_peers: Vec<(String, std::net::SocketAddr, PeerKind)> = bootstrap_peers
-            .into_iter()
-            .map(|(id, addr)| (id, addr, PeerKind::Bootstrap))
-            .collect();
+        let mut all_peers: Vec<(String, std::net::SocketAddr, PeerKind)> =
+            bootstrap_peers.into_iter().map(|(id, addr)| (id, addr, PeerKind::Bootstrap)).collect();
 
         for (id, addr, name) in overlay_peers {
             if !all_peers.iter().any(|(existing_id, _, _)| existing_id == &id) {
-                all_peers.push((id, addr, PeerKind::Overlay { name }));
+                all_peers.push((
+                    id,
+                    addr,
+                    PeerKind::Overlay {
+                        name,
+                    },
+                ));
             }
         }
 
@@ -358,14 +366,12 @@ impl MeshHandler {
                     if let Ok(result) = Self::probe_peer_full(*addr, probe_timeout).await {
                         match kind {
                             PeerKind::Bootstrap => {
-                                mesh.record_direct_connection(
-                                    peer_id.clone(),
-                                    *addr,
-                                    result.rtt,
-                                )
-                                .await;
+                                mesh.record_direct_connection(peer_id.clone(), *addr, result.rtt)
+                                    .await;
                             }
-                            PeerKind::Overlay { name } => {
+                            PeerKind::Overlay {
+                                name,
+                            } => {
                                 mesh.record_overlay_connection(
                                     peer_id.clone(),
                                     *addr,

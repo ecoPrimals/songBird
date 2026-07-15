@@ -4,6 +4,7 @@
 //! JSON-RPC `capabilities.list` response parsing.
 
 /// Normalize `capabilities.list` / array-shaped results into flat capability tokens.
+#[cfg(any(unix, test))]
 pub fn parse_capabilities_result(response: &serde_json::Value) -> Option<Vec<String>> {
     let result = response.get("result")?;
     if let Some(arr) = result.as_array() {

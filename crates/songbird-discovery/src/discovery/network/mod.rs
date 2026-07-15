@@ -5,6 +5,7 @@ use crate::discovery::types::{NetworkLocation, NetworkMeasurement};
 use chrono::Utc;
 use songbird_types::SongbirdResult;
 type Result<T> = SongbirdResult<T>;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::process::Command;
 use std::str;
 
@@ -13,6 +14,7 @@ pub struct NetworkManager;
 
 impl NetworkManager {
     /// Measure ping latency to target
+    #[allow(unused_variables)]
     pub fn measure_ping_latency(target_address: &str) -> Result<f64> {
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         {

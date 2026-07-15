@@ -137,6 +137,7 @@ impl SecurityRpcClient {
                 }
                 #[cfg(not(unix))]
                 {
+                    let _ = path;
                     Err(std::io::Error::new(
                         std::io::ErrorKind::Unsupported,
                         "Unix sockets not supported on this platform",

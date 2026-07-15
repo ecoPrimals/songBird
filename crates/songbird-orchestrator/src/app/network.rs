@@ -10,7 +10,9 @@ use anyhow::Result;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use tracing::{info, warn};
 
-use crate::network::route_detect::{ROUTE_GET_TARGET_V4, resolve_local_ipv4};
+#[cfg(target_os = "linux")]
+use crate::network::route_detect::ROUTE_GET_TARGET_V4;
+use crate::network::route_detect::resolve_local_ipv4;
 
 /// Get local IP address for connectivity testing
 ///

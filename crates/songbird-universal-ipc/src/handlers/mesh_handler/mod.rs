@@ -565,10 +565,7 @@ impl MeshHandler {
         let node_id = self.node_id.read().await.clone();
         let reachable = mesh.get_reachable_nodes().await;
 
-        let include_gossip = params
-            .get("include_gossip")
-            .and_then(Value::as_bool)
-            .unwrap_or(true);
+        let include_gossip = params.get("include_gossip").and_then(Value::as_bool).unwrap_or(true);
 
         if include_gossip {
             let meta = self.peer_metadata.read().await;
@@ -648,7 +645,6 @@ impl MeshHandler {
             "uptime_seconds": self.start_time.elapsed().as_secs()
         }))
     }
-
 }
 
 impl Default for MeshHandler {
@@ -708,12 +704,10 @@ impl MeshHandler {
 fn detect_stale_gate_heads() -> Vec<serde_json::Value> {
     const STALE_THRESHOLD_SECS: u64 = 24 * 3600;
 
-    let workspace = std::env::var("ECOPRIMALS_ROOT")
-        .unwrap_or_else(|_| String::from("/opt/ecoPrimals"));
-    let heads_dir = std::path::PathBuf::from(&workspace)
-        .join("infra")
-        .join("wateringHole")
-        .join("heads");
+    let workspace =
+        std::env::var("ECOPRIMALS_ROOT").unwrap_or_else(|_| String::from("/opt/ecoPrimals"));
+    let heads_dir =
+        std::path::PathBuf::from(&workspace).join("infra").join("wateringHole").join("heads");
 
     let Ok(entries) = std::fs::read_dir(&heads_dir) else {
         return Vec::new();
@@ -727,11 +721,7 @@ fn detect_stale_gate_heads() -> Vec<serde_json::Value> {
         if path.extension().and_then(|e| e.to_str()) != Some("toml") {
             continue;
         }
-        let gate = path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("unknown")
-            .to_string();
+        let gate = path.file_stem().and_then(|s| s.to_str()).unwrap_or("unknown").to_string();
 
         let Ok(meta) = std::fs::metadata(&path) else {
             continue;

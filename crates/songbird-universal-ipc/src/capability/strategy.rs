@@ -222,7 +222,9 @@ fn discover_on_filesystem(search_paths: &[PathBuf], capability: &str) -> Vec<Pro
             for entry in entries.flatten() {
                 if let Ok(file_name) = entry.file_name().into_string()
                     && file_name.contains(capability)
-                    && file_name.as_bytes().get(file_name.len().saturating_sub(5)..)
+                    && file_name
+                        .as_bytes()
+                        .get(file_name.len().saturating_sub(5)..)
                         .is_some_and(|ext| ext.eq_ignore_ascii_case(b".sock"))
                 {
                     let path = entry.path();

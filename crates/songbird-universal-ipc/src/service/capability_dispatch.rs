@@ -67,7 +67,10 @@ impl IpcServiceHandler {
                 socket: None,
                 virtual_endpoint: String::new(),
                 native_endpoint: format!("http://{}", route.base_url),
-                endpoint: TransportEndpoint::Tcp { host, port },
+                endpoint: TransportEndpoint::Tcp {
+                    host,
+                    port,
+                },
                 capabilities: vec![params.capability.clone()],
                 signature: None,
                 signed_payload: None,
@@ -154,16 +157,8 @@ impl IpcServiceHandler {
                 backend = %route.base_url,
                 "capability.call → drawbridge proxy route"
             );
-            let path = call
-                .params
-                .get("path")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            let method = call
-                .params
-                .get("method")
-                .and_then(|v| v.as_str())
-                .unwrap_or("POST");
+            let path = call.params.get("path").and_then(|v| v.as_str()).unwrap_or("");
+            let method = call.params.get("method").and_then(|v| v.as_str()).unwrap_or("POST");
             let body = call.params.get("body").and_then(|v| v.as_str()).map(String::from);
             let headers: std::collections::HashMap<String, String> = call
                 .params
@@ -174,11 +169,7 @@ impl IpcServiceHandler {
             let url = if path.is_empty() {
                 route.base_url.clone()
             } else {
-                format!(
-                    "{}/{}",
-                    route.base_url.trim_end_matches('/'),
-                    path.trim_start_matches('/')
-                )
+                format!("{}/{}", route.base_url.trim_end_matches('/'), path.trim_start_matches('/'))
             };
 
             let mut merged_headers = route.default_headers.clone();
@@ -210,8 +201,7 @@ impl IpcServiceHandler {
                 result: serde_json::to_value(result)
                     .map_err(|e| format!("Serialization error: {e}"))?,
             };
-            return serde_json::to_value(response)
-                .map_err(|e| format!("Serialization error: {e}"));
+            return serde_json::to_value(response).map_err(|e| format!("Serialization error: {e}"));
         }
 
         if call.routing == "local" {
@@ -251,13 +241,10 @@ impl IpcServiceHandler {
                 .and_then(|s| s.trim().parse().ok())
                 .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
             let addr = format!("127.0.0.1:{port}");
-            tokio::time::timeout(
-                DEFAULT_SOCKET_IO_TIMEOUT,
-                tokio::net::TcpStream::connect(&addr),
-            )
-            .await
-            .map_err(|_| format!("Timeout connecting to provider at {addr}"))?
-            .map_err(|e| format!("Cannot connect to provider at {addr}: {e}"))?
+            tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, tokio::net::TcpStream::connect(&addr))
+                .await
+                .map_err(|_| format!("Timeout connecting to provider at {addr}"))?
+                .map_err(|e| format!("Cannot connect to provider at {addr}: {e}"))?
         };
 
         let request = serde_json::json!({

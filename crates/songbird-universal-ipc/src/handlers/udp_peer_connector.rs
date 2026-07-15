@@ -191,7 +191,11 @@ impl UdpPeerConnector {
             .map_err(|_| String::from("Hole punch timed out"))?
             .map_err(|e| format!("Hole punch error: {e}"))?;
 
-        let state = if punched { "connected" } else { "failed" };
+        let state = if punched {
+            "connected"
+        } else {
+            "failed"
+        };
 
         // Track binding
         {
@@ -253,10 +257,7 @@ impl UdpPeerConnector {
             return None;
         }
 
-        info!(
-            "🏠 LAN peer detected ({}) — using direct TCP probe instead of UDP punch",
-            target_ip
-        );
+        info!("🏠 LAN peer detected ({}) — using direct TCP probe instead of UDP punch", target_ip);
 
         // Probe the peer's TCP port. If the caller specified a port in target_address,
         // use that (they know what they're doing). Otherwise try the mesh peer port.
@@ -298,7 +299,10 @@ impl UdpPeerConnector {
                         local_address: String::from("0.0.0.0:0"),
                         remote_address: target_address.to_string(),
                         protocol: String::from("tcp"),
-                        #[expect(clippy::cast_possible_truncation, reason = "LAN probe timeout is 3s — millis always fits u64")]
+                        #[expect(
+                            clippy::cast_possible_truncation,
+                            reason = "LAN probe timeout is 3s — millis always fits u64"
+                        )]
                         latency_ms: Some(latency.as_millis() as u64),
                     }),
                     node_id: None,
@@ -602,13 +606,10 @@ mod tests {
 
         // This is loopback so LAN bypass won't trigger (loopback is excluded)
         // — verify it falls through to UDP punch normally
-        let result = UdpPeerConnector::with_config(
-            Duration::from_millis(500),
-            1,
-            Duration::from_millis(10),
-        )
-        .connect(&format!("127.0.0.1:{port}"), None, None)
-        .await;
+        let result =
+            UdpPeerConnector::with_config(Duration::from_millis(500), 1, Duration::from_millis(10))
+                .connect(&format!("127.0.0.1:{port}"), None, None)
+                .await;
 
         // Loopback excluded from LAN bypass → goes to UDP punch → "connected" or "failed"
         match result {

@@ -69,8 +69,7 @@ impl MockRemoteGate {
                         let capture = capture.clone();
                         async move {
                             let body_bytes = req.collect().await.unwrap().to_bytes();
-                            let Ok(req_json) = serde_json::from_slice::<Value>(&body_bytes)
-                            else {
+                            let Ok(req_json) = serde_json::from_slice::<Value>(&body_bytes) else {
                                 let resp = json!({"jsonrpc":"2.0","error":{"code":-32700,"message":"parse error"},"id":null});
                                 return Ok::<_, hyper::Error>(Response::new(Full::new(
                                     Bytes::from(serde_json::to_vec(&resp).unwrap()),
@@ -91,10 +90,7 @@ impl MockRemoteGate {
                                 "capability.call" => {
                                     if let Some(cap) = &capture {
                                         cap.lock().await.push(
-                                            req_json
-                                                .get("params")
-                                                .cloned()
-                                                .unwrap_or(Value::Null),
+                                            req_json.get("params").cloned().unwrap_or(Value::Null),
                                         );
                                     }
                                     json!({
@@ -234,10 +230,7 @@ async fn peer_has_capability_probe_failure_returns_err() {
         .peer_has_capability("http://127.0.0.1:1/jsonrpc", "any-cap")
         .await
         .expect_err("unreachable port should fail probe");
-    assert!(
-        err.contains("probe:") || err.contains("Connect"),
-        "unexpected probe error: {err}"
-    );
+    assert!(err.contains("probe:") || err.contains("Connect"), "unexpected probe error: {err}");
 }
 
 #[tokio::test]

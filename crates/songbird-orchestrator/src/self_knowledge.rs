@@ -85,13 +85,8 @@ pub fn discover_node_name() -> Result<String> {
 }
 
 /// Static self-knowledge capabilities (what songBird natively provides).
-const SELF_CAPABILITIES: &[&str] = &[
-    "discovery",
-    "federation",
-    "coordination",
-    "health",
-    "capabilities",
-];
+const SELF_CAPABILITIES: &[&str] =
+    &["discovery", "federation", "coordination", "health", "capabilities"];
 
 /// Discover our own capabilities
 ///

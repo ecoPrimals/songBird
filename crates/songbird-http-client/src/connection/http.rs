@@ -65,7 +65,8 @@ impl HttpConnection {
 
         // Build request — use path+query only (origin-form) for HTTP/1.1 direct connections.
         // Absolute-form (full URL) is only for proxy requests per RFC 7230 §5.3.2.
-        let request_target = uri.path_and_query().map_or("/", hyper::http::uri::PathAndQuery::as_str);
+        let request_target =
+            uri.path_and_query().map_or("/", hyper::http::uri::PathAndQuery::as_str);
         let mut req_builder = Request::builder().method(method).uri(request_target);
 
         // Add Host header if not already provided (required by HTTP/1.1)

@@ -21,10 +21,10 @@ use std::time::SystemTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{debug, info};
 
-#[cfg(unix)]
-use tokio::net::UnixStream as IpcStream;
 #[cfg(windows)]
 use tokio::net::TcpStream as IpcStream;
+#[cfg(unix)]
+use tokio::net::UnixStream as IpcStream;
 
 // Imports only used by mock implementations
 #[cfg(any(test, feature = "test-mocks"))]

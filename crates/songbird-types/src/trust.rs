@@ -105,13 +105,9 @@ impl<'de> Deserialize<'de> for TrustLevel {
                     || t.eq_ignore_ascii_case("unknown")
                 {
                     Ok(Self::None)
-                } else if t.eq_ignore_ascii_case("limited")
-                    || t.eq_ignore_ascii_case("basic")
-                {
+                } else if t.eq_ignore_ascii_case("limited") || t.eq_ignore_ascii_case("basic") {
                     Ok(Self::Limited)
-                } else if t.eq_ignore_ascii_case("elevated")
-                    || t.eq_ignore_ascii_case("medium")
-                {
+                } else if t.eq_ignore_ascii_case("elevated") || t.eq_ignore_ascii_case("medium") {
                     Ok(Self::Elevated)
                 } else if t.eq_ignore_ascii_case("highest")
                     || t.eq_ignore_ascii_case("explicit")

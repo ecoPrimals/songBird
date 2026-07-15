@@ -202,9 +202,7 @@ impl ServiceLocator {
     /// Connect to the songBird IPC socket. On Unix this is a Unix domain socket;
     /// on Windows it falls back to TCP localhost on `SONGBIRD_IPC_PORT` (default 3492).
     #[cfg(unix)]
-    fn connect_ipc_stream<F>(
-        env_reader: &F,
-    ) -> SongbirdResult<std::os::unix::net::UnixStream>
+    fn connect_ipc_stream<F>(env_reader: &F) -> SongbirdResult<std::os::unix::net::UnixStream>
     where
         F: Fn(&str) -> Result<String, std::env::VarError>,
     {
@@ -232,9 +230,7 @@ impl ServiceLocator {
 
     /// Connect to the songBird IPC via TCP localhost (Windows — no Unix sockets).
     #[cfg(windows)]
-    fn connect_ipc_stream<F>(
-        env_reader: &F,
-    ) -> SongbirdResult<std::net::TcpStream>
+    fn connect_ipc_stream<F>(env_reader: &F) -> SongbirdResult<std::net::TcpStream>
     where
         F: Fn(&str) -> Result<String, std::env::VarError>,
     {
@@ -247,9 +243,7 @@ impl ServiceLocator {
 
         let addr = format!("127.0.0.1:{port}");
         TcpStream::connect(&addr).map_err(|e| {
-            SongbirdError::configuration(format!(
-                "Cannot connect to songbird IPC at {addr}: {e}"
-            ))
+            SongbirdError::configuration(format!("Cannot connect to songbird IPC at {addr}: {e}"))
         })
     }
 
@@ -394,6 +388,7 @@ impl ServiceLocator {
 /// Fallback runtime directory when `XDG_RUNTIME_DIR` is unset and `dirs::runtime_dir()` is `None`.
 ///
 /// Derives from the system runtime constant rather than hardcoding a UID-specific path.
+#[cfg(unix)]
 fn default_runtime_fallback() -> PathBuf {
     PathBuf::from(songbird_types::constants::BIOMEOS_SYSTEM_RUNTIME_DIR).parent().map_or_else(
         || PathBuf::from(songbird_types::constants::SYSTEM_RUNTIME_DIR),

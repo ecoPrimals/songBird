@@ -270,6 +270,7 @@ impl ProcessManager {
     /// This is platform-specific:
     /// - On Unix: Uses `/proc/{pid}/stat` to check state, falls back to `kill -0`
     /// - On Windows: Would need different approach (WMI or tasklist)
+    #[allow(unused_variables)]
     fn is_process_running(&self, pid: u32) -> bool {
         #[cfg(unix)]
         {

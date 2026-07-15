@@ -125,7 +125,10 @@ pub fn build_topology(
         })
         .collect();
 
-    TopologyGraph { nodes, edges }
+    TopologyGraph {
+        nodes,
+        edges,
+    }
 }
 
 impl TopologyGraph {
@@ -167,16 +170,10 @@ impl TopologyGraph {
             })
             .collect();
 
-        let direct_count = self
-            .edges
-            .iter()
-            .filter(|e| matches!(e.source, EdgeSource::DirectObservation))
-            .count();
-        let gossip_count = self
-            .edges
-            .iter()
-            .filter(|e| matches!(e.source, EdgeSource::PeerGossip))
-            .count();
+        let direct_count =
+            self.edges.iter().filter(|e| matches!(e.source, EdgeSource::DirectObservation)).count();
+        let gossip_count =
+            self.edges.iter().filter(|e| matches!(e.source, EdgeSource::PeerGossip)).count();
 
         json!({
             "nodes": nodes,
@@ -259,11 +256,8 @@ mod tests {
             .collect();
         assert_eq!(direct_edges.len(), 4, "4 direct edges from self");
 
-        let gossip_edges: Vec<_> = graph
-            .edges
-            .iter()
-            .filter(|e| matches!(e.source, EdgeSource::PeerGossip))
-            .collect();
+        let gossip_edges: Vec<_> =
+            graph.edges.iter().filter(|e| matches!(e.source, EdgeSource::PeerGossip)).collect();
         assert!(gossip_edges.len() >= 4, "gossip edges from flock + spore");
     }
 
@@ -299,8 +293,7 @@ mod tests {
         let mut latencies = HashMap::new();
         latencies.insert(String::from("peer-1"), 5);
 
-        let graph =
-            build_topology(self_id, &directly_reachable, &HashMap::new(), &latencies);
+        let graph = build_topology(self_id, &directly_reachable, &HashMap::new(), &latencies);
         let json = graph.to_json(self_id, 120);
 
         assert_eq!(json["node_count"], 2);

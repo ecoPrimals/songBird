@@ -5,9 +5,11 @@
 
 use anyhow::Result;
 use serde_json::Value;
+#[cfg(unix)]
 use std::path::PathBuf;
 
 /// Interpret a storage capability endpoint as a local Unix socket path (`unix://…` or absolute path).
+#[cfg(unix)]
 #[must_use]
 pub fn storage_socket_path_from_endpoint(endpoint: &str) -> Option<PathBuf> {
     let t = endpoint.trim();

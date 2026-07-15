@@ -213,6 +213,7 @@ impl ResourceDetector {
     }
 
     /// Parse size string like "100G", "1.5T" to GB
+    #[cfg(any(target_os = "linux", test))]
     fn parse_size_to_gb(size_str: &str) -> u64 {
         let size_str = size_str.trim();
         if size_str.is_empty() {

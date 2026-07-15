@@ -53,12 +53,17 @@ pub enum NetworkCommand {
 /// Handle network commands
 pub async fn handle_network_command(command: NetworkCommand) -> SongbirdResult<()> {
     match command {
-        NetworkCommand::Test { target, iterations } => probe_peers(target, iterations).await,
+        NetworkCommand::Test {
+            target,
+            iterations,
+        } => probe_peers(target, iterations).await,
         NetworkCommand::Monitor {
             interval,
             continuous,
         } => monitor_peers(interval, continuous).await,
-        NetworkCommand::Diagnose { comprehensive } => diagnose_connectivity(comprehensive).await,
+        NetworkCommand::Diagnose {
+            comprehensive,
+        } => diagnose_connectivity(comprehensive).await,
     }
 }
 
@@ -79,9 +84,7 @@ fn resolve_peers(filter: Option<&str>) -> Result<Vec<PeerTarget>, String> {
 /// Pure parser for the `SONGBIRD_PEERS` format — testable without global state.
 fn parse_peers_value(raw: &str, filter: Option<&str>) -> Result<Vec<PeerTarget>, String> {
     if raw.trim().is_empty() {
-        return Err(String::from(
-            "SONGBIRD_PEERS is empty — configure mesh peers first",
-        ));
+        return Err(String::from("SONGBIRD_PEERS is empty — configure mesh peers first"));
     }
 
     let mut peers = Vec::new();
@@ -97,7 +100,8 @@ fn parse_peers_value(raw: &str, filter: Option<&str>) -> Result<Vec<PeerTarget>,
             continue;
         };
         if let Some(f) = filter
-            && node_id != f && addr_str != f
+            && node_id != f
+            && addr_str != f
         {
             continue;
         }
@@ -139,11 +143,7 @@ async fn probe_peers(target: Option<String>, iterations: u32) -> SongbirdResult<
         }
     };
 
-    println!(
-        "Probing {} peer(s), {} iterations each:",
-        peers.len(),
-        iterations
-    );
+    println!("Probing {} peer(s), {} iterations each:", peers.len(), iterations);
     println!();
 
     for peer in &peers {
@@ -184,7 +184,11 @@ async fn monitor_peers(interval: u64, continuous: bool) -> SongbirdResult<()> {
     };
 
     let interval_dur = Duration::from_secs(interval);
-    let cycles = if continuous { u32::MAX } else { 1 };
+    let cycles = if continuous {
+        u32::MAX
+    } else {
+        1
+    };
 
     for cycle in 0..cycles {
         if cycle > 0 {
@@ -227,8 +231,7 @@ async fn diagnose_connectivity(comprehensive: bool) -> SongbirdResult<()> {
         })
         .unwrap_or_else(|_| std::env::temp_dir());
 
-    let socket_path =
-        biomeos_dir.join(format!("{}.sock", songbird_types::primal_names::SELF_NAME));
+    let socket_path = biomeos_dir.join(format!("{}.sock", songbird_types::primal_names::SELF_NAME));
     if socket_path.exists() {
         println!("  IPC socket: OK ({})", socket_path.display());
     } else {
@@ -338,11 +341,8 @@ mod tests {
 
     #[test]
     fn compute_stats_multiple_samples() {
-        let rtts = vec![
-            Duration::from_millis(10),
-            Duration::from_millis(20),
-            Duration::from_millis(30),
-        ];
+        let rtts =
+            vec![Duration::from_millis(10), Duration::from_millis(20), Duration::from_millis(30)];
         let stats = compute_stats(&rtts);
         assert!((stats.min - 10.0).abs() < 0.5);
         assert!((stats.max - 30.0).abs() < 0.5);
@@ -359,7 +359,8 @@ mod tests {
 
     #[test]
     fn parse_valid_entries() {
-        let peers = parse_peers_value("gate-a@192.168.1.1:7700,gate-b@192.168.1.2:7700", None).unwrap();
+        let peers =
+            parse_peers_value("gate-a@192.168.1.1:7700,gate-b@192.168.1.2:7700", None).unwrap();
         assert_eq!(peers.len(), 2);
         assert_eq!(peers[0].node_id, "gate-a");
         assert_eq!(peers[1].node_id, "gate-b");
@@ -367,20 +368,18 @@ mod tests {
 
     #[test]
     fn parse_filters_by_node_id() {
-        let peers = parse_peers_value(
-            "gate-a@192.168.1.1:7700,gate-b@192.168.1.2:7700",
-            Some("gate-b"),
-        ).unwrap();
+        let peers =
+            parse_peers_value("gate-a@192.168.1.1:7700,gate-b@192.168.1.2:7700", Some("gate-b"))
+                .unwrap();
         assert_eq!(peers.len(), 1);
         assert_eq!(peers[0].node_id, "gate-b");
     }
 
     #[test]
     fn parse_skips_malformed_entries() {
-        let peers = parse_peers_value(
-            "good@10.0.0.1:7700,bad-no-at-sign,also-bad@not-a-socket",
-            None,
-        ).unwrap();
+        let peers =
+            parse_peers_value("good@10.0.0.1:7700,bad-no-at-sign,also-bad@not-a-socket", None)
+                .unwrap();
         assert_eq!(peers.len(), 1);
         assert_eq!(peers[0].node_id, "good");
     }

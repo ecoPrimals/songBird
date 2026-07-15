@@ -313,10 +313,7 @@ impl SafeEnv {
     /// Get boolean from environment with default
     #[must_use]
     pub fn get_bool(key: &str, default: bool) -> bool {
-        songbird_process_env::var(key)
-            .ok()
-            .and_then(|v| parse_bool_relaxed(&v))
-            .unwrap_or(default)
+        songbird_process_env::var(key).ok().and_then(|v| parse_bool_relaxed(&v)).unwrap_or(default)
     }
 
     /// Get integer from environment with default (safe - falls back to default on parse failure)

@@ -14,7 +14,9 @@
 //! 3. **Intelligent Selection**: Auto-detect IPv4/IPv6/dual-stack
 //! 4. **Future-Proof**: Foundation for virtual endpoints and hot-swapping
 
-use anyhow::{Context, Result};
+#[cfg(target_os = "linux")]
+use anyhow::Context as _;
+use anyhow::Result;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use tracing::{debug, info, warn};
 

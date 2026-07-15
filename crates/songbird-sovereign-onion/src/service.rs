@@ -10,17 +10,19 @@ use crate::keys::{EphemeralKeypair, OnionIdentity};
 use crate::protocol::{DataMessage, KeyExchangeMessage, MessageType};
 use crate::security_crypto::SecurityCryptoClient;
 use crate::storage::{InMemoryOnionStorage, OnionStorage, OnionStorageBackend};
+#[cfg(any(unix, test))]
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 const MAX_ONION_FRAME: usize = 16 * 1024 * 1024;
 use tokio::net::{TcpListener, TcpStream};
-#[cfg(unix)]
-use tracing::{debug, error, info, warn};
 #[cfg(not(unix))]
 use tracing::{debug, error, info};
+#[cfg(unix)]
+use tracing::{debug, error, info, warn};
 
+#[cfg(any(unix, test))]
 fn storage_socket_from_endpoint(endpoint: &str) -> Option<PathBuf> {
     let t = endpoint.trim();
     if let Some(p) = t.strip_prefix("unix://") {

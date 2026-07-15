@@ -1,6 +1,6 @@
 # Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v0.2.1-wave140a  
+**Version**: v0.2.1-wave141a  
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
@@ -26,8 +26,8 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all dispatch handlers |
 | JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (58+ methods, 34 domain sub-enums including `Btsp`, `Lifecycle` and `Inference`) — zero string matching in dispatch; `birdsong.schema` introspection; `normalize_json_rpc_method_name()` absorbs `discovery.find_by_capability`, `net.discovery.find_by_capability`, `model.*`, `ai.*` aliases; Wave 60: `mesh.discover_remotes`, `mesh.mirror`, `mesh.publish`; Wave 70: `mesh.probe_latency`; Wave 74: `ipc.relay_stats`; Wave 75: `mesh.capabilities_announce` |
-| Clippy Pedantic | All 31 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets`; Jul 15 2026 verified) |
-| Build | Clean (zero errors, zero warnings) |
+| Clippy Pedantic | All 31 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets`; Jul 15 2026 verified); **Windows cross-compile zero warnings** (`x86_64-pc-windows-gnu`) |
+| Build | Clean (zero errors, zero warnings; cross-platform verified) |
 | Formatting | Clean (`cargo fmt --check`; May 27 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
 | Files >800 lines | **0** — Wave 123: `beacon.rs` (858→347L via test extraction to `beacon_tests.rs`); Wave 121: `keys.rs` (801→555L via test extraction to `keys_tests.rs`); Wave 120: `federation.rs` (811→509L via `federation_config.rs` + test extraction), `plugin/mod.rs` (808→329L via `types.rs` + test extraction), `processor.rs` (805→472L via test extraction); Wave 111: `connection.rs` (815→472L via `session_protocol.rs` SRP extraction), `hardcoded_elimination.rs` (872→689L via `hardcoded_replace.rs` extraction); Wave 76: `mesh_handler/mod.rs` (1004→783L via `capability_propagation.rs` extraction); Wave 74: `multi_tier_coordinator.rs` (799→655L); Wave 209: `state.rs` (877→459L) |

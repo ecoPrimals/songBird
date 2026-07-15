@@ -149,10 +149,7 @@ impl IpcServiceHandler {
             .and_then(|v| v.as_str())
             .ok_or_else(|| String::from("Missing 'capability' parameter"))?;
 
-        let method = params
-            .get("method")
-            .and_then(|v| v.as_str())
-            .unwrap_or("POST");
+        let method = params.get("method").and_then(|v| v.as_str()).unwrap_or("POST");
 
         let path = params.get("path").and_then(|v| v.as_str()).unwrap_or("");
 

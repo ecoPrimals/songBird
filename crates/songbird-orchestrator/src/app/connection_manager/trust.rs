@@ -222,9 +222,7 @@ impl TrustEvaluator {
         }
 
         match trust_level {
-            TrustLevel::None => {
-                Err(anyhow!("Cannot create connection at trust level None"))
-            }
+            TrustLevel::None => Err(anyhow!("Cannot create connection at trust level None")),
 
             TrustLevel::Limited => {
                 debug!("🎵 Creating Limited local connection (BirdSong only)");

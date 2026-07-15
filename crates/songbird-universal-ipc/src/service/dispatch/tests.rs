@@ -156,10 +156,8 @@ async fn http_proxy_missing_capability_errors() {
 #[tokio::test]
 async fn http_proxy_unknown_capability_errors() {
     let h = ipc_handler();
-    let err = h
-        .handle("http.proxy", json!({ "capability": "nonexistent" }))
-        .await
-        .expect_err("no route");
+    let err =
+        h.handle("http.proxy", json!({ "capability": "nonexistent" })).await.expect_err("no route");
     assert!(err.contains("No route registered"), "unexpected: {err}");
 }
 

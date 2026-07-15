@@ -99,10 +99,7 @@ pub async fn run_server(
     let drawbridge_config = DrawbridgeConfig::from_env();
     if !drawbridge_config.bind_addr.is_empty() {
         let proxy_router = Arc::new(CapabilityProxyRouter::from_env());
-        tracing::info!(
-            "🌉 Drawbridge HTTP listener on {}",
-            drawbridge_config.bind_addr
-        );
+        tracing::info!("🌉 Drawbridge HTTP listener on {}", drawbridge_config.bind_addr);
         tokio::spawn(async move {
             if let Err(e) = serve_drawbridge(drawbridge_config, proxy_router).await {
                 tracing::error!("Drawbridge listener failed: {}", e);

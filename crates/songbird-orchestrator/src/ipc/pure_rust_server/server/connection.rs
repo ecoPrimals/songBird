@@ -18,10 +18,16 @@
 
 use anyhow::{Context, Result};
 use std::path::PathBuf;
+#[cfg(unix)]
 use std::pin::Pin;
 use std::sync::Arc;
+#[cfg(unix)]
 use std::task::{self, Poll};
+#[cfg(unix)]
 use std::time::Duration;
+#[cfg(not(unix))]
+use tokio::io::BufReader;
+#[cfg(unix)]
 use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, ReadBuf};
 use tokio::net::TcpListener;
 #[cfg(unix)]
@@ -29,6 +35,7 @@ use tokio::net::{UnixListener, UnixStream};
 use tracing::{debug, error, info, warn};
 
 use super::UnixSocketServer;
+#[cfg(unix)]
 use crate::ipc::btsp;
 
 // ─── PeekedStream adapter ────────────────────────────────────────────────────

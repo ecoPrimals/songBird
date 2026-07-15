@@ -73,11 +73,10 @@ impl DomainPattern {
                 domain.len() >= suffix.len()
                     && domain[domain.len() - suffix.len()..].eq_ignore_ascii_case(suffix)
             }
-            Self::Contains(needle) => {
-                domain.as_bytes().windows(needle.len()).any(|w| {
-                    w.eq_ignore_ascii_case(needle.as_bytes())
-                })
-            }
+            Self::Contains(needle) => domain
+                .as_bytes()
+                .windows(needle.len())
+                .any(|w| w.eq_ignore_ascii_case(needle.as_bytes())),
             Self::Any => true,
         }
     }

@@ -40,9 +40,7 @@ pub(super) async fn dispatch_mesh(
         JsonRpcMethod::Mesh(MeshMethod::DiscoverRemotes) => {
             handler.mesh_handler.handle_discover_remotes(params).await
         }
-        JsonRpcMethod::Mesh(MeshMethod::Mirror) => {
-            handler.mesh_handler.handle_mirror(params).await
-        }
+        JsonRpcMethod::Mesh(MeshMethod::Mirror) => handler.mesh_handler.handle_mirror(params).await,
         JsonRpcMethod::Mesh(MeshMethod::Publish) => {
             handler.mesh_handler.handle_publish(params).await
         }

@@ -10,6 +10,7 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, UdpSocket};
 
 /// Linux `ip route get` target — documentation IPv4 ([RFC 5737] TEST-NET-1).
+#[cfg(target_os = "linux")]
 pub const ROUTE_GET_TARGET_V4: &str = "192.0.2.1";
 
 const DEFAULT_ROUTE_DETECT_V4: &str = "192.0.2.1:80";

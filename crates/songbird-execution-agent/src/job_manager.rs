@@ -150,17 +150,26 @@ impl JobManager {
     pub async fn stop_job(&self, job_id: &str) -> SongbirdResult<u32> {
         let job = self.get_job(job_id).await?;
 
-        let pid = job.pid.ok_or_else(|| SongbirdError::Runtime {
-            message: String::from("Job has no PID (not running?)"),
-            component: Some(String::from("job_manager")),
-            debug_info: None,
-        })?;
+        #[cfg(not(unix))]
+        {
+            let _ = job;
+            return Err(SongbirdError::Runtime {
+                message: String::from("Process stopping is only supported on Unix systems"),
+                component: Some(String::from("job_manager")),
+                debug_info: None,
+            });
+        }
 
-        // Send SIGTERM signal
         #[cfg(unix)]
         {
             use nix::sys::signal::{Signal, kill};
             use nix::unistd::Pid;
+
+            let pid = job.pid.ok_or_else(|| SongbirdError::Runtime {
+                message: String::from("Job has no PID (not running?)"),
+                component: Some(String::from("job_manager")),
+                debug_info: None,
+            })?;
 
             let pid_nix =
                 Pid::from_raw(i32::try_from(pid).map_err(|_| SongbirdError::Runtime {
@@ -173,25 +182,16 @@ impl JobManager {
                 component: Some(String::from("job_manager")),
                 debug_info: None,
             })?;
+
+            self.update_job(job_id, |job| {
+                job.status = ExecutionStatus::Stopped;
+                job.completed_at = Some(SystemTime::now());
+            })
+            .await?;
+
+            info!("Stopped job: {} (PID: {})", job_id, pid);
+            Ok(pid)
         }
-
-        #[cfg(not(unix))]
-        {
-            return Err(SongbirdError::Runtime {
-                message: String::from("Process stopping is only supported on Unix systems"),
-                component: Some(String::from("job_manager")),
-                debug_info: None,
-            });
-        }
-
-        self.update_job(job_id, |job| {
-            job.status = ExecutionStatus::Stopped;
-            job.completed_at = Some(SystemTime::now());
-        })
-        .await?;
-
-        info!("Stopped job: {} (PID: {})", job_id, pid);
-        Ok(pid)
     }
 
     /// List all jobs

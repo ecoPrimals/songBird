@@ -125,10 +125,7 @@ fn discover_wireguard_peers() -> Option<Vec<(String, String)>> {
 
 /// Tier 1: Run `wg show all dump` and parse output.
 fn discover_wg_from_command(subnet_prefix: &str) -> Option<Vec<(String, String)>> {
-    let output = std::process::Command::new("wg")
-        .args(["show", "all", "dump"])
-        .output()
-        .ok()?;
+    let output = std::process::Command::new("wg").args(["show", "all", "dump"]).output().ok()?;
 
     if !output.status.success() {
         debug!("wg show failed (not root or no WG interfaces) — trying config file fallback");
@@ -137,23 +134,26 @@ fn discover_wg_from_command(subnet_prefix: &str) -> Option<Vec<(String, String)>
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let result = parse_wg_dump(&stdout, subnet_prefix);
-    if result.is_empty() { None } else { Some(result) }
+    if result.is_empty() {
+        None
+    } else {
+        Some(result)
+    }
 }
 
 /// Tier 2: Parse a WireGuard config file (INI-style).
 ///
 /// Looks for `SONGBIRD_WG_CONF` env, then tries standard paths.
 fn discover_wg_from_config(subnet_prefix: &str) -> Option<Vec<(String, String)>> {
-    let paths_to_try: Vec<std::path::PathBuf> = if let Ok(custom) =
-        songbird_process_env::var("SONGBIRD_WG_CONF")
-    {
-        vec![std::path::PathBuf::from(custom)]
-    } else {
-        vec![
-            std::path::PathBuf::from("/etc/wireguard/wg0.conf"),
-            songbird_types::defaults::paths::config_dir().join("wg0.conf"),
-        ]
-    };
+    let paths_to_try: Vec<std::path::PathBuf> =
+        if let Ok(custom) = songbird_process_env::var("SONGBIRD_WG_CONF") {
+            vec![std::path::PathBuf::from(custom)]
+        } else {
+            vec![
+                std::path::PathBuf::from("/etc/wireguard/wg0.conf"),
+                songbird_types::defaults::paths::config_dir().join("wg0.conf"),
+            ]
+        };
 
     for path in &paths_to_try {
         if let Ok(content) = std::fs::read_to_string(path) {
@@ -429,13 +429,12 @@ pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
             );
             (converted, "persisted")
         } else if let Some(wg_peers) = discover_wireguard_peers() {
-            info!(
-                peer_count = wg_peers.len(),
-                "Auto-discovered peers from WireGuard interface"
-            );
+            info!(peer_count = wg_peers.len(), "Auto-discovered peers from WireGuard interface");
             (wg_peers, "wireguard")
         } else {
-            debug!("No SONGBIRD_PEERS, no persisted peers, no WG peers — mesh requires explicit mesh.init");
+            debug!(
+                "No SONGBIRD_PEERS, no persisted peers, no WG peers — mesh requires explicit mesh.init"
+            );
             return;
         }
     } else {

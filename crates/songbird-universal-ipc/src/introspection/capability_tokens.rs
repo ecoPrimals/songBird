@@ -235,7 +235,10 @@ pub const CONSUMED_CAPABILITIES: &[&str] = &[
 pub const CAPABILITY_METHOD_MAP: &[(&str, &[&str])] = &[
     ("network.discovery", &["discovery.peers", "discovery.announce", "discovery.list_peers"]),
     ("network.federation", &["songbird.federation.peers", "songbird.federation.status"]),
-    ("network.relay", &["relay.serve", "relay.stop", "relay.status", "relay.allocate", "relay.forward"]),
+    (
+        "network.relay",
+        &["relay.serve", "relay.stop", "relay.status", "relay.allocate", "relay.forward"],
+    ),
     (
         "network.stun",
         &["stun.serve", "stun.stop", "stun.status", "stun.get_public_address", "stun.bind"],
@@ -245,7 +248,10 @@ pub const CAPABILITY_METHOD_MAP: &[(&str, &[&str])] = &[
         &["igd.discover", "igd.map_port", "igd.unmap_port", "igd.status", "igd.external_ip"],
     ),
     ("network.quic", &["health.readiness"]),
-    ("network.tls", &["http.request", "http.get", "http.post", "http.put", "http.delete", "http.proxy"]),
+    (
+        "network.tls",
+        &["http.request", "http.get", "http.post", "http.put", "http.delete", "http.proxy"],
+    ),
     ("network.tor", &["tor.status", "tor.connect", "tor.circuit.build"]),
     (
         "network.onion",

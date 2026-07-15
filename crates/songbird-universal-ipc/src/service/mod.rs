@@ -45,6 +45,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+#[cfg(any(unix, test))]
 mod btsp_validation;
 mod capability_dispatch;
 mod construction;
@@ -66,8 +67,8 @@ pub use crate::service_types::{
     RegisterResult, ResolveParams, ResolveResult, ServiceInfo, TransportEndpoint,
     ValidateConsumedResult,
 };
-pub use http_proxy::{CapabilityProxyRouter, ProxyRoute};
 pub use drawbridge::{DrawbridgeConfig, DrawbridgeRoute, serve_drawbridge};
+pub use http_proxy::{CapabilityProxyRouter, ProxyRoute};
 
 /// Songbird IPC Service Handler
 ///

@@ -387,9 +387,8 @@ impl IpcServiceHandler {
         let call = CapabilityCallParams {
             capability: capability.to_string(),
             operation: String::from("forward"),
-            params: serde_json::from_str(payload_str).unwrap_or_else(|_| {
-                serde_json::json!({ "_raw_payload": payload_str })
-            }),
+            params: serde_json::from_str(payload_str)
+                .unwrap_or_else(|_| serde_json::json!({ "_raw_payload": payload_str })),
             routing: "any".to_string(),
         };
 

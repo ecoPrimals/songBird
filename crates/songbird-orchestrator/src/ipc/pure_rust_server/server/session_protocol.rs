@@ -13,18 +13,22 @@
 //! - **NDJSON**: Newline-delimited JSON-RPC with inline `btsp.negotiate` upgrade path.
 //! - **Encrypted (Phase 3)**: ChaCha20-Poly1305 encrypted frames after negotiate.
 
-use anyhow::{Context, Result, bail};
+#[cfg(unix)]
+use anyhow::bail;
+use anyhow::{Context, Result};
 use bytes::Bytes;
-use tokio::io::{
-    AsyncBufRead, AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt,
-};
+#[cfg(unix)]
+use tokio::io::AsyncReadExt;
+use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt};
 use tracing::{debug, error, info};
 
 use super::super::protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 use super::UnixSocketServer;
+#[cfg(unix)]
 use crate::ipc::btsp;
 use crate::ipc::btsp_phase3;
 
+#[cfg(unix)]
 impl UnixSocketServer {
     /// Run the full BTSP lifecycle (handshake → persistent framed JSON-RPC) on
     /// any bidirectional async stream. Works with both raw `UnixStream` and the
@@ -158,6 +162,7 @@ impl UnixSocketServer {
     /// Handle a pre-consumed first line as JSON-RPC, then continue with a
     /// persistent NDJSON session. Used when the first-line discrimination read
     /// the line to check for BTSP but found normal JSON-RPC instead.
+    #[cfg(unix)]
     pub(super) async fn handle_ndjson_first_line_then_session<R, W>(
         &self,
         first_line: String,
@@ -200,7 +205,9 @@ impl UnixSocketServer {
 
         self.handle_ndjson_session(reader, writer, caller).await
     }
+}
 
+impl UnixSocketServer {
     /// Persistent newline-delimited JSON-RPC session: reads requests in a loop
     /// until the client disconnects. Generic over any buffered reader + writer pair.
     ///

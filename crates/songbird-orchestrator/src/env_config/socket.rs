@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-use std::path::{Path, PathBuf};
+#[cfg(unix)]
+use std::path::Path;
+use std::path::PathBuf;
 
 use songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR;
+#[cfg(unix)]
 use tracing::{debug, info};
 
 use super::identity::family_id_with;
@@ -219,6 +222,7 @@ pub fn cleanup_stale_sockets() {
 pub fn cleanup_stale_sockets() {}
 
 /// Resolve the directory where Songbird places its sockets.
+#[cfg(unix)]
 fn resolve_socket_directory() -> PathBuf {
     if let Ok(socket_dir) = env("BIOMEOS_SOCKET_DIR") {
         return PathBuf::from(socket_dir);

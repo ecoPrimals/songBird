@@ -15,6 +15,7 @@
 //! | Disk total | `/sys/block/*/size` | `Disks::total_space()` sum |
 
 const BYTES_PER_GB: u64 = 1024 * 1024 * 1024;
+#[cfg(any(target_os = "linux", test))]
 const KB_TO_BYTES: u64 = 1024;
 
 /// System memory information in bytes.
@@ -176,13 +177,15 @@ pub fn load_percent() -> f32 {
         .map_or(0.0, |load1| (load1 / cores_f * 100.0).min(100.0))
 }
 
+/// Non-Linux fallback: returns 0.0 (no /proc/loadavg available).
 #[cfg(not(target_os = "linux"))]
 pub fn load_percent() -> f32 {
     0.0
 }
 
-// ---- Internal parsers ----
+// ---- Internal parsers (Linux /proc) ----
 
+#[cfg(any(target_os = "linux", test))]
 fn parse_meminfo(contents: &str) -> Option<MemoryInfo> {
     let mut total = None;
     let mut available = None;
@@ -204,6 +207,7 @@ fn parse_meminfo(contents: &str) -> Option<MemoryInfo> {
     })
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn parse_kb_value(s: &str) -> Option<u64> {
     let trimmed = s.trim();
     trimmed.strip_suffix("kB").unwrap_or(trimmed).trim().parse().ok()
