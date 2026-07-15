@@ -138,10 +138,9 @@ fn get_expected_service_count() -> u16 {
 /// while being fully agnostic to which primals exist.
 fn get_primal_port_offset(primal_type: &str) -> u16 {
     let hash = primal_type
-        .to_lowercase()
         .bytes()
+        .map(|b| b.to_ascii_lowercase())
         .fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(u32::from(b)));
-    // Map to range 10..999 to avoid port 0 offset
     10 + (hash % 990) as u16
 }
 
@@ -164,8 +163,7 @@ pub fn get_common_primal_ports() -> Vec<u16> {
             if let Some(primal_name) = key.strip_prefix("SONGBIRD_ENABLE_")
                 && (value.eq_ignore_ascii_case("true") || value == "1")
             {
-                let name = primal_name.to_lowercase();
-                ports.push(base_port + get_primal_port_offset(&name));
+                ports.push(base_port + get_primal_port_offset(primal_name));
             }
         }
 

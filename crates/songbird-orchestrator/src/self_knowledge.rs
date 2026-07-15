@@ -84,18 +84,21 @@ pub fn discover_node_name() -> Result<String> {
     Ok(hostname)
 }
 
+/// Static self-knowledge capabilities (what songBird natively provides).
+const SELF_CAPABILITIES: &[&str] = &[
+    "discovery",
+    "federation",
+    "coordination",
+    "health",
+    "capabilities",
+];
+
 /// Discover our own capabilities
 ///
 /// Lists what we can do (discovery, federation, etc.)
 #[must_use]
 pub fn discover_capabilities() -> Vec<String> {
-    vec![
-        String::from("discovery"),
-        String::from("federation"),
-        String::from("coordination"),
-        String::from("health"),
-        String::from("capabilities"),
-    ]
+    SELF_CAPABILITIES.iter().map(|s| (*s).to_owned()).collect()
 }
 
 /// Discover our own identity tags (SELF-KNOWLEDGE ONLY!)
@@ -139,25 +142,19 @@ where
     // Option 2: Convenience vars that get converted to tags
     // (Songbird still doesn't interpret - just formats!)
 
-    // Family ID → capability-scoped family tag `crypto:family:{id}` (legacy BearDog deployments used `beardog:family:*`)
     if let Some(family_id) = env_reader("SONGBIRD_FAMILY_ID") {
-        let tag = format!("crypto:family:{family_id}");
-        tags.push(tag.clone());
-        debug!("📋 Self-knowledge: Family tag '{}' (security provider will interpret)", tag);
+        tags.push(format!("crypto:family:{family_id}"));
+        debug!("Self-knowledge: family tag registered (security provider will interpret)");
     }
 
-    // Org ID → capability-scoped org tag `crypto:org:{id}` (legacy: `beardog:org:*`)
     if let Some(org_id) = env_reader("SONGBIRD_ORG_ID") {
-        let tag = format!("crypto:org:{org_id}");
-        tags.push(tag.clone());
-        debug!("📋 Self-knowledge: Org tag '{}' (security provider will interpret)", tag);
+        tags.push(format!("crypto:org:{org_id}"));
+        debug!("Self-knowledge: org tag registered (security provider will interpret)");
     }
 
-    // Role → security provider:role:{role}
     if let Some(role) = env_reader("SONGBIRD_ROLE") {
-        let tag = format!("security provider:role:{role}");
-        tags.push(tag.clone());
-        debug!("📋 Self-knowledge: Role tag '{}' (security provider will interpret)", tag);
+        tags.push(format!("security provider:role:{role}"));
+        debug!("Self-knowledge: role tag registered (security provider will interpret)");
     }
 
     if tags.is_empty() {

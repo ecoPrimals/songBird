@@ -317,12 +317,10 @@ impl NodeIdentity {
                 continue;
             }
 
-            // Determine interface type and preference
             let (interface_type, preference) = Self::classify_interface(&iface.name);
+            let iface_type_owned = String::from(interface_type);
 
-            // Add IPv4 endpoints
             for ipv4 in &iface.ipv4 {
-                // Skip loopback addresses
                 if ipv4.addr().is_loopback() {
                     continue;
                 }
@@ -330,24 +328,25 @@ impl NodeIdentity {
                 let address = SocketAddr::new(IpAddr::V4(ipv4.addr()), port);
 
                 let endpoint = TransportEndpoint {
-                    interface_type: interface_type.clone(),
+                    interface_type: iface_type_owned.clone(),
                     address,
                     protocols: vec![String::from("https"), String::from("tarpc")],
                     preference,
                 };
 
+                info!(
+                    interface = %iface.name,
+                    kind = %interface_type,
+                    %address,
+                    preference,
+                    "Detected endpoint"
+                );
+
                 self.add_endpoint(endpoint);
                 detected_count += 1;
-
-                info!(
-                    "  ✅ {} ({}) - {} [preference: {}]",
-                    iface.name, interface_type, address, preference
-                );
             }
 
-            // Add IPv6 endpoints
             for ipv6 in &iface.ipv6 {
-                // Skip loopback addresses
                 if ipv6.addr().is_loopback() {
                     continue;
                 }
@@ -355,19 +354,22 @@ impl NodeIdentity {
                 let address = SocketAddr::new(IpAddr::V6(ipv6.addr()), port);
 
                 let endpoint = TransportEndpoint {
-                    interface_type: interface_type.clone(),
+                    interface_type: iface_type_owned.clone(),
                     address,
                     protocols: vec![String::from("https"), String::from("tarpc")],
                     preference,
                 };
 
+                info!(
+                    interface = %iface.name,
+                    kind = %interface_type,
+                    %address,
+                    preference,
+                    "Detected endpoint"
+                );
+
                 self.add_endpoint(endpoint);
                 detected_count += 1;
-
-                info!(
-                    "  ✅ {} ({}) - {} [preference: {}]",
-                    iface.name, interface_type, address, preference
-                );
             }
         }
 
@@ -376,36 +378,32 @@ impl NodeIdentity {
         Ok(())
     }
 
-    /// Classify network interface by name
+    /// Classify network interface by name (zero-alloc ASCII comparison).
     ///
     /// Returns (`interface_type`, preference)
-    fn classify_interface(name: &str) -> (String, u8) {
-        let name_lower = name.to_lowercase();
+    fn classify_interface(name: &str) -> (&'static str, u8) {
+        let n = name.as_bytes();
 
-        // Ethernet interfaces
-        if name_lower.starts_with("eth")
-            || name_lower.starts_with("en")
-            || name_lower.starts_with("ens")
-            || name_lower.starts_with("enp")
+        if n.get(..3).is_some_and(|b| b.eq_ignore_ascii_case(b"eth"))
+            || n.get(..3).is_some_and(|b| b.eq_ignore_ascii_case(b"enp"))
+            || n.get(..3).is_some_and(|b| b.eq_ignore_ascii_case(b"ens"))
+            || n.get(..2).is_some_and(|b| b.eq_ignore_ascii_case(b"en"))
         {
-            return (String::from("ethernet"), 100);
+            return ("ethernet", 100);
         }
 
-        // WiFi interfaces
-        if name_lower.starts_with("wlan")
-            || name_lower.starts_with("wl")
-            || name_lower.starts_with("wifi")
+        if n.get(..4).is_some_and(|b| b.eq_ignore_ascii_case(b"wlan"))
+            || n.get(..4).is_some_and(|b| b.eq_ignore_ascii_case(b"wifi"))
+            || n.get(..2).is_some_and(|b| b.eq_ignore_ascii_case(b"wl"))
         {
-            return (String::from("wifi"), 80);
+            return ("wifi", 80);
         }
 
-        // Loopback
-        if name_lower.starts_with("lo") {
-            return (String::from("loopback"), 10);
+        if n.get(..2).is_some_and(|b| b.eq_ignore_ascii_case(b"lo")) {
+            return ("loopback", 10);
         }
 
-        // Unknown/Other
-        (String::from("other"), 50)
+        ("other", 50)
     }
 
     /// Get preferred endpoint (highest preference)

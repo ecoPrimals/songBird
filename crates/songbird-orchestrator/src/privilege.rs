@@ -193,7 +193,7 @@ impl PrivilegeManager {
         let mut response = String::new();
         io::stdin().read_line(&mut response)?;
 
-        if response.trim().to_lowercase() == "y" {
+        if response.trim().eq_ignore_ascii_case("y") {
             info!("Running configuration commands...");
 
             for port in ports {
@@ -253,7 +253,7 @@ impl PrivilegeManager {
             response.clear();
             io::stdin().read_line(&mut response)?;
 
-            if response.trim().to_lowercase() == "y" {
+            if response.trim().eq_ignore_ascii_case("y") {
                 let status = Command::new("sudo")
                     .args(["iptables-save"])
                     .stdout(std::process::Stdio::piped())

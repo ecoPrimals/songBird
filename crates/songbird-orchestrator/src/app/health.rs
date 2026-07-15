@@ -103,11 +103,9 @@ impl SongbirdOrchestrator {
         // Discovery path: re-enable `gaming_manager` → same signal augmented with lobby state.
         let gaming_active = peers.iter().any(|p| {
             p.capabilities.iter().any(|c| {
-                let c = c.to_lowercase();
-                c.contains("gaming")
-                    || c.contains("game_session")
-                    || c == "game"
-                    || c.ends_with("_gaming")
+                c.eq_ignore_ascii_case("game")
+                    || c.as_bytes().windows(6).any(|w| w.eq_ignore_ascii_case(b"gaming"))
+                    || c.as_bytes().windows(12).any(|w| w.eq_ignore_ascii_case(b"game_session"))
             })
         });
 
