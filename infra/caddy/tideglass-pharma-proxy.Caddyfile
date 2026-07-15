@@ -1,0 +1,56 @@
+# tideGlass Pharmacogenomics External Proxy — Caddy Snippet
+#
+# Handles TLS natively for tideGlass upstream APIs.
+# Import into the main Caddyfile on golgi/flockGate via:
+#   import /path/to/tideglass-pharma-proxy.Caddyfile
+#
+# Route layout:
+#   /tideglass/ext/{service}/{path...} → https://{upstream}/{path...}
+#
+# These APIs support the GPS (Genomic Pharmacology Simulation) platform:
+# - LINCS L1000: Perturbational gene expression signatures
+# - GEO: Gene Expression Omnibus (via NCBI E-utilities)
+# - ChEMBL: Bioactivity data for drug-like molecules
+# - NF Data Portal: Neurofibromatosis open science data (Synapse)
+
+(tideglass_pharma_proxy) {
+	# LINCS L1000 SigCom (Ma'ayan Lab — perturbational signatures)
+	handle_path /tideglass/ext/lincs/* {
+		reverse_proxy https://maayanlab.cloud {
+			header_up Host maayanlab.cloud
+			transport http {
+				tls
+			}
+		}
+	}
+
+	# GEO — Gene Expression Omnibus (via NCBI E-utilities)
+	handle_path /tideglass/ext/geo/* {
+		reverse_proxy https://eutils.ncbi.nlm.nih.gov {
+			header_up Host eutils.ncbi.nlm.nih.gov
+			transport http {
+				tls
+			}
+		}
+	}
+
+	# ChEMBL — Bioactivity database (EBI)
+	handle_path /tideglass/ext/chembl/* {
+		reverse_proxy https://www.ebi.ac.uk {
+			header_up Host www.ebi.ac.uk
+			transport http {
+				tls
+			}
+		}
+	}
+
+	# NF Data Portal — Synapse API (SAGE Bionetworks)
+	handle_path /tideglass/ext/nf/* {
+		reverse_proxy https://portal-api.synapse.org {
+			header_up Host portal-api.synapse.org
+			transport http {
+				tls
+			}
+		}
+	}
+}

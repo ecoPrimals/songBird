@@ -29,7 +29,7 @@
 //! - `SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST`: comma-separated `service=base_url` pairs
 //! - Path format: `/<route_prefix>/<service>/<path>` → `<base_url>/<path>`
 //! - Only allowlisted services are reachable — all others return 403
-//! - Supported services: osm, fema, usgs, arcgis (configured per deployment)
+//! - See `songbird_types::defaults::bonds` for well-known service registrations
 
 use super::http_proxy::{CapabilityProxyRouter, ProxyRoute};
 use std::fmt::Write;
@@ -656,30 +656,126 @@ async fn proxy_to_backend(
 
 /// Forward a request to an external allowlisted service.
 ///
-/// Validates that the URL uses HTTP (HTTPS outbound TLS is handled by the
-/// deployment's edge proxy — e.g. Caddy). Returns 502 for non-HTTP targets.
+/// Supports both HTTP and HTTPS outbound. HTTPS uses rustls with native CA roots.
+/// In production, Caddy typically handles TLS termination, but this enables
+/// direct drawbridge usage in local dev/test.
 async fn proxy_to_external(
+    client_stream: tokio::net::TcpStream,
+    method: &str,
+    external_url: &str,
+    headers: &[(String, String)],
+    body: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if external_url.starts_with("https://") {
+        proxy_to_external_tls(client_stream, method, external_url, headers, body).await
+    } else {
+        proxy_to_backend(client_stream, method, external_url, headers, body).await
+    }
+}
+
+/// Shared TLS connector for outbound HTTPS proxy requests.
+/// Initialized once on first use — avoids loading native CA roots per request.
+fn outbound_tls_connector() -> &'static tokio_rustls::TlsConnector {
+    use std::sync::OnceLock;
+    static CONNECTOR: OnceLock<tokio_rustls::TlsConnector> = OnceLock::new();
+    CONNECTOR.get_or_init(|| {
+        let mut root_store = rustls::RootCertStore::empty();
+        let native_certs = rustls_native_certs::load_native_certs();
+        for cert in native_certs.certs {
+            let _ = root_store.add(cert);
+        }
+        let tls_config = Arc::new(
+            rustls::ClientConfig::builder()
+                .with_root_certificates(root_store)
+                .with_no_client_auth(),
+        );
+        tokio_rustls::TlsConnector::from(tls_config)
+    })
+}
+
+/// HTTPS outbound proxy using rustls + native CA roots.
+async fn proxy_to_external_tls(
     mut client_stream: tokio::net::TcpStream,
     method: &str,
     external_url: &str,
     headers: &[(String, String)],
     body: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    if !external_url.starts_with("http://") {
-        warn!(
-            url = %external_url,
-            "drawbridge: external proxy requires HTTP base URL (HTTPS outbound via edge proxy)"
-        );
-        client_stream.write_all(
-            b"HTTP/1.1 502 Bad Gateway\r\n\
-              Content-Type: text/plain\r\n\
-              Content-Length: 52\r\n\r\n\
-              External proxy: HTTPS outbound not yet supported",
-        ).await?;
-        return Ok(());
+    use rustls::pki_types::ServerName;
+    use tokio::io::AsyncReadExt;
+
+    let stripped = external_url
+        .strip_prefix("https://")
+        .unwrap_or(external_url);
+
+    let (authority, path_and_query) = match stripped.find('/') {
+        Some(i) => (&stripped[..i], &stripped[i..]),
+        None => (stripped, "/"),
+    };
+
+    let host = if let Some(colon) = authority.find(':') {
+        &authority[..colon]
+    } else {
+        authority
+    };
+
+    let addr = if authority.contains(':') {
+        authority.to_string()
+    } else {
+        format!("{authority}:443")
+    };
+
+    let tcp = match tokio::net::TcpStream::connect(&addr).await {
+        Ok(s) => s,
+        Err(e) => {
+            warn!(backend = %addr, error = %e, "drawbridge: TLS backend connect failed");
+            client_stream
+                .write_all(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n")
+                .await?;
+            return Ok(());
+        }
+    };
+
+    let connector = outbound_tls_connector();
+    let server_name = ServerName::try_from(host.to_owned())?;
+
+    let mut tls_stream = match connector.connect(server_name, tcp).await {
+        Ok(s) => s,
+        Err(e) => {
+            warn!(backend = %host, error = %e, "drawbridge: TLS handshake failed");
+            client_stream
+                .write_all(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n")
+                .await?;
+            return Ok(());
+        }
+    };
+
+    let mut request_buf = format!("{method} {path_and_query} HTTP/1.1\r\nHost: {host}\r\n");
+
+    for (name, value) in headers {
+        if name.eq_ignore_ascii_case("host") {
+            continue;
+        }
+        let _ = write!(request_buf, "{name}: {value}\r\n");
     }
 
-    proxy_to_backend(client_stream, method, external_url, headers, body).await
+    if let Some(b) = body {
+        let _ = write!(request_buf, "Content-Length: {}\r\n", b.len());
+    }
+    request_buf.push_str("Connection: close\r\n\r\n");
+
+    if let Some(b) = body {
+        request_buf.push_str(b);
+    }
+
+    tls_stream.write_all(request_buf.as_bytes()).await?;
+
+    let mut response_buf = Vec::with_capacity(8192);
+    tls_stream.read_to_end(&mut response_buf).await?;
+
+    client_stream.write_all(&response_buf).await?;
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -970,14 +1066,14 @@ mod tests {
     }
 
     #[test]
-    fn external_allowlist_rejects_non_http_in_proxy() {
+    fn external_allowlist_preserves_https_scheme() {
         let mut services = std::collections::HashMap::new();
-        services.insert(String::from("bad"), ExternalService {
-            base_url: String::from("https://evil.example.com"),
-            name: String::from("bad"),
+        services.insert(String::from("secure"), ExternalService {
+            base_url: String::from("https://api.example.com"),
+            name: String::from("secure"),
         });
         let al = ExternalProxyAllowlist { services };
-        let (svc, _) = al.parse_and_validate("/bad/path").unwrap();
+        let (svc, _) = al.parse_and_validate("/secure/path").unwrap();
         let url = ExternalProxyAllowlist::build_url(svc, "/path");
         assert!(url.starts_with("https://"));
     }

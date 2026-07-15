@@ -58,13 +58,34 @@ database APIs (NCBI, PubChem, BLAST, UniProt, PDB, AlphaFold).
 | `/science/ext/pdb/` | `https://data.rcsb.org` |
 | `/science/ext/alphafold/` | `https://alphafold.ebi.ac.uk` |
 
+## tideGlass Pharmacogenomics Proxy
+
+`tideglass-pharma-proxy.Caddyfile` defines a snippet `(tideglass_pharma_proxy)` for 4
+pharmacogenomics/computational biology APIs.
+
+### tideGlass Service Mapping
+
+| Path Segment | Upstream | Data |
+|---|---|---|
+| `/tideglass/ext/lincs/` | `https://maayanlab.cloud/sigcom-lincs` | L1000 perturbational signatures |
+| `/tideglass/ext/geo/` | `https://eutils.ncbi.nlm.nih.gov` | Gene Expression Omnibus |
+| `/tideglass/ext/chembl/` | `https://www.ebi.ac.uk/chembl/api` | Drug bioactivity data |
+| `/tideglass/ext/nf/` | `https://portal-api.synapse.org` | NF Data Portal (Synapse) |
+
 ### Drawbridge Allowlist (dev/test without Caddy)
 
+Science APIs:
 ```bash
 export SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST="ncbi=https://eutils.ncbi.nlm.nih.gov,pubchem=https://pubchem.ncbi.nlm.nih.gov,blast=https://blast.ncbi.nlm.nih.gov,uniprot=https://rest.uniprot.org,pdb=https://data.rcsb.org,alphafold=https://alphafold.ebi.ac.uk"
 ```
 
-The `songbird_types::defaults::bonds` module provides these as constants with
+tideGlass pharmacogenomics APIs:
+```bash
+export SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST="lincs=https://maayanlab.cloud/sigcom-lincs,geo=https://eutils.ncbi.nlm.nih.gov,chembl=https://www.ebi.ac.uk/chembl/api,nf=https://portal-api.synapse.org"
+```
+
+The `songbird_types::defaults::bonds` module provides these as constants
+(`GIS_BONDS`, `SCIENCE_BONDS`, `TIDEGLASS_BONDS`, `ALL_BONDS`) with
 `format_allowlist()` for programmatic use.
 
 ## Why Caddy over songBird drawbridge for production

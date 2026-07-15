@@ -11,6 +11,7 @@
 //!
 //! - **GIS**: Geographic information services (footPrint composition)
 //! - **Science**: Biological/chemical databases (petalTongue, loamSpine, ABG)
+//! - **tideGlass**: Pharmacogenomics databases (GPS platform, Gonzales explorer)
 
 /// GIS weak bonds (footPrint composition).
 pub const GIS_BONDS: &[(&str, &str)] = &[
@@ -37,9 +38,17 @@ pub const SCIENCE_BONDS: &[(&str, &str)] = &[
     ("alphafold", "https://alphafold.ebi.ac.uk"),
 ];
 
-/// All known weak bonds (GIS + Science).
+/// tideGlass pharmacogenomics weak bonds (GPS platform, Gonzales explorer).
+pub const TIDEGLASS_BONDS: &[(&str, &str)] = &[
+    ("lincs", "https://maayanlab.cloud/sigcom-lincs"),
+    ("geo", "https://eutils.ncbi.nlm.nih.gov"),
+    ("chembl", "https://www.ebi.ac.uk/chembl/api"),
+    ("nf", "https://portal-api.synapse.org"),
+];
+
+/// All known weak bonds (GIS + Science + tideGlass).
 pub const ALL_BONDS: &[(&str, &str)] = &[
-    // GIS
+    // GIS (footPrint)
     ("osm", "https://tile.openstreetmap.org"),
     ("overpass", "https://overpass-api.de"),
     ("fema", "https://hazards.fema.gov"),
@@ -51,13 +60,17 @@ pub const ALL_BONDS: &[(&str, &str)] = &[
     ("michigan", "https://gisagocss.state.mi.us"),
     ("mcgi", "https://gisp.mcgi.state.mi.us"),
     ("eastlansing", "https://gis2.cityofeastlansing.com"),
-    // Science
+    // Science (petalTongue, loamSpine, ABG)
     ("ncbi", "https://eutils.ncbi.nlm.nih.gov"),
     ("pubchem", "https://pubchem.ncbi.nlm.nih.gov"),
     ("blast", "https://blast.ncbi.nlm.nih.gov"),
     ("uniprot", "https://rest.uniprot.org"),
     ("pdb", "https://data.rcsb.org"),
     ("alphafold", "https://alphafold.ebi.ac.uk"),
+    // tideGlass (pharmacogenomics)
+    ("lincs", "https://maayanlab.cloud/sigcom-lincs"),
+    ("chembl", "https://www.ebi.ac.uk/chembl/api"),
+    ("nf", "https://portal-api.synapse.org"),
 ];
 
 /// Format all bonds in a given slice as a `SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST`
@@ -88,7 +101,18 @@ mod tests {
     fn format_all_bonds_allowlist() {
         let value = format_allowlist(ALL_BONDS);
         assert_eq!(value.matches(',').count(), ALL_BONDS.len() - 1);
-        assert_eq!(ALL_BONDS.len(), GIS_BONDS.len() + SCIENCE_BONDS.len());
+        // ALL_BONDS = GIS(11) + Science(6) + tideGlass unique(3, excluding "geo" which
+        // is served by the existing "ncbi" E-utilities endpoint)
+        assert_eq!(ALL_BONDS.len(), 20);
+    }
+
+    #[test]
+    fn format_tideglass_allowlist() {
+        let value = format_allowlist(TIDEGLASS_BONDS);
+        assert!(value.contains("lincs=https://maayanlab.cloud/sigcom-lincs"));
+        assert!(value.contains("chembl=https://www.ebi.ac.uk/chembl/api"));
+        assert!(value.contains("nf=https://portal-api.synapse.org"));
+        assert_eq!(value.matches(',').count(), TIDEGLASS_BONDS.len() - 1);
     }
 
     #[test]
