@@ -42,7 +42,32 @@ primals.eco {
 | `/footprint/ext/mcgi/` | `https://gisp.mcgi.state.mi.us` |
 | `/footprint/ext/eastlansing/` | `https://gis2.cityofeastlansing.com` |
 
-### Why Caddy over songBird drawbridge for production
+## Science API Proxy
+
+`science-api-proxy.Caddyfile` defines a snippet `(science_api_proxy)` for 6 science
+database APIs (NCBI, PubChem, BLAST, UniProt, PDB, AlphaFold).
+
+### Science Service Mapping
+
+| Path Segment | Upstream |
+|---|---|
+| `/science/ext/ncbi/` | `https://eutils.ncbi.nlm.nih.gov` |
+| `/science/ext/pubchem/` | `https://pubchem.ncbi.nlm.nih.gov` |
+| `/science/ext/blast/` | `https://blast.ncbi.nlm.nih.gov` |
+| `/science/ext/uniprot/` | `https://rest.uniprot.org` |
+| `/science/ext/pdb/` | `https://data.rcsb.org` |
+| `/science/ext/alphafold/` | `https://alphafold.ebi.ac.uk` |
+
+### Drawbridge Allowlist (dev/test without Caddy)
+
+```bash
+export SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST="ncbi=https://eutils.ncbi.nlm.nih.gov,pubchem=https://pubchem.ncbi.nlm.nih.gov,blast=https://blast.ncbi.nlm.nih.gov,uniprot=https://rest.uniprot.org,pdb=https://data.rcsb.org,alphafold=https://alphafold.ebi.ac.uk"
+```
+
+The `songbird_types::defaults::bonds` module provides these as constants with
+`format_allowlist()` for programmatic use.
+
+## Why Caddy over songBird drawbridge for production
 
 - Caddy's `reverse_proxy` with TLS transport handles upstream HTTPS natively
 - No dependency on `SOCKET-DIR-UNIFY` (biomeOS) for TLS delegation

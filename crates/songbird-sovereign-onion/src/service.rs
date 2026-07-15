@@ -16,7 +16,10 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 const MAX_ONION_FRAME: usize = 16 * 1024 * 1024;
 use tokio::net::{TcpListener, TcpStream};
+#[cfg(unix)]
 use tracing::{debug, error, info, warn};
+#[cfg(not(unix))]
+use tracing::{debug, error, info};
 
 fn storage_socket_from_endpoint(endpoint: &str) -> Option<PathBuf> {
     let t = endpoint.trim();

@@ -1,0 +1,76 @@
+# Science API External Proxy — Caddy Snippet
+#
+# Handles TLS natively for NCBI, PubChem, UniProt, and PDB upstream APIs.
+# Import into the main Caddyfile on golgi/flockGate via:
+#   import /path/to/science-api-proxy.Caddyfile
+#
+# Route layout:
+#   /science/ext/{service}/{path...} → https://{upstream}/{path...}
+#
+# These are "routine outer membrane data" bonds — public science databases
+# queried by compositions (petalTongue, loamSpine, future ABG tools).
+#
+# Rate limits: NCBI requests an API key for >3 req/sec. Set via
+#   NCBI_API_KEY env var in composition config for heavy workloads.
+
+(science_api_proxy) {
+	# NCBI E-utilities (PubMed, GenBank, Gene, SNP, etc.)
+	handle_path /science/ext/ncbi/* {
+		reverse_proxy https://eutils.ncbi.nlm.nih.gov {
+			header_up Host eutils.ncbi.nlm.nih.gov
+			transport http {
+				tls
+			}
+		}
+	}
+
+	# PubChem PUG REST (compound, substance, bioassay queries)
+	handle_path /science/ext/pubchem/* {
+		reverse_proxy https://pubchem.ncbi.nlm.nih.gov {
+			header_up Host pubchem.ncbi.nlm.nih.gov
+			transport http {
+				tls
+			}
+		}
+	}
+
+	# NCBI BLAST (sequence similarity searches)
+	handle_path /science/ext/blast/* {
+		reverse_proxy https://blast.ncbi.nlm.nih.gov {
+			header_up Host blast.ncbi.nlm.nih.gov
+			transport http {
+				tls
+			}
+		}
+	}
+
+	# UniProt (protein sequence and function database)
+	handle_path /science/ext/uniprot/* {
+		reverse_proxy https://rest.uniprot.org {
+			header_up Host rest.uniprot.org
+			transport http {
+				tls
+			}
+		}
+	}
+
+	# RCSB Protein Data Bank (3D structure data)
+	handle_path /science/ext/pdb/* {
+		reverse_proxy https://data.rcsb.org {
+			header_up Host data.rcsb.org
+			transport http {
+				tls
+			}
+		}
+	}
+
+	# AlphaFold Protein Structure Database (EBI)
+	handle_path /science/ext/alphafold/* {
+		reverse_proxy https://alphafold.ebi.ac.uk {
+			header_up Host alphafold.ebi.ac.uk
+			transport http {
+				tls
+			}
+		}
+	}
+}

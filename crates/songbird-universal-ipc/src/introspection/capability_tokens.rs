@@ -26,6 +26,8 @@ pub const SONGBIRD_CAPABILITY_STRINGS: &[&str] = &[
     "crypto.delegate",
     "nfc.genesis",
     "bluetooth.pair",
+    "compute.gpu",
+    "access.remote",
 ];
 
 /// Every callable JSON-RPC method Songbird's dispatch accepts.

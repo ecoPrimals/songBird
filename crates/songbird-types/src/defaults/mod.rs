@@ -7,6 +7,7 @@
 //! across the codebase. Prefer runtime discovery over these defaults.
 
 pub mod beacon;
+pub mod bonds;
 pub mod hosts;
 pub mod network;
 pub mod paths;

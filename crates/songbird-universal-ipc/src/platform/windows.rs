@@ -128,7 +128,7 @@ impl WindowsPlatformIPC {
                     let client = loop {
                         match ClientOptions::new().open(_name) {
                             Ok(client) => break client,
-                            Err(e) if retries > 0 => {
+                            Err(_) if retries > 0 => {
                                 debug!("Named pipe not ready, retrying... ({} left)", retries);
                                 tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
                                 retries -= 1;
