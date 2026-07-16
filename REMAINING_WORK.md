@@ -57,7 +57,7 @@ Phase 2 relay fixed (Waves 132–169). **Phase 3 implemented** (Wave 180): `btsp
 
 **Priority trait boundaries** (deduplicate 15+ `#[cfg]` sites each):
 
-1. **`IpcTransport`** — connect/listen/accept across Unix sockets, Windows named pipes, TCP fallback. Currently 15+ duplicate `connect_ipc()` patterns across orchestrator, universal-ipc, http-client, crypto-provider, sovereign-onion, lineage-relay, federation, tls, config crates. Highest consolidation ROI.
+1. **`IpcStream`** (Wave 142b: SHIPPED in `songbird-types::ipc_stream`) — platform-abstracted async IPC connection. On Unix: `UnixStream`; on Windows: port-file→TCP. Migrated in `songbird-crypto-provider`, `songbird-lineage-relay`, `songbird-network-federation`. Remaining: 12+ crates to migrate (orchestrator, http-client, sovereign-onion, tls, universal-ipc, etc.).
 2. **`SysMetricsBackend`** — memory/disk/load detection. Duplicated between `songbird-types::sys_metrics` and `songbird-discovery` Linux `/proc` parsers.
 3. **`ProcessBackend`** — `is_process_running()`, `stop_job()`, `stop_deployment()` — same operation, 3 implementations.
 4. **`NetworkBackend`** — route/IP detection across orchestrator, config, discovery, CLI (4+ implementations).

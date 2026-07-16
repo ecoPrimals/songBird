@@ -5,12 +5,9 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use songbird_types::IpcStream;
 use std::sync::atomic::Ordering;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-#[cfg(windows)]
-use tokio::net::TcpStream as PlatformStream;
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
 use tracing::{trace, warn};
 
 use super::{CryptoProvider, Result, RpcError};
@@ -63,14 +60,8 @@ fn truncate_for_error(s: &str, max_bytes: usize) -> String {
 }
 
 impl CryptoProvider {
-    #[cfg(unix)]
-    async fn connect_platform(path: &str) -> std::io::Result<PlatformStream> {
-        PlatformStream::connect(path).await
-    }
-
-    #[cfg(windows)]
-    async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
-        PlatformStream::connect(address).await
+    async fn connect_platform(path: &str) -> std::io::Result<IpcStream> {
+        IpcStream::connect(path).await
     }
 
     /// Call a crypto method, routing through Neural API or direct depending on mode.

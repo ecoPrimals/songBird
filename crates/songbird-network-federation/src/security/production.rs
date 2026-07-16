@@ -24,10 +24,7 @@ use std::path::PathBuf;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{debug, info, warn};
 
-#[cfg(windows)]
-use tokio::net::TcpStream as IpcStream;
-#[cfg(unix)]
-use tokio::net::UnixStream as IpcStream;
+use songbird_types::IpcStream;
 
 /// Production security provider via Unix socket JSON-RPC
 ///
@@ -106,20 +103,9 @@ impl ProductionSecurityProvider {
         self.family_id = Some(family_id.into());
     }
 
-    #[cfg(unix)]
     async fn connect_ipc(path: &std::path::Path) -> Result<IpcStream> {
-        Ok(IpcStream::connect(path).await?)
-    }
-
-    #[cfg(windows)]
-    async fn connect_ipc(path: &std::path::Path) -> Result<IpcStream> {
-        let port: u16 = tokio::fs::read_to_string(path)
-            .await
-            .ok()
-            .and_then(|s| s.trim().parse().ok())
-            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
-        let addr = format!("127.0.0.1:{port}");
-        Ok(IpcStream::connect(&addr).await?)
+        let path_str = path.to_string_lossy();
+        Ok(IpcStream::connect(&path_str).await?)
     }
 
     /// Call security provider JSON-RPC method via IPC.

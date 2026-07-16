@@ -21,10 +21,7 @@ use std::time::SystemTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{debug, info};
 
-#[cfg(windows)]
-use tokio::net::TcpStream as IpcStream;
-#[cfg(unix)]
-use tokio::net::UnixStream as IpcStream;
+use songbird_types::IpcStream;
 
 // Imports only used by mock implementations
 #[cfg(any(test, feature = "test-mocks"))]
@@ -100,27 +97,12 @@ impl SecurityBirdSongProvider {
         self.family_id.as_ref()
     }
 
-    #[cfg(unix)]
     async fn connect_ipc(path: &std::path::Path) -> Result<IpcStream> {
-        IpcStream::connect(path).await.map_err(|e| {
+        let path_str = path.to_string_lossy();
+        IpcStream::connect(&path_str).await.map_err(|e| {
             crate::error::LineageRelayError::BirdSongError(format!(
                 "Failed to connect to security provider at {}: {e}",
                 path.display(),
-            ))
-        })
-    }
-
-    #[cfg(windows)]
-    async fn connect_ipc(path: &std::path::Path) -> Result<IpcStream> {
-        let port: u16 = tokio::fs::read_to_string(path)
-            .await
-            .ok()
-            .and_then(|s| s.trim().parse().ok())
-            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
-        let addr = format!("127.0.0.1:{port}");
-        IpcStream::connect(&addr).await.map_err(|e| {
-            crate::error::LineageRelayError::BirdSongError(format!(
-                "Failed to connect to security provider at {addr}: {e}",
             ))
         })
     }
@@ -374,27 +356,12 @@ impl SecurityRelayAuthority {
         security_socket_default_path()
     }
 
-    #[cfg(unix)]
     async fn connect_ipc_relay(path: &std::path::Path) -> Result<IpcStream> {
-        IpcStream::connect(path).await.map_err(|e| {
+        let path_str = path.to_string_lossy();
+        IpcStream::connect(&path_str).await.map_err(|e| {
             crate::error::LineageRelayError::BirdSongError(format!(
                 "Failed to connect to security provider at {}: {e}",
                 path.display(),
-            ))
-        })
-    }
-
-    #[cfg(windows)]
-    async fn connect_ipc_relay(path: &std::path::Path) -> Result<IpcStream> {
-        let port: u16 = tokio::fs::read_to_string(path)
-            .await
-            .ok()
-            .and_then(|s| s.trim().parse().ok())
-            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
-        let addr = format!("127.0.0.1:{port}");
-        IpcStream::connect(&addr).await.map_err(|e| {
-            crate::error::LineageRelayError::BirdSongError(format!(
-                "Failed to connect to security provider at {addr}: {e}",
             ))
         })
     }

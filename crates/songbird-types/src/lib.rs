@@ -87,6 +87,7 @@ pub use traits::{
 pub use constants::*;
 
 // Canonical transport endpoint (ecosystem standard for ipc.resolve/capability.resolve)
+pub use ipc_stream::IpcStream;
 pub use transport::TransportEndpoint;
 
 // Module declarations
@@ -103,6 +104,7 @@ pub mod primal;
 pub mod response;
 pub mod service;
 pub mod traits;
+pub mod ipc_stream;
 pub mod transport; // Canonical transport endpoint type (sourdough standard)
 pub mod trust;
 pub mod trust_tests; // Progressive trust model types
