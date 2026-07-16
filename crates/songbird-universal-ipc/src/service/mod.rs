@@ -51,6 +51,7 @@ mod capability_dispatch;
 mod construction;
 mod dispatch;
 pub mod drawbridge;
+pub mod drawbridge_auth;
 mod http;
 mod http_proxy;
 mod ipc_registry;
@@ -67,7 +68,8 @@ pub use crate::service_types::{
     RegisterResult, ResolveParams, ResolveResult, ServiceInfo, TransportEndpoint,
     ValidateConsumedResult,
 };
-pub use drawbridge::{DrawbridgeConfig, DrawbridgeRoute, serve_drawbridge};
+pub use drawbridge::{DrawbridgeConfig, serve_drawbridge};
+pub use drawbridge_auth::DrawbridgeRoute;
 pub use http_proxy::{CapabilityProxyRouter, ProxyRoute};
 
 /// Songbird IPC Service Handler
