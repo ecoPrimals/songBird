@@ -17,27 +17,14 @@
 use anyhow::{Context, Result};
 use base64::Engine;
 use serde_json::json;
+use songbird_types::IpcStream;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::debug;
 
-// Platform-agnostic IPC transport
-#[cfg(windows)]
-use tokio::net::TcpStream as PlatformStream;
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
-
-/// Standard base64 encoder/decoder
 const B64: base64::engine::GeneralPurpose = base64::engine::general_purpose::STANDARD;
 
-/// Platform-agnostic connection helper
-#[cfg(unix)]
-async fn connect_platform(path: &str) -> std::io::Result<PlatformStream> {
-    PlatformStream::connect(path).await
-}
-
-#[cfg(windows)]
-async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
-    PlatformStream::connect(address).await
+async fn connect_platform(path: &str) -> std::io::Result<IpcStream> {
+    IpcStream::connect(path).await
 }
 
 // ============================================================================
@@ -410,7 +397,7 @@ pub async fn hmac_sha256(socket_path: &str, key: &[u8], data: &[u8]) -> Result<V
 /// Read a JSON-RPC response from a stream (platform-agnostic)
 ///
 /// Reads until newline, handles buffering and EOF correctly.
-async fn read_json_rpc_response(stream: &mut PlatformStream) -> Result<String> {
+async fn read_json_rpc_response(stream: &mut IpcStream) -> Result<String> {
     let mut response_buffer = Vec::new();
     let mut read_buffer = [0u8; 4096];
 

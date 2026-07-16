@@ -23,77 +23,13 @@
 
 use crate::error::{Result, TlsError};
 use base64::{Engine as _, engine::general_purpose};
-use pin_project::pin_project;
 use serde::Deserialize;
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf};
-
-// Platform-agnostic IPC (works on Unix, Windows, etc!)
-#[cfg(unix)]
+use songbird_types::IpcStream;
 use std::path::Path;
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-#[cfg(windows)]
-use tokio::net::TcpStream as PlatformStream;
-
-/// Stream abstraction for crypto client connections
-///
-/// **EVOLVED (Feb 5, 2026):** Supports both Unix and TCP sockets
-/// to enable cross-platform deployment (especially Android via TCP)
-#[pin_project(project = CryptoStreamProj)]
-pub enum CryptoStream {
-    /// Unix domain socket (Linux/macOS/Android local)
-    #[cfg(unix)]
-    Unix(#[pin] PlatformStream),
-    /// TCP socket (Android cross-device, Windows, or explicit tcp:host:port)
-    Tcp(#[pin] tokio::net::TcpStream),
-}
-
-impl AsyncRead for CryptoStream {
-    fn poll_read(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<std::io::Result<()>> {
-        match self.project() {
-            #[cfg(unix)]
-            CryptoStreamProj::Unix(stream) => stream.poll_read(cx, buf),
-            CryptoStreamProj::Tcp(stream) => stream.poll_read(cx, buf),
-        }
-    }
-}
-
-impl AsyncWrite for CryptoStream {
-    fn poll_write(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<std::io::Result<usize>> {
-        match self.project() {
-            #[cfg(unix)]
-            CryptoStreamProj::Unix(stream) => stream.poll_write(cx, buf),
-            CryptoStreamProj::Tcp(stream) => stream.poll_write(cx, buf),
-        }
-    }
-
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
-        match self.project() {
-            #[cfg(unix)]
-            CryptoStreamProj::Unix(stream) => stream.poll_flush(cx),
-            CryptoStreamProj::Tcp(stream) => stream.poll_flush(cx),
-        }
-    }
-
-    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
-        match self.project() {
-            #[cfg(unix)]
-            CryptoStreamProj::Unix(stream) => stream.poll_shutdown(cx),
-            CryptoStreamProj::Tcp(stream) => stream.poll_shutdown(cx),
-        }
-    }
-}
+/// Stream abstraction for crypto client connections — backed by [`IpcStream`].
+pub type CryptoStream = IpcStream;
 
 /// TLS crypto client backed by the security (crypto) provider
 ///
@@ -437,35 +373,19 @@ impl SecurityTlsCryptoClient {
         })
     }
 
-    /// Platform-agnostic connection helper
+    /// Platform-agnostic connection helper.
     ///
-    /// Supports `tcp:host:port` format for cross-platform deployment (Android, Windows)
-    /// and filesystem paths for Unix domain sockets.
-    #[cfg(unix)]
+    /// Supports `tcp:host:port` for explicit TCP (Android cross-device, Windows)
+    /// and filesystem paths for Unix domain sockets via [`IpcStream`].
     async fn connect_platform(path: &str) -> std::io::Result<CryptoStream> {
         if let Some(addr) = path.strip_prefix("tcp:") {
             tracing::debug!("Connecting to TCP socket: {addr}");
             let stream = tokio::net::TcpStream::connect(addr).await?;
             Ok(CryptoStream::Tcp(stream))
         } else {
-            tracing::debug!("Connecting to Unix socket: {path}");
-            let stream = PlatformStream::connect(path).await?;
-            Ok(CryptoStream::Unix(stream))
+            tracing::debug!("Connecting to IPC endpoint: {path}");
+            IpcStream::connect(path).await
         }
-    }
-
-    #[cfg(windows)]
-    async fn connect_platform(address: &str) -> std::io::Result<CryptoStream> {
-        let addr = address.strip_prefix("tcp:").unwrap_or(address);
-        let stream = PlatformStream::connect(addr).await?;
-        Ok(CryptoStream::Tcp(stream))
-    }
-
-    #[cfg(not(any(unix, windows)))]
-    async fn connect_platform(address: &str) -> std::io::Result<CryptoStream> {
-        let addr = address.strip_prefix("tcp:").unwrap_or(address);
-        let stream = tokio::net::TcpStream::connect(addr).await?;
-        Ok(CryptoStream::Tcp(stream))
     }
 
     /// Make a JSON-RPC call with a direct method name (legacy/testing)

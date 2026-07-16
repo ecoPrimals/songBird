@@ -13,11 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 
-// Platform-agnostic IPC transport
-#[cfg(windows)]
-use tokio::net::TcpStream as PlatformStream;
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
+use songbird_types::IpcStream as PlatformStream;
 
 use crate::connection_pool::ConnectionPool;
 use crate::ipc_client::multipart::Form;
@@ -202,23 +198,9 @@ impl IpcHttpClient {
     ///
     /// Connects to Songbird IPC using platform-specific transport:
     /// - Unix/macOS/Android: Unix domain sockets
-    /// - Windows: TCP localhost (future: named pipes via universal IPC)
-    #[cfg(unix)]
-    async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
-        PlatformStream::connect(path).await
-    }
-
-    #[cfg(windows)]
-    async fn connect_platform(address: &PathBuf) -> std::io::Result<PlatformStream> {
-        // On Windows, interpret as TCP address
-        let addr_str = address.to_string_lossy();
-        PlatformStream::connect(addr_str.as_ref()).await
-    }
-
-    #[cfg(not(any(unix, windows)))]
-    async fn connect_platform(address: &PathBuf) -> std::io::Result<tokio::net::TcpStream> {
-        let addr_str = address.to_string_lossy();
-        tokio::net::TcpStream::connect(addr_str.as_ref()).await
+    async fn connect_platform(path: &std::path::Path) -> std::io::Result<PlatformStream> {
+        let path_str = path.to_string_lossy();
+        PlatformStream::connect(&path_str).await
     }
 
     /// Make HTTP GET request

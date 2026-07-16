@@ -1,6 +1,6 @@
 # Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v0.2.1-wave142b  
+**Version**: v0.2.1-wave143b  
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  

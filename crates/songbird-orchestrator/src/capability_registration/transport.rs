@@ -3,18 +3,8 @@
 
 //! Platform-agnostic IPC connection to the Neural API.
 
-// Platform-agnostic IPC transport
-#[cfg(windows)]
-use tokio::net::TcpStream as PlatformStream;
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
+use songbird_types::IpcStream;
 
-#[cfg(unix)]
-pub(super) async fn connect_platform(path: &str) -> std::io::Result<PlatformStream> {
-    PlatformStream::connect(path).await
-}
-
-#[cfg(windows)]
-pub(super) async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
-    PlatformStream::connect(address).await
+pub(super) async fn connect_platform(path: &str) -> std::io::Result<IpcStream> {
+    IpcStream::connect(path).await
 }

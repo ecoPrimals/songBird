@@ -5,13 +5,10 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use songbird_types::IpcStream;
 use songbird_types::defaults::timeouts::DEFAULT_SECURITY_RPC_TIMEOUT;
 use std::sync::atomic::Ordering;
 use tokio::io::AsyncWriteExt;
-#[cfg(windows)]
-use tokio::net::TcpStream as PlatformStream;
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
 use tracing::trace;
 
 use super::SecurityCryptoProvider;
@@ -56,19 +53,8 @@ struct JsonRpcError {
 }
 
 impl SecurityCryptoProvider {
-    #[cfg(unix)]
-    async fn connect_platform_static(path: &str) -> std::io::Result<PlatformStream> {
-        PlatformStream::connect(path).await
-    }
-
-    #[cfg(windows)]
-    async fn connect_platform_static(address: &str) -> std::io::Result<PlatformStream> {
-        PlatformStream::connect(address).await
-    }
-
-    #[cfg(not(any(unix, windows)))]
-    async fn connect_platform_static(address: &str) -> std::io::Result<tokio::net::TcpStream> {
-        tokio::net::TcpStream::connect(address).await
+    async fn connect_platform_static(path: &str) -> std::io::Result<IpcStream> {
+        IpcStream::connect(path).await
     }
 
     pub(super) async fn call(&self, method: &str, params: Value) -> Result<Value> {

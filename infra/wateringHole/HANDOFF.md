@@ -1,7 +1,7 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave142b  
+**Version**: v0.2.1-wave143b  
 **Date**: July 16, 2026  
 **Gate**: flockGate (eastGate)
 
@@ -17,10 +17,11 @@
 | Hardcoding | 0 in production (all env-driven, capability-based) |
 | Mocks in prod | 0 (all `#[cfg(test)]` gated) |
 
-## Recent Evolution (Wave 131–142)
+## Recent Evolution (Wave 131–143)
 
 | Wave | Summary |
 |------|---------|
+| 143b | `IpcStream` migration batch 2: 9 additional crates migrated; `CryptoStream` + `pin-project` eliminated from `songbird-tls`; 30+ `connect_platform` pairs consolidated; `&PathBuf`→`&Path` evolution; 12 total crates on `IpcStream` |
 | 142b | Phase 2 "abstraction over gating": `IpcStream` shipped in `songbird-types` (platform-abstracted async IPC); 3 crates migrated (crypto-provider, lineage-relay, federation); `drawbridge.rs` refactored (813→498L); platform cfg audit: 35 trait-backend candidates |
 | 141a | Cross-platform `#[cfg]` gate evolution: **0 warnings** on Windows cross-compile (was 30+); reference implementation polish |
 | 140a | tideGlass drawbridge bonds (LINCS L1000, GEO, ChEMBL, NF Data Portal); HTTPS proxy `OnceLock` optimization; 20 total bonds |

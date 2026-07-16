@@ -9,24 +9,13 @@
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use songbird_types::IpcStream;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-// Platform-agnostic IPC transport
-#[cfg(windows)]
-use tokio::net::TcpStream as PlatformStream;
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
-
-/// Platform-agnostic connection helper
-#[cfg(unix)]
-async fn connect_platform(path: &str) -> std::io::Result<PlatformStream> {
-    PlatformStream::connect(path).await
-}
-
-#[cfg(windows)]
-async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
-    PlatformStream::connect(address).await
-}
 use tracing::{info, warn};
+
+async fn connect_platform(path: &str) -> std::io::Result<IpcStream> {
+    IpcStream::connect(path).await
+}
 
 /// JWT `purpose` parameter for storage capability provider authentication (`crypto.generate.jwt_secret`).
 pub const STORAGE_PROVIDER_AUTHENTICATION_PURPOSE: &str = "storage_provider_authentication";

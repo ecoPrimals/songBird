@@ -299,6 +299,8 @@ async fn connect_platform_tcp_strip_prefix_matches_listener() {
         CryptoStream::Tcp(_) => {}
         #[cfg(unix)]
         CryptoStream::Unix(_) => panic!("expected tcp"),
+        #[cfg(not(unix))]
+        _ => {}
     }
 }
 

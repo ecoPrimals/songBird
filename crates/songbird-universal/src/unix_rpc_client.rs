@@ -41,12 +41,8 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::json;
 use std::path::{Path, PathBuf};
+use songbird_types::IpcStream as PlatformStream;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-// Platform-agnostic IPC transport
-#[cfg(windows)]
-use tokio::net::TcpStream as PlatformStream;
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
 use tracing::{debug, trace};
 
 /// JSON-RPC 2.0 Request
@@ -152,21 +148,9 @@ impl UnixRpcClient {
     /// let result: MyResponse = client.call("my_method", MyParams { ... }).await?;
     /// ```
     ///
-    #[cfg(unix)]
-    async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
-        PlatformStream::connect(path).await
-    }
-
-    #[cfg(windows)]
-    async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
-        let addr = path.to_string_lossy();
-        PlatformStream::connect(addr.as_ref()).await
-    }
-
-    #[cfg(not(any(unix, windows)))]
-    async fn connect_platform(path: &PathBuf) -> std::io::Result<tokio::net::TcpStream> {
-        let addr = path.to_string_lossy();
-        tokio::net::TcpStream::connect(addr.as_ref()).await
+    async fn connect_platform(path: &std::path::Path) -> std::io::Result<PlatformStream> {
+        let path_str = path.to_string_lossy();
+        PlatformStream::connect(&path_str).await
     }
 
     /// Call a JSON-RPC method with the given parameters and return the result.

@@ -9,25 +9,14 @@ use anyhow::{Result, anyhow};
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use songbird_types::IpcStream;
 use std::path::PathBuf;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-// Platform-agnostic IPC transport
-#[cfg(windows)]
-use tokio::net::TcpStream as PlatformStream;
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
 use tracing::{debug, info, warn};
 
-/// Platform-agnostic connection helper
-#[cfg(unix)]
-async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
-    PlatformStream::connect(path).await
-}
-
-#[cfg(windows)]
-async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
-    let addr = path.to_string_lossy();
-    PlatformStream::connect(addr.as_ref()).await
+async fn connect_platform(path: &std::path::Path) -> std::io::Result<IpcStream> {
+    let path_str = path.to_string_lossy();
+    IpcStream::connect(&path_str).await
 }
 
 /// BTSP Client for communicating with the security provider via Unix socket
@@ -414,7 +403,7 @@ impl BtspClient {
 
         // Step 2: Connect to target socket, send ClientHello
         let mut target_stream =
-            connect_platform(&target_socket.to_path_buf()).await.map_err(|e| {
+            connect_platform(target_socket).await.map_err(|e| {
                 anyhow!("Failed to connect to target socket {}: {}", target_socket.display(), e)
             })?;
 

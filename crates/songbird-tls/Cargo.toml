@@ -26,9 +26,6 @@ serde_json = { workspace = true }
 # Base64 encoding (Pure Rust)
 base64 = "0.22"
 
-# Pin projection for async stream abstraction (Pure Rust)
-pin-project = "1.1"
-
 # X.509 certificate parsing (Pure Rust)
 x509-parser = "0.16"
 

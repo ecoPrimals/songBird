@@ -53,11 +53,7 @@ use std::borrow::Cow;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-// Platform-agnostic IPC transport
-#[cfg(windows)]
-use tokio::net::TcpStream as PlatformStream;
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
+use songbird_types::IpcStream as PlatformStream;
 use tokio::time::timeout;
 use tracing::{debug, info, warn};
 
@@ -175,22 +171,9 @@ impl JsonRpcClient {
         self
     }
 
-    /// Platform-agnostic connection helper
-    #[cfg(unix)]
-    async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
-        PlatformStream::connect(path).await
-    }
-
-    #[cfg(windows)]
-    async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
-        let addr = path.to_string_lossy();
-        PlatformStream::connect(addr.as_ref()).await
-    }
-
-    #[cfg(not(any(unix, windows)))]
-    async fn connect_platform(path: &PathBuf) -> std::io::Result<tokio::net::TcpStream> {
-        let addr = path.to_string_lossy();
-        tokio::net::TcpStream::connect(addr.as_ref()).await
+    async fn connect_platform(path: &std::path::Path) -> std::io::Result<PlatformStream> {
+        let path_str = path.to_string_lossy();
+        PlatformStream::connect(&path_str).await
     }
 
     /// Call a JSON-RPC method with automatic request ID generation
@@ -304,8 +287,7 @@ impl JsonRpcClient {
                 r.map_err(|e| SongbirdError::network(format!("Failed to connect: {e}")))
             })?;
 
-        // Split into reader and writer
-        let (reader, mut writer) = stream.into_split();
+        let (reader, mut writer) = tokio::io::split(stream);
         let mut reader = BufReader::new(reader);
 
         // Send request with timeout
