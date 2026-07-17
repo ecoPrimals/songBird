@@ -537,6 +537,98 @@ impl IpcHandlers {
         }))
     }
 
+    /// Handle `discovery.topology` — mesh gate topology.
+    pub async fn discovery_topology_json(
+        &self,
+        _params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
+        let mesh_result = self
+            .mesh_handler
+            .handle_peers(serde_json::json!({}))
+            .await
+            .unwrap_or_else(|_| serde_json::json!({"peers": []}));
+
+        let peers = mesh_result
+            .get("peers")
+            .and_then(|p| p.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        let node_id = songbird_process_env::var("SONGBIRD_NODE_ID").unwrap_or_default();
+
+        Ok(serde_json::json!({
+            "gates": peers,
+            "gate_count": peers.len(),
+            "self_node_id": node_id,
+        }))
+    }
+
+    /// Handle `discovery.health` — node health status for composition consumers.
+    pub async fn discovery_health_json(
+        &self,
+        _params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
+        let mesh_status = self
+            .mesh_handler
+            .handle_status(serde_json::json!({}))
+            .await;
+        let mesh_active = mesh_status
+            .as_ref()
+            .ok()
+            .and_then(|v| v.get("initialized"))
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
+
+        let registry_count = self.service_registry.list_all_services().await.len();
+
+        Ok(serde_json::json!({
+            "alive": true,
+            "mesh_active": mesh_active,
+            "registered_services": registry_count,
+        }))
+    }
+
+    /// Handle `discovery.query` — generic capability/service discovery.
+    pub async fn discovery_query_json(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
+        let cap = params
+            .as_ref()
+            .and_then(|p| p.get("capability"))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("*");
+
+        self.discover_by_capability_json(Some(serde_json::json!({ "capability": cap })))
+            .await
+    }
+
+    /// Handle `discovery.bonds` — external API bonds from drawbridge allowlist.
+    pub async fn discovery_bonds_json(
+        &self,
+        _params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
+        let allowlist_raw =
+            songbird_process_env::var("SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST").unwrap_or_default();
+
+        let bonds: Vec<serde_json::Value> = allowlist_raw
+            .split(',')
+            .filter_map(|entry| {
+                let entry = entry.trim();
+                let (name, url) = entry.split_once('=')?;
+                Some(serde_json::json!({
+                    "service": name.trim(),
+                    "base_url": url.trim(),
+                }))
+            })
+            .collect();
+
+        Ok(serde_json::json!({
+            "bonds": bonds,
+            "bond_count": bonds.len(),
+        }))
+    }
+
     // ========================================================================
     // Mesh Networking APIs (GAP-16: Tower Atomic Validation)
     // ========================================================================

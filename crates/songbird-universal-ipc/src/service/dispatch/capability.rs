@@ -41,6 +41,22 @@ pub(super) async fn dispatch_capability(
             handler.discovery_handler.handle_content_peers(params).await,
             "Discovery content_peers failed",
         ),
+        JsonRpcMethod::Discovery(DiscoveryMethod::Topology) => IpcServiceHandler::wrap_result(
+            handler.discovery_handler.handle_topology(params).await,
+            "Discovery topology failed",
+        ),
+        JsonRpcMethod::Discovery(DiscoveryMethod::Health) => IpcServiceHandler::wrap_result(
+            handler.discovery_handler.handle_health(params).await,
+            "Discovery health failed",
+        ),
+        JsonRpcMethod::Discovery(DiscoveryMethod::Query) => IpcServiceHandler::wrap_result(
+            handler.discovery_handler.handle_query(params).await,
+            "Discovery query failed",
+        ),
+        JsonRpcMethod::Discovery(DiscoveryMethod::Bonds) => IpcServiceHandler::wrap_result(
+            handler.discovery_handler.handle_bonds(params).await,
+            "Discovery bonds failed",
+        ),
         JsonRpcMethod::Rendezvous(RendezvousMethod::Register) => IpcServiceHandler::wrap_result(
             handler.rendezvous_handler.handle_register(params).await,
             "Rendezvous register failed",

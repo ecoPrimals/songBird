@@ -191,6 +191,11 @@ async fn handle_drawbridge_connection(
         None
     };
 
+    // JSON-RPC forwarding endpoint — always accessible (used by esotericWebb, sourDough-pattern consumers)
+    if path == "/jsonrpc" && method == "POST" {
+        return handle_jsonrpc_forward(reader.into_inner(), body.as_deref(), peer).await;
+    }
+
     // Auth gate enforcement — resolve route first to check per-route public flag
     let matched_route = config.resolve_route(path);
     let route_is_public = matched_route.is_some_and(|r| r.public);
@@ -316,6 +321,79 @@ fn build_backend_url(route: &ProxyRoute, request_path: &str, routes: &[Drawbridg
     } else {
         format!("{base}/{}", suffix.trim_start_matches('/'))
     }
+}
+
+/// Forward a JSON-RPC request to the local songBird IPC endpoint and return
+/// the response as an HTTP 200 JSON body. Enables esotericWebb and other
+/// NDJSON JSON-RPC consumers to call songBird methods over HTTP.
+async fn handle_jsonrpc_forward(
+    mut client_stream: tokio::net::TcpStream,
+    body: Option<&str>,
+    peer: SocketAddr,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use tokio::io::AsyncReadExt;
+
+    let Some(json_body) = body else {
+        client_stream
+            .write_all(b"HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nContent-Length: 42\r\n\r\n{\"error\":\"POST /jsonrpc requires a body\"}")
+            .await?;
+        return Ok(());
+    };
+
+    let socket_path = songbird_types::defaults::paths::primary_ipc_socket_path();
+    let path_str = socket_path.to_string_lossy();
+    let mut ipc = match songbird_types::IpcStream::connect(&path_str).await {
+        Ok(s) => s,
+        Err(e) => {
+            debug!(peer = %peer, error = %e, "jsonrpc forward: cannot connect to IPC");
+            let err_body = format!(
+                "{{\"jsonrpc\":\"2.0\",\"error\":{{\"code\":-32603,\"message\":\"IPC unavailable: {e}\"}},\"id\":null}}"
+            );
+            let resp = format!(
+                "HTTP/1.1 502 Bad Gateway\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{err_body}",
+                err_body.len()
+            );
+            client_stream.write_all(resp.as_bytes()).await?;
+            return Ok(());
+        }
+    };
+
+    let mut request_bytes = json_body.as_bytes().to_vec();
+    if !request_bytes.ends_with(b"\n") {
+        request_bytes.push(b'\n');
+    }
+    ipc.write_all(&request_bytes).await?;
+
+    let mut response = Vec::with_capacity(4096);
+    let mut buf = [0u8; 4096];
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
+    loop {
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        if remaining.is_zero() {
+            break;
+        }
+        match tokio::time::timeout(remaining, ipc.read(&mut buf)).await {
+            Ok(Ok(0)) => break,
+            Ok(Ok(n)) => {
+                response.extend_from_slice(&buf[..n]);
+                if response.contains(&b'\n') {
+                    break;
+                }
+            }
+            Ok(Err(_)) => break,
+            Err(_) => break,
+        }
+    }
+
+    let response_str = String::from_utf8_lossy(&response);
+    let trimmed = response_str.trim();
+
+    let http_resp = format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: {}\r\n\r\n{trimmed}",
+        trimmed.len()
+    );
+    client_stream.write_all(http_resp.as_bytes()).await?;
+    Ok(())
 }
 
 async fn proxy_to_backend(
@@ -608,6 +686,33 @@ mod tests {
         assert_eq!(
             build_backend_url(&route, "/hub/api/status", &routes),
             "http://192.168.4.237:8000/api/status"
+        );
+    }
+
+    #[test]
+    fn build_backend_url_footprint_proxy_path() {
+        let route = ProxyRoute {
+            base_url: String::from("http://127.0.0.1:8090"),
+            default_headers: std::collections::HashMap::new(),
+            api_key_env: None,
+            timeout_ms: 30_000,
+        };
+        let routes = vec![DrawbridgeRoute {
+            path_prefix: String::from("/footprint"),
+            capability: String::from("footprint"),
+            public: false,
+        }];
+        assert_eq!(
+            build_backend_url(&route, "/footprint/ext/geocode", &routes),
+            "http://127.0.0.1:8090/ext/geocode"
+        );
+        assert_eq!(
+            build_backend_url(&route, "/footprint/ext/elevation", &routes),
+            "http://127.0.0.1:8090/ext/elevation"
+        );
+        assert_eq!(
+            build_backend_url(&route, "/footprint/api/projects", &routes),
+            "http://127.0.0.1:8090/api/projects"
         );
     }
 

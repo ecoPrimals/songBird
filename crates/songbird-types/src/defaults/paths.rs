@@ -258,6 +258,21 @@ pub fn network_socket_candidates() -> [PathBuf; 2] {
     [b.join("network.sock"), b.join(format!("{}.sock", crate::primal_names::SELF_NAME))]
 }
 
+/// Primary IPC socket path for the songBird orchestrator.
+///
+/// Returns the first candidate from [`network_socket_candidates`] that exists,
+/// or the domain-named socket path as fallback (for connection attempts that
+/// will produce a clear "not found" error).
+#[must_use]
+pub fn primary_ipc_socket_path() -> PathBuf {
+    let candidates = network_socket_candidates();
+    candidates
+        .iter()
+        .find(|p| p.exists())
+        .cloned()
+        .unwrap_or_else(|| candidates[0].clone())
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, reason = "test assertions")]
 #[allow(deprecated, reason = "tests intentionally verify deprecated constants for backward-compat")]

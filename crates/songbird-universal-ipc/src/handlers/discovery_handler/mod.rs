@@ -378,6 +378,129 @@ impl DiscoveryHandler {
             Ok(None)
         }
     }
+
+    /// Handle `discovery.topology` — mesh gate topology for composition consumers.
+    ///
+    /// Returns the current mesh topology: gates, overlay addresses, connectivity.
+    /// Used by esotericWebb to render the mesh graph in real-time.
+    pub async fn handle_topology(&self, _params: Value) -> IpcResult<Value> {
+        let mut gates = Vec::new();
+
+        if let Some(ref mesh) = self.mesh_handler {
+            let guard = mesh.mesh().await;
+            if let Some(ref beacon_mesh) = *guard {
+                let reachable = beacon_mesh.get_reachable_nodes().await;
+                for node_id in &reachable {
+                    let endpoint = beacon_mesh
+                        .get_best_path(node_id)
+                        .await
+                        .map(|p| format!("{:?}", p.endpoint_type));
+                    gates.push(serde_json::json!({
+                        "node_id": node_id,
+                        "reachable": true,
+                        "endpoint": endpoint,
+                    }));
+                }
+            }
+        }
+
+        Ok(serde_json::json!({
+            "gates": gates,
+            "gate_count": gates.len(),
+            "self_node_id": songbird_process_env::var("SONGBIRD_NODE_ID").unwrap_or_default(),
+        }))
+    }
+
+    /// Handle `discovery.health` — node health status.
+    ///
+    /// Returns liveness and readiness information. Designed for health checks
+    /// from composition consumers (esotericWebb, footPrint).
+    pub async fn handle_health(&self, _params: Value) -> IpcResult<Value> {
+        let mesh_active = if let Some(ref mesh) = self.mesh_handler {
+            mesh.mesh().await.is_some()
+        } else {
+            false
+        };
+
+        let peer_count = if let Some(ref registry) = self.peer_registry {
+            registry.get_all_peers().await.map(|p| p.len()).unwrap_or(0)
+        } else {
+            0
+        };
+
+        Ok(serde_json::json!({
+            "alive": true,
+            "mesh_active": mesh_active,
+            "peer_count": peer_count,
+            "uptime_secs": std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0),
+        }))
+    }
+
+    /// Handle `discovery.query` — generic capability/service discovery.
+    ///
+    /// Accepts optional `capability` filter and returns services providing it.
+    pub async fn handle_query(&self, params: Value) -> IpcResult<Value> {
+        let capability_filter = params.get("capability").and_then(Value::as_str);
+
+        let peers = if let Some(ref registry) = self.peer_registry {
+            registry.get_all_peers().await.unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+
+        let results: Vec<&DiscoveredPeerInfo> = if let Some(cap) = capability_filter {
+            peers.iter().filter(|p| p.capabilities.iter().any(|c| c == cap)).collect()
+        } else {
+            peers.iter().collect()
+        };
+
+        let services: Vec<Value> = results
+            .iter()
+            .map(|p| {
+                serde_json::json!({
+                    "node_id": p.node_id,
+                    "address": p.address,
+                    "capabilities": p.capabilities,
+                    "protocols": p.protocols,
+                })
+            })
+            .collect();
+
+        Ok(serde_json::json!({
+            "services": services,
+            "total_count": services.len(),
+            "filter": capability_filter,
+        }))
+    }
+
+    /// Handle `discovery.bonds` — external API bonds configured on this node.
+    ///
+    /// Returns the drawbridge external allowlist (science APIs, GIS services, etc.)
+    /// configured via `SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST`.
+    pub async fn handle_bonds(&self, _params: Value) -> IpcResult<Value> {
+        let allowlist_raw =
+            songbird_process_env::var("SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST").unwrap_or_default();
+
+        let bonds: Vec<Value> = allowlist_raw
+            .split(',')
+            .filter_map(|entry| {
+                let entry = entry.trim();
+                let (name, url) = entry.split_once('=')?;
+                Some(serde_json::json!({
+                    "service": name.trim(),
+                    "base_url": url.trim(),
+                }))
+            })
+            .collect();
+
+        Ok(serde_json::json!({
+            "bonds": bonds,
+            "bond_count": bonds.len(),
+        }))
+    }
 }
 
 impl Default for DiscoveryHandler {

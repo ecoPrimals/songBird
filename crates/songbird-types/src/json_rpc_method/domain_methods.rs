@@ -150,6 +150,10 @@ pub enum DiscoveryMethod {
     PeerCount,
     RejectedPeers,
     Status,
+    Topology,
+    Health,
+    Query,
+    Bonds,
 }
 
 /// `rendezvous.*`

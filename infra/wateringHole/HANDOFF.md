@@ -1,7 +1,7 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave147b  
+**Version**: v0.2.1-wave147f  
 **Date**: July 17, 2026  
 **Gate**: flockGate (eastGate)
 
@@ -17,10 +17,11 @@
 | Hardcoding | 0 in production (all env-driven, capability-based) |
 | Mocks in prod | 0 (all `#[cfg(test)]` gated) |
 
-## Recent Evolution (Wave 131–147)
+## Recent Evolution (Wave 131–147f)
 
 | Wave | Summary |
 |------|---------|
+| 147f | **P0 PROXY_PATH**: drawbridge routing verified for footPrint (`/footprint/*` → `:8090`). **GAP-037**: `/jsonrpc` endpoint on drawbridge (HTTP→IPC bridge for esotericWebb). **Discovery schemas**: `discovery.topology/health/query/bonds` implemented |
 | 147b | `mesh.enroll` JSON-RPC method wired — BTSP gate enrollment endpoint ready for cellMembrane `gate.enroll` integration |
 | 147a | Final 2 inline cfg-gated IPC connections migrated to `IpcStream` (`neural_announce`, `relay_security`) |
 | 145b | Last 3 inline `#[cfg]`-gated IPC connections eliminated; zero platform-specific connect blocks remain outside platform layer |
@@ -62,9 +63,12 @@ into `capabilities.list` response. Example: `jupyter`, `inference`, etc.
 
 | Item | Blocked Team | Status |
 |------|-------------|--------|
-| TOPO-VIS mesh heartbeat data | petalTongue + nestGate | Ready (mesh.status, mesh.peers expose data) |
+| TOPO-VIS mesh heartbeat data | petalTongue + nestGate | Ready (mesh.status, mesh.peers, discovery.topology) |
 | EXP-06-CADDY auth wiring | sporeGate | Auth-gate live, Caddy config pending sporeGate |
 | Drawbridge external proxy | footPrint composition | **COMPLETE** (Wave 137c) |
+| **PROXY_PATH drawbridge route** | footPrint | **COMPLETE** (Wave 147f) — `/footprint=footprint` route config verified |
+| **JSON-RPC endpoint for esotericWebb** | esotericWebb | **COMPLETE** (Wave 147f) — `POST /jsonrpc` on drawbridge port |
+| **Discovery schemas** | esotericWebb | **COMPLETE** (Wave 147f) — topology/health/query/bonds |
 | tideGlass drawbridge bonds | tideGlass team | **COMPLETE** (Wave 140a) — LINCS, GEO, ChEMBL, NF Data Portal |
 | NF Data Portal ingestion | Gonzales explorer | **READY** — `nf` bond registered, HTTPS proxy supports Synapse API |
 | Windows cross-compile ref impl | 11 Windows-blocked primals | **REFERENCE** (Wave 139a) — pattern for Phase 2 transport |
@@ -76,40 +80,67 @@ into `capabilities.list` response. Example: `jupyter`, `inference`, etc.
 - Tor onion crypto: blocked on live security provider Ed25519/X25519 surface
 - CLI interactive prompts: `songbird init` still prints placeholder message
 
-## AAR — Wave 147b (July 17, 2026)
+## AAR — Wave 147f (July 17, 2026)
 
-### Accomplished (Waves 142b–147b)
+### Accomplished (Waves 142b–147f)
 
 | Deliverable | Impact |
 |-------------|--------|
-| `IpcStream` abstraction shipped | 15 crates migrated, `pin-project` dep eliminated, -284 lines platform boilerplate |
-| Zero cfg-gated IPC connections | All local IPC uses `songbird_types::IpcStream::connect()` — full Phase 2 transport |
-| `drawbridge.rs` refactor | 813→498L production via `drawbridge_auth.rs` extraction |
+| **P0 PROXY_PATH route** (147f) | footPrint composition unblocked: `/footprint/*` → `:8090` via drawbridge env config |
+| **GAP-037 /jsonrpc endpoint** (147f) | esotericWebb unblocked: `POST /jsonrpc` on drawbridge port bridges HTTP→IPC JSON-RPC |
+| **Discovery schemas** (147f) | `discovery.topology/health/query/bonds` — 4 new methods, both universal-ipc and orchestrator dispatch |
+| `IpcStream` abstraction | 15 crates migrated, `pin-project` dep eliminated, -284 lines platform boilerplate |
 | `mesh.enroll` method | JSON-RPC endpoint ready for BTSP gate enrollment |
 | Deep debt exhausted | Zero unsafe, zero `todo!()`, zero production mocks, zero files >800L, zero hardcoding |
 
-### What songBird Owns (functionally complete)
+### What songBird Delivers (functional)
 
 | Item | Status | Delivered |
 |------|--------|-----------|
-| footPrint `PROXY_PATH` drawbridge wiring | **COMPLETE** | Wave 137c — E2E verified (live geocoding) |
+| footPrint `PROXY_PATH` drawbridge route | **COMPLETE** | Wave 147f — config: `SONGBIRD_DRAWBRIDGE_ROUTES=/footprint=footprint`, `SONGBIRD_PROXY_ROUTES=footprint=http://127.0.0.1:8090` |
+| esotericWebb JSON-RPC access | **COMPLETE** | Wave 147f — `POST :7780/jsonrpc` (no auth, auto-forwards to IPC) |
+| Discovery schemas for esotericWebb | **COMPLETE** | Wave 147f — topology, health, query, bonds |
 | tideGlass drawbridge bonds | **COMPLETE** | Wave 140a — LINCS, GEO, ChEMBL, NF Data Portal |
 | `mesh.enroll` server-side endpoint | **READY** | Wave 147b — awaiting BTSP proof protocol |
+
+### Deployment Configuration for footPrint
+
+footPrint systemd unit on sporeGate needs these env vars for songBird drawbridge:
+
+```bash
+SONGBIRD_DRAWBRIDGE_ROUTES=/footprint=footprint
+SONGBIRD_PROXY_ROUTES=footprint=http://127.0.0.1:8090
+```
+
+This routes `:7780/footprint/ext/geocode` → footPrint `:8090/ext/geocode` (path prefix stripped).
+
+### esotericWebb Integration
+
+esotericWebb can now call songBird via standard HTTP:
+
+```bash
+curl -X POST http://127.0.0.1:7780/jsonrpc \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"discovery.health","params":{},"id":1}'
+```
+
+Response: `{"alive":true,"mesh_active":true,"registered_services":N}`
+
+Available discovery methods: `discovery.topology`, `discovery.health`, `discovery.query`, `discovery.bonds`, `discovery.peers`.
 
 ### What We Need from Other Teams
 
 | Need | Owner | Detail |
 |------|-------|--------|
-| **BTSP enrollment proof spec** | cellMembrane + bearDog | `mesh.enroll` accepts `{node_id, public_key}` — what format is the `proof` field? Ed25519 signature over what payload? cellMembrane's `gate.enroll` client would call this. |
-| **footPrint deploy topology** | sporeGate ops | Drawbridge is live locally. When footPrint is deployed on golgi, does it bind to drawbridge directly or go through Caddy? Need `PROXY_PATH` env wiring in the systemd unit. |
-| **tideGlass query patterns** | tideGlass / Gonzales | NF Data Portal bond is registered (`nf` service → `https://nf.tower.nf/`). Does Gonzales need patterns beyond `GET /portal/api/v1/`? Any POST/pagination? |
-| **E2E validation trigger** | primalSpring | `footprint-drawbridge-live` scenario is P2 TODO — what's the gate? Manual trigger, cron, or on-push? |
+| **BTSP enrollment proof spec** | cellMembrane + bearDog | `mesh.enroll` accepts `{node_id, public_key}` — what format is the `proof` field? Ed25519 signature over what payload? |
+| **footPrint deploy on sporeGate** | sporeGate ops | Systemd unit shipped by cellMembrane. Deploy it + set env vars above. |
+| **E2E validation trigger** | primalSpring | `footprint-drawbridge-live` scenario is P2 TODO — what's the gate? |
 
 ### No Blockers
 
-songBird has **zero P0/P1 items**. All ecosystem milestones clear (Phase 2 14/14,
-CAC 6/6, Glacial 8/8). Deep debt targets exhausted. Standing by for composition
-wiring when infrastructure unblocks.
+songBird has **zero P0/P1 items remaining**. All 3 upstream demands resolved this wave.
+All ecosystem milestones clear (Phase 2 14/14, CAC 6/6, Glacial 8/8). Deep debt
+targets exhausted. Standing by for BTSP proof spec and live deployment.
 
 ## Fossil Record
 

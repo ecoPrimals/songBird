@@ -86,6 +86,18 @@ impl UnixSocketServer {
             Ok(JsonRpcMethod::Discovery(DiscoveryMethod::Peers)) => {
                 self.handlers.discovery_peers_json(request.params).await
             }
+            Ok(JsonRpcMethod::Discovery(DiscoveryMethod::Topology)) => {
+                self.handlers.discovery_topology_json(request.params).await
+            }
+            Ok(JsonRpcMethod::Discovery(DiscoveryMethod::Health)) => {
+                self.handlers.discovery_health_json(request.params).await
+            }
+            Ok(JsonRpcMethod::Discovery(DiscoveryMethod::Query)) => {
+                self.handlers.discovery_query_json(request.params).await
+            }
+            Ok(JsonRpcMethod::Discovery(DiscoveryMethod::Bonds)) => {
+                self.handlers.discovery_bonds_json(request.params).await
+            }
             Ok(JsonRpcMethod::Identity) => {
                 Ok(songbird_universal_ipc::introspection::identity(&crate::env_config::family_id()))
             }
