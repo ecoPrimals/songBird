@@ -225,16 +225,8 @@ impl IntegrationManager {
             .find(|p| p.exists());
 
         if let Some(path) = socket_path {
-            #[cfg(unix)]
-            let connect_result = tokio::net::UnixStream::connect(&path).await;
-            #[cfg(windows)]
-            let connect_result = {
-                let port: u16 = std::fs::read_to_string(&path)
-                    .ok()
-                    .and_then(|s| s.trim().parse().ok())
-                    .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
-                tokio::net::TcpStream::connect(format!("127.0.0.1:{port}")).await
-            };
+            let path_str = path.to_string_lossy();
+            let connect_result = songbird_types::IpcStream::connect(&path_str).await;
 
             match connect_result {
                 Ok(_) => {

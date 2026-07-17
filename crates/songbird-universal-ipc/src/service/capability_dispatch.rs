@@ -225,27 +225,13 @@ impl IpcServiceHandler {
     ) -> Result<Value, String> {
         use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
-        #[cfg(unix)]
         let stream = tokio::time::timeout(
             DEFAULT_SOCKET_IO_TIMEOUT,
-            tokio::net::UnixStream::connect(socket_path),
+            songbird_types::IpcStream::connect(socket_path),
         )
         .await
         .map_err(|_| format!("Timeout connecting to provider at {socket_path}"))?
         .map_err(|e| format!("Cannot connect to provider at {socket_path}: {e}"))?;
-
-        #[cfg(windows)]
-        let stream = {
-            let port: u16 = std::fs::read_to_string(socket_path)
-                .ok()
-                .and_then(|s| s.trim().parse().ok())
-                .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
-            let addr = format!("127.0.0.1:{port}");
-            tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, tokio::net::TcpStream::connect(&addr))
-                .await
-                .map_err(|_| format!("Timeout connecting to provider at {addr}"))?
-                .map_err(|e| format!("Cannot connect to provider at {addr}: {e}"))?
-        };
 
         let request = serde_json::json!({
             "jsonrpc": "2.0",
@@ -258,7 +244,7 @@ impl IpcServiceHandler {
             .map_err(|e| format!("Failed to serialize request: {e}"))?;
         request_bytes.push(b'\n');
 
-        let (reader, mut writer) = stream.into_split();
+        let (reader, mut writer) = tokio::io::split(stream);
 
         tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, writer.write_all(&request_bytes))
             .await
