@@ -1,8 +1,8 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave145b  
-**Date**: July 16, 2026  
+**Version**: v0.2.1-wave147b  
+**Date**: July 17, 2026  
 **Gate**: flockGate (eastGate)
 
 ## Current State
@@ -17,10 +17,12 @@
 | Hardcoding | 0 in production (all env-driven, capability-based) |
 | Mocks in prod | 0 (all `#[cfg(test)]` gated) |
 
-## Recent Evolution (Wave 131–145)
+## Recent Evolution (Wave 131–147)
 
 | Wave | Summary |
 |------|---------|
+| 147b | `mesh.enroll` JSON-RPC method wired — BTSP gate enrollment endpoint ready for cellMembrane `gate.enroll` integration |
+| 147a | Final 2 inline cfg-gated IPC connections migrated to `IpcStream` (`neural_announce`, `relay_security`) |
 | 145b | Last 3 inline `#[cfg]`-gated IPC connections eliminated; zero platform-specific connect blocks remain outside platform layer |
 | 143b | `IpcStream` migration batch 2: 9 additional crates migrated; `CryptoStream` + `pin-project` eliminated from `songbird-tls`; 30+ `connect_platform` pairs consolidated; `&PathBuf`→`&Path` evolution; 12 total crates on `IpcStream` |
 | 142b | Phase 2 "abstraction over gating": `IpcStream` shipped in `songbird-types` (platform-abstracted async IPC); 3 crates migrated (crypto-provider, lineage-relay, federation); `drawbridge.rs` refactored (813→498L); platform cfg audit: 35 trait-backend candidates |
@@ -74,41 +76,40 @@ into `capabilities.list` response. Example: `jupyter`, `inference`, etc.
 - Tor onion crypto: blocked on live security provider Ed25519/X25519 surface
 - CLI interactive prompts: `songbird init` still prints placeholder message
 
-## AAR — Wave 145b (July 16, 2026)
+## AAR — Wave 147b (July 17, 2026)
 
-### Accomplished
+### Accomplished (Waves 142b–147b)
 
-Phase 2 Transport abstraction is **COMPLETE** for songBird. Zero inline `#[cfg]`-gated
-IPC connection blocks remain outside the platform abstraction layer. 15 crates migrated
-to `IpcStream` total. `pin-project` dependency eliminated. Net -248 lines of platform
-boilerplate across Waves 142b–145b.
+| Deliverable | Impact |
+|-------------|--------|
+| `IpcStream` abstraction shipped | 15 crates migrated, `pin-project` dep eliminated, -284 lines platform boilerplate |
+| Zero cfg-gated IPC connections | All local IPC uses `songbird_types::IpcStream::connect()` — full Phase 2 transport |
+| `drawbridge.rs` refactor | 813→498L production via `drawbridge_auth.rs` extraction |
+| `mesh.enroll` method | JSON-RPC endpoint ready for BTSP gate enrollment |
+| Deep debt exhausted | Zero unsafe, zero `todo!()`, zero production mocks, zero files >800L, zero hardcoding |
 
-### Remaining P2: Composition Wiring — Ownership Clarification
+### What songBird Owns (functionally complete)
 
-songBird **owns** the drawbridge behaviors that footPrint and tideGlass interact with.
-We are not blocked on those teams — the wiring is ours to ship:
+| Item | Status | Delivered |
+|------|--------|-----------|
+| footPrint `PROXY_PATH` drawbridge wiring | **COMPLETE** | Wave 137c — E2E verified (live geocoding) |
+| tideGlass drawbridge bonds | **COMPLETE** | Wave 140a — LINCS, GEO, ChEMBL, NF Data Portal |
+| `mesh.enroll` server-side endpoint | **READY** | Wave 147b — awaiting BTSP proof protocol |
 
-| Item | What songBird Owns | What External Team Provides |
-|------|-------------------|----------------------------|
-| **footPrint `PROXY_PATH`** | Drawbridge route registration, auth-gate config, external proxy allowlist entries for GIS services | footPrint client consuming `/ext` endpoint (already migrated Wave 137c) |
-| **tideGlass bonds** | Drawbridge bond definitions (LINCS L1000, GEO, ChEMBL, NF Data Portal base URLs + allowlist entries) | tideGlass consuming the bonds via drawbridge HTTP proxy |
+### What We Need from Other Teams
 
-**Status**: Both items are **already functionally complete** (Wave 137c + 140a):
-- `PROXY_PATH` → footPrint Express→drawbridge migration shipped, E2E verified with live geocoding
-- tideGlass bonds → 4 pharmacogenomics APIs registered in `SCIENCE_BONDS` + external allowlist
-
-### Guidance Needed from Upstream
-
-| Need | Owner | Question |
-|------|-------|----------|
-| footPrint server composition topology | sporeGate ops | When `PROXY_PATH` env is wired in deployed footPrint service on golgi, do we need Caddy blocks? Or direct drawbridge bind? |
-| tideGlass Gonzales Explorer ingestion spec | tideGlass team | NF Data Portal bond is registered — does Gonzales need additional query patterns beyond `GET /portal/api/v1/`? |
-| Live E2E validation scenario | primalSpring | `footprint-drawbridge-live` scenario listed as P2 TODO — what's the trigger? |
+| Need | Owner | Detail |
+|------|-------|--------|
+| **BTSP enrollment proof spec** | cellMembrane + bearDog | `mesh.enroll` accepts `{node_id, public_key}` — what format is the `proof` field? Ed25519 signature over what payload? cellMembrane's `gate.enroll` client would call this. |
+| **footPrint deploy topology** | sporeGate ops | Drawbridge is live locally. When footPrint is deployed on golgi, does it bind to drawbridge directly or go through Caddy? Need `PROXY_PATH` env wiring in the systemd unit. |
+| **tideGlass query patterns** | tideGlass / Gonzales | NF Data Portal bond is registered (`nf` service → `https://nf.tower.nf/`). Does Gonzales need patterns beyond `GET /portal/api/v1/`? Any POST/pagination? |
+| **E2E validation trigger** | primalSpring | `footprint-drawbridge-live` scenario is P2 TODO — what's the gate? Manual trigger, cron, or on-push? |
 
 ### No Blockers
 
-songBird has zero P0/P1 items. All milestones clear. Ready for upstream to wire
-composition when infrastructure (golgi sporePrint rebuild, sporeGate deploy) unblocks.
+songBird has **zero P0/P1 items**. All ecosystem milestones clear (Phase 2 14/14,
+CAC 6/6, Glacial 8/8). Deep debt targets exhausted. Standing by for composition
+wiring when infrastructure unblocks.
 
 ## Fossil Record
 
