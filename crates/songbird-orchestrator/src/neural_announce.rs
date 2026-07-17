@@ -73,18 +73,8 @@ pub async fn announce_to_neural_api(neural_socket: &Path, own_socket: &str) {
     };
     request_bytes.push(b'\n');
 
-    #[cfg(unix)]
-    let connect_result = tokio::net::UnixStream::connect(neural_socket).await;
-    #[cfg(windows)]
-    let connect_result = {
-        let port: u16 = std::fs::read_to_string(neural_socket)
-            .ok()
-            .and_then(|s| s.trim().parse().ok())
-            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
-        tokio::net::TcpStream::connect(format!("127.0.0.1:{port}")).await
-    };
-
-    let stream = match connect_result {
+    let neural_path = neural_socket.to_string_lossy();
+    let stream = match songbird_types::IpcStream::connect(&neural_path).await {
         Ok(s) => s,
         Err(e) => {
             debug!(
@@ -96,7 +86,7 @@ pub async fn announce_to_neural_api(neural_socket: &Path, own_socket: &str) {
         }
     };
 
-    let (reader, mut writer) = stream.into_split();
+    let (reader, mut writer) = tokio::io::split(stream);
 
     if let Err(e) = writer.write_all(&request_bytes).await {
         warn!("Failed to write announce to neural-api: {e}");

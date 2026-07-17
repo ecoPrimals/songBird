@@ -71,24 +71,11 @@ async fn call_crypto_rpc(
 ) -> Result<serde_json::Value, String> {
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
-    #[cfg(unix)]
-    let stream = tokio::net::UnixStream::connect(socket_path)
+    let stream = songbird_types::IpcStream::connect(socket_path)
         .await
         .map_err(|e| format!("crypto provider connect ({socket_path}): {e}"))?;
 
-    #[cfg(windows)]
-    let stream = {
-        let port: u16 = std::fs::read_to_string(socket_path)
-            .ok()
-            .and_then(|s| s.trim().parse().ok())
-            .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT);
-        let addr = format!("127.0.0.1:{port}");
-        tokio::net::TcpStream::connect(&addr)
-            .await
-            .map_err(|e| format!("crypto provider connect ({addr}): {e}"))?
-    };
-
-    let (reader, mut writer) = stream.into_split();
+    let (reader, mut writer) = tokio::io::split(stream);
     let mut buf_reader = BufReader::new(reader);
 
     let mut req_bytes = serde_json::to_vec(request).map_err(|e| format!("Serialize: {e}"))?;
