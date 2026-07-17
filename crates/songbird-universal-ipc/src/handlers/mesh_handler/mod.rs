@@ -645,6 +645,43 @@ impl MeshHandler {
             "uptime_seconds": self.start_time.elapsed().as_secs()
         }))
     }
+
+    /// Handle `mesh.enroll` — BTSP-validated gate enrollment into the mesh.
+    ///
+    /// Accepts enrollment requests from new gates seeking to join. The gate
+    /// proves its identity via a BTSP session proof (Ed25519 signature from
+    /// its security provider). On success, returns the `WireGuard` peer config
+    /// and mesh topology needed for the gate to connect.
+    ///
+    /// Requires: hub-side peer addition automation (cellMembrane `gate.enroll`
+    /// client calls this endpoint after `wg.keygen`).
+    pub async fn handle_enroll(&self, params: Value) -> Result<Value, String> {
+        let node_id = params
+            .get("node_id")
+            .and_then(Value::as_str)
+            .ok_or("mesh.enroll requires 'node_id' (gate name)")?;
+
+        let public_key = params
+            .get("public_key")
+            .and_then(Value::as_str)
+            .ok_or("mesh.enroll requires 'public_key' (WireGuard public key)")?;
+
+        tracing::info!(
+            node_id = %node_id,
+            "mesh.enroll request received — BTSP enrollment not yet active"
+        );
+
+        let mesh_initialized = self.mesh.read().await.is_some();
+
+        Ok(json!({
+            "enrolled": false,
+            "reason": "enrollment_not_active",
+            "message": "BTSP-validated enrollment is not yet active on this node. Use manual enrollment via cellMembrane gate.enroll.",
+            "node_id": node_id,
+            "public_key_received": !public_key.is_empty(),
+            "mesh_available": mesh_initialized
+        }))
+    }
 }
 
 impl Default for MeshHandler {

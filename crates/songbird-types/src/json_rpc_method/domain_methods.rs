@@ -194,6 +194,7 @@ pub enum MeshMethod {
     Subscribe,
     ProbeLatency,
     CapabilitiesAnnounce,
+    Enroll,
 }
 
 /// `punch.*`
