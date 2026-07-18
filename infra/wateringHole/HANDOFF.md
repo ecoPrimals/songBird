@@ -108,33 +108,38 @@ into `capabilities.list` response. Example: `jupyter`, `inference`, etc.
 
 | Need | Owner | Priority | Detail |
 |------|-------|----------|--------|
-| **BTSP enrollment proof spec** | cellMembrane + bearDog | **P1** | songBird's `mesh.enroll` endpoint is READY: accepts `{node_id, public_key}`. What is needed from upstream: (1) What is the `proof` field format? (2) Is it Ed25519 signature? Over what payload? (3) Does cellMembrane's `gate.enroll` return a signed credential or WireGuard config? (4) What does the success response look like? |
-| **bearDog crypto JSON-RPC sigs** | bearDog | **P1** | songBird delegates to bearDog for Ed25519/X25519 — confirm signature wire format for enrollment verification |
-| **footPrint deploy on sporeGate** | sporeGate ops | P2 | Systemd unit shipped by cellMembrane. Deploy it + set env vars (`SONGBIRD_DRAWBRIDGE_ROUTES=/footprint=footprint`, `SONGBIRD_PROXY_ROUTES=footprint=http://127.0.0.1:8090`) |
+| **bearDog `enrollment.verify` endpoint** | bearDog | **P1** | songBird calls `enrollment.verify({node_id, public_key, timestamp, proof})` — bearDog must implement this method (verifies HMAC against family seed) |
+| **cellMembrane integration** | cellMembrane | P2 | cellMembrane's `gate.enroll` should call songBird's `mesh.enroll` to complete mesh registration |
+| **footPrint deploy on sporeGate** | sporeGate ops | P2 | Systemd unit shipped. Deploy + set drawbridge env vars |
 
-### songBird `mesh.enroll` — What's Ready
+### songBird `mesh.enroll` — ACTIVE (Wave 150b)
 
 ```
 JSON-RPC method: "mesh.enroll"
-Params: { "node_id": "<gate-name>", "public_key": "<wg-pubkey>" }
-Current response: { "enrolled": false, "reason": "enrollment_not_active", ... }
+Params: {
+  "node_id": "<gate-name>",
+  "public_key": "<wg-pubkey>",
+  "timestamp": <unix-epoch-seconds>,
+  "proof": "<base64 HMAC-SHA256(family_seed, node_id|public_key|timestamp)>",
+  "address": "<ip:port>"  (optional — for direct mesh registration)
+}
+
+Success response: { "enrolled": true, "node_id": "...", "mesh_active": true/false }
+Rejection:        { "enrolled": false, "reason": "proof_invalid"|"security_provider_unavailable" }
 ```
 
-**Activation blocked on**: cellMembrane `gate.enroll` spec defining:
-1. **Proof format** — what does the enrolling node present to prove identity?
-2. **Verification** — does songBird verify locally or delegate to bearDog?
-3. **Success action** — on valid enrollment, does songBird add the node to mesh + persist? Return WireGuard config? Both?
-4. **Revocation** — is there a `mesh.revoke` / `gate.revoke` counterpart?
+**Proof protocol**: `HMAC-SHA256(family_seed, node_id || "|" || public_key || "|" || timestamp)`
+- bearDog verifies via `enrollment.verify` JSON-RPC
+- On success: node persisted to `peers.toml` + added to live mesh (if active)
+- Graceful degradation: if bearDog unavailable, returns structured error (no crash)
 
-songBird will activate `mesh.enroll` within 1 wave of receiving the spec.
+**cellMembrane integration**: call `mesh.enroll` via songBird's IPC socket or HTTP `/jsonrpc` endpoint.
 
 ### No Blockers (songBird side)
 
-songBird has **zero P0/P1 code quality items remaining**. All dimensional review
-findings resolved. BTSP `gate.enroll` is the only open P1 and is **externally blocked**
-on cellMembrane + bearDog providing the enrollment proof specification.
-
-Standing by for spec delivery.
+songBird has **zero P0/P1 code quality items remaining** and `mesh.enroll` is now
+**ACTIVE** — ready to process enrollment requests. The only runtime dependency is
+bearDog's `enrollment.verify` endpoint being live (graceful degradation if unavailable).
 
 ## Fossil Record
 
