@@ -51,7 +51,7 @@ fn test_ai_metrics_deserialization() -> SongbirdResult<()> {
     let metrics: AIMetrics =
         serde_json::from_str(json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Deserialization should succeed: {}", e),
+            message: format!("Deserialization should succeed: {e}"),
             debug_info: None,
         })?;
     assert_eq!(metrics.active_models, 8);
@@ -68,7 +68,7 @@ fn test_ai_health_deserialization() -> SongbirdResult<()> {
     let health: AIHealth =
         serde_json::from_str(json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Deserialization should succeed: {}", e),
+            message: format!("Deserialization should succeed: {e}"),
             debug_info: None,
         })?;
     assert_eq!(health, AIHealth::Degraded);
@@ -77,7 +77,7 @@ fn test_ai_health_deserialization() -> SongbirdResult<()> {
     let health: AIHealth =
         serde_json::from_str(json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Deserialization should succeed: {}", e),
+            message: format!("Deserialization should succeed: {e}"),
             debug_info: None,
         })?;
     assert_eq!(health, AIHealth::Overloaded);
@@ -90,7 +90,7 @@ fn test_model_type_deserialization() -> SongbirdResult<()> {
     let model: ModelType =
         serde_json::from_str(json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Deserialization should succeed: {}", e),
+            message: format!("Deserialization should succeed: {e}"),
             debug_info: None,
         })?;
     assert_eq!(model, ModelType::Vision);
@@ -99,7 +99,7 @@ fn test_model_type_deserialization() -> SongbirdResult<()> {
     let model: ModelType =
         serde_json::from_str(json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Deserialization should succeed: {}", e),
+            message: format!("Deserialization should succeed: {e}"),
             debug_info: None,
         })?;
     assert_eq!(model, ModelType::Embedding);
@@ -116,7 +116,7 @@ fn test_ai_metrics_debug_format() -> SongbirdResult<()> {
         gpu_utilization_percent: 45.0,
         timestamp: chrono::Utc::now(),
     };
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("AIMetrics"));
     assert!(debug_str.contains("active_models"));
     Ok(())
@@ -142,11 +142,11 @@ fn test_ai_metrics_max_values() -> SongbirdResult<()> {
 #[test]
 fn test_model_type_debug() -> SongbirdResult<()> {
     let model = ModelType::Vision;
-    let debug_str = format!("{:?}", model);
+    let debug_str = format!("{model:?}");
     assert!(debug_str.contains("Vision"));
 
     let model = ModelType::Audio;
-    let debug_str = format!("{:?}", model);
+    let debug_str = format!("{model:?}");
     assert!(debug_str.contains("Audio"));
     Ok(())
 }
@@ -155,9 +155,7 @@ fn test_model_type_debug() -> SongbirdResult<()> {
 async fn test_adapter_chained_timeout() -> SongbirdResult<()> {
     let adapter = AIAdapter::new("http://test:8083".to_string())
         .await
-        .map_err(|e| {
-            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
-        })?
+        .map_err(|e| SongbirdError::configuration(format!("Adapter creation should succeed: {e}")))?
         .with_timeout(Duration::from_secs(10))
         .with_timeout(Duration::from_secs(25));
 

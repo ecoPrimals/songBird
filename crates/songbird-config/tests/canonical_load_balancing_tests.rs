@@ -182,7 +182,7 @@ fn test_strategy_equality() -> SongbirdResult<()> {
 #[test]
 fn test_strategy_debug() -> SongbirdResult<()> {
     let strategy = LoadBalancingStrategy::Adaptive;
-    let debug_str = format!("{:?}", strategy);
+    let debug_str = format!("{strategy:?}");
     assert!(debug_str.contains("Adaptive"));
     Ok(())
 }
@@ -190,7 +190,7 @@ fn test_strategy_debug() -> SongbirdResult<()> {
 #[test]
 fn test_strategy_display_round_robin() {
     let strategy = LoadBalancingStrategy::RoundRobin;
-    assert_eq!(format!("{}", strategy), "round-robin");
+    assert_eq!(format!("{strategy}"), "round-robin");
 }
 
 #[test]
@@ -198,43 +198,43 @@ fn test_strategy_display_weighted_round_robin() {
     let strategy = LoadBalancingStrategy::WeightedRoundRobin {
         weights: vec![1],
     };
-    assert_eq!(format!("{}", strategy), "weighted-round-robin");
+    assert_eq!(format!("{strategy}"), "weighted-round-robin");
 }
 
 #[test]
 fn test_strategy_display_least_connections() {
     let strategy = LoadBalancingStrategy::LeastConnections;
-    assert_eq!(format!("{}", strategy), "least-connections");
+    assert_eq!(format!("{strategy}"), "least-connections");
 }
 
 #[test]
 fn test_strategy_display_random() {
     let strategy = LoadBalancingStrategy::Random;
-    assert_eq!(format!("{}", strategy), "random");
+    assert_eq!(format!("{strategy}"), "random");
 }
 
 #[test]
 fn test_strategy_display_response_time() {
     let strategy = LoadBalancingStrategy::ResponseTime;
-    assert_eq!(format!("{}", strategy), "response-time");
+    assert_eq!(format!("{strategy}"), "response-time");
 }
 
 #[test]
 fn test_strategy_display_consistent_hashing() {
     let strategy = LoadBalancingStrategy::ConsistentHashing;
-    assert_eq!(format!("{}", strategy), "consistent-hashing");
+    assert_eq!(format!("{strategy}"), "consistent-hashing");
 }
 
 #[test]
 fn test_strategy_display_ip_hash() {
     let strategy = LoadBalancingStrategy::IpHash;
-    assert_eq!(format!("{}", strategy), "ip-hash");
+    assert_eq!(format!("{strategy}"), "ip-hash");
 }
 
 #[test]
 fn test_strategy_display_adaptive() {
     let strategy = LoadBalancingStrategy::Adaptive;
-    assert_eq!(format!("{}", strategy), "adaptive");
+    assert_eq!(format!("{strategy}"), "adaptive");
 }
 
 #[test]
@@ -243,7 +243,7 @@ fn test_strategy_display_custom() {
         name: "special".to_string(),
         config: serde_json::Value::Null,
     };
-    assert_eq!(format!("{}", strategy), "custom-special");
+    assert_eq!(format!("{strategy}"), "custom-special");
 }
 
 #[test]
@@ -307,7 +307,7 @@ fn test_strategy_round_trip_serialization() -> SongbirdResult<()> {
     let deserialized: LoadBalancingStrategy =
         serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Parsing failed: {}", e),
+            message: format!("Parsing failed: {e}"),
             debug_info: None,
         })?;
 
@@ -354,10 +354,10 @@ fn test_all_strategies() -> SongbirdResult<()> {
     ];
 
     for strategy in strategies {
-        let debug = format!("{:?}", strategy);
+        let debug = format!("{strategy:?}");
         assert!(!debug.is_empty());
 
-        let display = format!("{}", strategy);
+        let display = format!("{strategy}");
         assert!(!display.is_empty());
     }
     Ok(())
@@ -461,7 +461,7 @@ fn test_strategy_serialization_round_trip_all() -> SongbirdResult<()> {
         let deserialized: LoadBalancingStrategy =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
                 format: Some("JSON".to_string()),
-                message: format!("Parsing failed: {}", e),
+                message: format!("Parsing failed: {e}"),
                 debug_info: None,
             })?;
         assert_eq!(strategy, deserialized);
@@ -515,6 +515,6 @@ fn test_strategy_display_all_variants() {
     ];
 
     for (strategy, expected) in test_cases {
-        assert_eq!(format!("{}", strategy), expected);
+        assert_eq!(format!("{strategy}"), expected);
     }
 }

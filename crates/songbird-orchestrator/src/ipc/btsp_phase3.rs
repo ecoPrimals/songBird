@@ -73,7 +73,7 @@ pub enum Phase3Cipher {
 
 impl Phase3Cipher {
     #[must_use]
-    pub fn wire_name(self) -> &'static str {
+    pub const fn wire_name(self) -> &'static str {
         match self {
             Self::ChaCha20Poly1305 => "chacha20-poly1305",
             Self::Null => "null",

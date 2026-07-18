@@ -49,7 +49,7 @@ fn test_connection_limits_clone() {
 #[test]
 fn test_connection_limits_debug() {
     let limits = ConnectionLimits::default();
-    let debug_str = format!("{:?}", limits);
+    let debug_str = format!("{limits:?}");
     assert!(debug_str.contains("ConnectionLimits"));
     assert!(debug_str.contains("max_connections_per_host"));
 }
@@ -93,7 +93,7 @@ fn test_load_balancing_config_clone() {
 #[test]
 fn test_load_balancing_config_debug() {
     let config = LoadBalancingConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("LoadBalancingConfig"));
 }
 
@@ -139,7 +139,7 @@ fn test_rate_limiting_config_clone() {
 #[test]
 fn test_rate_limiting_config_debug() {
     let config = RateLimitingConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("RateLimitingConfig"));
 }
 
@@ -186,7 +186,7 @@ fn test_connection_pool_config_clone() {
 #[test]
 fn test_connection_pool_config_debug() {
     let config = ConnectionPoolConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("ConnectionPoolConfig"));
     assert!(debug_str.contains("max_size"));
 }

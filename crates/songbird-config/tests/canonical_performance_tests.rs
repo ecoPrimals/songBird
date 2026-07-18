@@ -85,7 +85,7 @@ fn test_performance_config_clone() {
 #[test]
 fn test_performance_config_debug() {
     let config = PerformanceConfig::default();
-    let debug = format!("{:?}", config);
+    let debug = format!("{config:?}");
     assert!(debug.contains("PerformanceConfig"));
 }
 
@@ -147,7 +147,7 @@ fn test_cache_config_equality() {
 #[test]
 fn test_cache_config_debug() {
     let config = CacheConfig::default();
-    let debug = format!("{:?}", config);
+    let debug = format!("{config:?}");
     assert!(debug.contains("CacheConfig"));
 }
 
@@ -199,7 +199,7 @@ fn test_metrics_config_equality() {
 #[test]
 fn test_metrics_config_debug() {
     let config = MetricsConfig::default();
-    let debug = format!("{:?}", config);
+    let debug = format!("{config:?}");
     assert!(debug.contains("MetricsConfig"));
 }
 
@@ -251,7 +251,7 @@ fn test_object_pool_sizes_equality() {
 #[test]
 fn test_object_pool_sizes_debug() {
     let pools = ObjectPoolSizes::default();
-    let debug = format!("{:?}", pools);
+    let debug = format!("{pools:?}");
     assert!(debug.contains("ObjectPoolSizes"));
 }
 
@@ -324,7 +324,7 @@ fn test_benchmark_config_equality() {
 #[test]
 fn test_benchmark_config_debug() {
     let config = BenchmarkConfig::default();
-    let debug = format!("{:?}", config);
+    let debug = format!("{config:?}");
     assert!(debug.contains("BenchmarkConfig"));
 }
 

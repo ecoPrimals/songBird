@@ -110,13 +110,13 @@ pub struct IpcServiceHandler {
 impl IpcServiceHandler {
     /// Access the mesh handler (for startup auto-seeding from `SONGBIRD_PEERS`).
     #[must_use]
-    pub fn mesh_handler(&self) -> &Arc<MeshHandler> {
+    pub const fn mesh_handler(&self) -> &Arc<MeshHandler> {
         &self.mesh_handler
     }
 
     /// Access the capability proxy router (for post-construction route registration).
     #[must_use]
-    pub fn capability_router(&self) -> &Arc<CapabilityProxyRouter> {
+    pub const fn capability_router(&self) -> &Arc<CapabilityProxyRouter> {
         &self.capability_router
     }
 

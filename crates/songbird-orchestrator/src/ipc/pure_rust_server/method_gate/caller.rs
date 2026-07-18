@@ -77,7 +77,7 @@ impl CallerContext {
     /// Checks whether the peer IP is a loopback address (`127.0.0.1`, `::1`)
     /// and sets `ConnectionOrigin` accordingly.
     #[must_use]
-    pub fn from_tcp(addr: std::net::SocketAddr) -> Self {
+    pub const fn from_tcp(addr: std::net::SocketAddr) -> Self {
         let origin = if addr.ip().is_loopback() {
             ConnectionOrigin::Loopback
         } else {

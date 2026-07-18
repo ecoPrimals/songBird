@@ -256,7 +256,7 @@ async fn test_e2e_low_timeout_config() {
 #[tokio::test]
 async fn test_e2e_many_discovery_endpoints() {
     let endpoints: Vec<String> =
-        (0..20).map(|i| format!("http://discovery-{}:8080/discover", i)).collect();
+        (0..20).map(|i| format!("http://discovery-{i}:8080/discover")).collect();
 
     let config = UnifiedAdapterConfig {
         discovery_endpoints: endpoints,

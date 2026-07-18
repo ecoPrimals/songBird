@@ -54,7 +54,7 @@ pub fn security_socket_path_in_biomeos_runtime_with_family(
     PathBuf::from(xdg_runtime_dir).join(BIOMEOS_RUNTIME_SUBDIR).join(socket_name)
 }
 
-/// Legacy family-scoped BearDog socket path under `xdg_runtime_dir`/`biomeos`/
+/// Legacy family-scoped `BearDog` socket path under `xdg_runtime_dir`/`biomeos`/
 /// e.g. `/run/user/1000/biomeos/beardog-nucleus01.sock`
 #[deprecated(
     since = "0.2.1",

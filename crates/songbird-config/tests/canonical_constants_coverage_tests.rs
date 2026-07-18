@@ -413,7 +413,7 @@ fn test_common_primal_ports_with_enabled_primals() {
     let mut m: HashMap<String, String> = HashMap::new();
     m.insert("SONGBIRD_ENABLE_MYPRIM".into(), "true".into());
     let ports = C::get_common_primal_ports_from_env_map(&m);
-    assert!(ports.len() >= 2, "Should have base + enabled primal, got {:?}", ports);
+    assert!(ports.len() >= 2, "Should have base + enabled primal, got {ports:?}");
 }
 
 // ==================== CONSTANT VALUES ====================

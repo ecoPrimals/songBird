@@ -68,7 +68,7 @@ fn test_federation_config_clone() {
 #[test]
 fn test_federation_config_debug() {
     let config = FederationConfig::default();
-    let debug_output = format!("{:?}", config);
+    let debug_output = format!("{config:?}");
     assert!(debug_output.contains("FederationConfig"));
 }
 

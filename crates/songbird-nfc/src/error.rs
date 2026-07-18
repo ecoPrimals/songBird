@@ -35,7 +35,7 @@ pub enum NfcError {
     #[error("Platform error: {0}")]
     Platform(String),
 
-    /// NFC stack not integrated for this target (JNI, CoreNFC, libnfc, etc.)
+    /// NFC stack not integrated for this target (JNI, `CoreNFC`, libnfc, etc.)
     #[error("Platform unsupported: {0}")]
     PlatformUnsupported(String),
 
@@ -108,7 +108,7 @@ mod tests {
     fn io_error_roundtrips_via_from() {
         let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "missing");
         let e: NfcError = io_err.into();
-        assert!(e.to_string().contains("missing"), "Io variant should wrap message: {}", e);
+        assert!(e.to_string().contains("missing"), "Io variant should wrap message: {e}");
     }
 
     #[test]

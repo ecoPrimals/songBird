@@ -83,9 +83,16 @@ impl IpcStream {
     /// Returns an I/O error if the connection fails or the endpoint type is unsupported.
     pub async fn connect_endpoint(endpoint: &crate::TransportEndpoint) -> io::Result<Self> {
         match endpoint {
-            crate::TransportEndpoint::Uds { path } => Self::connect(path).await,
-            crate::TransportEndpoint::Tcp { host, port } => Self::connect_tcp(host, *port).await,
-            crate::TransportEndpoint::MeshRelay { .. } => Err(io::Error::new(
+            crate::TransportEndpoint::Uds {
+                path,
+            } => Self::connect(path).await,
+            crate::TransportEndpoint::Tcp {
+                host,
+                port,
+            } => Self::connect_tcp(host, *port).await,
+            crate::TransportEndpoint::MeshRelay {
+                ..
+            } => Err(io::Error::new(
                 io::ErrorKind::Unsupported,
                 "MeshRelay requires Songbird mesh handler — cannot open raw stream",
             )),
@@ -97,10 +104,7 @@ impl IpcStream {
     async fn connect_via_port_file(path: &str) -> io::Result<Self> {
         let port_path = format!("{path}.port");
         let port_str = tokio::fs::read_to_string(&port_path).await.map_err(|e| {
-            io::Error::new(
-                e.kind(),
-                format!("failed to read IPC port file '{port_path}': {e}"),
-            )
+            io::Error::new(e.kind(), format!("failed to read IPC port file '{port_path}': {e}"))
         })?;
         let port: u16 = port_str.trim().parse().map_err(|e| {
             io::Error::new(

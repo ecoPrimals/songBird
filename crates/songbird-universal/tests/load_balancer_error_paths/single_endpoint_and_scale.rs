@@ -63,7 +63,7 @@ async fn test_single_endpoint_random() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_very_large_endpoint_count() {
     // Test with 1000 endpoints
-    let endpoints: Vec<String> = (0..1000).map(|i| format!("http://endpoint{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..1000).map(|i| format!("http://endpoint{i}:8080")).collect();
 
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
@@ -76,7 +76,7 @@ async fn test_very_large_endpoint_count() {
 
 #[tokio::test]
 async fn test_very_large_endpoint_count_least_loaded() -> SongbirdResult<()> {
-    let endpoints: Vec<String> = (0..500).map(|i| format!("http://endpoint{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..500).map(|i| format!("http://endpoint{i}:8080")).collect();
 
     let lb = LoadBalancer::new(endpoints, LoadBalancingStrategy::LeastLoaded);
 
@@ -111,7 +111,7 @@ async fn test_endpoint_with_unusual_port() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_endpoint_with_long_hostname() -> SongbirdResult<()> {
     let long_hostname = "a".repeat(255);
-    let endpoint = format!("http://{}:8080", long_hostname);
+    let endpoint = format!("http://{long_hostname}:8080");
 
     let lb = LoadBalancer::new(vec![endpoint.clone()], LoadBalancingStrategy::RoundRobin);
 

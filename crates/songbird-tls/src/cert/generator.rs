@@ -196,7 +196,7 @@ fn der_sequence(contents: &[u8]) -> Vec<u8> {
     out
 }
 
-/// Encode a `DateTime<Utc>` as DER UTCTime (YYMMDDHHmmssZ, 13 chars).
+/// Encode a `DateTime<Utc>` as DER `UTCTime` (`YYMMDDHHmmssZ`, 13 chars).
 fn der_utctime(dt: &DateTime<Utc>) -> Vec<u8> {
     let s = dt.format("%y%m%d%H%M%SZ").to_string();
     let mut out = vec![0x17]; // UTCTime tag
@@ -212,9 +212,9 @@ fn der_utctime(dt: &DateTime<Utc>) -> Vec<u8> {
 /// - Serial: random 8 bytes
 /// - Signature algorithm: Ed25519 (OID 1.3.101.112)
 /// - Issuer/Subject: CN=domain
-/// - Validity: UTCTime encoding of not_before..not_after
+/// - Validity: `UTCTime` encoding of `not_before..not_after`
 /// - Subject Public Key: Ed25519 (32 bytes)
-/// - Signature: Ed25519 over TBSCertificate (self-signed)
+/// - Signature: Ed25519 over `TBSCertificate` (self-signed)
 fn create_simple_cert_der(
     domain: &str,
     public_key: &VerifyingKey,
@@ -400,7 +400,7 @@ mod tests {
     }
 
     /// Parse placeholder DER validity timestamps written by [`create_simple_cert_der`].
-    /// Scan DER bytes for UTCTime entries (tag 0x17).
+    /// Scan DER bytes for `UTCTime` entries (tag 0x17).
     fn find_utctime_entries(der: &[u8]) -> Vec<String> {
         let mut results = Vec::new();
         for i in 0..der.len().saturating_sub(15) {

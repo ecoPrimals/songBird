@@ -490,7 +490,7 @@ mod tests {
         let t = CapabilityTransport::Tarpc(TarpcTransport(client));
         // Unknown paths are mapped to dotted RPC methods and attempted (fails due to no connection)
         let err = t.get("unknown/path").await.expect_err("rpc fails");
-        assert!(!err.to_string().is_empty(), "Should get an RPC error: {}", err);
+        assert!(!err.to_string().is_empty(), "Should get an RPC error: {err}");
         Ok(())
     }
 
@@ -501,7 +501,7 @@ mod tests {
         let t = CapabilityTransport::JsonRpc(JsonRpcTransport(client));
         // Unknown paths are mapped to dotted RPC methods and attempted (fails due to no connection)
         let err = t.get("foo/bar").await.expect_err("rpc fails");
-        assert!(!err.to_string().is_empty(), "Should get an RPC error: {}", err);
+        assert!(!err.to_string().is_empty(), "Should get an RPC error: {err}");
         Ok(())
     }
 

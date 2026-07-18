@@ -548,11 +548,8 @@ impl IpcHandlers {
             .await
             .unwrap_or_else(|_| serde_json::json!({"peers": []}));
 
-        let peers = mesh_result
-            .get("peers")
-            .and_then(|p| p.as_array())
-            .cloned()
-            .unwrap_or_default();
+        let peers =
+            mesh_result.get("peers").and_then(|p| p.as_array()).cloned().unwrap_or_default();
 
         let node_id = songbird_process_env::var("SONGBIRD_NODE_ID").unwrap_or_default();
 
@@ -568,10 +565,7 @@ impl IpcHandlers {
         &self,
         _params: Option<serde_json::Value>,
     ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
-        let mesh_status = self
-            .mesh_handler
-            .handle_status(serde_json::json!({}))
-            .await;
+        let mesh_status = self.mesh_handler.handle_status(serde_json::json!({})).await;
         let mesh_active = mesh_status
             .as_ref()
             .ok()
@@ -599,8 +593,7 @@ impl IpcHandlers {
             .and_then(serde_json::Value::as_str)
             .unwrap_or("*");
 
-        self.discover_by_capability_json(Some(serde_json::json!({ "capability": cap })))
-            .await
+        self.discover_by_capability_json(Some(serde_json::json!({ "capability": cap }))).await
     }
 
     /// Handle `discovery.bonds` — external API bonds from drawbridge allowlist.

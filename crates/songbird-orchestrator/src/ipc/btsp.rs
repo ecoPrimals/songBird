@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! BTSP (BearDog Transport Security Protocol) server-side handshake
+//! BTSP (`BearDog` Transport Security Protocol) server-side handshake
 //!
 //! Implements the server half of the BTSP 4-step handshake on incoming
 //! UDS connections, delegating all crypto to the security provider via `SecurityRpcClient`.

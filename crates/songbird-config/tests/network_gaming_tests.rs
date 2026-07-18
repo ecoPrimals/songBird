@@ -51,7 +51,7 @@ fn test_gaming_network_config_clone() {
 #[test]
 fn test_gaming_network_config_debug() {
     let config = GamingNetworkConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("GamingNetworkConfig"));
     assert!(debug_str.contains("starcraft_port"));
 }
@@ -147,7 +147,7 @@ fn test_gaming_scale_hash() {
 #[test]
 fn test_gaming_scale_debug() {
     let scale = GamingScale::Professional;
-    let debug_str = format!("{:?}", scale);
+    let debug_str = format!("{scale:?}");
     assert!(debug_str.contains("Professional"));
 }
 

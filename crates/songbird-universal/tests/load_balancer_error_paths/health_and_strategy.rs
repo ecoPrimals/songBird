@@ -75,7 +75,7 @@ async fn test_strategy_with_two_endpoints() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_random_strategy_distribution() -> SongbirdResult<()> {
-    let endpoints: Vec<String> = (0..5).map(|i| format!("http://endpoint{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..5).map(|i| format!("http://endpoint{i}:8080")).collect();
 
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::Random);
 
@@ -98,7 +98,7 @@ async fn test_random_strategy_distribution() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_least_loaded_actual_selection() {
-    let endpoints: Vec<String> = (0..3).map(|i| format!("http://endpoint{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..3).map(|i| format!("http://endpoint{i}:8080")).collect();
 
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::LeastLoaded);
 
@@ -109,7 +109,7 @@ async fn test_least_loaded_actual_selection() {
 
 #[tokio::test]
 async fn test_health_based_with_all_healthy() -> SongbirdResult<()> {
-    let endpoints: Vec<String> = (0..5).map(|i| format!("http://endpoint{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..5).map(|i| format!("http://endpoint{i}:8080")).collect();
 
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::HealthBased);
 

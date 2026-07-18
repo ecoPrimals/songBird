@@ -27,8 +27,8 @@
 
 //! Tests for the Capability Endpoints system
 //!
-//! Covers: CapabilityType parsing, env_var_name, as_str,
-//! CapabilityEndpointResolver, caching, and discovery.
+//! Covers: `CapabilityType` parsing, `env_var_name`, `as_str`,
+//! `CapabilityEndpointResolver`, caching, and discovery.
 
 use songbird_config::capability_endpoints::*;
 use std::collections::HashMap;
@@ -105,7 +105,7 @@ fn test_capability_type_from_str_custom() {
     let cap: CapabilityType = "my_custom_capability".parse().unwrap();
     match &cap {
         CapabilityType::Custom(name) => assert_eq!(name, "my_custom_capability"),
-        other => panic!("Expected Custom, got {:?}", other),
+        other => panic!("Expected Custom, got {other:?}"),
     }
 }
 
@@ -213,8 +213,8 @@ fn test_discovery_method_serialization() {
     for method in &methods {
         let json = serde_json::to_string(method).unwrap();
         let deserialized: DiscoveryMethod = serde_json::from_str(&json).unwrap();
-        let debug1 = format!("{:?}", method);
-        let debug2 = format!("{:?}", deserialized);
+        let debug1 = format!("{method:?}");
+        let debug2 = format!("{deserialized:?}");
         assert_eq!(debug1, debug2);
     }
 }
@@ -226,7 +226,7 @@ fn test_discovery_method_serialization() {
 #[tokio::test]
 async fn test_resolver_creation() {
     let resolver = CapabilityEndpointResolver::new();
-    let debug = format!("{:?}", resolver);
+    let debug = format!("{resolver:?}");
     assert!(debug.contains("CapabilityEndpointResolver"));
 }
 

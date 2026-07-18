@@ -112,7 +112,7 @@ mod tests {
     #[test]
     fn test_debug_impl() {
         let client = TarpcClient::new("tarpc://localhost:9001").unwrap();
-        let debug_str = format!("{:?}", client);
+        let debug_str = format!("{client:?}");
         assert!(debug_str.contains("TarpcClient"));
         assert!(debug_str.contains("localhost:9001"));
     }

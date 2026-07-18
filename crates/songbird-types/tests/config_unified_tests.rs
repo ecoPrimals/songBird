@@ -101,8 +101,7 @@ fn test_get_data_dir_development() {
     // Should contain songbird in the path OR be a valid data directory
     assert!(
         data_dir.contains("songbird") || data_dir.contains("data") || data_dir.starts_with("/home"),
-        "Data directory '{}' should be a valid development path",
-        data_dir
+        "Data directory '{data_dir}' should be a valid development path"
     );
     // No cleanup needed - env is local!
 }
@@ -301,14 +300,14 @@ fn test_is_not_test() {
 fn test_unified_config_serialization() -> SongbirdResult<()> {
     let config = UnifiedSongbirdConfig::default();
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
 
     assert!(json.contains("system"));
     assert!(json.contains("network"));
     assert!(json.contains("security"));
 
     let deserialized: UnifiedSongbirdConfig = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {e}")))?;
 
     assert_eq!(config.system.environment, deserialized.system.environment);
     Ok(())

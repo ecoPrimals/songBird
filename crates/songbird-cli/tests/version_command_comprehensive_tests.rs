@@ -63,7 +63,7 @@ fn test_version_parts_are_numeric() {
 
     for (i, part) in parts.iter().enumerate().take(2) {
         // Major and minor should be numeric
-        assert!(part.parse::<u32>().is_ok(), "Part {} ('{}') should be numeric", i, part);
+        assert!(part.parse::<u32>().is_ok(), "Part {i} ('{part}') should be numeric");
     }
 }
 
@@ -135,7 +135,7 @@ fn test_version_minor_reasonable() {
 #[test]
 fn test_version_output_format_simple() {
     let version = env!("CARGO_PKG_VERSION");
-    let output = format!("songbird-cli {}", version);
+    let output = format!("songbird-cli {version}");
 
     assert!(output.contains("songbird-cli"));
     assert!(output.contains(version));
@@ -146,7 +146,7 @@ fn test_version_output_format_detailed() {
     let version = env!("CARGO_PKG_VERSION");
     let name = env!("CARGO_PKG_NAME");
 
-    let output = format!("{} v{}", name, version);
+    let output = format!("{name} v{version}");
 
     assert!(output.contains("songbird-cli"));
     assert!(output.contains(version));
@@ -275,7 +275,7 @@ fn test_version_is_consistent() {
 #[test]
 fn test_version_formatting_with_prefix() {
     let version = env!("CARGO_PKG_VERSION");
-    let formatted = format!("v{}", version);
+    let formatted = format!("v{version}");
 
     assert!(formatted.starts_with('v'));
     assert!(formatted.contains('.'));
@@ -292,7 +292,7 @@ fn test_version_formatting_no_prefix() {
 #[test]
 fn test_version_formatting_in_sentence() {
     let version = env!("CARGO_PKG_VERSION");
-    let sentence = format!("Running Songbird CLI version {}", version);
+    let sentence = format!("Running Songbird CLI version {version}");
 
     assert!(sentence.contains("Running"));
     assert!(sentence.contains(version));
@@ -341,7 +341,7 @@ fn test_version_info_formatting() {
     let arch = std::env::consts::ARCH;
     let os = std::env::consts::OS;
 
-    let info = format!("{} v{} ({}/{})", name, version, os, arch);
+    let info = format!("{name} v{version} ({os}/{arch})");
 
     assert!(info.contains("songbird-cli"));
     assert!(info.contains(version));
@@ -356,7 +356,7 @@ fn test_full_version_output() {
     let os = std::env::consts::OS;
     let arch = std::env::consts::ARCH;
 
-    let output = format!("{} {}\nPlatform: {}/{}", name, version, os, arch);
+    let output = format!("{name} {version}\nPlatform: {os}/{arch}");
 
     assert!(output.contains(name));
     assert!(output.contains(version));

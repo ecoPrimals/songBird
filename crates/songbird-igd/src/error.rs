@@ -176,8 +176,7 @@ mod tests {
         let e = IgdError::NoGatewayFound;
         assert!(
             e.to_string().to_lowercase().contains("gateway"),
-            "NoGatewayFound message should mention gateway: {}",
-            e
+            "NoGatewayFound message should mention gateway: {e}"
         );
 
         let e = IgdError::MappingConflict(443, String::from("other-host"));

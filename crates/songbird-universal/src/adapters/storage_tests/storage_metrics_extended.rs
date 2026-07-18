@@ -46,7 +46,7 @@ fn test_storage_metrics_deserialization() -> SongbirdResult<()> {
     let metrics: StorageMetrics =
         serde_json::from_str(json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Deserialization should succeed: {}", e),
+            message: format!("Deserialization should succeed: {e}"),
             debug_info: None,
         })?;
     assert_eq!(metrics.total_capacity_bytes, 5_000_000_000_000);
@@ -62,7 +62,7 @@ fn test_storage_health_deserialization() -> SongbirdResult<()> {
     let health: StorageHealth =
         serde_json::from_str(json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Deserialization should succeed: {}", e),
+            message: format!("Deserialization should succeed: {e}"),
             debug_info: None,
         })?;
     assert_eq!(health, StorageHealth::Warning);
@@ -71,7 +71,7 @@ fn test_storage_health_deserialization() -> SongbirdResult<()> {
     let health: StorageHealth =
         serde_json::from_str(json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Deserialization should succeed: {}", e),
+            message: format!("Deserialization should succeed: {e}"),
             debug_info: None,
         })?;
     assert_eq!(health, StorageHealth::Critical);
@@ -89,7 +89,7 @@ fn test_storage_metrics_debug() {
         avg_write_latency_ms: 25.0,
         timestamp: chrono::Utc::now(),
     };
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("StorageMetrics"));
     assert!(debug_str.contains("object_count"));
 }
@@ -97,7 +97,7 @@ fn test_storage_metrics_debug() {
 #[test]
 fn test_storage_health_debug() {
     let health = StorageHealth::Critical;
-    let debug_str = format!("{:?}", health);
+    let debug_str = format!("{health:?}");
     assert!(debug_str.contains("Critical"));
 }
 
@@ -105,9 +105,7 @@ fn test_storage_health_debug() {
 async fn test_adapter_chained_timeout() -> SongbirdResult<()> {
     let adapter = StorageAdapter::new("http://storage:8082".to_string())
         .await
-        .map_err(|e| {
-            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
-        })?
+        .map_err(|e| SongbirdError::configuration(format!("Adapter creation should succeed: {e}")))?
         .with_timeout(Duration::from_secs(3))
         .with_timeout(Duration::from_secs(12));
 

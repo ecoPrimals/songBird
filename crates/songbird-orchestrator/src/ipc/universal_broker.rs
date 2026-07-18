@@ -175,7 +175,7 @@ impl UniversalIpcBroker {
     /// Used by startup auto-discovery (LD-08) to seed the registry with primals
     /// found in the biomeos socket directory.
     #[must_use]
-    pub fn registry(
+    pub const fn registry(
         &self,
     ) -> &Arc<tokio::sync::RwLock<songbird_universal_ipc::registry::ServiceRegistry>> {
         &self.registry
@@ -183,7 +183,7 @@ impl UniversalIpcBroker {
 
     /// Access the mesh handler for auto-seeding from `SONGBIRD_PEERS` on boot.
     #[must_use]
-    pub fn mesh_handler(&self) -> &Arc<songbird_universal_ipc::handlers::MeshHandler> {
+    pub const fn mesh_handler(&self) -> &Arc<songbird_universal_ipc::handlers::MeshHandler> {
         &self.mesh_handler
     }
 

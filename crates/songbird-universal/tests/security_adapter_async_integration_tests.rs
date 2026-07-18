@@ -50,7 +50,7 @@
 //! - `from_discovery()` - async capability discovery
 //! - `collect_metrics()` - HTTP GET /metrics/security
 //! - `verify_auth()` - HTTP POST /auth/verify
-//! - `check_health()` - integration of collect_metrics
+//! - `check_health()` - integration of `collect_metrics`
 //! - Network error handling
 //! - Timeout behavior
 //! - Retry and fallback mechanisms

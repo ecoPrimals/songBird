@@ -253,7 +253,7 @@ fn test_cli_args_debug_format() {
         config: Some("/test/config.toml".to_string()),
     };
 
-    let debug_str = format!("{:?}", args);
+    let debug_str = format!("{args:?}");
     assert!(debug_str.contains("verbose"));
     assert!(debug_str.contains("true"));
 }
@@ -261,7 +261,7 @@ fn test_cli_args_debug_format() {
 #[test]
 fn test_output_format_debug() {
     let format = OutputFormat::Json;
-    let debug_str = format!("{:?}", format);
+    let debug_str = format!("{format:?}");
 
     assert!(debug_str.contains("Json"));
 }
@@ -375,7 +375,7 @@ fn test_many_cli_args_creations() {
             verbose: i % 2 == 0,
             quiet: i % 3 == 0,
             format: OutputFormat::Auto,
-            config: Some(format!("/config-{}.toml", i)),
+            config: Some(format!("/config-{i}.toml")),
         };
         instances.push(args);
     }

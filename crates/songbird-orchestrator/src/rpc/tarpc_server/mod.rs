@@ -170,7 +170,7 @@ pub async fn start_tarpc_server_simple(
     addr: SocketAddr,
 ) -> Result<()> {
     let server = TarpcServerSimple::new(service_registry);
-    let startup_log = format!("🚀 Starting tarpc server (simplified, zero unsafe) on {}", addr);
+    let startup_log = format!("🚀 Starting tarpc server (simplified, zero unsafe) on {addr}");
     run_tarpc_accept_loop!(addr, server, startup_log).await
 }
 
@@ -187,7 +187,7 @@ pub async fn start_tarpc_server(
     addr: SocketAddr,
 ) -> Result<()> {
     let server = TarpcServer::new(orchestrator, service_registry);
-    let startup_log = format!("🚀 Starting tarpc server on {}", addr);
+    let startup_log = format!("🚀 Starting tarpc server on {addr}");
     run_tarpc_accept_loop!(addr, server, startup_log).await
 }
 

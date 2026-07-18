@@ -8,7 +8,7 @@ use std::time::Duration;
 #[tokio::test]
 async fn test_adapter_creation() -> Result<(), Box<dyn std::error::Error>> {
     let adapter = AIAdapter::new("http://ai-provider:8083".to_string()).await.map_err(|e| {
-        SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+        SongbirdError::configuration(format!("Adapter creation should succeed: {e}"))
     })?;
     assert_eq!(adapter.endpoint(), "http://ai-provider:8083");
     Ok(())
@@ -18,9 +18,7 @@ async fn test_adapter_creation() -> Result<(), Box<dyn std::error::Error>> {
 async fn test_adapter_with_timeout() -> Result<(), Box<dyn std::error::Error>> {
     let adapter = AIAdapter::new("http://ai-provider:8083".to_string())
         .await
-        .map_err(|e| {
-            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
-        })?
+        .map_err(|e| SongbirdError::configuration(format!("Adapter creation should succeed: {e}")))?
         .with_timeout(Duration::from_secs(20));
     assert_eq!(adapter.timeout, Duration::from_secs(20));
     Ok(())

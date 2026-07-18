@@ -545,7 +545,7 @@ async fn test_multiple_verify_auth_calls() -> SongbirdResult<()> {
 
     // Verify multiple tokens
     for i in 0..5 {
-        let result = adapter.verify_auth(&format!("token_{}", i)).await?;
+        let result = adapter.verify_auth(&format!("token_{i}")).await?;
         assert_eq!(result, AuthResult::Authorized);
     }
 

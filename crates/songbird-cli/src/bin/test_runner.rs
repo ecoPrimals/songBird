@@ -18,7 +18,7 @@ use tokio::time::timeout;
 /// Default orchestrator endpoint for testing
 /// Can be overridden via --url flag or `SONGBIRD_URL` environment variable
 fn default_orchestrator_endpoint() -> String {
-    format!("http://{}:{}", DEFAULT_LOOPBACK, DEFAULT_HTTP_PORT)
+    format!("http://{DEFAULT_LOOPBACK}:{DEFAULT_HTTP_PORT}")
 }
 
 /// Test result tracking

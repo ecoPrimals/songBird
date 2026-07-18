@@ -53,7 +53,7 @@ pub const DYNAMIC_PORT_RANGE_MIN: u16 = 1024;
 pub const DYNAMIC_PORT_RANGE_SIZE: u64 = 60_000;
 /// Standard HTTPS port (RFC 2818)
 pub const HTTPS_STANDARD_PORT: u16 = 443;
-/// Default BirdSong relay protocol port (env: `SONGBIRD_BIRDSONG_PORT`)
+/// Default `BirdSong` relay protocol port (env: `SONGBIRD_BIRDSONG_PORT`)
 pub const DEFAULT_BIRDSONG_PORT: u16 = 42_424;
 /// Default QUIC transport port (env: `SONGBIRD_QUIC_PORT`)
 pub const DEFAULT_QUIC_PORT: u16 = 4433;
@@ -69,7 +69,7 @@ pub const DEFAULT_DASHBOARD_UI_PORT: u16 = 3000;
 pub const DEFAULT_FEDERATION_COORDINATION_PORT: u16 = 8082;
 /// tarpc binary RPC transport port (env: `SONGBIRD_TARPC_PORT`)
 pub const DEFAULT_TARPC_RPC_PORT: u16 = 8091;
-/// StarCraft IPX / gaming base port (env: `SONGBIRD_GAMING_PORT`)
+/// `StarCraft` IPX / gaming base port (env: `SONGBIRD_GAMING_PORT`)
 pub const DEFAULT_GAMING_BASE_PORT: u16 = 6112;
 /// Default mesh peer federation port for cross-gate communication (env: `SONGBIRD_FEDERATION_PORT`)
 pub const DEFAULT_MESH_PEER_PORT: u16 = 7700;

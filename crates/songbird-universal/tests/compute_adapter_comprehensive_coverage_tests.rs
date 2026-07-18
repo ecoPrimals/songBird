@@ -46,8 +46,8 @@
 //! **Goal**: Raise coverage from 60.13% to 85%+
 //!
 //! This test suite focuses on:
-//! - ComputeMetrics calculations and edge cases
-//! - HealthStatus transitions and boundaries
+//! - `ComputeMetrics` calculations and edge cases
+//! - `HealthStatus` transitions and boundaries
 //! - Adapter creation and configuration
 //! - Error condition handling
 //! - Serialization/deserialization
@@ -424,7 +424,7 @@ async fn test_compute_metrics_debug() {
         timestamp: chrono::Utc::now(),
     };
 
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("ComputeMetrics"));
     assert!(debug_str.contains("45"));
 }
@@ -468,7 +468,7 @@ async fn test_health_status_copy() {
 #[tokio::test]
 async fn test_health_status_debug() {
     let health = ComputeHealth::Unhealthy;
-    let debug_str = format!("{:?}", health);
+    let debug_str = format!("{health:?}");
     assert!(debug_str.contains("Unhealthy"));
 }
 
@@ -478,7 +478,7 @@ async fn test_health_status_serialization() {
 
     for state in states {
         let json = serde_json::to_string(&state);
-        assert!(json.is_ok(), "Should serialize {:?}", state);
+        assert!(json.is_ok(), "Should serialize {state:?}");
     }
 }
 
@@ -492,7 +492,7 @@ async fn test_health_status_deserialization() {
 
     for (json, expected) in test_cases {
         let health: Result<ComputeHealth, _> = serde_json::from_str(json);
-        assert!(health.is_ok(), "Should deserialize: {}", json);
+        assert!(health.is_ok(), "Should deserialize: {json}");
         assert_eq!(health.expect("test precondition"), expected);
     }
 }
@@ -522,7 +522,7 @@ async fn test_adapter_new_various_endpoints() {
 
     for endpoint in endpoints {
         let adapter = ComputeAdapter::new(endpoint.to_string()).await;
-        assert!(adapter.is_ok(), "Should handle endpoint: {}", endpoint);
+        assert!(adapter.is_ok(), "Should handle endpoint: {endpoint}");
     }
 }
 
@@ -657,6 +657,6 @@ async fn test_adapter_endpoint_special_characters() {
 
     for endpoint in endpoints {
         let adapter = ComputeAdapter::new(endpoint.to_string()).await;
-        assert!(adapter.is_ok(), "Should handle: {}", endpoint);
+        assert!(adapter.is_ok(), "Should handle: {endpoint}");
     }
 }

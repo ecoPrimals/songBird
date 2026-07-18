@@ -124,7 +124,7 @@ pub struct ServerArgs {
     #[arg(long)]
     pub listen: Option<String>,
 
-    /// Enable Dark Forest mode (encrypted BirdSong beacons, no plaintext fallback)
+    /// Enable Dark Forest mode (encrypted `BirdSong` beacons, no plaintext fallback)
     ///
     /// When enabled, all discovery beacons are encrypted via security provider.
     /// Plaintext beacon fallback is disabled for maximum privacy.
@@ -135,7 +135,7 @@ pub struct ServerArgs {
     /// PID file directory (for Android/container substrates)
     ///
     /// Override the default PID file location for environments with
-    /// restricted filesystem access (Android SELinux, containers).
+    /// restricted filesystem access (Android `SELinux`, containers).
     /// Equivalent to setting `SONGBIRD_PID_DIR`.
     #[arg(long, env = "SONGBIRD_PID_DIR")]
     pub pid_dir: Option<String>,
@@ -143,7 +143,7 @@ pub struct ServerArgs {
     /// State directory for all persistent state (PID, peers, mesh)
     ///
     /// Override the default state location for environments with
-    /// restricted filesystem access (GrapheneOS read-only FS, containers).
+    /// restricted filesystem access (`GrapheneOS` read-only FS, containers).
     /// When set, PID files go to `{state_dir}/run/` and data to `{state_dir}/data/`.
     /// `SONGBIRD_PID_DIR` takes precedence over this for PID placement.
     #[arg(long, env = "SONGBIRD_STATE_DIR")]

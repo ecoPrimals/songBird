@@ -14,7 +14,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-fn default_true() -> bool {
+const fn default_true() -> bool {
     true
 }
 

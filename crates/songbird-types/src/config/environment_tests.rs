@@ -298,11 +298,11 @@ fn test_staging_is_not_production_or_development_flags() {
 fn test_serialization_canonical_config() -> Result<(), Box<dyn std::error::Error>> {
     let config = CanonicalEnvironmentConfig::default();
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {e}")))?;
     let deserialized: CanonicalEnvironmentConfig =
         serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Failed to deserialize: {}", e),
+            message: format!("Failed to deserialize: {e}"),
             debug_info: None,
         })?;
     assert!(matches!(deserialized.deployment_mode, DeploymentMode::Development));
@@ -313,11 +313,11 @@ fn test_serialization_canonical_config() -> Result<(), Box<dyn std::error::Error
 fn test_port_range_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let range = PortRange::default();
     let json = serde_json::to_string(&range)
-        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {e}")))?;
     let deserialized: PortRange =
         serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Failed to deserialize: {}", e),
+            message: format!("Failed to deserialize: {e}"),
             debug_info: None,
         })?;
     assert_eq!(deserialized.start, range.start);

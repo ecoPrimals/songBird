@@ -252,7 +252,7 @@ fn test_environment_equality() {
 #[test]
 fn test_environment_debug() {
     let env = Environment::Production;
-    let debug_str = format!("{:?}", env);
+    let debug_str = format!("{env:?}");
     assert!(debug_str.contains("Production"));
 }
 

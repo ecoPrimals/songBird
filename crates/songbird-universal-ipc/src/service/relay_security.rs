@@ -21,7 +21,7 @@ pub struct CryptoProviderVerifier {
 impl CryptoProviderVerifier {
     /// Create a verifier targeting a security provider crypto socket.
     #[must_use]
-    pub fn new(socket_path: String) -> Self {
+    pub const fn new(socket_path: String) -> Self {
         Self {
             socket_path,
         }

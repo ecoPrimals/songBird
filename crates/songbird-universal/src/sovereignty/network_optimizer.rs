@@ -408,8 +408,7 @@ mod tests {
         let paths: Vec<RoutingPath> = vec![];
         let result = optimizer.optimize_for_network_effects(&paths).await.map_err(|e| {
             SongbirdError::configuration(format!(
-                "Failed to optimize empty paths for network effects: {}",
-                e
+                "Failed to optimize empty paths for network effects: {e}"
             ))
         })?;
         assert_eq!(result.len(), 0);
@@ -422,8 +421,7 @@ mod tests {
         let paths = vec![create_test_path()];
         let optimized = optimizer.optimize_for_network_effects(&paths).await.map_err(|e| {
             SongbirdError::configuration(format!(
-                "Failed to optimize single path for network effects: {}",
-                e
+                "Failed to optimize single path for network effects: {e}"
             ))
         })?;
         assert_eq!(optimized.len(), 1);
@@ -437,8 +435,7 @@ mod tests {
         let optimized =
             optimizer.optimize_segment_for_network_effects(segment).await.map_err(|e| {
                 SongbirdError::configuration(format!(
-                    "Failed to optimize segment for network effects: {}",
-                    e
+                    "Failed to optimize segment for network effects: {e}"
                 ))
             })?;
         assert!(optimized.security_capabilities.contains(&SecurityCapability::NetworkOptimized));
@@ -452,7 +449,7 @@ mod tests {
         let segment = create_test_segment();
         let original_score = segment.efficiency_score;
         let optimized = optimizer.optimize_for_latency(segment).await.map_err(|e| {
-            SongbirdError::configuration(format!("Failed to optimize segment for latency: {}", e))
+            SongbirdError::configuration(format!("Failed to optimize segment for latency: {e}"))
         })?;
         assert_eq!(optimized.metadata.get("latency_optimized"), Some(&String::from("true")));
         assert!(optimized.efficiency_score >= original_score);
@@ -465,10 +462,7 @@ mod tests {
         let segment = create_test_segment();
         let original_score = segment.efficiency_score;
         let optimized = optimizer.optimize_for_throughput(segment).await.map_err(|e| {
-            SongbirdError::configuration(format!(
-                "Failed to optimize segment for throughput: {}",
-                e
-            ))
+            SongbirdError::configuration(format!("Failed to optimize segment for throughput: {e}"))
         })?;
         assert_eq!(optimized.metadata.get("throughput_optimized"), Some(&String::from("true")));
         assert!(optimized.efficiency_score >= original_score);
@@ -480,7 +474,7 @@ mod tests {
         let optimizer = NetworkEffectsOptimizer::new();
         let segment = create_test_segment();
         let optimized = optimizer.enhance_security(segment).await.map_err(|e| {
-            SongbirdError::configuration(format!("Failed to enhance security for segment: {}", e))
+            SongbirdError::configuration(format!("Failed to enhance security for segment: {e}"))
         })?;
         assert!(
             optimized.security_capabilities.contains(&SecurityCapability::SovereigntyCompliant)
@@ -495,7 +489,7 @@ mod tests {
         let segment = create_test_segment();
         let original_score = segment.efficiency_score;
         let optimized = optimizer.optimize_for_cost(segment).await.map_err(|e| {
-            SongbirdError::configuration(format!("Failed to optimize segment for cost: {}", e))
+            SongbirdError::configuration(format!("Failed to optimize segment for cost: {e}"))
         })?;
         assert_eq!(optimized.metadata.get("cost_optimized"), Some(&String::from("true")));
         assert!(optimized.efficiency_score <= original_score);
@@ -507,7 +501,7 @@ mod tests {
         let optimizer = NetworkEffectsOptimizer::new();
         let services: Vec<&ServiceInfo> = vec![];
         let result = optimizer.assess_path_security_level(&services).await.map_err(|e| {
-            SongbirdError::configuration(format!("Failed to assess minimal security level: {}", e))
+            SongbirdError::configuration(format!("Failed to assess minimal security level: {e}"))
         })?;
         assert!(matches!(result, SecurityLevel::Minimal));
         Ok(())
@@ -519,7 +513,7 @@ mod tests {
         let service = create_test_service();
         let services = vec![&service];
         let result = optimizer.assess_path_security_level(&services).await.map_err(|e| {
-            SongbirdError::configuration(format!("Failed to assess medium security level: {}", e))
+            SongbirdError::configuration(format!("Failed to assess medium security level: {e}"))
         })?;
         assert!(matches!(result, SecurityLevel::Medium));
         Ok(())
@@ -532,7 +526,7 @@ mod tests {
         let service2 = create_test_service();
         let services = vec![&service1, &service2];
         let result = optimizer.assess_path_security_level(&services).await.map_err(|e| {
-            SongbirdError::configuration(format!("Failed to assess high security level: {}", e))
+            SongbirdError::configuration(format!("Failed to assess high security level: {e}"))
         })?;
         assert!(matches!(result, SecurityLevel::High));
         Ok(())
@@ -547,7 +541,7 @@ mod tests {
         let service4 = create_test_service();
         let services = vec![&service1, &service2, &service3, &service4];
         let result = optimizer.assess_path_security_level(&services).await.map_err(|e| {
-            SongbirdError::configuration(format!("Failed to assess maximum security level: {}", e))
+            SongbirdError::configuration(format!("Failed to assess maximum security level: {e}"))
         })?;
         assert!(matches!(result, SecurityLevel::Maximum));
         Ok(())

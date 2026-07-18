@@ -402,10 +402,9 @@ impl BtspClient {
             .to_string();
 
         // Step 2: Connect to target socket, send ClientHello
-        let mut target_stream =
-            connect_platform(target_socket).await.map_err(|e| {
-                anyhow!("Failed to connect to target socket {}: {}", target_socket.display(), e)
-            })?;
+        let mut target_stream = connect_platform(target_socket).await.map_err(|e| {
+            anyhow!("Failed to connect to target socket {}: {}", target_socket.display(), e)
+        })?;
 
         let client_hello = json!({
             "type": "ClientHello",

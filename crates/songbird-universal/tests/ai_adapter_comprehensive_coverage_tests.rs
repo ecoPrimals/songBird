@@ -46,9 +46,9 @@
 //! **Goal**: Raise coverage from 64.62% to 85%+
 //!
 //! This test suite focuses on:
-//! - AIMetrics GPU and latency calculations
-//! - AIHealth status transitions (Healthy → Degraded → Overloaded)
-//! - ModelType variants
+//! - `AIMetrics` GPU and latency calculations
+//! - `AIHealth` status transitions (Healthy → Degraded → Overloaded)
+//! - `ModelType` variants
 //! - Adapter creation and configuration
 //!
 //! **Modern Rust Patterns**:
@@ -355,7 +355,7 @@ async fn test_ai_metrics_debug() {
         timestamp: chrono::Utc::now(),
     };
 
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("AIMetrics"));
 }
 
@@ -398,7 +398,7 @@ async fn test_ai_health_copy() {
 #[tokio::test]
 async fn test_ai_health_debug() {
     let health = AIHealth::Overloaded;
-    let debug_str = format!("{:?}", health);
+    let debug_str = format!("{health:?}");
     assert!(debug_str.contains("Overloaded"));
 }
 
@@ -408,7 +408,7 @@ async fn test_ai_health_serialization() {
 
     for state in states {
         let json = serde_json::to_string(&state);
-        assert!(json.is_ok(), "Should serialize {:?}", state);
+        assert!(json.is_ok(), "Should serialize {state:?}");
     }
 }
 
@@ -422,7 +422,7 @@ async fn test_ai_health_deserialization() {
 
     for (json, expected) in test_cases {
         let health: Result<AIHealth, _> = serde_json::from_str(json);
-        assert!(health.is_ok(), "Should deserialize: {}", json);
+        assert!(health.is_ok(), "Should deserialize: {json}");
         assert_eq!(health.expect("test precondition"), expected);
     }
 }
@@ -469,7 +469,7 @@ async fn test_model_type_copy() {
 #[tokio::test]
 async fn test_model_type_debug() {
     let model = ModelType::Llm;
-    let debug_str = format!("{:?}", model);
+    let debug_str = format!("{model:?}");
     assert!(debug_str.contains("Llm"));
 }
 
@@ -479,7 +479,7 @@ async fn test_model_type_serialization() {
 
     for model_type in types {
         let json = serde_json::to_string(&model_type);
-        assert!(json.is_ok(), "Should serialize {:?}", model_type);
+        assert!(json.is_ok(), "Should serialize {model_type:?}");
     }
 }
 
@@ -508,7 +508,7 @@ async fn test_adapter_new_various_endpoints() {
 
     for endpoint in endpoints {
         let adapter = AIAdapter::new(endpoint.to_string()).await;
-        assert!(adapter.is_ok(), "Should handle endpoint: {}", endpoint);
+        assert!(adapter.is_ok(), "Should handle endpoint: {endpoint}");
     }
 }
 

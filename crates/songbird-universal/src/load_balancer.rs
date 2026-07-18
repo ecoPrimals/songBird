@@ -231,26 +231,22 @@ mod tests {
         // Should cycle through endpoints in order
         let e1 = lb.get_next_endpoint().await.map_err(|e| {
             SongbirdError::configuration(format!(
-                "Failed to get first endpoint in round-robin: {}",
-                e
+                "Failed to get first endpoint in round-robin: {e}"
             ))
         })?;
         let e2 = lb.get_next_endpoint().await.map_err(|e| {
             SongbirdError::configuration(format!(
-                "Failed to get second endpoint in round-robin: {}",
-                e
+                "Failed to get second endpoint in round-robin: {e}"
             ))
         })?;
         let e3 = lb.get_next_endpoint().await.map_err(|e| {
             SongbirdError::configuration(format!(
-                "Failed to get third endpoint in round-robin: {}",
-                e
+                "Failed to get third endpoint in round-robin: {e}"
             ))
         })?;
         let e4 = lb.get_next_endpoint().await.map_err(|e| {
             SongbirdError::configuration(format!(
-                "Failed to get wrapped endpoint in round-robin: {}",
-                e
+                "Failed to get wrapped endpoint in round-robin: {e}"
             ))
         })?;
 
@@ -277,7 +273,7 @@ mod tests {
 
         // Should select endpoint with fewer connections
         let selected = lb.get_next_endpoint().await.map_err(|e| {
-            SongbirdError::configuration(format!("Failed to select least-loaded endpoint: {}", e))
+            SongbirdError::configuration(format!("Failed to select least-loaded endpoint: {e}"))
         })?;
         assert_eq!(selected, endpoints[1]); // endpoint2 has fewer connections
         Ok(())
@@ -299,7 +295,7 @@ mod tests {
 
         // Should select healthiest endpoint
         let selected = lb.get_next_endpoint().await.map_err(|e| {
-            SongbirdError::configuration(format!("Failed to select health-based endpoint: {}", e))
+            SongbirdError::configuration(format!("Failed to select health-based endpoint: {e}"))
         })?;
         assert_eq!(selected, endpoints[1]); // endpoint2 is healthier
         Ok(())
@@ -318,8 +314,7 @@ mod tests {
         // Should only return endpoint2
         let selected = lb.get_next_endpoint().await.map_err(|e| {
             SongbirdError::configuration(format!(
-                "Failed to get endpoint after marking one unavailable: {}",
-                e
+                "Failed to get endpoint after marking one unavailable: {e}"
             ))
         })?;
         assert_eq!(selected, endpoints[1]);
@@ -369,7 +364,7 @@ mod tests {
 
         // Should work again
         let selected = lb.get_next_endpoint().await.map_err(|e| {
-            SongbirdError::configuration(format!("Failed to get endpoint after recovery: {}", e))
+            SongbirdError::configuration(format!("Failed to get endpoint after recovery: {e}"))
         })?;
         assert_eq!(selected, endpoints[0]);
         Ok(())

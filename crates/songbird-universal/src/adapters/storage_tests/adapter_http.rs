@@ -12,7 +12,7 @@ use std::time::Duration;
 async fn test_adapter_creation() -> Result<(), Box<dyn std::error::Error>> {
     let adapter =
         StorageAdapter::new("http://storage-provider:8082".to_string()).await.map_err(|e| {
-            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+            SongbirdError::configuration(format!("Adapter creation should succeed: {e}"))
         })?;
     assert_eq!(adapter.endpoint(), "http://storage-provider:8082");
     Ok(())
@@ -22,9 +22,7 @@ async fn test_adapter_creation() -> Result<(), Box<dyn std::error::Error>> {
 async fn test_adapter_with_timeout() -> Result<(), Box<dyn std::error::Error>> {
     let adapter = StorageAdapter::new("http://storage-provider:8082".to_string())
         .await
-        .map_err(|e| {
-            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
-        })?
+        .map_err(|e| SongbirdError::configuration(format!("Adapter creation should succeed: {e}")))?
         .with_timeout(Duration::from_secs(10));
     assert_eq!(adapter.timeout, Duration::from_secs(10));
     Ok(())
@@ -34,7 +32,7 @@ async fn test_adapter_with_timeout() -> Result<(), Box<dyn std::error::Error>> {
 async fn test_adapter_default_timeout() -> SongbirdResult<()> {
     let adapter =
         StorageAdapter::new("http://storage-service:8082".to_string()).await.map_err(|e| {
-            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+            SongbirdError::configuration(format!("Adapter creation should succeed: {e}"))
         })?;
     assert_eq!(adapter.timeout, Duration::from_secs(5));
     Ok(())
@@ -44,7 +42,7 @@ async fn test_adapter_default_timeout() -> SongbirdResult<()> {
 async fn test_adapter_endpoint_access() -> SongbirdResult<()> {
     let adapter =
         StorageAdapter::new("http://test-storage:9000".to_string()).await.map_err(|e| {
-            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+            SongbirdError::configuration(format!("Adapter creation should succeed: {e}"))
         })?;
     assert_eq!(adapter.endpoint(), "http://test-storage:9000");
     Ok(())
@@ -53,9 +51,9 @@ async fn test_adapter_endpoint_access() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_adapter_debug_format() -> SongbirdResult<()> {
     let adapter = StorageAdapter::new("http://storage:8082".to_string()).await.map_err(|e| {
-        SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+        SongbirdError::configuration(format!("Adapter creation should succeed: {e}"))
     })?;
-    let debug_str = format!("{:?}", adapter);
+    let debug_str = format!("{adapter:?}");
     assert!(debug_str.contains("StorageAdapter"));
     assert!(debug_str.contains("http://storage:8082"));
     Ok(())

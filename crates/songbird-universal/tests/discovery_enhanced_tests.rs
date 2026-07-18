@@ -265,12 +265,12 @@ fn test_discovery_result_deduplication() {
 fn test_environment_variable_parsing() {
     let port1 = test_orchestrator_port();
     let port2 = test_discovery_port();
-    let env_value = format!("http://service1:{},http://service2:{}", port1, port2);
+    let env_value = format!("http://service1:{port1},http://service2:{port2}");
     let endpoints: Vec<&str> = env_value.split(',').collect();
 
     assert_eq!(endpoints.len(), 2);
-    assert_eq!(endpoints[0], format!("http://service1:{}", port1));
-    assert_eq!(endpoints[1], format!("http://service2:{}", port2));
+    assert_eq!(endpoints[0], format!("http://service1:{port1}"));
+    assert_eq!(endpoints[1], format!("http://service2:{port2}"));
 }
 
 #[test]
@@ -292,12 +292,12 @@ fn test_environment_variable_empty() {
 fn test_environment_variable_with_spaces() {
     let port1 = test_orchestrator_port();
     let port2 = test_discovery_port();
-    let env_value = format!(" http://service1:{} , http://service2:{} ", port1, port2);
+    let env_value = format!(" http://service1:{port1} , http://service2:{port2} ");
     let endpoints: Vec<String> = env_value.split(',').map(|s| s.trim().to_string()).collect();
 
     assert_eq!(endpoints.len(), 2);
-    assert_eq!(endpoints[0], format!("http://service1:{}", port1));
-    assert_eq!(endpoints[1], format!("http://service2:{}", port2));
+    assert_eq!(endpoints[0], format!("http://service1:{port1}"));
+    assert_eq!(endpoints[1], format!("http://service2:{port2}"));
 }
 
 // ============================================================================
@@ -307,7 +307,7 @@ fn test_environment_variable_with_spaces() {
 #[test]
 fn test_dns_record_parsing() {
     let port = test_orchestrator_port();
-    let dns_record = format!("service.example.com:{}", port);
+    let dns_record = format!("service.example.com:{port}");
     let parts: Vec<&str> = dns_record.split(':').collect();
 
     assert_eq!(parts.len(), 2);
@@ -441,11 +441,11 @@ fn test_health_check_response_codes() {
 #[test]
 fn test_health_endpoint_construction() {
     let port = test_orchestrator_port();
-    let base_url = format!("http://service:{}", port);
+    let base_url = format!("http://service:{port}");
     let health_path = "/health";
     let full_url = format!("{base_url}{health_path}");
 
-    assert_eq!(full_url, format!("http://service:{}/health", port));
+    assert_eq!(full_url, format!("http://service:{port}/health"));
 }
 
 // ============================================================================

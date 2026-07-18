@@ -61,7 +61,7 @@ fn test_bind_address_parsing() {
     // Test full socket address construction
     let host = constants::get_bind_address();
     let port = 8080u16; // Standard dev port
-    let socket_addr = format!("{}:{}", host, port);
+    let socket_addr = format!("{host}:{port}");
 
     // Should parse as valid socket address
     assert!(socket_addr.parse::<std::net::SocketAddr>().is_ok());
@@ -92,7 +92,7 @@ fn test_ipv4_format_validation() {
 
     for ip_str in &valid {
         let result: Result<std::net::IpAddr, _> = ip_str.parse();
-        assert!(result.is_ok(), "{} should be valid IPv4", ip_str);
+        assert!(result.is_ok(), "{ip_str} should be valid IPv4");
     }
 }
 
@@ -102,7 +102,7 @@ fn test_invalid_ipv4_format() {
 
     for ip_str in &invalid {
         let result: Result<std::net::IpAddr, _> = ip_str.parse();
-        assert!(result.is_err(), "{} should be invalid", ip_str);
+        assert!(result.is_err(), "{ip_str} should be invalid");
     }
 }
 
@@ -239,7 +239,7 @@ fn test_hostname_special_characters() {
 #[test]
 fn test_http_endpoint_format() {
     let bind_addr = constants::get_bind_address();
-    let endpoint = format!("http://{}", bind_addr);
+    let endpoint = format!("http://{bind_addr}");
     assert!(endpoint.starts_with("http://"));
     assert!(endpoint.contains("127.0.0.1") || endpoint.contains("0.0.0.0"));
 }
@@ -247,14 +247,14 @@ fn test_http_endpoint_format() {
 #[test]
 fn test_https_endpoint_format() {
     let bind_addr = constants::get_bind_address();
-    let endpoint = format!("https://{}", bind_addr);
+    let endpoint = format!("https://{bind_addr}");
     assert!(endpoint.starts_with("https://"));
 }
 
 #[test]
 fn test_endpoint_with_path() {
     let bind_addr = constants::get_bind_address();
-    let endpoint = format!("http://{}/api/v1", bind_addr);
+    let endpoint = format!("http://{bind_addr}/api/v1");
     assert!(endpoint.ends_with("/api/v1"));
 }
 
@@ -267,7 +267,7 @@ fn test_socket_addr_parsing() {
     // Construct full socket address
     let host = constants::get_bind_address();
     let port = 8080u16; // Standard dev port
-    let socket_addr_str = format!("{}:{}", host, port);
+    let socket_addr_str = format!("{host}:{port}");
 
     let addr: std::net::SocketAddr = socket_addr_str.parse().expect("Should parse socket address");
 
@@ -289,7 +289,7 @@ fn test_invalid_socket_addr() {
 
     for addr_str in &invalid {
         let result: Result<std::net::SocketAddr, _> = addr_str.parse();
-        assert!(result.is_err(), "{} should be invalid", addr_str);
+        assert!(result.is_err(), "{addr_str} should be invalid");
     }
 }
 
@@ -311,7 +311,7 @@ fn test_port_combinations() {
     let ports = [8080, 8081, 8082, 9090, 3000];
 
     for port in &ports {
-        let addr = format!("127.0.0.1:{}", port);
+        let addr = format!("127.0.0.1:{port}");
         let parsed: Result<std::net::SocketAddr, _> = addr.parse();
         assert!(parsed.is_ok());
     }
@@ -442,7 +442,7 @@ fn test_full_endpoint_validation_flow() {
     assert!(port <= u16::MAX);
 
     // 3. Construct endpoint
-    let endpoint = format!("{}:{}", host, port);
+    let endpoint = format!("{host}:{port}");
     assert!(endpoint.contains(':'));
 
     // 4. Parse as socket address
@@ -455,7 +455,7 @@ fn test_configuration_validation_chain() {
     let host = constants::network::default_host();
     let bind_ip = constants::get_bind_address();
     let port = 8080u16; // Standard dev port
-    let socket_addr = format!("{}:{}", bind_ip, port);
+    let socket_addr = format!("{bind_ip}:{port}");
 
     let config_valid = true
         && !host.is_empty()

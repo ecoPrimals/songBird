@@ -672,9 +672,9 @@ mod tests {
 
             let provider = CryptoProvider::new(&path_str);
             let r1 = provider.call("crypto.sha256", json!({})).await;
-            assert!(r1.is_ok(), "first call: {:?}", r1);
+            assert!(r1.is_ok(), "first call: {r1:?}");
             let r2 = provider.call("crypto.sha256", json!({})).await;
-            assert!(r2.is_ok(), "second call: {:?}", r2);
+            assert!(r2.is_ok(), "second call: {r2:?}");
 
             let ids = seen.lock().expect("lock");
             assert_eq!(&*ids, &[1, 2], "fetch_add should yield 1 then 2 for first two calls");

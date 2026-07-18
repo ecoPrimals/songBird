@@ -12,7 +12,7 @@ use std::time::Duration;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[must_use = "This type represents an outcome that must be handled"]
 pub struct AIFirstError {
-    /// Machine-readable error code (UPPER_SNAKE_CASE)
+    /// Machine-readable error code (`UPPER_SNAKE_CASE`)
     pub code: String,
     /// Human-readable message (for logging/debugging)
     pub message: String,

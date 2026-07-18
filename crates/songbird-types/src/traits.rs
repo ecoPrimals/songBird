@@ -247,14 +247,14 @@ mod tests {
     fn test_service_instance_status_serialization() -> SongbirdResult<()> {
         let status = ServiceInstanceStatus::Running;
         let json = serde_json::to_string(&status).map_err(|e| {
-            SongbirdError::configuration(format!("Serialization should succeed: {}", e))
+            SongbirdError::configuration(format!("Serialization should succeed: {e}"))
         })?;
         assert!(json.contains("Running"));
 
         let deserialized: ServiceInstanceStatus =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
                 format: Some(String::from("JSON")),
-                message: format!("Deserialization should succeed: {}", e),
+                message: format!("Deserialization should succeed: {e}"),
                 debug_info: None,
             })?;
         assert_eq!(deserialized, status);
@@ -291,7 +291,7 @@ mod tests {
         };
 
         let json = serde_json::to_string(&metric).map_err(|e| {
-            SongbirdError::configuration(format!("Serialization should succeed: {}", e))
+            SongbirdError::configuration(format!("Serialization should succeed: {e}"))
         })?;
         assert!(json.contains("cpu_usage"));
         assert!(json.contains("75.5"));
@@ -299,7 +299,7 @@ mod tests {
         let deserialized: MetricValue =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
                 format: Some(String::from("JSON")),
-                message: format!("Deserialization should succeed: {}", e),
+                message: format!("Deserialization should succeed: {e}"),
                 debug_info: None,
             })?;
         assert_eq!(deserialized.name, metric.name);
@@ -343,12 +343,12 @@ mod tests {
         };
 
         let json = serde_json::to_string(&detailed).map_err(|e| {
-            SongbirdError::configuration(format!("Serialization should succeed: {}", e))
+            SongbirdError::configuration(format!("Serialization should succeed: {e}"))
         })?;
         let deserialized: DetailedHealthInfo =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
                 format: Some(String::from("JSON")),
-                message: format!("Deserialization should succeed: {}", e),
+                message: format!("Deserialization should succeed: {e}"),
                 debug_info: None,
             })?;
 

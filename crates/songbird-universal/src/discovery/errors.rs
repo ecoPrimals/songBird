@@ -131,7 +131,7 @@ mod tests {
     #[test]
     fn test_discovery_error_debug_format() {
         let err = DiscoveryError::NetworkError(String::from("test"));
-        let debug_str = format!("{:?}", err);
+        let debug_str = format!("{err:?}");
         assert!(debug_str.contains("NetworkError"));
         assert!(debug_str.contains("test"));
     }

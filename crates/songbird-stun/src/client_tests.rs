@@ -110,11 +110,11 @@ async fn test_discover_public_address_live() {
 
     match result {
         Ok(addr) => {
-            println!("Discovered public address: {}", addr);
+            println!("Discovered public address: {addr}");
             assert!(addr.port() > 0);
         }
         Err(e) => {
-            eprintln!("STUN request failed (expected if no network): {}", e);
+            eprintln!("STUN request failed (expected if no network): {e}");
         }
     }
 }

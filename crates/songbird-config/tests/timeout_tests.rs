@@ -29,7 +29,7 @@
 //!
 //! Tests for timeout handling, validation, and edge cases.
 //!
-//! Note: unwrap() is acceptable in test code for clarity
+//! Note: `unwrap()` is acceptable in test code for clarity
 
 #[test]
 fn test_default_timeout_reasonable() {

@@ -43,7 +43,7 @@
 
 //! Comprehensive Async Security Adapter Coverage Tests
 //!
-//! **Goal**: Cover async methods in security.rs (from_discovery, collect_metrics, verify_auth, check_health)
+//! **Goal**: Cover async methods in security.rs (`from_discovery`, `collect_metrics`, `verify_auth`, `check_health`)
 //! **Coverage Target**: Raise security.rs from 14.71% to 90%+
 //!
 //! Uses `wiremock` for HTTP mocking without hardcoded ports
@@ -537,7 +537,7 @@ async fn test_collect_metrics_with_various_status_codes() {
         let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
         let result = adapter.collect_metrics().await;
 
-        assert!(result.is_err(), "Should fail for status code {}", status_code);
+        assert!(result.is_err(), "Should fail for status code {status_code}");
     }
 }
 
@@ -557,7 +557,7 @@ async fn test_verify_auth_with_various_http_error_codes() {
         let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
         let result = adapter.verify_auth("token").await;
 
-        assert!(result.is_ok(), "Should return Unauthorized for status {}", status_code);
+        assert!(result.is_ok(), "Should return Unauthorized for status {status_code}");
         assert_eq!(result.expect("test precondition"), AuthResult::Unauthorized);
     }
 }

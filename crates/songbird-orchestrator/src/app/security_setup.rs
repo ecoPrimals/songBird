@@ -140,7 +140,7 @@ pub async fn discover_security_endpoint(
 ///
 /// If the endpoint already has a scheme (http://, https://, unix://, tarpc://),
 /// it's returned as-is. Otherwise, it's treated as a primal name and resolved
-/// to the UDS socket path under XDG_RUNTIME_DIR/biomeos/.
+/// to the UDS socket path under `XDG_RUNTIME_DIR/biomeos`/.
 fn resolve_bare_name_to_endpoint(endpoint: &str) -> String {
     if endpoint.contains("://") || endpoint.starts_with('/') {
         return endpoint.to_string();

@@ -100,7 +100,7 @@ impl HttpRemoteConnection {
 
         let uri: hyper::Uri = jsonrpc_url
             .parse()
-            .map_err(|e| anyhow::anyhow!("Invalid peer URI '{}': {}", jsonrpc_url, e))?;
+            .map_err(|e| anyhow::anyhow!("Invalid peer URI '{jsonrpc_url}': {e}"))?;
 
         let http_request = hyper::Request::builder()
             .method(hyper::Method::POST)

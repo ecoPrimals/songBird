@@ -464,7 +464,7 @@ mod tests {
 
         // Should pass validation
         let result = config.validate();
-        assert!(result.is_ok(), "Expected validation to pass, got: {:?}", result);
+        assert!(result.is_ok(), "Expected validation to pass, got: {result:?}");
     }
 
     #[test]
@@ -472,6 +472,6 @@ mod tests {
         // Default configuration should pass validation
         let config = CanonicalSongbirdConfig::default();
         let result = config.validate();
-        assert!(result.is_ok(), "Default config should be valid, got: {:?}", result);
+        assert!(result.is_ok(), "Default config should be valid, got: {result:?}");
     }
 }

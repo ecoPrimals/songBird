@@ -20,7 +20,7 @@ use super::{env, runtime_or_tmp_base};
 /// 3. `/run/user/$UID/biomeos/` + socket name (XDG-compliant default)
 /// 4. `{TMPDIR|/tmp}` + socket name (legacy fallback if XDG unavailable)
 ///
-/// **Socket Naming Standard** (bind target — primal filename per PRIMAL_SELF_KNOWLEDGE_STANDARD):
+/// **Socket Naming Standard** (bind target — primal filename per `PRIMAL_SELF_KNOWLEDGE_STANDARD)`:
 /// - Default: `songbird.sock` (single-family mode)
 /// - Multi-family: `songbird-{family_id}.sock` when a non-default family is active
 ///

@@ -9,8 +9,8 @@
 //!
 //! - **Allocate**: Request a relay address from the TURN server
 //! - **Refresh**: Keep the allocation alive (or release it)
-//! - **CreatePermission**: Allow specific peers to send through the relay
-//! - **ChannelBind**: Bind a channel number for efficient peer data relay
+//! - **`CreatePermission`**: Allow specific peers to send through the relay
+//! - **`ChannelBind`**: Bind a channel number for efficient peer data relay
 //!
 //! ## Authentication
 //!
@@ -193,7 +193,7 @@ impl TurnClient {
     /// Bind a channel number for efficient data relay (RFC 5766 §11).
     ///
     /// Channel numbers are 0x4000–0x7FFF. Once bound, data can be sent
-    /// using the 4-byte ChannelData header instead of full STUN framing.
+    /// using the 4-byte `ChannelData` header instead of full STUN framing.
     ///
     /// # Errors
     ///

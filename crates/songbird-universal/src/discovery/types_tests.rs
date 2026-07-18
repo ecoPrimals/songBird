@@ -16,7 +16,7 @@ use tokio::time::Duration;
 fn create_test_capability(cap_type: &str) -> Capability {
     Capability {
         capability_type: cap_type.to_string(),
-        name: format!("{}_service", cap_type),
+        name: format!("{cap_type}_service"),
         version: "1.0.0".to_string(),
         parameters: HashMap::new(),
         qos_metrics: QoSMetrics::default(),

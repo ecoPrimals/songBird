@@ -621,7 +621,7 @@ async fn ai_with_timeout_endpoint_debug() -> SongbirdResult<()> {
     )
     .with_timeout(Duration::from_secs(120));
     assert_eq!(adapter.endpoint(), "http://ai");
-    let dbg = format!("{:?}", adapter);
+    let dbg = format!("{adapter:?}");
     assert!(dbg.contains("http://ai"));
     let _ = adapter.collect_metrics().await?;
     Ok(())

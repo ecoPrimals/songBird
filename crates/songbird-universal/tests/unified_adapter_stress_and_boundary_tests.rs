@@ -43,7 +43,7 @@
     reason = "test assertions and harness ergonomics"
 )]
 
-//! Tests for UnifiedUniversalAdapter stress testing and boundary conditions
+//! Tests for `UnifiedUniversalAdapter` stress testing and boundary conditions
 //!
 //! This module tests high-load scenarios, boundary values, and configuration edge cases.
 
@@ -217,7 +217,7 @@ fn test_config_with_empty_endpoints() {
 #[test]
 fn test_config_with_many_endpoints() {
     // Test with large number of endpoints
-    let endpoints: Vec<String> = (0..1000).map(|i| format!("http://server{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..1000).map(|i| format!("http://server{i}:8080")).collect();
 
     let config = UnifiedAdapterConfig {
         discovery_endpoints: endpoints,
@@ -325,7 +325,7 @@ fn test_error_debug_format() -> SongbirdResult<()> {
     use songbird_universal::UniversalAdapterError;
 
     let err = UniversalAdapterError::MissingCapability;
-    let debug_str = format!("{:?}", err);
+    let debug_str = format!("{err:?}");
 
     assert!(!debug_str.is_empty());
     assert!(debug_str.contains("MissingCapability"));

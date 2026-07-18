@@ -143,7 +143,7 @@ pub(crate) enum SecurityFetchMode {
     NoProvider,
 }
 
-/// Extract `family_id` from security identity attestations (same rules as BirdSong setup).
+/// Extract `family_id` from security identity attestations (same rules as `BirdSong` setup).
 #[must_use]
 pub(crate) fn family_id_from_identity_attestations(
     identity_attestations: &[songbird_discovery::IdentityAttestation],

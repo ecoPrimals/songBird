@@ -27,7 +27,7 @@
 
 //! Test utilities for config tests
 //!
-//! Provides ScopedEnv for serialized test execution of env var tests.
+//! Provides `ScopedEnv` for serialized test execution of env var tests.
 //!
 //! **Concurrency**: Process env vars are global state. Tests that modify them
 //! MUST serialize. The static mutex ensures mutual exclusion within this binary.

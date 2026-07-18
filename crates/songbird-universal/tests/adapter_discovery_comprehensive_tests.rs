@@ -186,7 +186,7 @@ async fn test_adapter_endpoint_formats() {
         )
         .await;
 
-        assert!(result.is_ok(), "Failed for endpoint: {}", endpoint);
+        assert!(result.is_ok(), "Failed for endpoint: {endpoint}");
         if let Ok(adapter) = result {
             assert_eq!(adapter.endpoint(), endpoint);
         }

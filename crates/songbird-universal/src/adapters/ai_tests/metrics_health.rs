@@ -182,9 +182,8 @@ fn test_ai_metrics_serialization() -> SongbirdResult<()> {
         timestamp: chrono::Utc::now(),
     };
 
-    let json = serde_json::to_string(&metrics).map_err(|e| {
-        SongbirdError::configuration(format!("Serialization should succeed: {}", e))
-    })?;
+    let json = serde_json::to_string(&metrics)
+        .map_err(|e| SongbirdError::configuration(format!("Serialization should succeed: {e}")))?;
     assert!(json.contains("active_models"));
     assert!(json.contains(":5"));
     Ok(())
@@ -193,21 +192,18 @@ fn test_ai_metrics_serialization() -> SongbirdResult<()> {
 #[test]
 fn test_ai_health_serialization() -> SongbirdResult<()> {
     let health = AIHealth::Healthy;
-    let json = serde_json::to_string(&health).map_err(|e| {
-        SongbirdError::configuration(format!("Serialization should succeed: {}", e))
-    })?;
+    let json = serde_json::to_string(&health)
+        .map_err(|e| SongbirdError::configuration(format!("Serialization should succeed: {e}")))?;
     assert!(json.contains("Healthy"));
 
     let degraded = AIHealth::Degraded;
-    let json = serde_json::to_string(&degraded).map_err(|e| {
-        SongbirdError::configuration(format!("Serialization should succeed: {}", e))
-    })?;
+    let json = serde_json::to_string(&degraded)
+        .map_err(|e| SongbirdError::configuration(format!("Serialization should succeed: {e}")))?;
     assert!(json.contains("Degraded"));
 
     let overloaded = AIHealth::Overloaded;
-    let json = serde_json::to_string(&overloaded).map_err(|e| {
-        SongbirdError::configuration(format!("Serialization should succeed: {}", e))
-    })?;
+    let json = serde_json::to_string(&overloaded)
+        .map_err(|e| SongbirdError::configuration(format!("Serialization should succeed: {e}")))?;
     assert!(json.contains("Overloaded"));
     Ok(())
 }

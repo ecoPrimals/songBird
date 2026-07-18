@@ -27,8 +27,8 @@
 
 //! Tests for the Discoverable Endpoint System
 //!
-//! Covers: DiscoverableEndpoint constructors, EndpointSpec methods,
-//! parse_endpoint, discovery, resolve_named_port, and edge cases.
+//! Covers: `DiscoverableEndpoint` constructors, `EndpointSpec` methods,
+//! `parse_endpoint`, discovery, `resolve_named_port`, and edge cases.
 
 use songbird_config::discoverable_endpoint::*;
 use std::collections::HashMap;
@@ -334,6 +334,6 @@ fn test_discovery_method_static_serialization() {
 #[test]
 fn test_discoverable_endpoint_debug() {
     let ep = DiscoverableEndpoint::from_env("TEST");
-    let debug = format!("{:?}", ep);
+    let debug = format!("{ep:?}");
     assert!(debug.contains("DiscoverableEndpoint"));
 }

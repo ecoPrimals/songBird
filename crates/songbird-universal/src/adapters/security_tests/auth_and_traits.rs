@@ -111,7 +111,7 @@ fn test_auth_result_debug() -> SongbirdResult<()> {
 fn test_auth_result_deserialization() -> Result<(), Box<dyn std::error::Error>> {
     let json = r#""Authorized""#;
     let result: AuthResult = serde_json::from_str(json).map_err(|e| {
-        SongbirdError::configuration(format!("Deserialization should succeed: {}", e))
+        SongbirdError::configuration(format!("Deserialization should succeed: {e}"))
     })?;
     assert_eq!(result, AuthResult::Authorized);
     Ok(())
@@ -121,7 +121,7 @@ fn test_auth_result_deserialization() -> Result<(), Box<dyn std::error::Error>> 
 fn test_security_health_deserialization() -> Result<(), Box<dyn std::error::Error>> {
     let json = r#""Critical""#;
     let health: SecurityHealth = serde_json::from_str(json).map_err(|e| {
-        SongbirdError::configuration(format!("Deserialization should succeed: {}", e))
+        SongbirdError::configuration(format!("Deserialization should succeed: {e}"))
     })?;
     assert_eq!(health, SecurityHealth::Critical);
     Ok(())

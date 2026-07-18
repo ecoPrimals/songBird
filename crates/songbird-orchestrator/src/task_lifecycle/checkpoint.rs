@@ -204,7 +204,7 @@ async fn sha256_bytes_via_provider(data: &[u8], provider: &CryptoProvider) -> Re
     let result = provider
         .call("crypto.sha256", json!({ "data": data_b64 }))
         .await
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
     let hash_b64 = result
         .get("hash")
         .and_then(|v| v.as_str())

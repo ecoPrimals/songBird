@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Token verification infrastructure for the MethodGate (JH-11).
+//! Token verification infrastructure for the `MethodGate` (JH-11).
 //!
 //! Defines the [`TokenVerifier`] trait and concrete implementations:
 //! - [`NoopVerifier`]: returns `NotConfigured` — for tests and when no security
@@ -81,7 +81,7 @@ pub type BearDogVerifier = SecurityProviderVerifier;
 impl SecurityProviderVerifier {
     /// Create a verifier backed by the given security provider client.
     #[must_use]
-    pub fn new(client: Arc<songbird_http_client::SecurityRpcClient>) -> Self {
+    pub const fn new(client: Arc<songbird_http_client::SecurityRpcClient>) -> Self {
         Self {
             security_client: client,
         }

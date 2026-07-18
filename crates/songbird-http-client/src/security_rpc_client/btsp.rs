@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! BTSP (BearDog Secure Tunnel Protocol) session methods
+//! BTSP (`BearDog` Secure Tunnel Protocol) session methods
 //!
-//! Wraps BearDog's BTSP JSON-RPC methods for handshake-as-a-service.
-//! Consumer primals call these to delegate BTSP crypto to BearDog.
+//! Wraps `BearDog`'s BTSP JSON-RPC methods for handshake-as-a-service.
+//! Consumer primals call these to delegate BTSP crypto to `BearDog`.
 //!
 //! ## Protocol
 //!
 //! See `BTSP_PROTOCOL_STANDARD.md` v1.0 for the full specification.
-//! BearDog implements the crypto primitives; consumer primals (like Songbird)
+//! `BearDog` implements the crypto primitives; consumer primals (like Songbird)
 //! call these methods during socket accept to authenticate incoming connections.
 
 use super::core::SecurityRpcClient;
@@ -19,9 +19,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::debug;
 
-/// Result of `btsp.session.create` — BearDog generates server-side session state.
+/// Result of `btsp.session.create` — `BearDog` generates server-side session state.
 ///
-/// Aligned with BearDog's `SessionCreateResponse`: returns an opaque
+/// Aligned with `BearDog`'s `SessionCreateResponse`: returns an opaque
 /// `session_token` (used to reference the session in subsequent calls),
 /// the server's ephemeral public key, and a random challenge for the client.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,9 +31,9 @@ pub struct BtspSessionCreated {
     pub challenge: Vec<u8>,
 }
 
-/// Result of `btsp.session.verify` — BearDog verifies the client's challenge response.
+/// Result of `btsp.session.verify` — `BearDog` verifies the client's challenge response.
 ///
-/// Aligned with BearDog's `SessionVerifyResponse`: on success, returns
+/// Aligned with `BearDog`'s `SessionVerifyResponse`: on success, returns
 /// the promoted `session_id` and negotiated `cipher`. Session keys are
 /// obtained separately via `btsp.server.export_keys` when encryption is needed.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,18 +74,18 @@ impl std::fmt::Display for BtspCipher {
 impl SecurityRpcClient {
     /// Create a BTSP session (server-side).
     ///
-    /// Called when a new connection arrives. BearDog generates the server's
+    /// Called when a new connection arrives. `BearDog` generates the server's
     /// ephemeral keypair, derives the handshake key from the family seed,
     /// and returns session state including a random challenge for the client.
     ///
-    /// `family_seed` must be base64-encoded. BearDog's `btsp.session.create`
+    /// `family_seed` must be base64-encoded. `BearDog`'s `btsp.session.create`
     /// base64-decodes this parameter internally. The caller should read the
     /// raw `FAMILY_SEED` env var, trim whitespace, and base64-encode the
     /// resulting bytes before passing them here.
     ///
     /// # Errors
     ///
-    /// Returns an error if BearDog is unreachable or the session cannot be created.
+    /// Returns an error if `BearDog` is unreachable or the session cannot be created.
     pub async fn btsp_session_create(&self, family_seed: &str) -> Result<BtspSessionCreated> {
         debug!("BTSP: creating session via security provider");
 
@@ -129,16 +129,16 @@ impl SecurityRpcClient {
     /// Verify a client's BTSP challenge response.
     ///
     /// After the server sends `ServerHello` with a challenge, the client responds
-    /// with an HMAC proving family membership. BearDog verifies the HMAC using
+    /// with an HMAC proving family membership. `BearDog` verifies the HMAC using
     /// the session state stored under `session_token`.
     ///
-    /// On success, BearDog promotes the session and returns a `session_id` and
+    /// On success, `BearDog` promotes the session and returns a `session_id` and
     /// the negotiated `cipher`. Session keys are obtained separately via
     /// `btsp.server.export_keys` when stream encryption is needed.
     ///
     /// # Errors
     ///
-    /// Returns an error if BearDog is unreachable or the response is malformed.
+    /// Returns an error if `BearDog` is unreachable or the response is malformed.
     pub async fn btsp_session_verify(
         &self,
         session_token: &str,
@@ -180,12 +180,12 @@ impl SecurityRpcClient {
     ///
     /// After Phase 1 handshake completes, the `handshake_key` (derived from
     /// the X25519 shared secret during `btsp.session.create`/`verify`) is
-    /// held by BearDog. This method retrieves it so Songbird can derive
+    /// held by `BearDog`. This method retrieves it so Songbird can derive
     /// Phase 3 session keys locally via HKDF.
     ///
     /// # Errors
     ///
-    /// Returns an error if BearDog is unreachable, the session is unknown,
+    /// Returns an error if `BearDog` is unreachable, the session is unknown,
     /// or the response is malformed.
     pub async fn btsp_export_keys(&self, session_id: &str) -> Result<[u8; 32]> {
         debug!("BTSP: exporting handshake key for session {session_id}");
@@ -222,12 +222,12 @@ impl SecurityRpcClient {
     /// Negotiate cipher suite for an authenticated BTSP session.
     ///
     /// After handshake verification succeeds, both parties negotiate which
-    /// cipher to use. BearDog's verify already includes cipher negotiation,
+    /// cipher to use. `BearDog`'s verify already includes cipher negotiation,
     /// so this is typically only needed for re-negotiation.
     ///
     /// # Errors
     ///
-    /// Returns an error if BearDog is unreachable or negotiation fails.
+    /// Returns an error if `BearDog` is unreachable or negotiation fails.
     pub async fn btsp_negotiate(
         &self,
         session_token: &str,

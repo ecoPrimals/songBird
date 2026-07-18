@@ -432,7 +432,7 @@ mod tests {
     #[test]
     fn test_debug_format() {
         let buffer = ModernSafeBuffer::<i32>::new(10);
-        let debug = format!("{:?}", buffer);
+        let debug = format!("{buffer:?}");
         assert!(debug.contains("ModernSafeBuffer"));
     }
 

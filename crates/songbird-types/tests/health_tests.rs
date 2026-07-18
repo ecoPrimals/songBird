@@ -51,7 +51,7 @@ fn test_health_status_display() {
 #[test]
 fn test_health_status_debug() {
     let status = CanonicalHealthStatus::Healthy;
-    let debug_str = format!("{:?}", status);
+    let debug_str = format!("{status:?}");
     assert!(debug_str.contains("Healthy"));
 }
 
@@ -404,7 +404,7 @@ fn test_health_check_large_metrics() {
 
     // Add many metrics
     for i in 0..100 {
-        check.with_metric(format!("metric_{}", i), f64::from(i));
+        check.with_metric(format!("metric_{i}"), f64::from(i));
     }
 
     assert_eq!(check.metrics.len(), 100);
@@ -417,7 +417,7 @@ fn test_health_check_many_components() {
     // Add many components
     for i in 0..50 {
         check.with_component(
-            format!("service_{}", i),
+            format!("service_{i}"),
             if i % 2 == 0 {
                 CanonicalHealthStatus::Healthy
             } else {

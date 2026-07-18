@@ -74,7 +74,7 @@ impl fmt::Debug for SecurityAdapter {
 }
 
 /// Reads `BEARDOG_ENDPOINT` if set. Prefer `SECURITY_ENDPOINT` or `SECURITY_PROVIDER_ENDPOINT`
-/// (capability-first per PRIMAL_SELF_KNOWLEDGE_STANDARD).
+/// (capability-first per `PRIMAL_SELF_KNOWLEDGE_STANDARD`).
 #[deprecated(
     since = "0.2.1",
     note = "`BEARDOG_ENDPOINT` is deprecated — use `SECURITY_ENDPOINT` or `SECURITY_PROVIDER_ENDPOINT`"

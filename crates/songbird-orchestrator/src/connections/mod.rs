@@ -54,7 +54,7 @@ pub trait PeerConnection: Send + Sync {
 /// Enum wrapping all connection types
 ///
 /// v3.18.0: Added BTSP variants for port-free, encrypted P2P communication
-/// v3.22.0: Added HttpRemote for LAN peers when BTSP/crypto is unavailable
+/// v3.22.0: Added `HttpRemote` for LAN peers when BTSP/crypto is unavailable
 pub enum Connection {
     // Local UDS connections (v3.0+)
     Limited(LimitedConnection),

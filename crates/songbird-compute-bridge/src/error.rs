@@ -50,11 +50,7 @@ mod tests {
     #[test]
     fn no_provider_available_display() {
         let e = ComputeError::NoProviderAvailable("missing".into());
-        assert!(
-            e.to_string().contains("No compute provider available"),
-            "unexpected message: {}",
-            e
-        );
+        assert!(e.to_string().contains("No compute provider available"), "unexpected message: {e}");
         assert!(e.to_string().contains("missing"));
     }
 

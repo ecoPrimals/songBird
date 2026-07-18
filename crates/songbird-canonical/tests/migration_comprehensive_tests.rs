@@ -49,14 +49,14 @@ use std::path::Path;
 fn test_migrator_creation() -> SongbirdResult<()> {
     let migrator = CanonicalMigrator::new();
     // Should create migrator with default patterns
-    assert!(format!("{:?}", migrator).contains("CanonicalMigrator"));
+    assert!(format!("{migrator:?}").contains("CanonicalMigrator"));
     Ok(())
 }
 
 #[test]
 fn test_migrator_default() -> SongbirdResult<()> {
     let migrator = CanonicalMigrator::default();
-    assert!(format!("{:?}", migrator).contains("CanonicalMigrator"));
+    assert!(format!("{migrator:?}").contains("CanonicalMigrator"));
     Ok(())
 }
 
@@ -201,7 +201,7 @@ fn test_migration_change_clone() -> SongbirdResult<()> {
 #[test]
 fn test_change_type_return_type() -> SongbirdResult<()> {
     let change_type = ChangeType::ReturnType;
-    let debug_str = format!("{:?}", change_type);
+    let debug_str = format!("{change_type:?}");
     assert!(debug_str.contains("ReturnType"));
     Ok(())
 }
@@ -209,7 +209,7 @@ fn test_change_type_return_type() -> SongbirdResult<()> {
 #[test]
 fn test_change_type_error_handling() -> SongbirdResult<()> {
     let change_type = ChangeType::ErrorHandling;
-    let debug_str = format!("{:?}", change_type);
+    let debug_str = format!("{change_type:?}");
     assert!(debug_str.contains("ErrorHandling"));
     Ok(())
 }
@@ -217,7 +217,7 @@ fn test_change_type_error_handling() -> SongbirdResult<()> {
 #[test]
 fn test_change_type_config_field() -> SongbirdResult<()> {
     let change_type = ChangeType::ConfigField;
-    let debug_str = format!("{:?}", change_type);
+    let debug_str = format!("{change_type:?}");
     assert!(debug_str.contains("ConfigField"));
     Ok(())
 }
@@ -225,7 +225,7 @@ fn test_change_type_config_field() -> SongbirdResult<()> {
 #[test]
 fn test_change_type_import() -> SongbirdResult<()> {
     let change_type = ChangeType::Import;
-    let debug_str = format!("{:?}", change_type);
+    let debug_str = format!("{change_type:?}");
     assert!(debug_str.contains("Import"));
     Ok(())
 }
@@ -233,7 +233,7 @@ fn test_change_type_import() -> SongbirdResult<()> {
 #[test]
 fn test_change_type_function_signature() -> SongbirdResult<()> {
     let change_type = ChangeType::FunctionSignature;
-    let debug_str = format!("{:?}", change_type);
+    let debug_str = format!("{change_type:?}");
     assert!(debug_str.contains("FunctionSignature"));
     Ok(())
 }
@@ -303,7 +303,7 @@ fn test_migration_result_debug() -> SongbirdResult<()> {
         compilation_status: CompilationStatus::NotTested,
     };
 
-    let debug_str = format!("{:?}", result);
+    let debug_str = format!("{result:?}");
     assert!(debug_str.contains("MigrationResult"));
     Ok(())
 }
@@ -355,7 +355,7 @@ fn test_compilation_status_not_tested() -> SongbirdResult<()> {
 #[test]
 fn test_compilation_status_debug() -> SongbirdResult<()> {
     let status = CompilationStatus::Success;
-    let debug_str = format!("{:?}", status);
+    let debug_str = format!("{status:?}");
     assert!(debug_str.contains("Success"));
     Ok(())
 }
@@ -513,7 +513,7 @@ fn test_migration_report_debug() -> SongbirdResult<()> {
         estimated_effort_hours: 2,
     };
 
-    let debug_str = format!("{:?}", report);
+    let debug_str = format!("{report:?}");
     assert!(debug_str.contains("MigrationReport"));
     Ok(())
 }

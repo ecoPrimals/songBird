@@ -57,7 +57,7 @@ fn test_factory_clone() {
 #[test]
 fn test_factory_debug() {
     let factory = CanonicalConfigFactory::new();
-    let debug_str = format!("{:?}", factory);
+    let debug_str = format!("{factory:?}");
     assert!(debug_str.contains("CanonicalConfigFactory"));
 }
 

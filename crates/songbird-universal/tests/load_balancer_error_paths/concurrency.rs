@@ -5,7 +5,7 @@ use super::*;
 
 #[tokio::test]
 async fn test_concurrent_endpoint_selection() -> SongbirdResult<()> {
-    let endpoints: Vec<String> = (0..10).map(|i| format!("http://endpoint{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..10).map(|i| format!("http://endpoint{i}:8080")).collect();
 
     let lb = Arc::new(LoadBalancer::new(endpoints, LoadBalancingStrategy::RoundRobin));
 
@@ -30,7 +30,7 @@ async fn test_concurrent_endpoint_selection() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_concurrent_health_marking() -> SongbirdResult<()> {
-    let endpoints: Vec<String> = (0..20).map(|i| format!("http://endpoint{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..20).map(|i| format!("http://endpoint{i}:8080")).collect();
 
     let lb = Arc::new(LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::HealthBased));
 
@@ -62,7 +62,7 @@ async fn test_concurrent_health_marking() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_concurrent_reads_and_writes() -> SongbirdResult<()> {
-    let endpoints: Vec<String> = (0..10).map(|i| format!("http://endpoint{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..10).map(|i| format!("http://endpoint{i}:8080")).collect();
 
     let lb = Arc::new(LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::HealthBased));
 
@@ -94,7 +94,7 @@ async fn test_concurrent_reads_and_writes() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_concurrent_strategy_switching() -> SongbirdResult<()> {
     // Tests rapid concurrent access to load balancer
-    let endpoints: Vec<String> = (0..5).map(|i| format!("http://endpoint{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..5).map(|i| format!("http://endpoint{i}:8080")).collect();
 
     let lb = Arc::new(LoadBalancer::new(endpoints, LoadBalancingStrategy::RoundRobin));
 
@@ -116,7 +116,7 @@ async fn test_concurrent_strategy_switching() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_concurrent_availability_checks() -> SongbirdResult<()> {
-    let endpoints: Vec<String> = (0..10).map(|i| format!("http://endpoint{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..10).map(|i| format!("http://endpoint{i}:8080")).collect();
 
     let lb = Arc::new(LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::HealthBased));
 
@@ -139,7 +139,7 @@ async fn test_concurrent_availability_checks() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_high_concurrency_selection() -> SongbirdResult<()> {
-    let endpoints: Vec<String> = (0..20).map(|i| format!("http://endpoint{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..20).map(|i| format!("http://endpoint{i}:8080")).collect();
 
     let lb = Arc::new(LoadBalancer::new(endpoints, LoadBalancingStrategy::Random));
 

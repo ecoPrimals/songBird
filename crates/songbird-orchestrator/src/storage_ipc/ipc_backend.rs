@@ -78,7 +78,7 @@ fn consent_user_idx(user: &UserId, id: &str) -> String {
 }
 
 fn consent_task_idx(task_id: &TaskId, id: &str) -> String {
-    format!("songbird/consent/task/{}/{}", task_id, id)
+    format!("songbird/consent/task/{task_id}/{id}")
 }
 
 fn task_main_key(id: TaskId) -> String {
@@ -143,7 +143,7 @@ impl IpcStorageBackend {
 
     /// List consent records for a task.
     pub async fn consent_list_by_task(&self, task_id: &TaskId) -> Result<Vec<ConsentRecord>> {
-        let prefix = format!("songbird/consent/task/{}/", task_id);
+        let prefix = format!("songbird/consent/task/{task_id}/");
         let keys = self.storage_list_keys(&prefix).await?;
         let mut out = Vec::new();
         for k in keys {

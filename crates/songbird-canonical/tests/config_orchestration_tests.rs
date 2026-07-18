@@ -198,7 +198,7 @@ fn test_orchestration_config_serialization() -> SongbirdResult<()> {
     let config = OrchestrationConfig::default();
 
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
     assert!(json.contains("discovery"));
     assert!(json.contains("load_balancing"));
     assert!(json.contains("health"));
@@ -207,7 +207,7 @@ fn test_orchestration_config_serialization() -> SongbirdResult<()> {
     let deserialized: OrchestrationConfig =
         serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Should deserialize: {}", e),
+            message: format!("Should deserialize: {e}"),
             debug_info: None,
         })?;
     assert_eq!(config.discovery.enabled, deserialized.discovery.enabled);
@@ -243,11 +243,11 @@ fn test_load_balancing_strategy_serialization() -> SongbirdResult<()> {
 
     for strategy in strategies {
         let json = serde_json::to_string(&strategy)
-            .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
         let _deserialized: LoadBalancingStrategy =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
                 format: Some("JSON".to_string()),
-                message: format!("Should deserialize: {}", e),
+                message: format!("Should deserialize: {e}"),
                 debug_info: None,
             })?;
     }

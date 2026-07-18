@@ -64,25 +64,25 @@ async fn test_round_robin_basic() -> SongbirdResult<()> {
     let ep1 = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
-    assert_eq!(ep1.as_str(), format!("http://service1:{}", port).as_str());
+    assert_eq!(ep1.as_str(), format!("http://service1:{port}").as_str());
 
     // Second request should go to service2
     let ep2 = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
-    assert_eq!(ep2.as_str(), format!("http://service2:{}", port).as_str());
+    assert_eq!(ep2.as_str(), format!("http://service2:{port}").as_str());
 
     // Third request should go to service3
     let ep3 = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
-    assert_eq!(ep3.as_str(), format!("http://service3:{}", port).as_str());
+    assert_eq!(ep3.as_str(), format!("http://service3:{port}").as_str());
 
     // Fourth request should wrap back to service1
     let ep4 = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
-    assert_eq!(ep4.as_str(), format!("http://service1:{}", port).as_str());
+    assert_eq!(ep4.as_str(), format!("http://service1:{port}").as_str());
     Ok(())
 }
 
@@ -98,7 +98,7 @@ async fn test_round_robin_with_unavailable_endpoint() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints, LoadBalancingStrategy::RoundRobin);
 
     // Mark service2 as unavailable
-    lb.mark_endpoint_unavailable(&format!("http://service2:{}", port)).await;
+    lb.mark_endpoint_unavailable(&format!("http://service2:{port}")).await;
 
     // Should only cycle between service1 and service3
     let ep1 = lb.get_next_endpoint().await.map_err(|_e| {
@@ -117,7 +117,7 @@ async fn test_round_robin_with_unavailable_endpoint() -> SongbirdResult<()> {
     seen.dedup();
 
     assert_eq!(seen.len(), 2);
-    assert!(!seen.contains(&format!("http://service2:{}", port)));
+    assert!(!seen.contains(&format!("http://service2:{port}")));
     Ok(())
 }
 
@@ -133,15 +133,15 @@ async fn test_health_based_selection() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints, LoadBalancingStrategy::HealthBased);
 
     // Set different health scores
-    lb.update_endpoint_health(&format!("http://service1:{}", port), 0.5).await;
-    lb.update_endpoint_health(&format!("http://service2:{}", port), 0.9).await;
-    lb.update_endpoint_health(&format!("http://service3:{}", port), 0.3).await;
+    lb.update_endpoint_health(&format!("http://service1:{port}"), 0.5).await;
+    lb.update_endpoint_health(&format!("http://service2:{port}"), 0.9).await;
+    lb.update_endpoint_health(&format!("http://service3:{port}"), 0.3).await;
 
     // Should select service2 (highest health score)
     let ep = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
-    assert_eq!(ep.as_str(), format!("http://service2:{}", port));
+    assert_eq!(ep.as_str(), format!("http://service2:{port}"));
     Ok(())
 }
 
@@ -156,8 +156,8 @@ async fn test_least_loaded_selection() -> SongbirdResult<()> {
     let ep = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
-    let service1 = format!("http://service1:{}", port);
-    let service2 = format!("http://service2:{}", port);
+    let service1 = format!("http://service1:{port}");
+    let service2 = format!("http://service2:{port}");
     assert!(ep == service1 || ep == service2);
     Ok(())
 }
@@ -206,8 +206,8 @@ async fn test_all_endpoints_unavailable() {
     let lb = LoadBalancer::new(endpoints, LoadBalancingStrategy::RoundRobin);
 
     // Mark all endpoints unavailable
-    lb.mark_endpoint_unavailable(&format!("http://service1:{}", port)).await;
-    lb.mark_endpoint_unavailable(&format!("http://service2:{}", port)).await;
+    lb.mark_endpoint_unavailable(&format!("http://service1:{port}")).await;
+    lb.mark_endpoint_unavailable(&format!("http://service2:{port}")).await;
 
     let result = lb.get_next_endpoint().await;
     assert!(result.is_err());
@@ -222,15 +222,15 @@ async fn test_endpoint_recovery() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints, LoadBalancingStrategy::RoundRobin);
 
     // Mark unavailable
-    lb.mark_endpoint_unavailable(&format!("http://service1:{}", port)).await;
+    lb.mark_endpoint_unavailable(&format!("http://service1:{port}")).await;
     assert!(lb.get_next_endpoint().await.is_err());
 
     // Mark available again
-    lb.mark_endpoint_available(&format!("http://service1:{}", port)).await;
+    lb.mark_endpoint_available(&format!("http://service1:{port}")).await;
     let ep = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
-    assert_eq!(ep.as_str(), format!("http://service1:{}", port));
+    assert_eq!(ep.as_str(), format!("http://service1:{port}"));
     Ok(())
 }
 
@@ -242,15 +242,15 @@ async fn test_health_score_updates() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints, LoadBalancingStrategy::HealthBased);
 
     // Update health multiple times
-    lb.update_endpoint_health(&format!("http://service1:{}", port), 0.5).await;
-    lb.update_endpoint_health(&format!("http://service1:{}", port), 0.8).await;
-    lb.update_endpoint_health(&format!("http://service1:{}", port), 0.3).await;
+    lb.update_endpoint_health(&format!("http://service1:{port}"), 0.5).await;
+    lb.update_endpoint_health(&format!("http://service1:{port}"), 0.8).await;
+    lb.update_endpoint_health(&format!("http://service1:{port}"), 0.3).await;
 
     // Should still be available
     let ep = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
-    assert_eq!(ep.as_str(), format!("http://service1:{}", port));
+    assert_eq!(ep.as_str(), format!("http://service1:{port}"));
     Ok(())
 }
 
@@ -267,10 +267,10 @@ async fn test_available_count() {
 
     assert_eq!(lb.available_count().await, 3);
 
-    lb.mark_endpoint_unavailable(&format!("http://service2:{}", port)).await;
+    lb.mark_endpoint_unavailable(&format!("http://service2:{port}")).await;
     assert_eq!(lb.available_count().await, 2);
 
-    lb.mark_endpoint_unavailable(&format!("http://service1:{}", port)).await;
+    lb.mark_endpoint_unavailable(&format!("http://service1:{port}")).await;
     assert_eq!(lb.available_count().await, 1);
 }
 
@@ -285,8 +285,8 @@ async fn test_get_all_endpoints() {
     assert_eq!(all_endpoints.len(), 2);
 
     let urls: Vec<String> = all_endpoints.iter().map(|e| e.url.clone()).collect();
-    assert!(urls.contains(&format!("http://service1:{}", port)));
-    assert!(urls.contains(&format!("http://service2:{}", port)));
+    assert!(urls.contains(&format!("http://service1:{port}")));
+    assert!(urls.contains(&format!("http://service2:{port}")));
 }
 
 #[tokio::test]
@@ -325,7 +325,7 @@ async fn test_single_endpoint_many_requests() -> SongbirdResult<()> {
         let ep = lb.get_next_endpoint().await.map_err(|_e| {
             SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
-        assert_eq!(ep.as_str(), format!("http://service1:{}", port));
+        assert_eq!(ep.as_str(), format!("http://service1:{port}"));
     }
     Ok(())
 }
@@ -352,14 +352,14 @@ async fn test_mark_nonexistent_endpoint() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints, LoadBalancingStrategy::RoundRobin);
 
     // Marking non-existent endpoint shouldn't panic
-    lb.mark_endpoint_unavailable(&format!("http://nonexistent:{}", port)).await;
-    lb.update_endpoint_health(&format!("http://nonexistent:{}", port), 0.5).await;
+    lb.mark_endpoint_unavailable(&format!("http://nonexistent:{port}")).await;
+    lb.update_endpoint_health(&format!("http://nonexistent:{port}"), 0.5).await;
 
     // Original endpoint should still work
     let ep = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
-    assert_eq!(ep.as_str(), format!("http://service1:{}", port));
+    assert_eq!(ep.as_str(), format!("http://service1:{port}"));
     Ok(())
 }
 
@@ -371,17 +371,17 @@ async fn test_health_degradation_scenario() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints, LoadBalancingStrategy::HealthBased);
 
     // Start with good health
-    lb.update_endpoint_health(&format!("http://service1:{}", port), 1.0).await;
-    lb.update_endpoint_health(&format!("http://service2:{}", port), 1.0).await;
+    lb.update_endpoint_health(&format!("http://service1:{port}"), 1.0).await;
+    lb.update_endpoint_health(&format!("http://service2:{port}"), 1.0).await;
 
     // Degrade service1
-    lb.update_endpoint_health(&format!("http://service1:{}", port), 0.3).await;
+    lb.update_endpoint_health(&format!("http://service1:{port}"), 0.3).await;
 
     // Should prefer service2
     let ep = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
-    assert_eq!(ep.as_str(), format!("http://service2:{}", port));
+    assert_eq!(ep.as_str(), format!("http://service2:{port}"));
     Ok(())
 }
 

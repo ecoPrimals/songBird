@@ -337,7 +337,7 @@ fn test_environment_config_serialization() -> SongbirdResult<()> {
     let config = EnvironmentConfig::default();
 
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
     assert!(json.contains("environment"));
     assert!(json.contains("ports"));
     assert!(json.contains("logging"));
@@ -348,7 +348,7 @@ fn test_environment_config_serialization() -> SongbirdResult<()> {
     let deserialized: EnvironmentConfig =
         serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Should deserialize: {}", e),
+            message: format!("Should deserialize: {e}"),
             debug_info: None,
         })?;
     assert_eq!(config.ports.discovery_port, deserialized.ports.discovery_port);
@@ -543,11 +543,11 @@ fn test_environment_serialization() -> SongbirdResult<()> {
 
     for env in environments {
         let json = serde_json::to_string(&env)
-            .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
         let _deserialized: Environment =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
                 format: Some("JSON".to_string()),
-                message: format!("Should deserialize: {}", e),
+                message: format!("Should deserialize: {e}"),
                 debug_info: None,
             })?;
     }

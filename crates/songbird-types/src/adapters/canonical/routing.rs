@@ -117,7 +117,7 @@ pub enum CanonicalProtocolHandler {
 impl CanonicalProtocolHandler {
     /// Protocol name key used for router registration.
     #[must_use]
-    pub fn protocol_name(&self) -> &'static str {
+    pub const fn protocol_name(&self) -> &'static str {
         match self {
             Self::TcpReachability(h) => h.protocol,
             #[cfg(test)]

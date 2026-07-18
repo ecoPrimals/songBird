@@ -90,7 +90,7 @@ pub enum ModelType {
 /// **CAPABILITY-BASED AI ADAPTER**
 ///
 /// Works with ANY AI provider discovered through:
-/// - Environment variable: `AI_ENDPOINT` (capability-first; see PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1)
+/// - Environment variable: `AI_ENDPOINT` (capability-first; see `PRIMAL_SELF_KNOWLEDGE_STANDARD` v1.1)
 /// - Capability discovery: `capability:ai`
 /// - Zero-knowledge bootstrap
 ///

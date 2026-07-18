@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Gaming performance tuning, benchmarks, and QoS.
+//! Gaming performance tuning, benchmarks, and `QoS`.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

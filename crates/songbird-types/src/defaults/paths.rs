@@ -266,11 +266,7 @@ pub fn network_socket_candidates() -> [PathBuf; 2] {
 #[must_use]
 pub fn primary_ipc_socket_path() -> PathBuf {
     let candidates = network_socket_candidates();
-    candidates
-        .iter()
-        .find(|p| p.exists())
-        .cloned()
-        .unwrap_or_else(|| candidates[0].clone())
+    candidates.iter().find(|p| p.exists()).cloned().unwrap_or_else(|| candidates[0].clone())
 }
 
 #[cfg(test)]

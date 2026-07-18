@@ -43,7 +43,7 @@
     reason = "test assertions and harness ergonomics"
 )]
 
-//! Tests for UnifiedUniversalAdapter creation and configuration
+//! Tests for `UnifiedUniversalAdapter` creation and configuration
 //!
 //! This module tests adapter instantiation, configuration options,
 //! and basic structure validation.

@@ -160,7 +160,7 @@ async fn test_address_parsing() {
 #[tokio::test]
 async fn test_address_display() {
     let addr = Address::from_bytes([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
-    let display = format!("{}", addr);
+    let display = format!("{addr}");
 
     assert!(display.contains("AA"));
     assert!(display.contains("FF"));
@@ -297,10 +297,10 @@ async fn test_error_display() {
     let err = BluetoothError::Timeout {
         duration: std::time::Duration::from_secs(5),
     };
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains('5'));
 
     let err2 = BluetoothError::Device("test error".to_string());
-    let display2 = format!("{}", err2);
+    let display2 = format!("{err2}");
     assert!(display2.contains("test error"));
 }

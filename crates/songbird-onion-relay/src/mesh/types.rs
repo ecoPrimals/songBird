@@ -44,7 +44,7 @@ pub enum EndpointType {
         /// LAN peer address.
         addr: SocketAddr,
     },
-    /// Encrypted overlay network (WireGuard, etc.)
+    /// Encrypted overlay network (`WireGuard`, etc.)
     Overlay {
         /// Peer address on the overlay subnet.
         addr: SocketAddr,
@@ -78,7 +78,7 @@ impl EndpointType {
 
     /// Extract the IP address if this endpoint type has one.
     #[must_use]
-    pub fn address(&self) -> Option<std::net::IpAddr> {
+    pub const fn address(&self) -> Option<std::net::IpAddr> {
         match self {
             Self::Direct {
                 addr,
@@ -105,7 +105,7 @@ impl EndpointType {
     /// port from the peer's advertised endpoint rather than falling back to
     /// a hardcoded default.
     #[must_use]
-    pub fn socket_addr(&self) -> Option<SocketAddr> {
+    pub const fn socket_addr(&self) -> Option<SocketAddr> {
         match self {
             Self::Direct {
                 addr,

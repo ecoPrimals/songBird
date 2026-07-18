@@ -42,7 +42,7 @@ use tracing::info;
 /// # Architecture
 ///
 /// The manager coordinates between:
-/// - **Storage layer**: IPC to NestGate `storage.*` capability, or in-memory fallback
+/// - **Storage layer**: IPC to `NestGate` `storage.*` capability, or in-memory fallback
 /// - **Checkpoint system**: gzip compression (flate2) with SHA-256 verification
 /// - **Event system**: Broadcast channels for real-time updates
 /// - **Background tasks**: Automatic cleanup of old tasks

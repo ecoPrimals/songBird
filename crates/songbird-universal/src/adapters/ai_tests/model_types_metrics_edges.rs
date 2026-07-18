@@ -10,7 +10,7 @@ fn test_model_type_serialization() -> SongbirdResult<()> {
     assert_eq!(
         serde_json::to_string(&ModelType::Llm).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None
         })?,
         "\"Llm\""
@@ -18,7 +18,7 @@ fn test_model_type_serialization() -> SongbirdResult<()> {
     assert_eq!(
         serde_json::to_string(&ModelType::Vision).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?,
         "\"Vision\""
@@ -26,7 +26,7 @@ fn test_model_type_serialization() -> SongbirdResult<()> {
     assert_eq!(
         serde_json::to_string(&ModelType::Audio).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None
         })?,
         "\"Audio\""
@@ -34,7 +34,7 @@ fn test_model_type_serialization() -> SongbirdResult<()> {
     assert_eq!(
         serde_json::to_string(&ModelType::Embedding).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?,
         "\"Embedding\""
@@ -54,7 +54,7 @@ fn test_model_type_all_variants() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_adapter_endpoint_access() -> SongbirdResult<()> {
     let adapter = AIAdapter::new("http://test-ai:8083".to_string()).await.map_err(|e| {
-        SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+        SongbirdError::configuration(format!("Adapter creation should succeed: {e}"))
     })?;
     assert_eq!(adapter.endpoint(), "http://test-ai:8083");
     Ok(())
@@ -63,7 +63,7 @@ async fn test_adapter_endpoint_access() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_adapter_default_timeout() -> SongbirdResult<()> {
     let adapter = AIAdapter::new("http://test-ai:8083".to_string()).await.map_err(|e| {
-        SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+        SongbirdError::configuration(format!("Adapter creation should succeed: {e}"))
     })?;
     assert_eq!(adapter.timeout, Duration::from_secs(15));
     Ok(())
@@ -74,9 +74,7 @@ async fn test_adapter_custom_timeout() -> SongbirdResult<()> {
     let custom_timeout = Duration::from_secs(45);
     let adapter = AIAdapter::new("http://test-ai:8083".to_string())
         .await
-        .map_err(|e| {
-            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
-        })?
+        .map_err(|e| SongbirdError::configuration(format!("Adapter creation should succeed: {e}")))?
         .with_timeout(custom_timeout);
     assert_eq!(adapter.timeout, custom_timeout);
     Ok(())
@@ -85,9 +83,9 @@ async fn test_adapter_custom_timeout() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_adapter_debug_format() -> SongbirdResult<()> {
     let adapter = AIAdapter::new("http://test-ai:8083".to_string()).await.map_err(|e| {
-        SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+        SongbirdError::configuration(format!("Adapter creation should succeed: {e}"))
     })?;
-    let debug_str = format!("{:?}", adapter);
+    let debug_str = format!("{adapter:?}");
     assert!(debug_str.contains("AIAdapter"));
     assert!(debug_str.contains("http://test-ai:8083"));
     Ok(())

@@ -349,9 +349,9 @@ fn test_resource_limits_serialization() -> SongbirdResult<()> {
     };
 
     let json = serde_json::to_string(&limits)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
     let deserialized: ResourceLimits = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should deserialize: {e}")))?;
 
     assert_eq!(limits.max_connections, deserialized.max_connections);
     Ok(())

@@ -60,7 +60,7 @@ async fn test_endpoint_url_with_password() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_very_long_url_path() -> SongbirdResult<()> {
     let long_path = "/".to_string() + &"segment/".repeat(100);
-    let endpoint = format!("http://endpoint:8080{}", long_path);
+    let endpoint = format!("http://endpoint:8080{long_path}");
 
     let lb = LoadBalancer::new(vec![endpoint.clone()], LoadBalancingStrategy::RoundRobin);
 

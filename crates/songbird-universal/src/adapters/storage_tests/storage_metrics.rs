@@ -258,9 +258,8 @@ fn test_storage_metrics_serialization() -> SongbirdResult<()> {
         timestamp: chrono::Utc::now(),
     };
 
-    let json = serde_json::to_string(&metrics).map_err(|e| {
-        SongbirdError::configuration(format!("Serialization should succeed: {}", e))
-    })?;
+    let json = serde_json::to_string(&metrics)
+        .map_err(|e| SongbirdError::configuration(format!("Serialization should succeed: {e}")))?;
     assert!(json.contains("total_capacity_bytes"));
     assert!(json.contains("object_count"));
     Ok(())
@@ -272,7 +271,7 @@ fn test_storage_health_serialization() -> SongbirdResult<()> {
         serde_json::to_string(&StorageHealth::Healthy).map_err(|e| {
             SongbirdError::Serialization {
                 format: Some("JSON".to_string()),
-                message: format!("Serialization failed: {}", e),
+                message: format!("Serialization failed: {e}"),
                 debug_info: None,
             }
         })?,
@@ -282,7 +281,7 @@ fn test_storage_health_serialization() -> SongbirdResult<()> {
         serde_json::to_string(&StorageHealth::Warning).map_err(|e| {
             SongbirdError::Serialization {
                 format: Some("JSON".to_string()),
-                message: format!("Serialization failed: {}", e),
+                message: format!("Serialization failed: {e}"),
                 debug_info: None,
             }
         })?,
@@ -292,7 +291,7 @@ fn test_storage_health_serialization() -> SongbirdResult<()> {
         serde_json::to_string(&StorageHealth::Critical).map_err(|e| {
             SongbirdError::Serialization {
                 format: Some("JSON".to_string()),
-                message: format!("Serialization failed: {}", e),
+                message: format!("Serialization failed: {e}"),
                 debug_info: None,
             }
         })?,

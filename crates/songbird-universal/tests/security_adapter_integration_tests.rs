@@ -469,8 +469,8 @@ async fn test_multiple_adapters_different_endpoints() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_create_multiple_adapters() -> SongbirdResult<()> {
     for i in 0..100 {
-        let adapter = SecurityAdapter::new(format!("http://security{}:8081", i)).await?;
-        assert_eq!(adapter.endpoint(), format!("http://security{}:8081", i));
+        let adapter = SecurityAdapter::new(format!("http://security{i}:8081")).await?;
+        assert_eq!(adapter.endpoint(), format!("http://security{i}:8081"));
     }
     Ok(())
 }

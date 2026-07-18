@@ -66,13 +66,13 @@ pub const DEFAULT_FEDERATION_RENDEZVOUS_INTERVAL: Duration = Duration::from_secs
 /// Default security adapter RPC timeout.
 pub const DEFAULT_SECURITY_ADAPTER_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// Default TLS handshake record read timeout (ServerHello, etc.).
+/// Default TLS handshake record read timeout (`ServerHello`, etc.).
 pub const DEFAULT_TLS_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Default timeout for reading individual encrypted TLS records during handshake.
 pub const DEFAULT_TLS_RECORD_READ_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// Window for reading optional post-handshake messages (NewSessionTicket).
+/// Window for reading optional post-handshake messages (`NewSessionTicket`).
 pub const DEFAULT_POST_HANDSHAKE_READ_WINDOW: Duration = Duration::from_millis(200);
 
 /// Default IPC JSON-RPC response read timeout.

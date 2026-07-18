@@ -24,7 +24,7 @@ use std::net::SocketAddr;
 ///
 /// # Credential Derivation
 ///
-/// Credentials should be derived from the beacon seed via BearDog's
+/// Credentials should be derived from the beacon seed via `BearDog`'s
 /// `beacon.stun_credentials` RPC (when available). The username is typically
 /// a beacon-derived identifier, and the key is HMAC material from the beacon
 /// seed — never the lineage seed.

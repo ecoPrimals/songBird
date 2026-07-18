@@ -75,7 +75,7 @@ mod tests {
         let e = OnionRelayError::HolePunchFailed {
             attempts: 7,
         };
-        assert!(e.to_string().contains('7'), "expected attempts in {}", e);
+        assert!(e.to_string().contains('7'), "expected attempts in {e}");
     }
 
     #[test]

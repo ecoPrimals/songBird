@@ -15,7 +15,7 @@
 
 /// JSON-RPC method for beacon-tier encryption (Dark Forest beacons).
 ///
-/// Delegates to BearDog's beacon seed, separate from `birdsong.encrypt`
+/// Delegates to `BearDog`'s beacon seed, separate from `birdsong.encrypt`
 /// which uses the lineage (nuclear) seed.
 pub const BEACON_ENCRYPT_METHOD: &str = "beacon.encrypt";
 

@@ -298,7 +298,7 @@ impl SecurityCapabilityClient {
         ep.starts_with("unix://") || ep.starts_with('/') || ep.contains(".sock")
     }
 
-    /// Route a GET request through the adapter (UDS JSON-RPC) or http_client (HTTP).
+    /// Route a GET request through the adapter (UDS JSON-RPC) or `http_client` (HTTP).
     async fn adapter_get(&self, path: &str) -> Result<serde_json::Value> {
         if self.is_uds_endpoint() {
             self.adapter.transport_get(path).await.map_err(|e| anyhow::anyhow!("{e}"))
@@ -324,7 +324,7 @@ impl SecurityCapabilityClient {
         }
     }
 
-    /// Route a POST request through the adapter (UDS JSON-RPC) or http_client (HTTP).
+    /// Route a POST request through the adapter (UDS JSON-RPC) or `http_client` (HTTP).
     async fn adapter_post(&self, path: &str, body: serde_json::Value) -> Result<serde_json::Value> {
         if self.is_uds_endpoint() {
             self.adapter.transport_post(path, body).await.map_err(|e| anyhow::anyhow!("{e}"))

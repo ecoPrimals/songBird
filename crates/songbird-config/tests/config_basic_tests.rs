@@ -29,7 +29,7 @@
 //! Basic configuration tests
 //!
 //! Tests for `SongbirdConfig` creation and basic operations.
-//! Note: Using deprecated SongbirdConfig for backward compatibility testing.
+//! Note: Using deprecated `SongbirdConfig` for backward compatibility testing.
 //! Canonical config types are now standard (migrated Jan 2026).
 
 use songbird_config::config::SongbirdConfig;

@@ -72,7 +72,7 @@ pub enum ValidationSeverity {
 impl ValidationResult {
     /// Create a new validation result
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             errors: Vec::new(),
             warnings: Vec::new(),
@@ -83,13 +83,13 @@ impl ValidationResult {
 
     /// Check if validation passed (no critical errors)
     #[must_use]
-    pub fn is_valid(&self) -> bool {
+    pub const fn is_valid(&self) -> bool {
         self.errors.is_empty()
     }
 
     /// Get total issue count
     #[must_use]
-    pub fn total_issues(&self) -> usize {
+    pub const fn total_issues(&self) -> usize {
         self.errors.len() + self.warnings.len()
     }
 }

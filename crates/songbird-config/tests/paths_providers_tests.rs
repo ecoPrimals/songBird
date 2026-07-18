@@ -25,10 +25,10 @@
     reason = "test assertions and harness ergonomics"
 )]
 
-//! Tests for PathConfig and ConfigProvider systems
+//! Tests for `PathConfig` and `ConfigProvider` systems
 //!
-//! Covers: PathConfig::default(), PathConfig::new(), PathConfig::ensure_dirs_exist(),
-//! ConfigFormat, ConfigProviderInfo, FileConfigProvider, EndpointSpec.
+//! Covers: `PathConfig::default()`, `PathConfig::new()`, `PathConfig::ensure_dirs_exist()`,
+//! `ConfigFormat`, `ConfigProviderInfo`, `FileConfigProvider`, `EndpointSpec`.
 
 use std::sync::Mutex;
 
@@ -86,7 +86,7 @@ mod path_config_tests {
     fn test_path_config_debug() {
         let _guard = ENV_LOCK.lock().unwrap();
         let config = PathConfig::default();
-        let debug = format!("{:?}", config);
+        let debug = format!("{config:?}");
         assert!(debug.contains("PathConfig"));
     }
 
@@ -119,7 +119,7 @@ mod config_providers_tests {
     fn test_config_format_variants() {
         let formats = [ConfigFormat::Toml, ConfigFormat::Json, ConfigFormat::Yaml];
         for format in &formats {
-            let debug = format!("{:?}", format);
+            let debug = format!("{format:?}");
             assert!(!debug.is_empty());
         }
     }
@@ -191,7 +191,7 @@ mod universal_primals_tests {
     fn test_auto_discovery_config_default() {
         let _guard = ENV_LOCK.lock().unwrap();
         let config = AutoDiscoveryConfig::default();
-        let debug = format!("{:?}", config);
+        let debug = format!("{config:?}");
         assert!(debug.contains("AutoDiscoveryConfig"));
     }
 
@@ -199,7 +199,7 @@ mod universal_primals_tests {
     fn test_primal_registry_debug() {
         let _guard = ENV_LOCK.lock().unwrap();
         let registry = PrimalRegistry::default();
-        let debug = format!("{:?}", registry);
+        let debug = format!("{registry:?}");
         assert!(debug.contains("PrimalRegistry"));
     }
 

@@ -12,8 +12,8 @@
 //!
 //! Coverage goal: 64% → 85%+
 //!
-//! Tests the UnwrapElimination trait and all helper methods for converting
-//! standard errors into SongbirdError with proper context.
+//! Tests the `UnwrapElimination` trait and all helper methods for converting
+//! standard errors into `SongbirdError` with proper context.
 
 use songbird_types::error_helpers::UnwrapElimination;
 use songbird_types::{SongbirdError, SongbirdResult};

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Coverage tests for songbird-types::adapters::canonical
+//! Coverage tests for `songbird-types::adapters::canonical`
 //!
-//! Tests the CanonicalUniversalAdapter, configs, enums, and supporting types.
+//! Tests the `CanonicalUniversalAdapter`, configs, enums, and supporting types.
 
 #![allow(
     clippy::unwrap_used,

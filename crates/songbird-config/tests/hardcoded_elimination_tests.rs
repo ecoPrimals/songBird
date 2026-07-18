@@ -27,7 +27,7 @@
 
 //! Tests for Hardcoding Elimination Infrastructure
 //!
-//! Covers: HardcodingEliminationConfig, all sub-configs,
+//! Covers: `HardcodingEliminationConfig`, all sub-configs,
 //! Default trait impls, convenience functions, and the replace module.
 
 use std::sync::Mutex;
@@ -284,7 +284,7 @@ mod hardcoded_elimination_tests {
         let _guard = lock_env();
         let addr = replace::production_bind_address();
         // Should be a valid IP address (unspecified or loopback, depending on env)
-        let debug = format!("{:?}", addr);
+        let debug = format!("{addr:?}");
         assert!(!debug.is_empty());
     }
 
@@ -334,7 +334,7 @@ mod hardcoded_elimination_tests {
     fn test_service_config_debug() {
         let _guard = lock_env();
         let config = ServiceConfig::default();
-        let debug = format!("{:?}", config);
+        let debug = format!("{config:?}");
         assert!(debug.contains("ServiceConfig"));
     }
 
@@ -351,7 +351,7 @@ mod hardcoded_elimination_tests {
     fn test_performance_config_debug() {
         let _guard = lock_env();
         let config = PerformanceConfig::default();
-        let debug = format!("{:?}", config);
+        let debug = format!("{config:?}");
         assert!(debug.contains("PerformanceConfig"));
         assert!(debug.contains("1024")); // small_buffer_size
     }

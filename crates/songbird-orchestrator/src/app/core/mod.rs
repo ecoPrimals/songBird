@@ -374,7 +374,7 @@ impl SongbirdOrchestrator {
 
     /// Start Unix Socket IPC server for inter-primal communication (Jan 4, 2026)
     ///
-    /// Starts a Unix socket server that allows other primals (security provider, compute provider / compute.schedule, etc.; formerly ToadStool)
+    /// Starts a Unix socket server that allows other primals (security provider, compute provider / compute.schedule, etc.; formerly `ToadStool`)
     /// to register their capabilities and communicate with Songbird.
     ///
     /// Socket path resolved via [`crate::env_config::socket_path()`] (XDG-compliant):

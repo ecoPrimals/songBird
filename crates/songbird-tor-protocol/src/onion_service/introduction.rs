@@ -51,7 +51,7 @@ impl IntroductionPoint {
     /// **BLOCKED:** `HANDSHAKE_AUTH` and `SIG` are zero-filled until security provider crypto
     /// delegation is wired (HMAC over the cell body and Ed25519 signature). This produces a
     /// structurally valid-sized cell for tests only — relays must reject it on the wire until
-    /// integration is complete (tracked in REMAINING_WORK.md).
+    /// integration is complete (tracked in `REMAINING_WORK.md`).
     ///
     /// # Panics
     ///

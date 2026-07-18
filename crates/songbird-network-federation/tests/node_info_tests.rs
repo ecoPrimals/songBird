@@ -63,7 +63,7 @@ fn test_node_info_debug() {
         address: "http://localhost:8080".to_string(),
         status: "active".to_string(),
     };
-    let debug_output = format!("{:?}", node);
+    let debug_output = format!("{node:?}");
     assert!(debug_output.contains("NodeInfo") || debug_output.contains("test"));
 }
 
@@ -125,7 +125,7 @@ fn test_node_addresses() {
         ["http://localhost:8080", "http://192.168.1.100:9000", "https://node.example.com:443"];
     for (i, addr) in addresses.iter().enumerate() {
         let node = NodeInfo {
-            node_id: format!("node-{}", i),
+            node_id: format!("node-{i}"),
             address: (*addr).to_string(),
             status: "active".to_string(),
         };

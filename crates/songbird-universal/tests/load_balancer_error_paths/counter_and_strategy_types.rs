@@ -28,7 +28,7 @@ fn test_load_balancing_strategy_clone() -> SongbirdResult<()> {
 #[test]
 fn test_load_balancing_strategy_debug() -> SongbirdResult<()> {
     let strategy = LoadBalancingStrategy::LeastLoaded;
-    let debug_str = format!("{:?}", strategy);
+    let debug_str = format!("{strategy:?}");
     assert!(!debug_str.is_empty());
     Ok(())
 }

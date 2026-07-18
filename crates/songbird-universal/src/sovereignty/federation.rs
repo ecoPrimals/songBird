@@ -153,7 +153,7 @@ mod tests {
         assert!(response.is_ok());
 
         let response = response.map_err(|e| {
-            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+            SongbirdError::configuration(format!("Missing performance configuration: {e}"))
         })?;
         assert_eq!(response.request_id, "test-123");
         assert_eq!(response.status, crate::types::ResponseStatus::Success);
@@ -176,7 +176,7 @@ mod tests {
         };
 
         let response = manager.coordinate_request(&request).await.map_err(|e| {
-            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+            SongbirdError::configuration(format!("Missing performance configuration: {e}"))
         })?;
         assert_eq!(response.request_id, "unique-id-456");
         Ok(())

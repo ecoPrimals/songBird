@@ -336,7 +336,7 @@ mod tests {
     async fn new_accepts_nonstandard_scheme_as_http_transport() -> SongbirdResult<()> {
         let adapter = ComputeAdapter::new("ftp://compute.example/metrics".to_string()).await?;
         assert_eq!(adapter.endpoint(), "ftp://compute.example/metrics");
-        let dbg = format!("{:?}", adapter);
+        let dbg = format!("{adapter:?}");
         assert!(dbg.contains("Protocol::Http"), "{}", dbg);
         Ok(())
     }
@@ -344,11 +344,11 @@ mod tests {
     #[tokio::test]
     async fn debug_shows_tarpc_and_jsonrpc_labels() -> SongbirdResult<()> {
         let tarpc = ComputeAdapter::new("tarpc://127.0.0.1:9100".to_string()).await?;
-        assert!(format!("{:?}", tarpc).contains("Protocol::Tarpc"));
+        assert!(format!("{tarpc:?}").contains("Protocol::Tarpc"));
         let uds =
             ComputeAdapter::new("unix:///tmp/songbird-compute-adapter-tests.sock".to_string())
                 .await?;
-        assert!(format!("{:?}", uds).contains("Protocol::JsonRpc"));
+        assert!(format!("{uds:?}").contains("Protocol::JsonRpc"));
         Ok(())
     }
 

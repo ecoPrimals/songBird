@@ -43,7 +43,7 @@ pub struct RelayMetrics {
 }
 
 impl RelayMetrics {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             requests: AtomicU64::new(0),
             overhead_us: AtomicU64::new(0),
@@ -226,7 +226,7 @@ impl VirtualRelayManager {
 
     /// Access relay performance metrics.
     #[must_use]
-    pub fn metrics(&self) -> &Arc<RelayMetrics> {
+    pub const fn metrics(&self) -> &Arc<RelayMetrics> {
         &self.metrics
     }
 

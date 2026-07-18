@@ -25,7 +25,7 @@
     reason = "test assertions and harness ergonomics"
 )]
 
-//! Tests for hosts_evolved.rs - Self-aware service configuration
+//! Tests for `hosts_evolved.rs` - Self-aware service configuration
 //!
 //! Tests the self-aware configuration, bind config, advertise config,
 //! and environment detection.
@@ -52,7 +52,7 @@ fn test_environment_variants() {
     ];
 
     for env in &envs {
-        let debug = format!("{:?}", env);
+        let debug = format!("{env:?}");
         assert!(!debug.is_empty());
     }
 }
@@ -161,7 +161,7 @@ fn test_bind_config_clone() {
 #[test]
 fn test_bind_config_debug() {
     let config = BindConfig::for_environment(&Environment::Development);
-    let debug = format!("{:?}", config);
+    let debug = format!("{config:?}");
     assert!(debug.contains("BindConfig"));
 }
 
@@ -208,7 +208,7 @@ fn test_advertise_config_clone() {
 #[test]
 fn test_advertise_config_debug() {
     let config = AdvertiseConfig::for_environment(&Environment::Development);
-    let debug = format!("{:?}", config);
+    let debug = format!("{config:?}");
     assert!(debug.contains("AdvertiseConfig"));
 }
 
@@ -262,7 +262,7 @@ fn test_self_aware_config_debug() {
     let mut m: HashMap<String, String> = HashMap::new();
     m.insert("SONGBIRD_ENVIRONMENT".into(), "test".into());
     let config = SelfAwareConfig::from_environment_with(&env_reader(&m));
-    let debug = format!("{:?}", config);
+    let debug = format!("{config:?}");
     assert!(debug.contains("SelfAwareConfig"));
 }
 

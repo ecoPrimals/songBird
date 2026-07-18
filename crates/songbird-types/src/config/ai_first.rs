@@ -88,7 +88,7 @@ mod tests {
         let config = CanonicalAIFirstConfig::default();
         let json = serde_json::to_string(&config).map_err(|e| SongbirdError::Serialization {
             format: Some(String::from("JSON")),
-            message: format!("Serialization failed: {}", e),
+            message: format!("Serialization failed: {e}"),
             debug_info: None,
         })?;
         assert!(json.contains("enabled"));
@@ -104,7 +104,7 @@ mod tests {
         let config: CanonicalAIFirstConfig =
             serde_json::from_str(json).map_err(|e| SongbirdError::Serialization {
                 format: Some(String::from("JSON")),
-                message: format!("Parsing failed: {}", e),
+                message: format!("Parsing failed: {e}"),
                 debug_info: None,
             })?;
         assert!(!config.enabled);

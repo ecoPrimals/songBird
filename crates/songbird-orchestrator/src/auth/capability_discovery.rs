@@ -25,7 +25,7 @@ use tracing::{info, warn};
 /// 1. `SECURITY_PROVIDER` env var (orchestrator-provided, preferred)
 /// 2. `SECURITY_PROVIDER_SOCKET` env var (capability-standard)
 /// 3. `BEARDOG_SOCKET` env var (legacy compatibility)
-/// 4. BiomeOS scan + JSON-RPC probe for [`Capability::Security`]
+/// 4. `BiomeOS` scan + JSON-RPC probe for [`Capability::Security`]
 /// 5. `None` if not found (triggers secure fallback)
 #[must_use]
 pub fn discover_security_socket() -> Option<PathBuf> {

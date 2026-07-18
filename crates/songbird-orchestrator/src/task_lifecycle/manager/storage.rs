@@ -4,7 +4,7 @@
 //! Task storage backend selection (IPC storage provider or in-memory).
 //!
 //! Sled was removed in Wave 135 (SB-03). Storage is now exclusively IPC-based
-//! (NestGate `storage.*` capability) with in-memory fallback. On startup we clean
+//! (`NestGate` `storage.*` capability) with in-memory fallback. On startup we clean
 //! any orphaned sled database artifacts left by pre-Wave-135 installations to
 //! prevent corruption issues on unclean shutdown.
 

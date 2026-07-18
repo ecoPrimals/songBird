@@ -49,7 +49,7 @@
 //! This suite tests:
 //! - `new_from_discovery()` - async capability discovery
 //! - `collect_metrics()` - HTTP GET /metrics/compute
-//! - `check_health()` - integration of collect_metrics
+//! - `check_health()` - integration of `collect_metrics`
 //! - Network error handling
 //! - Timeout behavior
 

@@ -51,7 +51,7 @@ async fn test_server_client_loopback_integration() {
     let public_addr = discovered.unwrap();
 
     // Should discover loopback address
-    assert!(public_addr.ip().is_loopback(), "Expected loopback address, got: {}", public_addr);
+    assert!(public_addr.ip().is_loopback(), "Expected loopback address, got: {public_addr}");
 
     // Cleanup: abort server
     server_handle.abort();

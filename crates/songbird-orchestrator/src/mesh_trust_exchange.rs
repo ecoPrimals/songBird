@@ -250,11 +250,13 @@ fn discover_security_provider_socket() -> Result<String, String> {
 async fn call_uds_jsonrpc(socket_path: &str, request: &Value) -> Result<Value, String> {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-    let mut stream =
-        tokio::time::timeout(TRUST_EXCHANGE_TIMEOUT, songbird_types::IpcStream::connect(socket_path))
-            .await
-            .map_err(|_| format!("Timeout connecting to {socket_path}"))?
-            .map_err(|e| format!("Cannot connect to {socket_path}: {e}"))?;
+    let mut stream = tokio::time::timeout(
+        TRUST_EXCHANGE_TIMEOUT,
+        songbird_types::IpcStream::connect(socket_path),
+    )
+    .await
+    .map_err(|_| format!("Timeout connecting to {socket_path}"))?
+    .map_err(|e| format!("Cannot connect to {socket_path}: {e}"))?;
 
     let mut bytes = serde_json::to_vec(request).map_err(|e| format!("Serialize error: {e}"))?;
     bytes.push(b'\n');

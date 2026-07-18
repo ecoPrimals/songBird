@@ -239,8 +239,7 @@ mod tests {
             .await
             .map_err(|e| {
                 SongbirdError::configuration(format!(
-                    "Failed to find capability providers without federation: {}",
-                    e
+                    "Failed to find capability providers without federation: {e}"
                 ))
             })?;
         assert_eq!(providers.len(), 1);
@@ -285,7 +284,7 @@ mod tests {
 
         assert!(result.is_ok());
         assert_eq!(
-            result.map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
+            result.map_err(|e| SongbirdError::configuration(format!("Error: {e}")))?.len(),
             0
         );
         Ok(())
@@ -344,7 +343,7 @@ mod tests {
 
         assert!(result.is_ok());
         assert_eq!(
-            result.map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?.len(),
+            result.map_err(|e| SongbirdError::configuration(format!("Error: {e}")))?.len(),
             2
         );
         Ok(())
@@ -386,7 +385,7 @@ mod tests {
 
         assert!(result.is_ok());
         let services = result.map_err(|e| {
-            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+            SongbirdError::configuration(format!("Missing performance configuration: {e}"))
         })?;
         assert_eq!(services.len(), 1);
         assert_eq!(services[0].name, "Local Service");

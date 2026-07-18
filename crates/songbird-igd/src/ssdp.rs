@@ -350,10 +350,6 @@ mod tests {
             .discover_gateways()
             .await
             .expect("discovery should not error when no devices reply");
-        assert!(
-            responses.is_empty(),
-            "no SSDP replies should yield empty list, got {:?}",
-            responses
-        );
+        assert!(responses.is_empty(), "no SSDP replies should yield empty list, got {responses:?}");
     }
 }

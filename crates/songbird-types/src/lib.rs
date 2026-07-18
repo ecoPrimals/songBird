@@ -98,13 +98,13 @@ pub mod defaults;
 pub mod error_helpers;
 pub mod errors;
 pub mod health;
+pub mod ipc_stream;
 pub mod lineage; // Genetic lineage types
 pub mod memory_optimized;
 pub mod primal;
 pub mod response;
 pub mod service;
 pub mod traits;
-pub mod ipc_stream;
 pub mod transport; // Canonical transport endpoint type (sourdough standard)
 pub mod trust;
 pub mod trust_tests; // Progressive trust model types

@@ -17,10 +17,7 @@ fn test_security_metrics_serialization() -> SongbirdResult<()> {
     };
 
     let json = serde_json::to_string(&metrics).map_err(|e| {
-        SongbirdError::configuration(format!(
-            "SecurityMetrics should serialize successfully: {}",
-            e
-        ))
+        SongbirdError::configuration(format!("SecurityMetrics should serialize successfully: {e}"))
     })?;
     assert!(json.contains("42"), "JSON should contain active_sessions value");
     assert!(json.contains("0.88"), "JSON should contain security_score");
@@ -40,7 +37,7 @@ fn test_security_metrics_deserialization() -> SongbirdResult<()> {
     let metrics: SecurityMetrics =
         serde_json::from_str(json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("SecurityMetrics should deserialize successfully: {}", e),
+            message: format!("SecurityMetrics should deserialize successfully: {e}"),
             debug_info: None,
         })?;
     assert_eq!(metrics.active_sessions, 100);
@@ -68,12 +65,11 @@ fn test_security_metrics_roundtrip_serialization() -> Result<(), Box<dyn std::er
         timestamp: chrono::Utc::now(),
     };
 
-    let json = serde_json::to_string(&original).map_err(|e| {
-        SongbirdError::configuration(format!("Serialization should succeed: {}", e))
-    })?;
+    let json = serde_json::to_string(&original)
+        .map_err(|e| SongbirdError::configuration(format!("Serialization should succeed: {e}")))?;
 
     let deserialized: SecurityMetrics = serde_json::from_str(&json).map_err(|e| {
-        SongbirdError::configuration(format!("Deserialization should succeed: {}", e))
+        SongbirdError::configuration(format!("Deserialization should succeed: {e}"))
     })?;
 
     assert_eq!(original.active_sessions, deserialized.active_sessions);
@@ -89,11 +85,11 @@ fn test_auth_result_roundtrip_serialization() -> Result<(), Box<dyn std::error::
         [AuthResult::Authorized, AuthResult::Unauthorized, AuthResult::Expired, AuthResult::Invalid]
     {
         let json = serde_json::to_string(&original).map_err(|e| {
-            SongbirdError::configuration(format!("Serialization should succeed: {}", e))
+            SongbirdError::configuration(format!("Serialization should succeed: {e}"))
         })?;
 
         let deserialized: AuthResult = serde_json::from_str(&json).map_err(|e| {
-            SongbirdError::configuration(format!("Deserialization should succeed: {}", e))
+            SongbirdError::configuration(format!("Deserialization should succeed: {e}"))
         })?;
 
         assert_eq!(original, deserialized);
@@ -105,11 +101,11 @@ fn test_auth_result_roundtrip_serialization() -> Result<(), Box<dyn std::error::
 fn test_security_health_roundtrip_serialization() -> Result<(), Box<dyn std::error::Error>> {
     for original in [SecurityHealth::Healthy, SecurityHealth::Warning, SecurityHealth::Critical] {
         let json = serde_json::to_string(&original).map_err(|e| {
-            SongbirdError::configuration(format!("Serialization should succeed: {}", e))
+            SongbirdError::configuration(format!("Serialization should succeed: {e}"))
         })?;
 
         let deserialized: SecurityHealth = serde_json::from_str(&json).map_err(|e| {
-            SongbirdError::configuration(format!("Deserialization should succeed: {}", e))
+            SongbirdError::configuration(format!("Deserialization should succeed: {e}"))
         })?;
 
         assert_eq!(original, deserialized);

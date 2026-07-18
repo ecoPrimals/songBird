@@ -123,13 +123,13 @@ impl TransportEndpoint {
 
     /// Whether this endpoint uses relay infrastructure (higher latency).
     #[must_use]
-    pub fn is_relayed(&self) -> bool {
+    pub const fn is_relayed(&self) -> bool {
         matches!(self, Self::MeshRelay { .. })
     }
 
     /// Returns the transport name as it appears in the wire format.
     #[must_use]
-    pub fn transport_name(&self) -> &'static str {
+    pub const fn transport_name(&self) -> &'static str {
         match self {
             Self::Uds {
                 ..
@@ -198,7 +198,7 @@ impl TransportEndpoint {
         }
     }
 
-    /// Returns (peer_id, capability) if this is a mesh relay endpoint.
+    /// Returns (`peer_id`, capability) if this is a mesh relay endpoint.
     #[must_use]
     pub fn mesh_peer(&self) -> Option<(&str, &str)> {
         match self {

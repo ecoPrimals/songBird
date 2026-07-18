@@ -48,12 +48,12 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use songbird_types::IpcStream as PlatformStream;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use songbird_types::IpcStream as PlatformStream;
 use tokio::time::timeout;
 use tracing::{debug, info, warn};
 
@@ -113,7 +113,7 @@ impl JsonRpcClient {
     ///
     /// # Arguments
     ///
-    /// * `endpoint` - Unix socket path (e.g., "unix:///tmp/biomeos/security.sock" or "/tmp/biomeos/security.sock")
+    /// * `endpoint` - Unix socket path (e.g., "<unix:///tmp/biomeos/security.sock>" or "/tmp/biomeos/security.sock")
     ///
     /// # Returns
     ///

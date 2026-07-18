@@ -59,8 +59,7 @@ mod version_tests {
         let parts: Vec<&str> = super::VERSION.split('.').collect();
         assert!(
             parts.len() >= 2,
-            "workspace versions are typically major.minor.patch; got segments {:?}",
-            parts
+            "workspace versions are typically major.minor.patch; got segments {parts:?}"
         );
         assert!(
             parts.iter().all(|p| !p.is_empty()),

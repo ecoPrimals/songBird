@@ -54,7 +54,7 @@ fn test_network_timeouts_clone() {
 #[test]
 fn test_network_timeouts_debug() {
     let timeouts = NetworkTimeouts::default();
-    let debug = format!("{:?}", timeouts);
+    let debug = format!("{timeouts:?}");
     assert!(debug.contains("NetworkTimeouts"));
 }
 
@@ -105,7 +105,7 @@ fn test_timeout_config_clone() {
 #[test]
 fn test_timeout_config_debug() {
     let config = TimeoutConfig::default();
-    let debug = format!("{:?}", config);
+    let debug = format!("{config:?}");
     assert!(debug.contains("TimeoutConfig"));
 }
 

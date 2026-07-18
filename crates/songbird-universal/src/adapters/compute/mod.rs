@@ -86,7 +86,7 @@ mod tests {
     async fn test_adapter_creation() -> Result<(), Box<dyn std::error::Error>> {
         let adapter =
             ComputeAdapter::new("http://localhost:8080".to_string()).await.map_err(|e| {
-                SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+                SongbirdError::configuration(format!("Adapter creation should succeed: {e}"))
             })?;
         assert_eq!(adapter.endpoint(), "http://localhost:8080");
         Ok(())
@@ -297,7 +297,7 @@ mod tests {
         };
 
         let json = serde_json::to_string(&metrics).map_err(|e| {
-            SongbirdError::configuration(format!("Serialization should succeed: {}", e))
+            SongbirdError::configuration(format!("Serialization should succeed: {e}"))
         })?;
         assert!(json.contains("cpu_usage_percent"));
         assert!(json.contains("memory_usage_bytes"));
@@ -310,7 +310,7 @@ mod tests {
             serde_json::to_string(&HealthStatus::Healthy).map_err(|e| {
                 SongbirdError::Serialization {
                     format: Some("JSON".to_string()),
-                    message: format!("Serialization failed: {}", e),
+                    message: format!("Serialization failed: {e}"),
                     debug_info: None,
                 }
             })?,
@@ -320,7 +320,7 @@ mod tests {
             serde_json::to_string(&HealthStatus::Degraded).map_err(|e| {
                 SongbirdError::Serialization {
                     format: Some("JSON".to_string()),
-                    message: format!("Serialization failed: {}", e),
+                    message: format!("Serialization failed: {e}"),
                     debug_info: None,
                 }
             })?,
@@ -330,7 +330,7 @@ mod tests {
             serde_json::to_string(&HealthStatus::Unhealthy).map_err(|e| {
                 SongbirdError::Serialization {
                     format: Some("JSON".to_string()),
-                    message: format!("Serialization failed: {}", e),
+                    message: format!("Serialization failed: {e}"),
                     debug_info: None,
                 }
             })?,
@@ -344,7 +344,7 @@ mod tests {
         let adapter = ComputeAdapter::new("http://compute-service:8080".to_string())
             .await
             .map_err(|e| {
-                SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+                SongbirdError::configuration(format!("Adapter creation should succeed: {e}"))
             })?
             .with_timeout(Duration::from_secs(25));
         assert_eq!(adapter.timeout, Duration::from_secs(25));
@@ -355,7 +355,7 @@ mod tests {
     async fn test_adapter_default_timeout() -> SongbirdResult<()> {
         let adapter =
             ComputeAdapter::new("http://compute-service:8080".to_string()).await.map_err(|e| {
-                SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+                SongbirdError::configuration(format!("Adapter creation should succeed: {e}"))
             })?;
         assert_eq!(adapter.timeout, Duration::from_secs(5));
         Ok(())
@@ -365,7 +365,7 @@ mod tests {
     async fn test_adapter_endpoint_access() -> SongbirdResult<()> {
         let adapter =
             ComputeAdapter::new("http://test-compute:9000".to_string()).await.map_err(|e| {
-                SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+                SongbirdError::configuration(format!("Adapter creation should succeed: {e}"))
             })?;
         assert_eq!(adapter.endpoint(), "http://test-compute:9000");
         Ok(())
@@ -375,9 +375,9 @@ mod tests {
     async fn test_adapter_debug_format() -> SongbirdResult<()> {
         let adapter =
             ComputeAdapter::new("http://compute:8080".to_string()).await.map_err(|e| {
-                SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+                SongbirdError::configuration(format!("Adapter creation should succeed: {e}"))
             })?;
-        let debug_str = format!("{:?}", adapter);
+        let debug_str = format!("{adapter:?}");
         assert!(debug_str.contains("ComputeAdapter"));
         assert!(debug_str.contains("http://compute:8080"));
         Ok(())

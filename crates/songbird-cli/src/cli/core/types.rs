@@ -50,7 +50,7 @@ pub struct SongbirdResult<T> {
 
 impl<T> SongbirdResult<T> {
     /// Create a successful result
-    pub fn success(data: T, execution_time_ms: u64) -> Self {
+    pub const fn success(data: T, execution_time_ms: u64) -> Self {
         Self {
             success: true,
             data: Some(data),
@@ -61,7 +61,7 @@ impl<T> SongbirdResult<T> {
 
     /// Create an error result
     #[must_use]
-    pub fn error(error: String, execution_time_ms: u64) -> Self {
+    pub const fn error(error: String, execution_time_ms: u64) -> Self {
         Self {
             success: false,
             data: None,
@@ -127,10 +127,10 @@ mod tests {
         };
 
         let serialized = serde_json::to_string(&config).map_err(|e| {
-            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+            SongbirdError::configuration(format!("Missing performance configuration: {e}"))
         })?;
         let deserialized: CliConfig = serde_json::from_str(&serialized).map_err(|e| {
-            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+            SongbirdError::configuration(format!("Missing performance configuration: {e}"))
         })?;
 
         assert_eq!(config.verbose, deserialized.verbose);
@@ -226,10 +226,10 @@ mod tests {
     fn test_cli_result_serialization() -> Result<(), Box<dyn std::error::Error>> {
         let result = SongbirdResult::success(vec!["a", "b", "c"], 150);
         let serialized = serde_json::to_string(&result).map_err(|e| {
-            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+            SongbirdError::configuration(format!("Missing performance configuration: {e}"))
         })?;
         let deserialized: SongbirdResult<Vec<String>> = serde_json::from_str(&serialized)
-            .map_err(|e| SongbirdError::configuration(format!("Error: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Error: {e}")))?;
 
         assert_eq!(result.success, deserialized.success);
         assert_eq!(result.execution_time_ms, deserialized.execution_time_ms);
@@ -313,7 +313,7 @@ mod tests {
             config_path: None,
         };
 
-        let debug_str = format!("{:?}", config);
+        let debug_str = format!("{config:?}");
         assert!(debug_str.contains("CliConfig"));
         assert!(debug_str.contains("verbose"));
     }
@@ -321,7 +321,7 @@ mod tests {
     #[test]
     fn test_cli_result_debug() {
         let result = SongbirdResult::success(123, 50);
-        let debug_str = format!("{:?}", result);
+        let debug_str = format!("{result:?}");
         assert!(debug_str.contains("SongbirdResult"));
         assert!(debug_str.contains("success"));
     }

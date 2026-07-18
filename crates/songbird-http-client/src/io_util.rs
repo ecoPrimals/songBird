@@ -10,7 +10,7 @@ use tokio::time::timeout;
 
 /// Read a complete JSON-RPC response from a stream using chunked reads.
 ///
-/// Many JSON-RPC servers (BearDog, Neural API) keep sockets open for
+/// Many JSON-RPC servers (`BearDog`, Neural API) keep sockets open for
 /// multiple requests, so `read_to_end()` would block forever waiting for
 /// EOF.  This helper reads in chunks and returns as soon as a complete
 /// JSON value has been received.

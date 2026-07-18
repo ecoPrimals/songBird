@@ -176,7 +176,7 @@ fn test_ai_first_config_serialization() -> SongbirdResult<()> {
 
     // Test JSON serialization
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
     assert!(json.contains("enable_ai_responses"));
     assert!(json.contains("confidence_scoring"));
 
@@ -184,7 +184,7 @@ fn test_ai_first_config_serialization() -> SongbirdResult<()> {
     let deserialized: AIFirstConfig =
         serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Should deserialize: {}", e),
+            message: format!("Should deserialize: {e}"),
             debug_info: None,
         })?;
     assert_eq!(config.enable_ai_responses, deserialized.enable_ai_responses);
@@ -284,11 +284,11 @@ fn test_workload_classification_serialization() -> SongbirdResult<()> {
     };
 
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Should serialize: {e}")))?;
     let deserialized: WorkloadClassificationConfig =
         serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Should deserialize: {}", e),
+            message: format!("Should deserialize: {e}"),
             debug_info: None,
         })?;
 

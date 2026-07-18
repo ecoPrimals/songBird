@@ -42,14 +42,14 @@ fn create_test_request() -> UniversalRequest {
 fn test_sovereignty_router_new() -> SongbirdResult<()> {
     let router = SovereigntyRouter::new();
     // Router should be created successfully
-    assert!(format!("{:?}", router).contains("SovereigntyRouter"));
+    assert!(format!("{router:?}").contains("SovereigntyRouter"));
     Ok(())
 }
 
 #[test]
 fn test_sovereignty_router_default() -> SongbirdResult<()> {
     let router = SovereigntyRouter::default();
-    assert!(format!("{:?}", router).contains("SovereigntyRouter"));
+    assert!(format!("{router:?}").contains("SovereigntyRouter"));
     Ok(())
 }
 
@@ -63,7 +63,7 @@ fn test_sovereignty_router_with_preferences() -> SongbirdResult<()> {
     };
 
     let router = SovereigntyRouter::with_preferences(preferences);
-    assert!(format!("{:?}", router).contains("SovereigntyRouter"));
+    assert!(format!("{router:?}").contains("SovereigntyRouter"));
     Ok(())
 }
 
@@ -99,7 +99,7 @@ async fn test_find_sovereignty_aware_paths_empty_services() -> SongbirdResult<()
 
     assert!(result.is_ok());
     let paths = result.map_err(|e| {
-        SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+        SongbirdError::configuration(format!("Missing performance configuration: {e}"))
     })?;
     assert_eq!(paths.len(), 0, "No services should result in no paths");
     Ok(())
@@ -115,7 +115,7 @@ async fn test_find_sovereignty_aware_paths_single_service() -> SongbirdResult<()
 
     assert!(result.is_ok());
     let paths = result.map_err(|e| {
-        SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+        SongbirdError::configuration(format!("Missing performance configuration: {e}"))
     })?;
     assert!(!paths.is_empty(), "Should generate at least one path");
     Ok(())
@@ -135,7 +135,7 @@ async fn test_find_sovereignty_aware_paths_multiple_services() -> SongbirdResult
 
     assert!(result.is_ok());
     let paths = result.map_err(|e| {
-        SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+        SongbirdError::configuration(format!("Missing performance configuration: {e}"))
     })?;
     assert_eq!(paths.len(), 3, "Should generate one path per service");
     Ok(())
@@ -152,7 +152,7 @@ async fn test_find_sovereignty_aware_paths_sorted_by_score() -> SongbirdResult<(
 
     assert!(result.is_ok());
     let paths = result.map_err(|e| {
-        SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+        SongbirdError::configuration(format!("Missing performance configuration: {e}"))
     })?;
 
     // Verify paths are sorted by combined score (descending)
@@ -202,7 +202,7 @@ async fn test_paths_have_valid_scores() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let paths = result.map_err(|e| {
-        SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+        SongbirdError::configuration(format!("Missing performance configuration: {e}"))
     })?;
 
     for path in paths {
@@ -243,11 +243,11 @@ async fn test_sovereignty_weight_affects_combined_score() -> SongbirdResult<()> 
 
     let paths_high =
         router_high.find_sovereignty_aware_paths(&request, &services).await.map_err(|e| {
-            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+            SongbirdError::configuration(format!("Missing performance configuration: {e}"))
         })?;
     let paths_low =
         router_low.find_sovereignty_aware_paths(&request, &services).await.map_err(|e| {
-            SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+            SongbirdError::configuration(format!("Missing performance configuration: {e}"))
         })?;
 
     // Both should generate paths
@@ -270,7 +270,7 @@ async fn test_path_segments_have_security_capabilities() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let paths = result.map_err(|e| {
-        SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+        SongbirdError::configuration(format!("Missing performance configuration: {e}"))
     })?;
 
     for path in paths {
@@ -297,7 +297,7 @@ async fn test_path_segments_reference_services() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let paths = result.map_err(|e| {
-        SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+        SongbirdError::configuration(format!("Missing performance configuration: {e}"))
     })?;
 
     assert_eq!(paths.len(), 1);
@@ -325,7 +325,7 @@ async fn test_each_service_gets_candidate_path() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let paths = result.map_err(|e| {
-        SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+        SongbirdError::configuration(format!("Missing performance configuration: {e}"))
     })?;
 
     // Each service should generate a path (assuming they all pass sovereignty checks)
@@ -347,7 +347,7 @@ async fn test_large_number_of_services() -> SongbirdResult<()> {
 
     assert!(result.is_ok());
     let paths = result.map_err(|e| {
-        SongbirdError::configuration(format!("Missing performance configuration: {}", e))
+        SongbirdError::configuration(format!("Missing performance configuration: {e}"))
     })?;
 
     // Should handle large numbers of services

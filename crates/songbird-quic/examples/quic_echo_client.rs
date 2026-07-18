@@ -10,7 +10,7 @@
 
 //! QUIC echo client example (pure Rust, security provider crypto delegation).
 //!
-//! Run with: cargo run --example quic_echo_client
+//! Run with: cargo run --example `quic_echo_client`
 
 use songbird_quic::{QuicClient, QuicConfig};
 use tracing::info;

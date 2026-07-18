@@ -1,26 +1,28 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave147f  
-**Date**: July 17, 2026  
+**Version**: v0.2.1-wave149b  
+**Date**: July 18, 2026  
 **Gate**: flockGate (eastGate)
 
 ## Current State
 
 | Metric | Status |
 |--------|--------|
-| Clippy | Zero warnings (pedantic + nursery, `-D warnings`) |
-| Tests | Full workspace pass, 0 failures |
+| Clippy | Zero warnings (pedantic + nursery, `-D warnings`); `doc_markdown` + `uninlined_format_args` now enforced |
+| Tests | 14,322+ pass, 1 known flaky (mesh persistence test-parallelism) |
 | Unsafe | 0 (`forbid(unsafe_code)` all 31 crates) |
+| Production unwraps | 0 (config.rs refactored to `fmt::Result`, RwLock sites `#[expect]`-annotated) |
 | Production stubs | 0 (Wave 137: last fake-data stub evolved to real probes) |
-| Files >800L prod | 0 |
+| Files >800L | 0 (including tests — drawbridge 578L, mesh_seed 523L after test extraction) |
 | Hardcoding | 0 in production (all env-driven, capability-based) |
 | Mocks in prod | 0 (all `#[cfg(test)]` gated) |
 
-## Recent Evolution (Wave 131–147f)
+## Recent Evolution (Wave 147f–149b)
 
 | Wave | Summary |
 |------|---------|
+| 149b | **Code quality sweep**: `cargo fmt` (10 files), 71 `writeln!` unwraps → `fmt::Result` refactor, file splits (drawbridge 1,019→578L, mesh_seed 834→523L), clippy fixes (`uninlined_format_args` ×58, `doc_markdown` ×40, 24 `const fn` promotions), lint enforcement promoted |
 | 147f | **P0 PROXY_PATH**: drawbridge routing verified for footPrint (`/footprint/*` → `:8090`). **GAP-037**: `/jsonrpc` endpoint on drawbridge (HTTP→IPC bridge for esotericWebb). **Discovery schemas**: `discovery.topology/health/query/bonds` implemented |
 | 147b | `mesh.enroll` JSON-RPC method wired — BTSP gate enrollment endpoint ready for cellMembrane `gate.enroll` integration |
 | 147a | Final 2 inline cfg-gated IPC connections migrated to `IpcStream` (`neural_announce`, `relay_security`) |

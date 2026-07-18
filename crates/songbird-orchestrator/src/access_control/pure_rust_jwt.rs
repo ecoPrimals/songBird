@@ -42,7 +42,7 @@ pub async fn hmac_sha256_via_provider(
     let result = provider
         .call("crypto.hmac.sha256", json!({ "key": key_b64, "data": data_b64 }))
         .await
-        .map_err(|e| anyhow!("{}", e))?;
+        .map_err(|e| anyhow!("{e}"))?;
     let mac_b64 = result
         .get("mac")
         .and_then(|v| v.as_str())

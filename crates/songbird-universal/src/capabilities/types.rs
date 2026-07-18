@@ -319,7 +319,7 @@ mod tests {
         let types = vec!["security", "storage", "ai", "compute", "discovery", "orchestration"];
         for t in types {
             let cap = Capability::from_string(t);
-            assert!(cap.is_some(), "Failed to create capability for: {}", t);
+            assert!(cap.is_some(), "Failed to create capability for: {t}");
         }
     }
 }

@@ -31,10 +31,10 @@
 //! Comprehensive tests for federation state management
 //!
 //! Covers edge cases and low-coverage paths in state.rs:
-//! - FederationState: register_node coalescence, remove, cleanup, stats
-//! - NodeRegistration: endpoints, add_endpoint, preferred_endpoint, update_endpoint_status
-//! - FederationStats, FederationStatus serde
-//! - NodeStatus Display, EndpointStatus variants
+//! - `FederationState`: `register_node` coalescence, remove, cleanup, stats
+//! - `NodeRegistration`: endpoints, `add_endpoint`, `preferred_endpoint`, `update_endpoint_status`
+//! - `FederationStats`, `FederationStatus` serde
+//! - `NodeStatus` Display, `EndpointStatus` variants
 
 use chrono::{Duration, Utc};
 use songbird_network_federation::state::{

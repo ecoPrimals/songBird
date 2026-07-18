@@ -20,7 +20,7 @@ pub enum NetworkCommand {
     /// Probe mesh peers for real latency measurement
     #[command(about = "Probe mesh peer latency via TCP connect")]
     Test {
-        /// Target specific peer (node_id or address)
+        /// Target specific peer (`node_id` or address)
         #[arg(long)]
         target: Option<String>,
 

@@ -296,7 +296,7 @@ async fn test_resource_exhausted_error() {
 #[tokio::test]
 async fn test_error_display_format() {
     let error = SongbirdError::network("Connection failed");
-    let display = format!("{}", error);
+    let display = format!("{error}");
 
     assert!(display.contains("Connection failed") || display.contains("network"));
 }
@@ -304,7 +304,7 @@ async fn test_error_display_format() {
 #[tokio::test]
 async fn test_error_debug_format() {
     let error = SongbirdError::network("Test error");
-    let debug = format!("{:?}", error);
+    let debug = format!("{error:?}");
 
     assert!(!debug.is_empty());
 }

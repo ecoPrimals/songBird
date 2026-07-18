@@ -10,8 +10,8 @@
 
 //! QUIC echo server example (pure Rust, security provider crypto delegation).
 //!
-//! Start with: cargo run --example quic_echo_server
-//! Test with:  cargo run --example quic_echo_client
+//! Start with: cargo run --example `quic_echo_server`
+//! Test with:  cargo run --example `quic_echo_client`
 
 use songbird_quic::{QuicConfig, QuicServer};
 use tracing::{error, info};

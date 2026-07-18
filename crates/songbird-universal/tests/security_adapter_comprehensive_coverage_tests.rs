@@ -46,7 +46,7 @@
 //! **Goal**: Raise coverage from 14.71% to 90%+
 //!
 //! This test suite focuses on:
-//! - Adapter creation paths (from_discovery, new, with_timeout)
+//! - Adapter creation paths (`from_discovery`, new, `with_timeout`)
 //! - Network error handling (timeout, connection failures)
 //! - Response parsing (malformed JSON, unexpected formats)
 //! - Security metrics edge cases
@@ -90,7 +90,7 @@ async fn test_security_adapter_new_various_endpoints() {
 
     for endpoint in endpoints {
         let adapter = SecurityAdapter::new(endpoint.to_string()).await;
-        assert!(adapter.is_ok(), "Should handle endpoint: {}", endpoint);
+        assert!(adapter.is_ok(), "Should handle endpoint: {endpoint}");
     }
 }
 
@@ -371,7 +371,7 @@ async fn test_security_metrics_debug() {
         timestamp: chrono::Utc::now(),
     };
 
-    let debug_str = format!("{:?}", metrics);
+    let debug_str = format!("{metrics:?}");
     assert!(debug_str.contains("SecurityMetrics"));
     assert!(debug_str.contains("25"));
 }
@@ -415,7 +415,7 @@ async fn test_security_health_copy() {
 #[tokio::test]
 async fn test_security_health_debug() {
     let health = SecurityHealth::Critical;
-    let debug_str = format!("{:?}", health);
+    let debug_str = format!("{health:?}");
     assert!(debug_str.contains("Critical"));
 }
 
@@ -425,7 +425,7 @@ async fn test_security_health_serialization() {
 
     for state in states {
         let json = serde_json::to_string(&state);
-        assert!(json.is_ok(), "Should serialize {:?}", state);
+        assert!(json.is_ok(), "Should serialize {state:?}");
     }
 }
 
@@ -480,7 +480,7 @@ async fn test_auth_result_clone() {
 #[tokio::test]
 async fn test_auth_result_debug() {
     let result = AuthResult::Unauthorized;
-    let debug_str = format!("{:?}", result);
+    let debug_str = format!("{result:?}");
     assert!(debug_str.contains("Unauthorized"));
 }
 
@@ -495,7 +495,7 @@ async fn test_auth_result_serialization() {
 
     for result in results {
         let json = serde_json::to_string(&result);
-        assert!(json.is_ok(), "Should serialize {:?}", result);
+        assert!(json.is_ok(), "Should serialize {result:?}");
     }
 }
 
@@ -510,7 +510,7 @@ async fn test_auth_result_deserialization() {
 
     for (json, expected) in test_cases {
         let result: Result<AuthResult, _> = serde_json::from_str(json);
-        assert!(result.is_ok(), "Should deserialize: {}", json);
+        assert!(result.is_ok(), "Should deserialize: {json}");
         assert_eq!(result.expect("test precondition"), expected);
     }
 }
@@ -674,6 +674,6 @@ async fn test_adapter_endpoint_special_characters() {
 
     for endpoint in endpoints {
         let adapter = SecurityAdapter::new(endpoint.to_string()).await;
-        assert!(adapter.is_ok(), "Should handle: {}", endpoint);
+        assert!(adapter.is_ok(), "Should handle: {endpoint}");
     }
 }

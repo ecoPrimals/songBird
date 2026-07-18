@@ -240,104 +240,110 @@ const fn mask_secrets_in_config(
 }
 
 /// Human-readable configuration text (same content as printed by `songbird config show`).
-#[allow(clippy::unwrap_used, reason = "write! to String is infallible")]
 fn format_config_display(
     config: &songbird_types::config::CanonicalSongbirdConfig,
-    _show_secrets: bool,
+    show_secrets: bool,
 ) -> String {
     let mut out = String::new();
-    writeln!(out, "┌─ System Configuration").unwrap();
-    writeln!(out, "│  System ID: {}", config.system.system_id).unwrap();
-    writeln!(out, "│  Instance ID: {}", config.system.instance_id).unwrap();
-    writeln!(out, "│  Environment: {}", config.system.environment).unwrap();
-    writeln!(out, "│  App Name: {}", config.system.app_name).unwrap();
-    writeln!(out, "│  Version: {}", config.system.version).unwrap();
-    writeln!(out, "│  Data Directory: {}", config.system.data_dir).unwrap();
-    writeln!(out, "│  Config Directory: {}", config.system.config_dir).unwrap();
-    writeln!(out, "│  Cache Directory: {}", config.system.cache_dir).unwrap();
-    writeln!(out, "│  Log Directory: {}", config.system.log_dir).unwrap();
-    writeln!(out, "│  Temp Directory: {}", config.system.temp_dir).unwrap();
-    writeln!(out, "│  Log Level: {}", config.system.logging.level).unwrap();
-    writeln!(out, "│  Log Format: {}", config.system.logging.format).unwrap();
-    writeln!(out, "│").unwrap();
-    writeln!(out, "├─ Network Configuration").unwrap();
-    writeln!(out, "│  Bind Host: {}", config.network.bind_host).unwrap();
-    writeln!(out, "│  Base Port: {}", config.network.base_port).unwrap();
-    writeln!(out, "│  Primary Address: {}", config.network.bind.address).unwrap();
-    writeln!(out, "│  Primary Port: {}", config.network.bind.port).unwrap();
-    writeln!(out, "│  IPv6 Enabled: {}", config.network.bind.ipv6_enabled).unwrap();
-    writeln!(out, "│  Client Max Connections: {}", config.network.client.max_connections).unwrap();
-    writeln!(out, "│  Connect Timeout: {:?}", config.network.timeouts.connect).unwrap();
-    writeln!(out, "│  Request Timeout: {:?}", config.network.timeouts.request).unwrap();
-    writeln!(out, "│").unwrap();
-    writeln!(out, "├─ Security Configuration").unwrap();
-    writeln!(out, "│  Security Level: {:?}", config.security.security_level).unwrap();
-    writeln!(out, "│  Auth Method: {}", config.security.auth_method).unwrap();
-    writeln!(out, "│  Initial Trust Level: {:?}", config.security.initial_trust_level).unwrap();
-    writeln!(out, "│  TLS Cert Policy: {:?}", config.security.tls.cert_policy).unwrap();
+    // write! to String is infallible — fmt::Error is unreachable
+    write_config_display(&mut out, config, show_secrets).ok();
+    out
+}
+
+fn write_config_display(
+    out: &mut String,
+    config: &songbird_types::config::CanonicalSongbirdConfig,
+    _show_secrets: bool,
+) -> std::fmt::Result {
+    writeln!(out, "┌─ System Configuration")?;
+    writeln!(out, "│  System ID: {}", config.system.system_id)?;
+    writeln!(out, "│  Instance ID: {}", config.system.instance_id)?;
+    writeln!(out, "│  Environment: {}", config.system.environment)?;
+    writeln!(out, "│  App Name: {}", config.system.app_name)?;
+    writeln!(out, "│  Version: {}", config.system.version)?;
+    writeln!(out, "│  Data Directory: {}", config.system.data_dir)?;
+    writeln!(out, "│  Config Directory: {}", config.system.config_dir)?;
+    writeln!(out, "│  Cache Directory: {}", config.system.cache_dir)?;
+    writeln!(out, "│  Log Directory: {}", config.system.log_dir)?;
+    writeln!(out, "│  Temp Directory: {}", config.system.temp_dir)?;
+    writeln!(out, "│  Log Level: {}", config.system.logging.level)?;
+    writeln!(out, "│  Log Format: {}", config.system.logging.format)?;
+    writeln!(out, "│")?;
+    writeln!(out, "├─ Network Configuration")?;
+    writeln!(out, "│  Bind Host: {}", config.network.bind_host)?;
+    writeln!(out, "│  Base Port: {}", config.network.base_port)?;
+    writeln!(out, "│  Primary Address: {}", config.network.bind.address)?;
+    writeln!(out, "│  Primary Port: {}", config.network.bind.port)?;
+    writeln!(out, "│  IPv6 Enabled: {}", config.network.bind.ipv6_enabled)?;
+    writeln!(out, "│  Client Max Connections: {}", config.network.client.max_connections)?;
+    writeln!(out, "│  Connect Timeout: {:?}", config.network.timeouts.connect)?;
+    writeln!(out, "│  Request Timeout: {:?}", config.network.timeouts.request)?;
+    writeln!(out, "│")?;
+    writeln!(out, "├─ Security Configuration")?;
+    writeln!(out, "│  Security Level: {:?}", config.security.security_level)?;
+    writeln!(out, "│  Auth Method: {}", config.security.auth_method)?;
+    writeln!(out, "│  Initial Trust Level: {:?}", config.security.initial_trust_level)?;
+    writeln!(out, "│  TLS Cert Policy: {:?}", config.security.tls.cert_policy)?;
     if let Some(ref cert) = config.security.tls.cert_path {
-        writeln!(out, "│  TLS Certificate: {cert}").unwrap();
+        writeln!(out, "│  TLS Certificate: {cert}")?;
     }
     if let Some(ref key) = config.security.tls.key_path {
-        writeln!(out, "│  TLS Key: {key}").unwrap();
+        writeln!(out, "│  TLS Key: {key}")?;
     }
-    writeln!(out, "│  Require Valid Certs: {}", config.security.tls.require_valid_certs).unwrap();
-    writeln!(out, "│").unwrap();
-    writeln!(out, "├─ Performance Configuration").unwrap();
-    writeln!(out, "│  Enabled: {}", config.performance.enabled).unwrap();
-    writeln!(out, "│  Thread Pool Size: {}", config.performance.thread_pool_size).unwrap();
-    writeln!(out, "│").unwrap();
-    writeln!(out, "├─ Discovery Configuration").unwrap();
-    writeln!(out, "│  Mode: {:?}", config.discovery.mode).unwrap();
-    writeln!(out, "│  Backend: {}", config.discovery.backend).unwrap();
-    writeln!(out, "│  Port: {}", config.discovery.port).unwrap();
-    writeln!(out, "│  Protocol Version: {}", config.discovery.protocol_version).unwrap();
-    writeln!(out, "│  Session Rotation: {}s", config.discovery.session_rotation_interval).unwrap();
-    writeln!(out, "│").unwrap();
-    writeln!(out, "├─ Observability Configuration").unwrap();
-    writeln!(out, "│  Enabled: {}", config.observability.enabled).unwrap();
-    writeln!(out, "│  Metrics Interval: {}s", config.observability.metrics_interval).unwrap();
-    writeln!(out, "│  Metrics Enabled: {}", config.observability.metrics.enabled).unwrap();
-    writeln!(out, "│  Tracing Enabled: {}", config.observability.tracing.enabled).unwrap();
-    writeln!(out, "│  Tracing Level: {}", config.observability.tracing.level).unwrap();
-    writeln!(out, "│  Health Checks Enabled: {}", config.observability.health_checks.enabled)
-        .unwrap();
-    writeln!(out, "│").unwrap();
-    writeln!(out, "├─ Gaming Configuration").unwrap();
-    writeln!(out, "│  Enabled: {}", config.gaming.enabled).unwrap();
-    writeln!(out, "│  Protocol Version: {}", config.gaming.protocol_version).unwrap();
-    writeln!(out, "│").unwrap();
-    writeln!(out, "├─ Primal Configuration (Runtime Discovery)").unwrap();
-    writeln!(out, "│  Enabled: {}", config.primals.enabled).unwrap();
-    writeln!(out, "│  Discovery Method: {}", config.primals.discovery_method).unwrap();
-    writeln!(out, "│").unwrap();
-    writeln!(out, "├─ Federation Configuration").unwrap();
-    writeln!(out, "│  Cluster Name: {:?}", config.federation.cluster_name).unwrap();
-    writeln!(out, "│  Trust Escalation Policy: {:?}", config.federation.trust_escalation_policy)
-        .unwrap();
-    writeln!(out, "│  Initial Trust Level: {}", config.federation.initial_trust_level).unwrap();
-    writeln!(out, "│  Acceptance Policy: {:?}", config.federation.acceptance_policy).unwrap();
+    writeln!(out, "│  Require Valid Certs: {}", config.security.tls.require_valid_certs)?;
+    writeln!(out, "│")?;
+    writeln!(out, "├─ Performance Configuration")?;
+    writeln!(out, "│  Enabled: {}", config.performance.enabled)?;
+    writeln!(out, "│  Thread Pool Size: {}", config.performance.thread_pool_size)?;
+    writeln!(out, "│")?;
+    writeln!(out, "├─ Discovery Configuration")?;
+    writeln!(out, "│  Mode: {:?}", config.discovery.mode)?;
+    writeln!(out, "│  Backend: {}", config.discovery.backend)?;
+    writeln!(out, "│  Port: {}", config.discovery.port)?;
+    writeln!(out, "│  Protocol Version: {}", config.discovery.protocol_version)?;
+    writeln!(out, "│  Session Rotation: {}s", config.discovery.session_rotation_interval)?;
+    writeln!(out, "│")?;
+    writeln!(out, "├─ Observability Configuration")?;
+    writeln!(out, "│  Enabled: {}", config.observability.enabled)?;
+    writeln!(out, "│  Metrics Interval: {}s", config.observability.metrics_interval)?;
+    writeln!(out, "│  Metrics Enabled: {}", config.observability.metrics.enabled)?;
+    writeln!(out, "│  Tracing Enabled: {}", config.observability.tracing.enabled)?;
+    writeln!(out, "│  Tracing Level: {}", config.observability.tracing.level)?;
+    writeln!(out, "│  Health Checks Enabled: {}", config.observability.health_checks.enabled)?;
+    writeln!(out, "│")?;
+    writeln!(out, "├─ Gaming Configuration")?;
+    writeln!(out, "│  Enabled: {}", config.gaming.enabled)?;
+    writeln!(out, "│  Protocol Version: {}", config.gaming.protocol_version)?;
+    writeln!(out, "│")?;
+    writeln!(out, "├─ Primal Configuration (Runtime Discovery)")?;
+    writeln!(out, "│  Enabled: {}", config.primals.enabled)?;
+    writeln!(out, "│  Discovery Method: {}", config.primals.discovery_method)?;
+    writeln!(out, "│")?;
+    writeln!(out, "├─ Federation Configuration")?;
+    writeln!(out, "│  Cluster Name: {:?}", config.federation.cluster_name)?;
+    writeln!(out, "│  Trust Escalation Policy: {:?}", config.federation.trust_escalation_policy)?;
+    writeln!(out, "│  Initial Trust Level: {}", config.federation.initial_trust_level)?;
+    writeln!(out, "│  Acceptance Policy: {:?}", config.federation.acceptance_policy)?;
     writeln!(
         out,
         "│  Require Hardware for Admin: {}",
         config.federation.require_hardware_for_admin
-    )
-    .unwrap();
-    writeln!(out, "│").unwrap();
-    writeln!(out, "└─ Environment Configuration").unwrap();
-    writeln!(out, "   Name: {}", config.environment.name).unwrap();
-    writeln!(out, "   Deployment Mode: {}", config.environment.deployment_mode).unwrap();
-    writeln!(out).unwrap();
+    )?;
+    writeln!(out, "│")?;
+    writeln!(out, "└─ Environment Configuration")?;
+    writeln!(out, "   Name: {}", config.environment.name)?;
+    writeln!(out, "   Deployment Mode: {}", config.environment.deployment_mode)?;
+    writeln!(out)?;
 
     if !config.custom.is_empty() {
-        writeln!(out, "Custom Fields:").unwrap();
+        writeln!(out, "Custom Fields:")?;
         for (key, value) in &config.custom {
-            writeln!(out, "  • {key}: {value:?}").unwrap();
+            writeln!(out, "  • {key}: {value:?}")?;
         }
-        writeln!(out).unwrap();
+        writeln!(out)?;
     }
 
-    out
+    Ok(())
 }
 
 #[cfg(test)]

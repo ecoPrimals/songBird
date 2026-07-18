@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! TCP discovery files, BiomeOS `*.sock` enumeration, and synchronous multi-strategy resolution.
+//! TCP discovery files, `BiomeOS` `*.sock` enumeration, and synchronous multi-strategy resolution.
 
 use anyhow::Result;
 #[cfg(unix)]

@@ -173,7 +173,7 @@ mod lib_tests {
     fn test_create_universal_adapter() {
         let adapter = create_universal_adapter();
         // Verify adapter is created and functional
-        assert!(format!("{:?}", adapter).contains("UnifiedUniversalAdapter"));
+        assert!(format!("{adapter:?}").contains("UnifiedUniversalAdapter"));
     }
 
     #[test]
@@ -188,7 +188,7 @@ mod lib_tests {
 
         let adapter = create_universal_adapter_with_config(config);
         // Verify adapter is created with custom config
-        assert!(format!("{:?}", adapter).contains("UnifiedUniversalAdapter"));
+        assert!(format!("{adapter:?}").contains("UnifiedUniversalAdapter"));
     }
 
     #[test]

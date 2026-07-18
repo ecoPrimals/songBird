@@ -76,7 +76,7 @@ pub struct TowerStartArgs {
     #[arg(long)]
     pub memory_gb: Option<usize>,
 
-    /// Enable Dark Forest mode (encrypted BirdSong beacons, no plaintext fallback)
+    /// Enable Dark Forest mode (encrypted `BirdSong` beacons, no plaintext fallback)
     #[arg(long, env = "SONGBIRD_DARK_FOREST")]
     pub dark_forest: bool,
 

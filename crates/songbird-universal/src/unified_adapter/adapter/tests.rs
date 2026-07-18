@@ -87,8 +87,7 @@ async fn test_discover_services_empty_endpoints() -> SongbirdResult<()> {
     let adapter = UnifiedUniversalAdapter::new();
     let services = adapter.discover_services().await.map_err(|e| {
         SongbirdError::configuration(format!(
-            "Failed to discover services from empty registry: {}",
-            e
+            "Failed to discover services from empty registry: {e}"
         ))
     })?;
     assert!(services.is_empty());
@@ -100,8 +99,7 @@ async fn test_find_capability_providers_empty_registry() -> SongbirdResult<()> {
     let adapter = UnifiedUniversalAdapter::new();
     let providers = adapter.find_capability_providers("compute").await.map_err(|e| {
         SongbirdError::configuration(format!(
-            "Failed to find capability providers from empty registry: {}",
-            e
+            "Failed to find capability providers from empty registry: {e}"
         ))
     })?;
     assert!(providers.is_empty());
@@ -326,8 +324,7 @@ async fn test_find_capability_providers_with_data() -> SongbirdResult<()> {
 
     let providers = adapter.find_capability_providers("compute").await.map_err(|e| {
         SongbirdError::configuration(format!(
-            "Failed to find capability providers with test data: {}",
-            e
+            "Failed to find capability providers with test data: {e}"
         ))
     })?;
     assert_eq!(providers.len(), 1);
@@ -376,7 +373,7 @@ async fn test_find_capability_providers_multiple() -> SongbirdResult<()> {
     }
 
     let providers = adapter.find_capability_providers("compute").await.map_err(|e| {
-        SongbirdError::configuration(format!("Failed to find multiple capability providers: {}", e))
+        SongbirdError::configuration(format!("Failed to find multiple capability providers: {e}"))
     })?;
     assert_eq!(providers.len(), 2);
     Ok(())
@@ -423,7 +420,7 @@ fn test_registry_stats_serialization() -> Result<(), Box<dyn std::error::Error>>
 
     let json = serde_json::to_string(&stats).map_err(|e| SongbirdError::Serialization {
         format: Some("JSON".to_string()),
-        message: format!("Serialization failed: {}", e),
+        message: format!("Serialization failed: {e}"),
         debug_info: None,
     })?;
     assert!(json.contains("total_services"));
@@ -432,7 +429,7 @@ fn test_registry_stats_serialization() -> Result<(), Box<dyn std::error::Error>>
     let deserialized: RegistryStats =
         serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Parsing failed: {}", e),
+            message: format!("Parsing failed: {e}"),
             debug_info: None,
         })?;
     assert_eq!(deserialized.total_services, 10);
@@ -495,14 +492,12 @@ async fn test_capability_registry_indexing() -> SongbirdResult<()> {
 
     let compute_providers = adapter.find_capability_providers("compute").await.map_err(|e| {
         SongbirdError::configuration(format!(
-            "Failed to find compute providers in capability registry: {}",
-            e
+            "Failed to find compute providers in capability registry: {e}"
         ))
     })?;
     let storage_providers = adapter.find_capability_providers("storage").await.map_err(|e| {
         SongbirdError::configuration(format!(
-            "Failed to find storage providers in capability registry: {}",
-            e
+            "Failed to find storage providers in capability registry: {e}"
         ))
     })?;
 

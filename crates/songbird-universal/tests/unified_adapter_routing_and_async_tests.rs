@@ -43,7 +43,7 @@
     reason = "test assertions and harness ergonomics"
 )]
 
-//! Tests for UnifiedUniversalAdapter routing and async operations
+//! Tests for `UnifiedUniversalAdapter` routing and async operations
 //!
 //! This module tests async capabilities, routing, concurrent operations,
 //! and error handling paths.

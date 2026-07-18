@@ -29,8 +29,8 @@
 //!
 //! Tests for environment variable handling, defaults, and validation.
 //!
-//! Note: unwrap() is acceptable in test code for clarity
-//! Tests now use ScopedEnv for automatic cleanup - no more #[serial]!
+//! Note: `unwrap()` is acceptable in test code for clarity
+//! Tests now use `ScopedEnv` for automatic cleanup - no more #[serial]!
 
 mod test_utils;
 use test_utils::ScopedEnv;
@@ -71,7 +71,7 @@ fn test_env_var_parsing_boolean_true() {
         let _env = ScopedEnv::new().set("TEST_BOOL", true_val);
         let value = songbird_process_env::var("TEST_BOOL").expect("test precondition");
         let is_truthy = matches!(value.to_lowercase().as_str(), "true" | "1" | "yes");
-        assert!(is_truthy, "Failed for: {}", true_val);
+        assert!(is_truthy, "Failed for: {true_val}");
     }
 }
 
@@ -81,7 +81,7 @@ fn test_env_var_parsing_boolean_false() {
         let _env = ScopedEnv::new().set("TEST_BOOL", false_val);
         let value = songbird_process_env::var("TEST_BOOL").expect("test precondition");
         let is_falsy = matches!(value.to_lowercase().as_str(), "false" | "0" | "no");
-        assert!(is_falsy, "Failed for: {}", false_val);
+        assert!(is_falsy, "Failed for: {false_val}");
     }
 }
 

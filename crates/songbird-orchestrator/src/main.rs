@@ -22,7 +22,7 @@ struct Cli {
     #[command(subcommand)]
     command: Commands,
 
-    /// Security provider socket/endpoint (sets SECURITY_PROVIDER_ENDPOINT)
+    /// Security provider socket/endpoint (sets `SECURITY_PROVIDER_ENDPOINT`)
     #[arg(long, global = true)]
     security_socket: Option<String>,
 }

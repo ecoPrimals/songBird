@@ -202,7 +202,7 @@ fn test_host_config_is_clone() {
 #[test]
 fn test_host_config_is_debug() {
     let config = HostConfig::with_defaults();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
     assert!(debug_str.contains("HostConfig"));
 }
 

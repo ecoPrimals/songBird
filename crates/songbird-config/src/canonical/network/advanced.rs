@@ -188,7 +188,7 @@ pub struct ProxyRouteEntry {
     pub timeout_ms: u64,
 }
 
-fn default_proxy_timeout_ms() -> u64 {
+const fn default_proxy_timeout_ms() -> u64 {
     30_000
 }
 

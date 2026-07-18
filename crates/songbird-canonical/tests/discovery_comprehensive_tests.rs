@@ -36,7 +36,7 @@
 
 //! Comprehensive tests for canonical service discovery types
 //!
-//! This test suite provides thorough coverage of the ServiceInfo structure
+//! This test suite provides thorough coverage of the `ServiceInfo` structure
 //! and related discovery patterns.
 
 use songbird_canonical::discovery::ServiceInfo;
@@ -361,7 +361,7 @@ fn test_service_info_round_trip_serialization() -> SongbirdResult<()> {
     let deserialized: ServiceInfo =
         serde_json::from_str(&serialized).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
-            message: format!("Parsing failed: {}", e),
+            message: format!("Parsing failed: {e}"),
             debug_info: None,
         })?;
 
@@ -375,7 +375,7 @@ fn test_service_info_round_trip_serialization() -> SongbirdResult<()> {
 fn test_service_info_debug() -> SongbirdResult<()> {
     let service = ServiceInfo::new("debug-service".to_string(), "localhost".to_string(), 8080);
 
-    let debug_str = format!("{:?}", service);
+    let debug_str = format!("{service:?}");
     assert!(debug_str.contains("debug-service"));
     assert!(debug_str.contains("localhost"));
     assert!(debug_str.contains("8080"));
@@ -387,7 +387,7 @@ fn test_service_info_debug_with_metadata() -> SongbirdResult<()> {
     let service = ServiceInfo::new("service".to_string(), "host".to_string(), 8080)
         .with_metadata("key".to_string(), "value".to_string());
 
-    let debug_str = format!("{:?}", service);
+    let debug_str = format!("{service:?}");
     assert!(debug_str.contains("key"));
     assert!(debug_str.contains("value"));
     Ok(())

@@ -5,7 +5,7 @@ use super::*;
 
 #[tokio::test]
 async fn test_available_count_with_mixed_health() {
-    let endpoints: Vec<String> = (0..10).map(|i| format!("http://endpoint{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..10).map(|i| format!("http://endpoint{i}:8080")).collect();
 
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::HealthBased);
 
@@ -20,7 +20,7 @@ async fn test_available_count_with_mixed_health() {
 
 #[tokio::test]
 async fn test_available_count_all_available() {
-    let endpoints: Vec<String> = (0..10).map(|i| format!("http://endpoint{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..10).map(|i| format!("http://endpoint{i}:8080")).collect();
 
     let lb = LoadBalancer::new(endpoints, LoadBalancingStrategy::HealthBased);
 
@@ -30,7 +30,7 @@ async fn test_available_count_all_available() {
 
 #[tokio::test]
 async fn test_available_count_all_unavailable() {
-    let endpoints: Vec<String> = (0..5).map(|i| format!("http://endpoint{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..5).map(|i| format!("http://endpoint{i}:8080")).collect();
 
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::HealthBased);
 
@@ -44,7 +44,7 @@ async fn test_available_count_all_unavailable() {
 
 #[tokio::test]
 async fn test_get_endpoints_returns_all() {
-    let endpoints: Vec<String> = (0..5).map(|i| format!("http://endpoint{}:8080", i)).collect();
+    let endpoints: Vec<String> = (0..5).map(|i| format!("http://endpoint{i}:8080")).collect();
 
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
