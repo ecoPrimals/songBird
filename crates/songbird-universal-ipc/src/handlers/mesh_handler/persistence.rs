@@ -144,7 +144,7 @@ mod tests {
     static DATA_DIR_LOCK: Mutex<()> = Mutex::new(());
 
     fn with_temp_data_dir(f: impl FnOnce()) {
-        let _lock = DATA_DIR_LOCK.lock().unwrap();
+        let _lock = DATA_DIR_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let dir = TempDir::new().unwrap();
         let _env =
             songbird_process_env::ScopedEnv::new("SONGBIRD_DATA_DIR", dir.path().to_str().unwrap());
