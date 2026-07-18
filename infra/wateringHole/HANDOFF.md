@@ -82,67 +82,59 @@ into `capabilities.list` response. Example: `jupyter`, `inference`, etc.
 - Tor onion crypto: blocked on live security provider Ed25519/X25519 surface
 - CLI interactive prompts: `songbird init` still prints placeholder message
 
-## AAR — Wave 147f (July 17, 2026)
+## AAR — Wave 149b (July 18, 2026)
 
-### Accomplished (Waves 142b–147f)
+### Accomplished (Wave 149b)
 
 | Deliverable | Impact |
 |-------------|--------|
-| **P0 PROXY_PATH route** (147f) | footPrint composition unblocked: `/footprint/*` → `:8090` via drawbridge env config |
-| **GAP-037 /jsonrpc endpoint** (147f) | esotericWebb unblocked: `POST /jsonrpc` on drawbridge port bridges HTTP→IPC JSON-RPC |
-| **Discovery schemas** (147f) | `discovery.topology/health/query/bonds` — 4 new methods, both universal-ipc and orchestrator dispatch |
-| `IpcStream` abstraction | 15 crates migrated, `pin-project` dep eliminated, -284 lines platform boilerplate |
-| `mesh.enroll` method | JSON-RPC endpoint ready for BTSP gate enrollment |
-| Deep debt exhausted | Zero unsafe, zero `todo!()`, zero production mocks, zero files >800L, zero hardcoding |
+| **Production unwrap elimination** | 71 `writeln!` unwraps → `fmt::Result` refactor; 0 production unwraps remain |
+| **File splits** | `drawbridge.rs` 1,019→578L, `mesh_seed.rs` 834→523L (test extraction) |
+| **Clippy pedantic evolution** | `uninlined_format_args` ×58, `doc_markdown` ×40, 24 `const fn` promotions |
+| **Lint enforcement** | `doc_markdown` + `uninlined_format_args` promoted from "allowed" to "enforced" — future regressions auto-caught |
+| **Format** | 10-file drift cleared, clean across all 31 crates |
 
-### What songBird Delivers (functional)
+### songBird Dimensional Scorecard (post-149b)
 
-| Item | Status | Delivered |
-|------|--------|-----------|
-| footPrint `PROXY_PATH` drawbridge route | **COMPLETE** | Wave 147f — config: `SONGBIRD_DRAWBRIDGE_ROUTES=/footprint=footprint`, `SONGBIRD_PROXY_ROUTES=footprint=http://127.0.0.1:8090` |
-| esotericWebb JSON-RPC access | **COMPLETE** | Wave 147f — `POST :7780/jsonrpc` (no auth, auto-forwards to IPC) |
-| Discovery schemas for esotericWebb | **COMPLETE** | Wave 147f — topology, health, query, bonds |
-| tideGlass drawbridge bonds | **COMPLETE** | Wave 140a — LINCS, GEO, ChEMBL, NF Data Portal |
-| `mesh.enroll` server-side endpoint | **READY** | Wave 147b — awaiting BTSP proof protocol |
-
-### Deployment Configuration for footPrint
-
-footPrint systemd unit on sporeGate needs these env vars for songBird drawbridge:
-
-```bash
-SONGBIRD_DRAWBRIDGE_ROUTES=/footprint=footprint
-SONGBIRD_PROXY_ROUTES=footprint=http://127.0.0.1:8090
-```
-
-This routes `:7780/footprint/ext/geocode` → footPrint `:8090/ext/geocode` (path prefix stripped).
-
-### esotericWebb Integration
-
-esotericWebb can now call songBird via standard HTTP:
-
-```bash
-curl -X POST http://127.0.0.1:7780/jsonrpc \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"discovery.health","params":{},"id":1}'
-```
-
-Response: `{"alive":true,"mesh_active":true,"registered_services":N}`
-
-Available discovery methods: `discovery.topology`, `discovery.health`, `discovery.query`, `discovery.bonds`, `discovery.peers`.
+| Metric | Before 149b | After 149b |
+|--------|-------------|------------|
+| Clippy (pedantic+nursery) | 556 warnings | **0** (with `-D warnings`) |
+| Production `unwrap()` | 81 | **0** |
+| Files >800L | 2 | **0** |
+| `cargo fmt` drift | 10 files | **0** |
+| Tests | 14,322+ | 14,322+ (654 pass in universal-ipc) |
 
 ### What We Need from Other Teams
 
-| Need | Owner | Detail |
-|------|-------|--------|
-| **BTSP enrollment proof spec** | cellMembrane + bearDog | `mesh.enroll` accepts `{node_id, public_key}` — what format is the `proof` field? Ed25519 signature over what payload? |
-| **footPrint deploy on sporeGate** | sporeGate ops | Systemd unit shipped by cellMembrane. Deploy it + set env vars above. |
-| **E2E validation trigger** | primalSpring | `footprint-drawbridge-live` scenario is P2 TODO — what's the gate? |
+| Need | Owner | Priority | Detail |
+|------|-------|----------|--------|
+| **BTSP enrollment proof spec** | cellMembrane + bearDog | **P1** | songBird's `mesh.enroll` endpoint is READY: accepts `{node_id, public_key}`. What is needed from upstream: (1) What is the `proof` field format? (2) Is it Ed25519 signature? Over what payload? (3) Does cellMembrane's `gate.enroll` return a signed credential or WireGuard config? (4) What does the success response look like? |
+| **bearDog crypto JSON-RPC sigs** | bearDog | **P1** | songBird delegates to bearDog for Ed25519/X25519 — confirm signature wire format for enrollment verification |
+| **footPrint deploy on sporeGate** | sporeGate ops | P2 | Systemd unit shipped by cellMembrane. Deploy it + set env vars (`SONGBIRD_DRAWBRIDGE_ROUTES=/footprint=footprint`, `SONGBIRD_PROXY_ROUTES=footprint=http://127.0.0.1:8090`) |
 
-### No Blockers
+### songBird `mesh.enroll` — What's Ready
 
-songBird has **zero P0/P1 items remaining**. All 3 upstream demands resolved this wave.
-All ecosystem milestones clear (Phase 2 14/14, CAC 6/6, Glacial 8/8). Deep debt
-targets exhausted. Standing by for BTSP proof spec and live deployment.
+```
+JSON-RPC method: "mesh.enroll"
+Params: { "node_id": "<gate-name>", "public_key": "<wg-pubkey>" }
+Current response: { "enrolled": false, "reason": "enrollment_not_active", ... }
+```
+
+**Activation blocked on**: cellMembrane `gate.enroll` spec defining:
+1. **Proof format** — what does the enrolling node present to prove identity?
+2. **Verification** — does songBird verify locally or delegate to bearDog?
+3. **Success action** — on valid enrollment, does songBird add the node to mesh + persist? Return WireGuard config? Both?
+4. **Revocation** — is there a `mesh.revoke` / `gate.revoke` counterpart?
+
+songBird will activate `mesh.enroll` within 1 wave of receiving the spec.
+
+### No Blockers (songBird side)
+
+songBird has **zero P0/P1 code quality items remaining**. All dimensional review
+findings resolved. BTSP `gate.enroll` is the only open P1 and is **externally blocked**
+on cellMembrane + bearDog providing the enrollment proof specification.
+
+Standing by for spec delivery.
 
 ## Fossil Record
 
