@@ -128,6 +128,49 @@ fn remove_persisted_peer(node_id: &str) {
     }
 }
 
+/// Persist a newly enrolled peer (from `mesh.enroll` BTSP-verified enrollment).
+///
+/// If an address is provided, it is stored alongside the node. If not, the node
+/// is recorded without an address (will be discoverable but not directly routable
+/// until it connects).
+pub(crate) fn save_enrolled_peer(node_id: &str, _public_key: &str, address: &str) {
+    let path = peers_file_path();
+    let mut file = load_peers_file().unwrap_or_default();
+
+    let addr_str = if address.is_empty() {
+        String::from("0.0.0.0:0")
+    } else {
+        address.to_string()
+    };
+
+    if let Some(existing) = file.peers.iter_mut().find(|p| p.node_id == node_id) {
+        existing.address.clone_from(&addr_str);
+    } else {
+        file.peers.push(PersistedPeer {
+            node_id: node_id.to_string(),
+            address: addr_str,
+        });
+    }
+
+    if let Some(parent) = path.parent()
+        && let Err(e) = std::fs::create_dir_all(parent)
+    {
+        warn!("Cannot create mesh persistence directory {}: {e}", parent.display());
+        return;
+    }
+
+    match toml::to_string_pretty(&file) {
+        Ok(content) => {
+            if let Err(e) = std::fs::write(&path, content) {
+                warn!("Failed to persist enrolled peer to {}: {e}", path.display());
+            } else {
+                info!("Enrolled peer '{node_id}' persisted to {}", path.display());
+            }
+        }
+        Err(e) => warn!("Failed to serialize enrolled peer: {e}"),
+    }
+}
+
 fn load_peers_file() -> Option<PeersFile> {
     let path = peers_file_path();
     let content = std::fs::read_to_string(&path).ok()?;

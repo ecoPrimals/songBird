@@ -371,13 +371,15 @@ async fn dispatch_covers_remaining_json_rpc_arms() {
             "mesh.enroll",
             json!({
                 "node_id": "new-gate",
-                "public_key": "test-wg-pubkey-base64"
+                "public_key": "test-wg-pubkey-base64",
+                "proof": "test-proof-placeholder",
+                "timestamp": 1700000000_u64
             }),
         )
         .await
         .expect("mesh.enroll should succeed");
     assert_eq!(enroll_result["enrolled"], false);
-    assert_eq!(enroll_result["reason"], "enrollment_not_active");
+    assert_eq!(enroll_result["reason"], "security_provider_unavailable");
     assert_eq!(enroll_result["node_id"], "new-gate");
 
     let b_err = h.handle("birdsong.decrypt_beacon", json!({})).await.expect_err("decrypt");

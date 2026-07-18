@@ -49,6 +49,7 @@ mod tls_secrets;
 mod types;
 
 // Re-export public API
+pub use auth::EnrollmentVerification;
 pub use btsp::{BtspCipher, BtspNegotiation, BtspSessionCreated, BtspSessionVerified};
 pub use core::{SecurityRpcClient, SecurityRpcMode};
 pub use types::TlsSecrets;
