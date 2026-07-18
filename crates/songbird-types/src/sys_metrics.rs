@@ -62,6 +62,7 @@ impl MemoryInfo {
 ///
 /// Returns `None` on non-Linux platforms or if the file cannot be read.
 #[cfg(target_os = "linux")]
+#[must_use]
 pub fn memory_info() -> Option<MemoryInfo> {
     let contents = std::fs::read_to_string("/proc/meminfo").ok()?;
     parse_meminfo(&contents)
@@ -69,6 +70,7 @@ pub fn memory_info() -> Option<MemoryInfo> {
 
 /// Non-Linux fallback.
 #[cfg(not(target_os = "linux"))]
+#[must_use]
 pub fn memory_info() -> Option<MemoryInfo> {
     None
 }
@@ -109,6 +111,7 @@ impl DiskInfo {
 /// Filters to physical devices (sd*, nvme*, vd*, xvd*, hd*) and excludes
 /// partitions, loop devices, and virtual devices.
 #[cfg(target_os = "linux")]
+#[must_use]
 pub fn disk_info() -> Vec<DiskInfo> {
     let Ok(entries) = std::fs::read_dir("/sys/block") else {
         return Vec::new();
@@ -148,6 +151,7 @@ pub fn disk_info() -> Vec<DiskInfo> {
 
 /// Non-Linux fallback.
 #[cfg(not(target_os = "linux"))]
+#[must_use]
 pub fn disk_info() -> Vec<DiskInfo> {
     Vec::new()
 }
@@ -167,6 +171,7 @@ pub fn total_disk_gb() -> Option<usize> {
 /// Read 1-minute load average from `/proc/loadavg` (Linux only).
 /// Returns load as a percentage relative to CPU count.
 #[cfg(target_os = "linux")]
+#[must_use]
 #[expect(clippy::cast_precision_loss, reason = "core count clamped to 1024 — fits f32 exactly")]
 pub fn load_percent() -> f32 {
     let cores = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
@@ -179,6 +184,7 @@ pub fn load_percent() -> f32 {
 
 /// Non-Linux fallback: returns 0.0 (no /proc/loadavg available).
 #[cfg(not(target_os = "linux"))]
+#[must_use]
 pub fn load_percent() -> f32 {
     0.0
 }

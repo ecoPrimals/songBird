@@ -126,6 +126,10 @@ impl CanonicalProtocolHandler {
     }
 
     /// Handle request using this protocol.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the underlying transport or service is unreachable.
     pub async fn handle_request(
         &self,
         service: &CanonicalServiceInfo,

@@ -151,13 +151,10 @@ impl TransportEndpoint {
         match self {
             Self::Uds {
                 path,
-            } => {
-                if let Some(abstract_name) = path.strip_prefix('@') {
-                    format!("unix-abstract://{abstract_name}")
-                } else {
-                    format!("unix://{path}")
-                }
-            }
+            } => path.strip_prefix('@').map_or_else(
+                || format!("unix://{path}"),
+                |abstract_name| format!("unix-abstract://{abstract_name}"),
+            ),
             Self::Tcp {
                 host,
                 port,

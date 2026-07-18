@@ -1,17 +1,19 @@
-# footPrint GIS External Proxy — Caddy Snippet
+# footPrint GIS External Proxy — Caddy Snippet (subdomain standard)
 #
+# For use with `footprint.primals.eco` vhost on golgiBody.
 # Handles TLS natively for all 10 upstream GIS services.
-# Import into the main Caddyfile on golgi/flockGate via:
+#
+# Import into the main Caddyfile:
 #   import /path/to/footprint-gis-proxy.Caddyfile
 #
-# Route layout:
-#   /footprint/ext/{service}/{path...} → https://{upstream}/{path...}
+# Route layout (subdomain model):
+#   footprint.primals.eco/ext/{service}/{path...} → https://{upstream}/{path...}
 #
 # Caddy terminates client TLS (via ACME) and initiates fresh TLS
-# to each upstream — no songBird drawbridge or SOCKET-DIR-UNIFY dependency.
+# to each upstream — no songBird drawbridge dependency in production.
 
 (footprint_gis_proxy) {
-	handle_path /footprint/ext/overpass/* {
+	handle_path /ext/overpass/* {
 		reverse_proxy https://overpass-api.de {
 			header_up Host overpass-api.de
 			transport http {
@@ -20,7 +22,7 @@
 		}
 	}
 
-	handle_path /footprint/ext/fema/* {
+	handle_path /ext/fema/* {
 		reverse_proxy https://hazards.fema.gov {
 			header_up Host hazards.fema.gov
 			transport http {
@@ -29,7 +31,7 @@
 		}
 	}
 
-	handle_path /footprint/ext/arcgis1/* {
+	handle_path /ext/arcgis1/* {
 		reverse_proxy https://services1.arcgis.com {
 			header_up Host services1.arcgis.com
 			transport http {
@@ -38,7 +40,7 @@
 		}
 	}
 
-	handle_path /footprint/ext/arcgis2/* {
+	handle_path /ext/arcgis2/* {
 		reverse_proxy https://services2.arcgis.com {
 			header_up Host services2.arcgis.com
 			transport http {
@@ -47,7 +49,7 @@
 		}
 	}
 
-	handle_path /footprint/ext/nominatim/* {
+	handle_path /ext/nominatim/* {
 		reverse_proxy https://nominatim.openstreetmap.org {
 			header_up Host nominatim.openstreetmap.org
 			transport http {
@@ -56,7 +58,7 @@
 		}
 	}
 
-	handle_path /footprint/ext/usgs/* {
+	handle_path /ext/usgs/* {
 		reverse_proxy https://epqs.nationalmap.gov {
 			header_up Host epqs.nationalmap.gov
 			transport http {
@@ -65,7 +67,7 @@
 		}
 	}
 
-	handle_path /footprint/ext/nrcs/* {
+	handle_path /ext/nrcs/* {
 		reverse_proxy https://sdmdataaccess.sc.egov.usda.gov {
 			header_up Host sdmdataaccess.sc.egov.usda.gov
 			transport http {
@@ -74,7 +76,7 @@
 		}
 	}
 
-	handle_path /footprint/ext/michigan/* {
+	handle_path /ext/michigan/* {
 		reverse_proxy https://gisagocss.state.mi.us {
 			header_up Host gisagocss.state.mi.us
 			transport http {
@@ -83,7 +85,7 @@
 		}
 	}
 
-	handle_path /footprint/ext/mcgi/* {
+	handle_path /ext/mcgi/* {
 		reverse_proxy https://gisp.mcgi.state.mi.us {
 			header_up Host gisp.mcgi.state.mi.us
 			transport http {
@@ -92,7 +94,7 @@
 		}
 	}
 
-	handle_path /footprint/ext/eastlansing/* {
+	handle_path /ext/eastlansing/* {
 		reverse_proxy https://gis2.cityofeastlansing.com {
 			header_up Host gis2.cityofeastlansing.com
 			transport http {

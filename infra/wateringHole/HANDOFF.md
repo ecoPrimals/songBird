@@ -1,7 +1,7 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave149b  
+**Version**: v0.2.1-wave150d  
 **Date**: July 18, 2026  
 **Gate**: flockGate (eastGate)
 
@@ -18,10 +18,12 @@
 | Hardcoding | 0 in production (all env-driven, capability-based) |
 | Mocks in prod | 0 (all `#[cfg(test)]` gated) |
 
-## Recent Evolution (Wave 147f–149b)
+## Recent Evolution (Wave 147f–150d)
 
 | Wave | Summary |
 |------|---------|
+| 150d | **Subdomain standard evolution**: Caddy GIS proxy snippet paths updated (`/footprint/ext/` → `/ext/`), README rewritten with full production Caddyfile (CSP headers, subdomain model, architecture diagram). songBird role documented: "inner membrane port solver" (:7780 drawbridge maps capabilities → ports via env) |
+| 150b | **mesh.enroll ACTIVE**: Full BTSP-verified enrollment flow — `SecurityRpcClient::verify_enrollment_proof()` delegates to bearDog, `complete_enrollment()` persists + meshes. Proof protocol: `HMAC-SHA256(family_seed, node_id\|public_key\|timestamp)` |
 | 149b | **Code quality sweep**: `cargo fmt` (10 files), 71 `writeln!` unwraps → `fmt::Result` refactor, file splits (drawbridge 1,019→578L, mesh_seed 834→523L), clippy fixes (`uninlined_format_args` ×58, `doc_markdown` ×40, 24 `const fn` promotions), lint enforcement promoted |
 | 147f | **P0 PROXY_PATH**: drawbridge routing verified for footPrint (`/footprint/*` → `:8090`). **GAP-037**: `/jsonrpc` endpoint on drawbridge (HTTP→IPC bridge for esotericWebb). **Discovery schemas**: `discovery.topology/health/query/bonds` implemented |
 | 147b | `mesh.enroll` JSON-RPC method wired — BTSP gate enrollment endpoint ready for cellMembrane `gate.enroll` integration |
@@ -82,6 +84,42 @@ into `capabilities.list` response. Example: `jupyter`, `inference`, etc.
 - Tor onion crypto: blocked on live security provider Ed25519/X25519 surface
 - CLI interactive prompts: `songbird init` still prints placeholder message
 
+## AAR — Wave 150d (July 18, 2026)
+
+### Accomplished (Wave 150d)
+
+| Deliverable | Impact |
+|-------------|--------|
+| **Caddy snippets → subdomain standard** | `footprint-gis-proxy.Caddyfile` paths updated from `/footprint/ext/...` to `/ext/...` (subdomain model) |
+| **README rewritten** | Production Caddyfile example with CSP headers, architecture diagram, deployment chain documentation |
+| **Deployment chain confirmed** | songBird = inner membrane port solver (:7780). Chain: Cloudflare → Caddy → WireGuard → drawbridge → service |
+| **mesh.enroll ACTIVE** | Wave 150b: full BTSP-verified enrollment flow live. bearDog `enrollment.verify` is the only runtime dep |
+
+### Architecture Role (confirmed Wave 150d)
+
+```
+User → Cloudflare DNS (*.primals.eco wildcard → golgiBody VPS)
+  → Cloudflare CDN (outer membrane firebreak — absorbs hostile traffic)
+    → Caddy on golgiBody (TLS termination, Host-header routing)
+      → reverse_proxy over WireGuard mesh to target gate
+        → songBird drawbridge :7780 (capability → port resolution)
+          → Local service (footPrint:8090, esotericWebb:8090, etc.)
+```
+
+**Production optimization**: Caddy handles external HTTPS proxying directly via songBird's `infra/caddy/` snippets — no drawbridge round-trip for tile/API requests.
+
+**Dev/test**: songBird drawbridge handles all proxying via `SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST`.
+
+### Deployment Blocking Items (NOT songBird code — ops/cellMembrane)
+
+| Surface | Issue | Fix Owner |
+|---------|-------|-----------|
+| `footprint.primals.eco` | Map tiles gray, routes misconfigured | cellMembrane + ops |
+| `webb.primals.eco` | 404, no Caddy vhost | cellMembrane + ops |
+| `sporeprint.primals.eco` | Not migrated from root domain | cellMembrane + ops |
+
+songBird provides the GIS proxy snippet and drawbridge routing — deployment wiring is ops work.
+
 ## AAR — Wave 149b (July 18, 2026)
 
 ### Accomplished (Wave 149b)
@@ -110,7 +148,10 @@ into `capabilities.list` response. Example: `jupyter`, `inference`, etc.
 |------|-------|----------|--------|
 | **bearDog `enrollment.verify` endpoint** | bearDog | **P1** | songBird calls `enrollment.verify({node_id, public_key, timestamp, proof})` — bearDog must implement this method (verifies HMAC against family seed) |
 | **cellMembrane integration** | cellMembrane | P2 | cellMembrane's `gate.enroll` should call songBird's `mesh.enroll` to complete mesh registration |
-| **footPrint deploy on sporeGate** | sporeGate ops | P2 | Systemd unit shipped. Deploy + set drawbridge env vars |
+| **footPrint Caddy routing fix** | cellMembrane + ops | **P0** | Route ALL `footprint.primals.eco` → sporeGate:8090 (single `reverse_proxy`). Add CSP `img-src *.arcgisonline.com *.tile.openstreetmap.org`. Import songBird GIS snippet from `infra/caddy/footprint-gis-proxy.Caddyfile` |
+| **`webb.primals.eco` Caddy vhost** | cellMembrane + ops | **P0** | Add `webb.primals.eco { reverse_proxy 10.13.37.6:8090 }` to golgiBody Caddyfile |
+| **sporePrint migration** | cellMembrane + ops | **P0** | Caddy vhost `sporeprint.primals.eco`, root domain redirect |
+| **`SONGBIRD_DRAWBRIDGE_ADDR` for production** | sporeGate ops | P2 | Set `SONGBIRD_DRAWBRIDGE_ADDR=0.0.0.0:7780` (or WG IP) in systemd unit for cross-gate access |
 
 ### songBird `mesh.enroll` — ACTIVE (Wave 150b)
 
