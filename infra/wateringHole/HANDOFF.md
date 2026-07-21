@@ -1,9 +1,9 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave150d  
-**Date**: July 18, 2026  
-**Gate**: flockGate (eastGate)
+**Version**: v0.2.1-wave150t  
+**Date**: July 21, 2026  
+**Gate**: eastGate
 
 ## Current State
 
