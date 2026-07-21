@@ -1,11 +1,11 @@
 # Songbird — AI-Ingestible Context
 
-**Primal**: Songbird
-**Role**: Network Orchestration & Discovery Primal
-**Phase**: Stadial (S1-S4 graduated, 5-gate mesh collective LIVE, zero-config mesh init)
-**Version**: 0.2.1-wave143b
-**License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)
-**Last Updated**: July 16, 2026
+**Primal**: Songbird  
+**Role**: Network Orchestration & Discovery Primal — Inner Membrane Port Solver  
+**Phase**: Stadial (S1-S4 graduated, 6-gate mesh collective LIVE, zero-config mesh init)  
+**Version**: 0.2.1-wave150t  
+**License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)  
+**Last Updated**: July 21, 2026
 
 ## What It Does
 
@@ -22,8 +22,8 @@ Songbird is the network spine of the ecoPrimals ecosystem. It provides:
 
 ## Ecosystem Role
 
-Songbird is half of **Tower Atomic** (security provider + Songbird), the minimum viable
-ecosystem composition. Every other primal and spring uses Songbird for:
+Songbird is one third of **Tower Atomic** (bearDog + songBird + skunkBat), the sovereign
+transport stack targeting WireGuard replacement. Every other primal and spring uses Songbird for:
 
 - Sovereign HTTPS without C dependencies (via security provider crypto delegation)
 - Service discovery and capability-based primal location (zero identity hardcoding)
@@ -35,11 +35,11 @@ ecosystem composition. Every other primal and spring uses Songbird for:
 | Metric | Value |
 |--------|-------|
 | Crates | 31 workspace members |
-| Tests | 8,929 lib tests passed (0 failures, 0 flaky; Wave 113 verified June 13, 2026) |
+| Tests | 14,322+ lib tests passed (Wave 150t verified July 21, 2026) |
 | Coverage | Line coverage **73.41%** (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | Edition | Rust 2024 |
-| Clippy | pedantic + nursery, zero warnings (`-D warnings`; Jul 15 verified); Windows cross-compile zero warnings |
-| Files >800 LOC | **0** — all production code below threshold (mesh_seed.rs: 518L production + 315L tests) |
+| Clippy | pedantic + nursery, zero warnings (`-D warnings`; Jul 21 verified); Windows cross-compile zero warnings |
+| Files >800 LOC | **0** — all production code below threshold (largest: mesh_handler/mod.rs at 746L) |
 | Unsafe blocks | 0 (`forbid(unsafe_code)` all 31 crates) |
 | C dependencies | Zero in default build; `ring` in Cargo.lock is uncompiled lockfile artifact (banned in `deny.toml`); Bluetooth native deps only with `bluetooth` feature |
 | Hardcoded primal names | 0 in production discovery (capability-first); all paths env-driven or XDG-compliant; zero `/tmp/` writes |

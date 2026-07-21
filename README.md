@@ -1,12 +1,14 @@
 # Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v0.2.1-wave143b  
+**Version**: v0.2.1-wave150t  
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: July 16, 2026
+**Last Updated**: July 21, 2026
 
-Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
+Songbird is the universal network orchestrator and **inner membrane port solver** for the ecoPrimals ecosystem. It manages service discovery, connection management, inter-primal communication across multiple protocols, and drawbridge capability→port resolution for production routing. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
+
+Songbird is one third of **Tower Atomic** (bearDog + songBird + skunkBat) — the sovereign transport stack targeting WireGuard replacement.
 
 ## Quality
 
@@ -21,16 +23,16 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[allow(reason)]` / `#[expect(reason)]` throughout — Wave 58: 146 item-level suppressions evolved to `#[expect(clippy::...)]` (warns if lint stops firing); module-level `unwrap_used`/`expect_used` blanket suppressions remain `#[allow]` (correct for module scope); Wave 149: blanket `#![allow(clippy::all, pedantic, nursery)]` removed from 11 files; zero reasonless suppressions, zero blanket suppressions remain |
 | Concurrent Tests | Injectable env via `songbird-process-env` overlay (all production env sites migrated — zero `std::env` in production); all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
-| Tests | 8,929 lib tests passed, 0 failures, 0 flaky (Wave 113; June 13, 2026) |
+| Tests | 14,322+ lib tests passed (Wave 150t verified July 21, 2026; 654 in universal-ipc alone) |
 | Line Coverage | **73.41%** (`llvm-cov --workspace --lib`, Apr 27 2026; target 90%; Wave 53: +74 tests across pure-logic modules) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all dispatch handlers |
 | JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (58+ methods, 34 domain sub-enums including `Btsp`, `Lifecycle` and `Inference`) — zero string matching in dispatch; `birdsong.schema` introspection; `normalize_json_rpc_method_name()` absorbs `discovery.find_by_capability`, `net.discovery.find_by_capability`, `model.*`, `ai.*` aliases; Wave 60: `mesh.discover_remotes`, `mesh.mirror`, `mesh.publish`; Wave 70: `mesh.probe_latency`; Wave 74: `ipc.relay_stats`; Wave 75: `mesh.capabilities_announce` |
-| Clippy Pedantic | All 31 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets`; Jul 15 2026 verified); **Windows cross-compile zero warnings** (`x86_64-pc-windows-gnu`) |
+| Clippy Pedantic | All 31 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets`; Jul 21 2026 verified); **Windows cross-compile zero warnings** (`x86_64-pc-windows-gnu`) |
 | Build | Clean (zero errors, zero warnings; cross-platform verified) |
-| Formatting | Clean (`cargo fmt --check`; May 27 verified) |
+| Formatting | Clean (`cargo fmt --check`; Jul 21 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >800 lines | **0** — Wave 142b: `drawbridge.rs` (813→498L via `drawbridge_auth.rs` extraction); Wave 123: `beacon.rs` (858→347L); Wave 121: `keys.rs` (801→555L); Wave 120: `federation.rs` (811→509L), `plugin/mod.rs` (808→329L), `processor.rs` (805→472L); Wave 111: `connection.rs` (815→472L via `session_protocol.rs`), `hardcoded_elimination.rs` (872→689L); Wave 76: `mesh_handler/mod.rs` (1004→783L); Wave 74: `multi_tier_coordinator.rs` (799→655L); Wave 209: `state.rs` (877→459L) |
+| Files >800 lines | **0** — Wave 150t: `mesh_handler/mod.rs` (841→746L via `enrollment.rs` extraction); Wave 149b: `drawbridge.rs` (1,019→578L via test extraction), `mesh_seed.rs` (834→523L); Wave 142b: `drawbridge.rs` (813→498L via `drawbridge_auth.rs`); earlier: 10+ file splits across Waves 74–209 |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 33 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, lifecycle, inference, etc.) |
