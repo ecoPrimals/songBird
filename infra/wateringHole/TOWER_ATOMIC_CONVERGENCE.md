@@ -60,10 +60,15 @@ Before Tower Atomic can replace WireGuard on the LAN mesh, we need to demonstrat
 ### Benchmark Harness (TODO — needs implementation)
 
 ```bash
-# Proposed: run on sporeGate↔ironGate (same LAN, WireGuard peers)
-songbird benchmark --mode tower-atomic --peer ironGate --duration 30s
-songbird benchmark --mode wireguard   --peer ironGate --duration 30s
+# LAN: sporeGate↔eastGate (same backbone LAN, WireGuard peers)
+songbird benchmark --mode tower-atomic --peer eastGate --duration 30s
+songbird benchmark --mode wireguard   --peer eastGate --duration 30s
 songbird benchmark --compare          --output /tmp/parity-report.json
+
+# WAN: sporeGate→golgiBody TURN→flockGate
+songbird benchmark --mode tower-atomic --peer flockGate --relay golgiBody --duration 30s
+songbird benchmark --mode wireguard   --peer flockGate --duration 30s
+songbird benchmark --compare          --output /tmp/wan-parity-report.json
 ```
 
 ## What Each Team Needs To Do
@@ -102,7 +107,7 @@ songbird benchmark --compare          --output /tmp/parity-report.json
 |------|----------|--------|
 | TURN relay deployment | P2 | Deploy `songbird relay` on golgiBody VPS (systemd unit ready) |
 | `SONGBIRD_DRAWBRIDGE_ADDR=0.0.0.0:7780` | P2 | Set on gates where cross-WG drawbridge access needed |
-| Parity benchmark environment | P2 | sporeGate↔ironGate LAN pair with both WG and Tower active |
+| Parity benchmark environment | P2 | LAN: sporeGate↔eastGate (backbone). WAN: sporeGate→golgiBody→flockGate |
 
 ## Convergence Timeline
 
