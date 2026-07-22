@@ -646,7 +646,6 @@ impl MeshHandler {
             "uptime_seconds": self.start_time.elapsed().as_secs()
         }))
     }
-
 }
 
 impl Default for MeshHandler {

@@ -449,7 +449,7 @@ impl UnixSocketListener {
             jsonrpc: JSONRPC_VERSION.into(),
             result: Some(serde_json::json!({
                 "status": "ok",
-                "primal": "songbird",
+                "primal": crate::env_config::primal_name(),
                 "capability": self.config.capability_id,
                 "active_connections": *self.active_connections.read().await,
             })),

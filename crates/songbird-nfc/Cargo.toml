@@ -28,9 +28,6 @@ anyhow = { workspace = true }
 # Logging
 tracing = { workspace = true }
 
-# Time utilities
-chrono = { workspace = true }
-
 # Random number generation
 rand = { workspace = true }
 

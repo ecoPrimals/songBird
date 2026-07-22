@@ -27,9 +27,6 @@ tracing = { workspace = true }
 # Async dependencies
 futures-util = { workspace = true }
 
-# Collection types
-dashmap = "5.0"
-
 # System monitoring
 
 # HTTP client (✅ Pure Rust TLS 1.3!)

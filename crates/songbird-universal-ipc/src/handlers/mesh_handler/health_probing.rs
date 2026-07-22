@@ -448,8 +448,9 @@ impl MeshHandler {
         }
 
         // Netdev detection: connect to external endpoint to discover our outbound IP
+        let probe = songbird_types::defaults::network::outbound_probe_addr();
         if let Ok(sock) = std::net::UdpSocket::bind("0.0.0.0:0")
-            && sock.connect("8.8.8.8:80").is_ok()
+            && sock.connect(probe.as_str()).is_ok()
             && let Ok(local) = sock.local_addr()
         {
             addrs.push(local.ip());

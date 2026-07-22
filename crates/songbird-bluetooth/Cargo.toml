@@ -29,7 +29,6 @@ tokio = { workspace = true, features = ["sync", "time", "macros", "rt", "rt-mult
 
 # Error handling (modern, zero-cost)
 thiserror = { workspace = true }
-anyhow = { workspace = true }
 
 # Serialization
 serde = { workspace = true, optional = true }

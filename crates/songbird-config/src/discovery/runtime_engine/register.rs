@@ -28,10 +28,11 @@ pub async fn register_with_backend(
         DiscoveryBackend::Consul {
             endpoint,
         } => {
-            let service_id = format!("songbird-{}", address.port());
+            let name = songbird_types::primal_names::SELF_NAME;
+            let service_id = format!("{name}-{}", address.port());
             let body = serde_json::json!({
                 "ID": service_id,
-                "Name": "songbird",
+                "Name": name,
                 "Address": address.ip().to_string(),
                 "Port": address.port(),
                 "Tags": capabilities,
@@ -75,7 +76,8 @@ pub async fn register_with_backend(
                 .map_err(|e| SongbirdError::discovery(format!("IPC client init: {e}")))?;
 
             for cap in capabilities {
-                let key = format!("/songbird/services/{cap}/{address}");
+                let name = songbird_types::primal_names::SELF_NAME;
+                let key = format!("/{name}/services/{cap}/{address}");
                 let key_b64 = songbird_http_client::base64_encode(key.as_bytes());
                 let value_b64 = songbird_http_client::base64_encode(address.to_string().as_bytes());
 

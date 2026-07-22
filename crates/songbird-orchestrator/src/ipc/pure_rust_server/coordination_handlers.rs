@@ -66,7 +66,7 @@ pub async fn handle_discover_capabilities() -> Result<serde_json::Value, JsonRpc
     Ok(serde_json::json!({
         "capabilities": capabilities,
         "metadata": {
-            "primal_name": "songbird",
+            "primal_name": crate::env_config::primal_name(),
             "version": env!("CARGO_PKG_VERSION"),
             "family_id": family_id
         }
@@ -165,7 +165,7 @@ pub async fn handle_http_request(
 pub async fn handle_health() -> Result<serde_json::Value, JsonRpcError> {
     Ok(serde_json::json!({
         "status": "healthy",
-        "primal": "songbird",
+        "primal": crate::env_config::primal_name(),
         "version": env!("CARGO_PKG_VERSION")
     }))
 }

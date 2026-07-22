@@ -170,7 +170,7 @@ async fn gather_health_status(comprehensive: bool) -> Result<DoctorHealthStatus>
 
     // Collect binary information
     let binary_info = BinaryInfo {
-        name: String::from("songbird"),
+        name: crate::env_config::primal_name(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         build: env!("CARGO_PKG_VERSION").to_string(),
         healthy: true,

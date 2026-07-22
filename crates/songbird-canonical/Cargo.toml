@@ -30,9 +30,6 @@ songbird-types = { path = "../songbird-types" }
 # Logging and tracing
 tracing = { workspace = true }
 
-# Validation
-validator = "0.20"  # Updated to latest version to fix idna vulnerability
-
 # Time handling
 chrono = { workspace = true }
 

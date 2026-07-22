@@ -33,7 +33,7 @@ fn capability_registration_params_jsonrpc_and_operations() {
     assert_eq!(v["params"]["metadata"]["family_id"], "fam-x");
     assert_eq!(v["params"]["metadata"]["version"], "9.9.9");
     assert_eq!(v["params"]["metadata"]["tls_version"], "1.3");
-    assert_eq!(v["params"]["metadata"]["provider"], "songbird");
+    assert_eq!(v["params"]["metadata"]["provider"], "p1");
     assert_eq!(v["id"], 1);
 }
 

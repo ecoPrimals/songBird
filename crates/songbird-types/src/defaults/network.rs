@@ -104,6 +104,19 @@ pub fn stun_server_2() -> String {
         .unwrap_or_else(|_| DEFAULT_STUN_SERVER_2.to_string())
 }
 
+/// Default outbound probe address used to discover the local IP by connecting a
+/// UDP socket without sending data. Overridable via `SONGBIRD_OUTBOUND_PROBE_ADDR`.
+///
+/// The default `8.8.8.8:80` is a well-known anycast endpoint; no traffic is sent.
+pub const DEFAULT_OUTBOUND_PROBE_ADDR: &str = "8.8.8.8:80";
+
+/// Resolve outbound probe address, falling back to [`DEFAULT_OUTBOUND_PROBE_ADDR`].
+#[must_use]
+pub fn outbound_probe_addr() -> String {
+    songbird_process_env::var("SONGBIRD_OUTBOUND_PROBE_ADDR")
+        .unwrap_or_else(|_| DEFAULT_OUTBOUND_PROBE_ADDR.to_string())
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {

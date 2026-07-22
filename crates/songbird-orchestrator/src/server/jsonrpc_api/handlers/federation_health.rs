@@ -206,7 +206,7 @@ pub async fn handle_identity() -> Result<Value, JsonRpcError> {
     ];
 
     Ok(serde_json::json!({
-        "primal": "songbird",
+        "primal": crate::env_config::primal_name(),
         "version": env!("CARGO_PKG_VERSION"),
         "family_id": family_id,
         "capabilities": capabilities

@@ -33,7 +33,7 @@ pub(super) fn capability_registration_params(
                 "supports_http2": true,
                 "tower_atomic": true,
                 "ecobin_compliant": true,
-                "provider": "songbird",
+                "provider": primal_id,
                 "family_id": family_id,
                 "version": version
             }

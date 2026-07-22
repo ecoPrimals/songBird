@@ -157,7 +157,7 @@ impl UniversalContainerOrchestration {
             let comm_path = entry.path().join("comm");
             let name = std::fs::read_to_string(&comm_path).unwrap_or_default().trim().to_string();
 
-            if name.is_empty() || name == "songbird" {
+            if name.is_empty() || name == songbird_types::primal_names::SELF_NAME {
                 continue;
             }
 

@@ -23,7 +23,6 @@ tracing = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }
-anyhow = { workspace = true }
 
 # Internal dependencies
 songbird-types = { path = "../songbird-types" }
