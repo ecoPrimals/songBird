@@ -84,6 +84,53 @@ into `capabilities.list` response. Example: `jupyter`, `inference`, etc.
 - Tor onion crypto: blocked on live security provider Ed25519/X25519 surface
 - CLI interactive prompts: `songbird init` still prints placeholder message
 
+## AAR — Wave 150v (July 22, 2026)
+
+### Accomplished (Wave 150v — Tower Atomic Parity Pipeline)
+
+| Deliverable | Impact |
+|-------------|--------|
+| **`songbird benchmark` CLI** | P0 blocker resolved. `--mode tower-atomic\|wireguard --peer <ip:port>` measures setup time, RTT (p50/p95/p99/jitter), throughput (Mbps). JSON output for primalSpring. |
+| **LAN benchmark READY** | sporeGate (.2) ↔ eastGate (.5) can run immediately once sporeGate rebuilds from depot |
+| **golgiBody deploy docs** | Relay README updated with exact 6-command deploy sequence for golgiBody VPS |
+
+### Blocker Status (from Wave 150v blurb)
+
+| # | Blocker | Status | Next |
+|---|---------|--------|------|
+| 1 | Deploy TURN relay on golgiBody | **DOCS READY** — systemd unit + deploy guide complete | Operator: build release, scp to golgi, run deploy sequence |
+| 2 | Build benchmark harness | **SHIPPED** (`c4d8c4b`) | sporeGate rebuilding from Forgejo push → depot |
+
+### Usage
+
+```bash
+# LAN parity (sporeGate ↔ eastGate, same backbone)
+songbird benchmark --mode tower-atomic --peer 10.13.37.2:7700 --output json
+songbird benchmark --mode wireguard   --peer 10.13.37.2:7700 --output json
+
+# WAN parity (after golgiBody relay is live)
+songbird benchmark --mode tower-atomic --peer 10.13.37.6:7700 --output json
+songbird benchmark --mode wireguard   --peer 10.13.37.6:7700 --output json
+```
+
+### What Ops Needs To Do (golgiBody relay — P0 #1)
+
+1. Build release: `cargo build --release -p songbird` (on eastGate or sporeGate)
+2. Deploy binary: `scp target/release/songbird golgi:/usr/local/bin/`
+3. Deploy unit: `scp deployment/systemd/songbird-relay.service golgi:/etc/systemd/system/`
+4. Create creds: `openssl rand -hex 32` → `/etc/songbird/relay-credentials`
+5. Firewall: `ufw allow 3478/udp && ufw allow 49152:65535/udp`
+6. Enable: `systemctl daemon-reload && systemctl enable --now songbird-relay`
+
+After relay is live, set on all gates:
+```
+SONGBIRD_TURN_SERVER=10.13.37.1:3478
+SONGBIRD_TURN_USERNAME=tower-relay
+SONGBIRD_TURN_KEY=<hex key from step 4>
+```
+
+---
+
 ## AAR — Wave 152 (July 22, 2026)
 
 ### Accomplished (Wave 152)
