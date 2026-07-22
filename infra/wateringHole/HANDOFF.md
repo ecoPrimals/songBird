@@ -1,8 +1,8 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave150t  
-**Date**: July 21, 2026  
+**Version**: v0.2.1-wave152  
+**Date**: July 22, 2026  
 **Gate**: eastGate
 
 ## Current State
@@ -14,7 +14,7 @@
 | Unsafe | 0 (`forbid(unsafe_code)` all 31 crates) |
 | Production unwraps | 0 (config.rs refactored to `fmt::Result`, RwLock sites `#[expect]`-annotated) |
 | Production stubs | 0 (Wave 137: last fake-data stub evolved to real probes) |
-| Files >800L | 0 (including tests — drawbridge 578L, mesh_seed 523L after test extraction) |
+| Files >800L | 0 (max 749L — security.rs→module tree, production.rs→370L, virtual_relay.rs→553L) |
 | Hardcoding | 0 in production (all env-driven, capability-based) |
 | Mocks in prod | 0 (all `#[cfg(test)]` gated) |
 
@@ -83,6 +83,33 @@ into `capabilities.list` response. Example: `jupyter`, `inference`, etc.
 - BTSP Phase 3: multi-frame stress tests pending
 - Tor onion crypto: blocked on live security provider Ed25519/X25519 surface
 - CLI interactive prompts: `songbird init` still prints placeholder message
+
+## AAR — Wave 152 (July 22, 2026)
+
+### Accomplished (Wave 152)
+
+| Deliverable | Impact |
+|-------------|--------|
+| **Structural refactoring** | `security.rs` (761L) → module tree (4 files, max 277L); `production.rs` test extraction (754→370L); `virtual_relay.rs` test extraction (753→553L) |
+| **Dependency diet** | 8 dead deps removed: `config`, `validator`, `dashmap`, `chrono`×2, `anyhow`×3 — cleaner builds, smaller dep tree |
+| **Hardcoding → capability-based** | 5 JSON-RPC handlers unified to `env_config::primal_name()`; Consul/etcd keys use `SELF_NAME`; container self-skip uses constant; `capability.register` uses param; outbound IP probe env-configurable |
+| **Production stubs audit** | All P0 stubs confirmed external-blocked (Tor/GATT/TLS) or intentional degraded-mode (synthetic lineage). Zero leaked mocks. |
+| **Full clippy + build clean** | 0 warnings, 0 errors, `cargo fmt --check` passes |
+
+### Upstream Dependency Audit (Wave 152 findings)
+
+| Finding | Priority | Detail |
+|---------|----------|--------|
+| `anyhow` in foundation crate public APIs | Medium | `songbird-types`, `songbird-config`, `songbird-http-client` return `anyhow::Result` — should be typed `thiserror` errors |
+| `ring`-backed `rustls` in drawbridge HTTPS | Medium | `songbird-universal-ipc` uses `ring` backend; rest of workspace on `rustls-rustcrypto` (pure Rust) |
+| BTSP bidirectional RPC stubs | Known | All 3 BTSP connection types return `not_implemented` for `send_rpc()` — Phase 2 roadmap item |
+| Bluetooth GATT silent success | Known | `discover_characteristics()` / `subscribe_notifications()` return `Ok(())` without ATT I/O |
+
+### No New Demands on Other Teams (Wave 152)
+
+This wave was internal deep debt — no new upstream surface or blocking items introduced.
+
+---
 
 ## AAR — Wave 150d (July 18, 2026)
 

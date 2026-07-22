@@ -3,9 +3,9 @@
 **Primal**: Songbird  
 **Role**: Network Orchestration & Discovery Primal — Inner Membrane Port Solver  
 **Phase**: Stadial (S1-S4 graduated, 6-gate mesh collective LIVE, zero-config mesh init)  
-**Version**: 0.2.1-wave150t  
+**Version**: 0.2.1-wave152  
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)  
-**Last Updated**: July 21, 2026
+**Last Updated**: July 22, 2026
 
 ## What It Does
 
@@ -35,7 +35,7 @@ transport stack targeting WireGuard replacement. Every other primal and spring u
 | Metric | Value |
 |--------|-------|
 | Crates | 31 workspace members |
-| Tests | 14,322+ lib tests passed (Wave 150t verified July 21, 2026) |
+| Tests | 14,300+ total (9,046 lib verified Jul 22 2026 + integration suites) |
 | Coverage | Line coverage **73.41%** (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`; Jul 21 verified); Windows cross-compile zero warnings |

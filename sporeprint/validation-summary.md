@@ -1,7 +1,7 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 14,322+ lib tests, 31 crates, 64+ JSON-RPC methods, inner membrane port solver (drawbridge :7780), Tower Atomic transport layer (bearDog + songBird + skunkBat), mesh.enroll BTSP-verified enrollment, 5-tier NAT traversal, cross-gate capability.call, BTSP Phase 3 encrypted framing, zero production unwraps, zero unsafe code, zero files >800L"
-date = 2026-07-21
+description = "Sovereign networking primal — 14,300+ tests, 31 crates, 64+ JSON-RPC methods, inner membrane port solver (drawbridge :7780), Tower Atomic transport layer (bearDog + songBird + skunkBat), mesh.enroll BTSP-verified enrollment, 5-tier NAT traversal, cross-gate capability.call, BTSP Phase 3 encrypted framing, zero production unwraps, zero unsafe code, zero files >800L, 8 dead deps removed Wave 152"
+date = 2026-07-22
 
 [taxonomies]
 primals = ["songbird"]
@@ -10,7 +10,7 @@ springs = ["primalspring"]
 
 ## Status
 
-- **14,322+ lib tests** passed (Wave 150t verified July 21, 2026)
+- **14,300+ total tests** (9,046 lib verified Jul 22 2026 + integration suites)
 - **31 workspace crates**, ~422,000 lines of Rust (Edition 2024)
 - **64+ JSON-RPC methods** across 17 capability domains (network, mesh, stun, relay, http, tor, onion, punch, discovery, birdsong, capability, ipc, primal, lifecycle, federation, graph, coordination)
 - **BTSP Phase 3 FULL** — ChaCha20-Poly1305 AEAD, HKDF-SHA256 session keys, bond type enforcement
