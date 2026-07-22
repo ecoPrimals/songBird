@@ -40,6 +40,12 @@ songBird provides the **transport layer**:
 
 ## Parity Benchmark Requirements
 
+**Philosophy**: Initial goal is **WireGuard parity** — any tractable first solution
+that matches WG performance. WireGuard has years of development time on us; we
+leverage what we learn from benchmarking to evolve past parity. Parity is the
+floor, not the ceiling. Targets below are relative to WG baseline, not absolute
+thresholds (since physical path characteristics vary by topology).
+
 Before Tower Atomic can replace WireGuard on the LAN mesh, we need to demonstrate:
 
 | Metric | WireGuard Baseline | Tower Target | How to Measure |
