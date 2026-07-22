@@ -40,12 +40,6 @@ songBird provides the **transport layer**:
 
 ## Parity Benchmark Requirements
 
-**Philosophy**: Initial goal is **WireGuard parity** — any tractable first solution
-that matches WG performance. WireGuard has years of development time on us; we
-leverage what we learn from benchmarking to evolve past parity. Parity is the
-floor, not the ceiling. Targets below are relative to WG baseline, not absolute
-thresholds (since physical path characteristics vary by topology).
-
 Before Tower Atomic can replace WireGuard on the LAN mesh, we need to demonstrate:
 
 | Metric | WireGuard Baseline | Tower Target | How to Measure |
@@ -60,15 +54,10 @@ Before Tower Atomic can replace WireGuard on the LAN mesh, we need to demonstrat
 ### Benchmark Harness (TODO — needs implementation)
 
 ```bash
-# LAN: sporeGate↔eastGate (same backbone LAN, WireGuard peers)
-songbird benchmark --mode tower-atomic --peer eastGate --duration 30s
-songbird benchmark --mode wireguard   --peer eastGate --duration 30s
+# Proposed: run on sporeGate↔ironGate (same LAN, WireGuard peers)
+songbird benchmark --mode tower-atomic --peer ironGate --duration 30s
+songbird benchmark --mode wireguard   --peer ironGate --duration 30s
 songbird benchmark --compare          --output /tmp/parity-report.json
-
-# WAN: sporeGate→golgiBody TURN→flockGate
-songbird benchmark --mode tower-atomic --peer flockGate --relay golgiBody --duration 30s
-songbird benchmark --mode wireguard   --peer flockGate --duration 30s
-songbird benchmark --compare          --output /tmp/wan-parity-report.json
 ```
 
 ## What Each Team Needs To Do
@@ -91,15 +80,20 @@ songbird benchmark --compare          --output /tmp/wan-parity-report.json
 
 ### songBird (self — already done or in progress)
 
-| Item | Status |
-|------|--------|
-| 5-tier NAT traversal | LIVE |
-| `mesh.enroll` with BTSP proof | LIVE |
-| BTSP Phase 3 encrypted framing | LIVE |
-| Cross-gate `capability.call` | LIVE |
-| TURN relay server (VPS) | CODE COMPLETE (deployment = ops) |
-| Drawbridge port solving | LIVE |
-| Benchmark harness | TODO (P2 — needs throughput measurement tooling) |
+| Item | Status | Detail |
+|------|--------|--------|
+| 5-tier NAT traversal | LIVE | direct → STUN → relay → TURN → tunnel |
+| `mesh.enroll` with BTSP proof | LIVE | HMAC-SHA256 verification via bearDog |
+| BTSP Phase 3 encrypted framing | LIVE | ChaCha20-Poly1305 on all 3 IPC paths |
+| Cross-gate `capability.call` | LIVE | TCP direct + TURN relay fallback |
+| TURN relay server (VPS) | CODE COMPLETE | 42 tests pass, systemd unit ready |
+| TURN client (data plane) | LIVE | `send()`/`recv()` + ChannelData framing, 26 tests |
+| Shadow dual-path comparator | LIVE | TURN vs cloudflared setup time comparison |
+| NAT field test harness | LIVE | CGNAT/double-NAT/symmetric scenarios |
+| Latency measurement (`mesh.probe_latency`) | LIVE | TCP→`health.ping` RTT per peer |
+| Drawbridge port solving | LIVE | `:7780` capability→URL resolution |
+| Throughput benchmark | TODO | P2 — stream-based KB/s measurement |
+| `songbird benchmark` CLI | TODO | P2 — unified CLI subcommand |
 
 ### Deployment/Ops Team
 
@@ -107,7 +101,25 @@ songbird benchmark --compare          --output /tmp/wan-parity-report.json
 |------|----------|--------|
 | TURN relay deployment | P2 | Deploy `songbird relay` on golgiBody VPS (systemd unit ready) |
 | `SONGBIRD_DRAWBRIDGE_ADDR=0.0.0.0:7780` | P2 | Set on gates where cross-WG drawbridge access needed |
-| Parity benchmark environment | P2 | LAN: sporeGate↔eastGate (backbone). WAN: sporeGate→golgiBody→flockGate |
+| Parity benchmark environment | P2 | sporeGate↔ironGate LAN pair with both WG and Tower active |
+
+## Existing Measurement Infrastructure
+
+songBird already has the building blocks for parity assessment:
+
+| Component | Crate | What It Measures |
+|-----------|-------|-----------------|
+| `mesh.probe_latency` | `songbird-universal-ipc` | TCP RTT to each peer via `health.ping` JSON-RPC |
+| `shadow_comparator::compare_paths()` | `songbird-lineage-relay` | TURN vs cloudflared setup time (parallel) |
+| `nat_field_test::probe_turn_path()` | `songbird-lineage-relay` | TURN allocation + relay setup per NAT scenario |
+| `LineageRelayCoordinator::probe_turn_relay()` | `songbird-lineage-relay` | Relay addr + setup duration measurement |
+| `TurnRelayStats` | `songbird-stun` | Live stats: packets/bytes relayed, allocations, uptime |
+| `TurnSession::send()/recv()` | `songbird-turn-client` | Raw data plane (for throughput measurement) |
+
+**What's missing**: A unified `songbird benchmark` CLI subcommand that:
+1. Runs `mesh.probe_latency` for latency (already exists — just needs CLI exposure)
+2. Streams N bytes through `TurnSession` for throughput (new code needed)
+3. Reports structured JSON comparing Tower vs WG baselines
 
 ## Convergence Timeline
 
