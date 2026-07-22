@@ -167,6 +167,49 @@ Client code can also resolve config from env via `TurnSessionConfig::from_env(pe
 
 ---
 
+## golgiBody Deployment (10.13.37.1 / 157.230.3.183)
+
+golgiBody is the WireGuard hub and public-facing VPS — the natural home for the TURN relay.
+
+```bash
+# From eastGate (build + deploy)
+cd ~/Development/ecoPrimals/primals/songBird
+cargo build --release -p songbird
+scp target/release/songbird golgi:/usr/local/bin/songbird-new
+ssh golgi 'sudo mv /usr/local/bin/songbird-new /usr/local/bin/songbird && sudo chmod 755 /usr/local/bin/songbird'
+
+# On golgiBody
+sudo cp deployment/systemd/songbird-relay.service /etc/systemd/system/
+sudo mkdir -p /etc/songbird
+sudo bash -c 'echo "tower-relay:$(openssl rand -hex 32)" > /etc/songbird/relay-credentials'
+sudo chmod 640 /etc/songbird/relay-credentials
+sudo ufw allow 3478/udp comment "TURN relay"
+sudo ufw allow 49152:65535/udp comment "TURN ephemeral"
+sudo systemctl daemon-reload
+sudo systemctl enable --now songbird-relay
+```
+
+**Client env (set on all gates)**:
+```bash
+export SONGBIRD_TURN_SERVER=10.13.37.1:3478
+export SONGBIRD_TURN_USERNAME=tower-relay
+export SONGBIRD_TURN_KEY=<key from /etc/songbird/relay-credentials>
+```
+
+**Benchmark** (after relay is live):
+```bash
+# LAN benchmark: eastGate → sporeGate (same backbone)
+songbird benchmark --mode tower-atomic --peer 10.13.37.2:7700 --output json
+
+# WG baseline for comparison
+songbird benchmark --mode wireguard --peer 10.13.37.2:7700 --output json
+
+# WAN benchmark: sporeGate → flockGate via TURN on golgiBody
+songbird benchmark --mode tower-atomic --peer 10.13.37.6:7700 --output json
+```
+
+---
+
 ## Production Checklist
 
 - [ ] Binary deployed at `/usr/local/bin/songbird`

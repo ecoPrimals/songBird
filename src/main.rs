@@ -155,6 +155,12 @@ async fn main() -> Result<()> {
             let server = songbird_stun::TurnRelayServer::new(bind_addr, credentials);
             server.run().await.map_err(|e| anyhow::anyhow!("Relay server error: {e}"))?;
         }
+        Commands::Benchmark {
+            args,
+        } => {
+            tracing_subscriber::fmt::init();
+            songbird::benchmark::run_benchmark(&args).await?;
+        }
     }
 
     Ok(())

@@ -95,6 +95,7 @@ songbird-types = { path = "crates/songbird-types" }
 songbird-http-client = { path = "crates/songbird-http-client" }
 songbird-stun = { path = "crates/songbird-stun" }
 anyhow = { workspace = true }
+chrono = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }

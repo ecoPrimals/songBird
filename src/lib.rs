@@ -13,6 +13,8 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::io::{self, BufRead, Write};
 
+pub mod benchmark;
+
 /// Parse argv for a delegated clap parser (`--help` / `--version` exit via clap, success code 0).
 ///
 /// Prefer [`try_parse_delegated`] in tests; this function terminates the process on parse failure.
@@ -137,6 +139,16 @@ pub enum Commands {
         /// Relay server configuration.
         #[command(flatten)]
         args: songbird_stun::RelayArgs,
+    },
+
+    /// Run Tower Atomic / `WireGuard` parity benchmark
+    ///
+    /// Measures latency, connection setup, and throughput against a mesh peer.
+    /// Outputs structured JSON for `primalSpring` parity assessment.
+    Benchmark {
+        /// Benchmark configuration.
+        #[command(flatten)]
+        args: crate::benchmark::BenchmarkArgs,
     },
 }
 
