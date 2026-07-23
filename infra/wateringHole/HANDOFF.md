@@ -20,15 +20,26 @@
 
 ## Recent Evolution (Wave 147f–150w)
 
-### Wave 150w — P0 Blocker Resolution (Jul 23 2026)
+### Wave 150w — P0 Blocker Resolution + JSON-RPC→HTTP Translation (Jul 23 2026)
 
-Tower Atomic exceeds WireGuard (2x throughput on WAN). Shadow deployment was blocked on 3 songBird issues on flockGate. Code-level fixes shipped from eastGate:
+Tower Atomic exceeds WireGuard (2x throughput on WAN). Shadow deployment UNBLOCKED.
 
-1. **Socket directory guard** — `songbird.sock` was a directory (stale state from interrupted startup). Both UDS bind sites (`bin_interface/server.rs`, `http_gateway/unix_listener.rs`) now detect `is_dir()` and `remove_dir_all` before bind, with `warn!` log. Prevents broken UDS discovery.
+**Afternoon (P0 #1 RESOLVED) — Drawbridge JSON-RPC→HTTP translation**:
 
-2. **Drawbridge 502 → diagnostic JSON** — Previously returned empty `502 Bad Gateway` when no capability route matched. Now returns structured JSON: `{"error":"no_capability_route","path":"...","capability":"...","available_capabilities":[...],"hint":"Set SONGBIRD_DRAWBRIDGE_ROUTES..."}`. Enables operators to diagnose routing gaps immediately.
+`CapabilityProxyRouter` now supports `jsonrpc://` scheme routes. When a drawbridge path maps to a JSON-RPC IPC backend, the drawbridge translates:
+- HTTP path suffix → JSON-RPC method name (e.g. `/api/mesh/status` → `mesh.status`)
+- HTTP body → JSON-RPC `params`
+- JSON-RPC response → HTTP 200 JSON
 
-3. **`mesh.prune_stale` JSON-RPC method** — New method for removing dead/legacy peers. Supports explicit `node_ids` (force-prune specific peers like `old-peer`, `iron-gate`), threshold-based auto-pruning (`threshold_secs`, default 300), and `dry_run` mode. Also cleans `peer_capabilities` and `peer_metadata` maps. Backed by new `BeaconMesh::remove_peer()` in `songbird-onion-relay`.
+Configuration: `SONGBIRD_PROXY_ROUTES=network=jsonrpc://songbird.sock,jupyter=http://localhost:8000`
+
+This resolves the root cause identified by flockGate: `capability.call` routes to JSON-RPC backends that don't speak HTTP. Exploration Domain 1 (capability-aware routing) is now fully supported at the protocol level.
+
+**Morning (P0 #3-5 RESOLVED)**:
+
+1. **Socket directory guard** — Both UDS bind sites detect `is_dir()` and `remove_dir_all` before bind.
+2. **Drawbridge 502 → diagnostic JSON** — Structured error with capability mapping hints.
+3. **`mesh.prune_stale` JSON-RPC method** — Dead peer cleanup (explicit `node_ids`, threshold, dry_run).
 
 **Usage for flockGate operator** (to resolve stale peers):
 ```json

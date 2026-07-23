@@ -301,16 +301,39 @@ async fn handle_drawbridge_connection(
         return Ok(());
     };
 
-    let backend_url = build_backend_url(&route, path, &config.routes);
-    debug!(
-        peer = %peer,
-        host = %host,
-        path,
-        backend = %backend_url,
-        "drawbridge: routing to capability backend"
-    );
+    use super::http_proxy::BackendProtocol;
 
-    proxy_to_backend(reader.into_inner(), method, &backend_url, &headers, body.as_deref()).await
+    match route.protocol {
+        BackendProtocol::JsonRpcIpc => {
+            let method_name = derive_jsonrpc_method(path, &config.routes);
+            debug!(
+                peer = %peer,
+                path,
+                method = %method_name,
+                "drawbridge: routing to JSON-RPC IPC backend"
+            );
+            proxy_to_jsonrpc_backend(
+                reader.into_inner(),
+                &method_name,
+                body.as_deref(),
+                &route.base_url,
+                peer,
+            )
+            .await
+        }
+        BackendProtocol::Http => {
+            let backend_url = build_backend_url(&route, path, &config.routes);
+            debug!(
+                peer = %peer,
+                host = %host,
+                path,
+                backend = %backend_url,
+                "drawbridge: routing to HTTP backend"
+            );
+            proxy_to_backend(reader.into_inner(), method, &backend_url, &headers, body.as_deref())
+                .await
+        }
+    }
 }
 
 fn build_backend_url(route: &ProxyRoute, request_path: &str, routes: &[DrawbridgeRoute]) -> String {
@@ -331,6 +354,110 @@ fn build_backend_url(route: &ProxyRoute, request_path: &str, routes: &[Drawbridg
     } else {
         format!("{base}/{}", suffix.trim_start_matches('/'))
     }
+}
+
+/// Derive a JSON-RPC method name from an HTTP request path.
+///
+/// Strips the matched route prefix, converts remaining path segments to
+/// dot-separated method name. E.g. `/api/mesh/status` with prefix `/api/` → `mesh.status`.
+/// Query string is stripped before conversion.
+fn derive_jsonrpc_method(request_path: &str, routes: &[DrawbridgeRoute]) -> String {
+    let matched_prefix = routes
+        .iter()
+        .find(|r| request_path.starts_with(&r.path_prefix))
+        .map_or("", |r| r.path_prefix.as_str());
+
+    let suffix = if matched_prefix.is_empty() {
+        request_path
+    } else {
+        &request_path[matched_prefix.len()..]
+    };
+
+    let path_only = suffix.split('?').next().unwrap_or(suffix);
+    path_only.trim_matches('/').replace('/', ".")
+}
+
+/// Translate an HTTP request into a JSON-RPC call via IPC, return response as HTTP.
+///
+/// Connects to the specified IPC socket (or default if empty), sends a JSON-RPC
+/// request derived from the HTTP path→method mapping, and returns the JSON-RPC
+/// response as an `HTTP 200 application/json` body.
+async fn proxy_to_jsonrpc_backend(
+    mut client_stream: tokio::net::TcpStream,
+    method: &str,
+    http_body: Option<&str>,
+    socket_path_hint: &str,
+    peer: SocketAddr,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use tokio::io::AsyncReadExt;
+
+    let socket_path = if socket_path_hint.is_empty() {
+        songbird_types::defaults::paths::primary_ipc_socket_path()
+    } else {
+        std::path::PathBuf::from(socket_path_hint)
+    };
+
+    let params: serde_json::Value =
+        http_body.and_then(|b| serde_json::from_str(b).ok()).unwrap_or(serde_json::Value::Null);
+
+    let jsonrpc_request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": method,
+        "params": params,
+        "id": 1
+    });
+
+    let path_str = socket_path.to_string_lossy();
+    let mut ipc = match songbird_types::IpcStream::connect(&path_str).await {
+        Ok(s) => s,
+        Err(e) => {
+            debug!(peer = %peer, error = %e, method, "drawbridge jsonrpc: cannot connect to IPC");
+            let err_body = format!(
+                r#"{{"jsonrpc":"2.0","error":{{"code":-32603,"message":"IPC unavailable: {e}"}},"id":1}}"#,
+            );
+            let resp = format!(
+                "HTTP/1.1 502 Bad Gateway\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{err_body}",
+                err_body.len()
+            );
+            client_stream.write_all(resp.as_bytes()).await?;
+            return Ok(());
+        }
+    };
+
+    let mut request_bytes = serde_json::to_vec(&jsonrpc_request)?;
+    request_bytes.push(b'\n');
+    ipc.write_all(&request_bytes).await?;
+
+    let mut response = Vec::with_capacity(4096);
+    let mut buf = [0u8; 4096];
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
+    loop {
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        if remaining.is_zero() {
+            break;
+        }
+        match tokio::time::timeout(remaining, ipc.read(&mut buf)).await {
+            Ok(Ok(0)) => break,
+            Ok(Ok(n)) => {
+                response.extend_from_slice(&buf[..n]);
+                if response.contains(&b'\n') {
+                    break;
+                }
+            }
+            Ok(Err(_)) => break,
+            Err(_) => break,
+        }
+    }
+
+    let response_str = String::from_utf8_lossy(&response);
+    let trimmed = response_str.trim();
+
+    let http_resp = format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: {}\r\n\r\n{trimmed}",
+        trimmed.len()
+    );
+    client_stream.write_all(http_resp.as_bytes()).await?;
+    Ok(())
 }
 
 /// Forward a JSON-RPC request to the local songBird IPC endpoint and return

@@ -9,7 +9,7 @@ use super::super::drawbridge_auth::{
     AuthGate, ExternalProxyAllowlist, ExternalService, TrustedNetwork, extract_host_from_url,
     percent_decode,
 };
-use super::super::http_proxy::ProxyRoute;
+use super::super::http_proxy::{BackendProtocol, ProxyRoute};
 use super::*;
 use std::net::IpAddr;
 
@@ -99,6 +99,7 @@ fn resolve_route_matches_prefix() {
 fn build_backend_url_strips_prefix() {
     let route = ProxyRoute {
         base_url: String::from("http://192.168.4.237:8000"),
+        protocol: BackendProtocol::Http,
         default_headers: std::collections::HashMap::new(),
         api_key_env: None,
         timeout_ms: 30_000,
@@ -119,6 +120,7 @@ fn build_backend_url_strips_prefix() {
 fn build_backend_url_footprint_proxy_path() {
     let route = ProxyRoute {
         base_url: String::from("http://127.0.0.1:8090"),
+        protocol: BackendProtocol::Http,
         default_headers: std::collections::HashMap::new(),
         api_key_env: None,
         timeout_ms: 30_000,
@@ -439,4 +441,23 @@ fn extract_host_from_url_works() {
     assert_eq!(extract_host_from_url("http://host:8080/"), Some("host"));
     assert_eq!(extract_host_from_url("ftp://bad"), None);
     assert_eq!(extract_host_from_url("not-a-url"), None);
+}
+
+#[test]
+fn derive_jsonrpc_method_converts_path_to_dotted() {
+    use super::super::drawbridge_auth::DrawbridgeRoute;
+
+    let routes = vec![DrawbridgeRoute {
+        path_prefix: String::from("/api"),
+        capability: String::from("network"),
+        public: false,
+    }];
+
+    assert_eq!(derive_jsonrpc_method("/api/mesh/status", &routes), "mesh.status");
+    assert_eq!(derive_jsonrpc_method("/api/mesh/prune_stale", &routes), "mesh.prune_stale");
+    assert_eq!(derive_jsonrpc_method("/api/health/ping", &routes), "health.ping");
+    assert_eq!(derive_jsonrpc_method("/api/mesh/status?timeout=5", &routes), "mesh.status");
+
+    let empty_routes: Vec<DrawbridgeRoute> = vec![];
+    assert_eq!(derive_jsonrpc_method("/mesh/peers", &empty_routes), "mesh.peers");
 }
