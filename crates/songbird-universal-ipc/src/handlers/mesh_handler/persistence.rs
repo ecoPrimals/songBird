@@ -100,6 +100,7 @@ pub struct LoadedPeer {
 ///
 /// Returns `(node_id, peers)` if the file exists and is valid.
 /// Returns `None` if the file doesn't exist or is empty/invalid.
+#[must_use]
 pub fn load_persisted_peers() -> Option<(String, Vec<(String, SocketAddr)>)> {
     let loaded = load_persisted_peers_full()?;
     let peers = loaded.1.iter().map(|p| (p.node_id.clone(), p.address)).collect();
@@ -107,6 +108,7 @@ pub fn load_persisted_peers() -> Option<(String, Vec<(String, SocketAddr)>)> {
 }
 
 /// Load persisted peers with full metadata (including LAN addresses).
+#[must_use]
 pub fn load_persisted_peers_full() -> Option<(String, Vec<LoadedPeer>)> {
     let file = load_peers_file()?;
 
