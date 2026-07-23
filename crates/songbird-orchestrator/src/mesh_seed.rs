@@ -404,6 +404,39 @@ async fn register_overlay_endpoints(
     );
 }
 
+/// Register LAN endpoints for peers with known LAN addresses.
+///
+/// LAN endpoints have priority 0 (`EndpointType::Local`), making them the
+/// preferred path when reachable — sub-millisecond latency on same-subnet peers.
+async fn register_lan_endpoints(
+    mesh_handler: &MeshHandler,
+    lan_peers: &[(String, std::net::SocketAddr)],
+) {
+    use songbird_onion_relay::mesh::{EndpointType, RelayEndpoint};
+    use std::time::Instant;
+
+    let guard = mesh_handler.mesh().await;
+    let Some(mesh) = guard.as_ref() else {
+        warn!("Cannot register LAN endpoints — mesh not initialized");
+        return;
+    };
+
+    let mut registered = 0;
+    for (node_id, addr) in lan_peers {
+        let endpoint = RelayEndpoint {
+            node_id: node_id.clone(),
+            endpoint_type: EndpointType::Local { addr: *addr },
+            latency: None,
+            last_seen: Instant::now(),
+            reachable: true,
+        };
+        mesh.add_endpoint(node_id.clone(), endpoint).await;
+        registered += 1;
+    }
+
+    info!(registered, "Registered LAN endpoints (priority 0 — preferred over all)");
+}
+
 /// Spawn automatic mesh initialization from `SONGBIRD_PEERS` env var or persisted state.
 ///
 /// Called after socket bind. Priority:
@@ -417,14 +450,21 @@ async fn register_overlay_endpoints(
 /// for the same node IDs, giving them priority-0 routing (`WireGuard` preference).
 pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
     let peers = parse_peers_env();
+    let mut lan_peers: Vec<(String, std::net::SocketAddr)> = Vec::new();
     let (peers, source) = if peers.is_empty() {
         if let Some((_, persisted)) =
-            songbird_universal_ipc::handlers::mesh_handler::persistence::load_persisted_peers()
+            songbird_universal_ipc::handlers::mesh_handler::persistence::load_persisted_peers_full()
         {
+            for p in &persisted {
+                if let Some(lan) = p.lan_addr {
+                    lan_peers.push((p.node_id.clone(), lan));
+                }
+            }
             let converted: Vec<(String, String)> =
-                persisted.iter().map(|(nid, addr)| (nid.clone(), addr.to_string())).collect();
+                persisted.iter().map(|p| (p.node_id.clone(), p.address.to_string())).collect();
             info!(
                 peer_count = converted.len(),
+                lan_count = lan_peers.len(),
                 "Restoring mesh from persisted peers (autonomous recovery)"
             );
             (converted, "persisted")
@@ -500,6 +540,10 @@ pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
 
                 if !overlay_peers.is_empty() {
                     register_overlay_endpoints(&mesh_handler, &overlay_peers, &overlay_name).await;
+                }
+
+                if !lan_peers.is_empty() {
+                    register_lan_endpoints(&mesh_handler, &lan_peers).await;
                 }
 
                 let peer_addrs: Vec<(String, std::net::SocketAddr)> = peers_for_trust

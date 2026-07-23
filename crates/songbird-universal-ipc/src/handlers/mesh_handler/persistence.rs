@@ -21,6 +21,10 @@ use tracing::{info, warn};
 struct PersistedPeer {
     node_id: String,
     address: String,
+    /// LAN address for same-subnet peers (priority 0 `EndpointType::Local`).
+    /// When present, songBird will prefer this path over the WG overlay.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    lan_addr: Option<String>,
 }
 
 /// Top-level structure for the peers.toml file.
@@ -57,6 +61,7 @@ pub(crate) fn save_peers(node_id: &str, peers: &[(String, SocketAddr)]) {
             file.peers.push(PersistedPeer {
                 node_id: peer_id.clone(),
                 address: addr_str,
+                lan_addr: None,
             });
         }
     }
@@ -80,23 +85,46 @@ pub(crate) fn save_peers(node_id: &str, peers: &[(String, SocketAddr)]) {
     }
 }
 
+/// A loaded peer with optional LAN address for same-subnet discovery.
+#[derive(Debug, Clone)]
+pub struct LoadedPeer {
+    /// Node identifier (gate name).
+    pub node_id: String,
+    /// Primary address (typically WG overlay or WAN).
+    pub address: SocketAddr,
+    /// LAN address for priority-0 local routing (same physical subnet).
+    pub lan_addr: Option<SocketAddr>,
+}
+
 /// Load persisted peers from disk.
 ///
 /// Returns `(node_id, peers)` if the file exists and is valid.
 /// Returns `None` if the file doesn't exist or is empty/invalid.
 pub fn load_persisted_peers() -> Option<(String, Vec<(String, SocketAddr)>)> {
+    let loaded = load_persisted_peers_full()?;
+    let peers = loaded.1.iter().map(|p| (p.node_id.clone(), p.address)).collect();
+    Some((loaded.0, peers))
+}
+
+/// Load persisted peers with full metadata (including LAN addresses).
+pub fn load_persisted_peers_full() -> Option<(String, Vec<LoadedPeer>)> {
     let file = load_peers_file()?;
 
     if file.node_id.is_empty() || file.peers.is_empty() {
         return None;
     }
 
-    let peers: Vec<(String, SocketAddr)> = file
+    let peers: Vec<LoadedPeer> = file
         .peers
         .iter()
         .filter_map(|p| {
             let addr: SocketAddr = p.address.parse().ok()?;
-            Some((p.node_id.clone(), addr))
+            let lan = p.lan_addr.as_ref().and_then(|la| la.parse().ok());
+            Some(LoadedPeer {
+                node_id: p.node_id.clone(),
+                address: addr,
+                lan_addr: lan,
+            })
         })
         .collect();
 
@@ -104,7 +132,11 @@ pub fn load_persisted_peers() -> Option<(String, Vec<(String, SocketAddr)>)> {
         return None;
     }
 
-    info!("Loaded {} persisted mesh peer(s) for node '{}'", peers.len(), file.node_id);
+    let lan_count = peers.iter().filter(|p| p.lan_addr.is_some()).count();
+    info!(
+        "Loaded {} persisted mesh peer(s) for node '{}' ({} with LAN)",
+        peers.len(), file.node_id, lan_count
+    );
 
     Some((file.node_id, peers))
 }
@@ -133,7 +165,12 @@ fn remove_persisted_peer(node_id: &str) {
 /// If an address is provided, it is stored alongside the node. If not, the node
 /// is recorded without an address (will be discoverable but not directly routable
 /// until it connects).
-pub(crate) fn save_enrolled_peer(node_id: &str, _public_key: &str, address: &str) {
+pub(crate) fn save_enrolled_peer(
+    node_id: &str,
+    _public_key: &str,
+    address: &str,
+    lan_addr: &str,
+) {
     let path = peers_file_path();
     let mut file = load_peers_file().unwrap_or_default();
 
@@ -142,13 +179,22 @@ pub(crate) fn save_enrolled_peer(node_id: &str, _public_key: &str, address: &str
     } else {
         address.to_string()
     };
+    let lan = if lan_addr.is_empty() {
+        None
+    } else {
+        Some(lan_addr.to_string())
+    };
 
     if let Some(existing) = file.peers.iter_mut().find(|p| p.node_id == node_id) {
         existing.address.clone_from(&addr_str);
+        if lan.is_some() {
+            existing.lan_addr = lan;
+        }
     } else {
         file.peers.push(PersistedPeer {
             node_id: node_id.to_string(),
             address: addr_str,
+            lan_addr: lan,
         });
     }
 

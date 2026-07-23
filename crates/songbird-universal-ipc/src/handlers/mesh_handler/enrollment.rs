@@ -39,6 +39,7 @@ impl MeshHandler {
             .and_then(Value::as_str)
             .ok_or("mesh.enroll requires 'proof' (HMAC enrollment proof from family seed)")?;
         let address = params.get("address").and_then(Value::as_str).unwrap_or("");
+        let lan_addr = params.get("lan_addr").and_then(Value::as_str).unwrap_or("");
 
         tracing::info!(node_id = %node_id, "mesh.enroll: verifying enrollment proof");
 
@@ -47,7 +48,9 @@ impl MeshHandler {
         let security_client = songbird_http_client::SecurityRpcClient::new_direct(security_socket);
 
         match security_client.verify_enrollment_proof(node_id, public_key, timestamp, proof).await {
-            Ok(v) if v.verified => self.complete_enrollment(node_id, public_key, address).await,
+            Ok(v) if v.verified => {
+                self.complete_enrollment(node_id, public_key, address, lan_addr).await
+            }
             Ok(v) => {
                 let reason = v.reason.unwrap_or_else(|| String::from("proof_invalid"));
                 tracing::warn!(node_id = %node_id, reason = %reason, "mesh.enroll: rejected");
@@ -70,11 +73,22 @@ impl MeshHandler {
         node_id: &str,
         public_key: &str,
         address: &str,
+        lan_addr: &str,
     ) -> Result<Value, String> {
         tracing::info!(node_id = %node_id, "mesh.enroll: proof verified, enrolling node");
 
         let mesh_guard = self.mesh.read().await;
         let mesh_active = if let Some(mesh) = mesh_guard.as_ref() {
+            if let Ok(lan) = lan_addr.parse::<std::net::SocketAddr>() {
+                let endpoint = songbird_onion_relay::mesh::RelayEndpoint {
+                    node_id: node_id.to_string(),
+                    endpoint_type: songbird_onion_relay::mesh::EndpointType::Local { addr: lan },
+                    latency: None,
+                    last_seen: std::time::Instant::now(),
+                    reachable: true,
+                };
+                mesh.add_endpoint(node_id.to_string(), endpoint).await;
+            }
             if let Ok(addr) = address.parse::<std::net::SocketAddr>() {
                 let endpoint = songbird_onion_relay::mesh::RelayEndpoint {
                     node_id: node_id.to_string(),
@@ -93,7 +107,7 @@ impl MeshHandler {
         };
         drop(mesh_guard);
 
-        super::persistence::save_enrolled_peer(node_id, public_key, address);
+        super::persistence::save_enrolled_peer(node_id, public_key, address, lan_addr);
 
         Ok(json!({
             "enrolled": true,
