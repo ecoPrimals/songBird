@@ -229,6 +229,18 @@ impl BeaconMesh {
         self.endpoints.read().await.keys().cloned().collect()
     }
 
+    /// Remove a peer from the mesh (all endpoints and best-path cache).
+    ///
+    /// Returns `true` if the peer existed and was removed.
+    pub async fn remove_peer(&self, node_id: &str) -> bool {
+        let removed_endpoints = self.endpoints.write().await.remove(node_id).is_some();
+        let removed_best = self.best_paths.write().await.remove(node_id).is_some();
+        if removed_endpoints || removed_best {
+            info!(peer = node_id, "Removed peer from mesh");
+        }
+        removed_endpoints || removed_best
+    }
+
     /// Backdate `last_seen` for health-check simulation and integration tests.
     pub async fn backdate_endpoint_last_seen(&self, node_id: &str, age: Duration) {
         let mut endpoints = self.endpoints.write().await;

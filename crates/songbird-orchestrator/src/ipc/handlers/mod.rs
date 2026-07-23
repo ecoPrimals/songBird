@@ -656,6 +656,7 @@ impl IpcHandlers {
             }
             MeshMethod::Subscribe => self.mesh_handler.handle_subscribe(params).await,
             MeshMethod::Enroll => self.mesh_handler.handle_enroll(params).await,
+            MeshMethod::PruneStale => self.mesh_handler.handle_prune_stale(params).await,
         };
         result.map_err(|e| crate::ipc::pure_rust_server::JsonRpcError::internal_error(e))
     }

@@ -326,7 +326,16 @@ async fn start_ipc_server(
     security_socket: &str,
     shared_handler: Arc<IpcServiceHandler>,
 ) -> Result<()> {
-    let _ = std::fs::remove_file(socket_path);
+    let sock = std::path::Path::new(socket_path);
+    if sock.is_dir() {
+        tracing::warn!(
+            path = socket_path,
+            "Socket path is a directory (stale state) — removing to recover"
+        );
+        let _ = std::fs::remove_dir_all(sock);
+    } else {
+        let _ = std::fs::remove_file(socket_path);
+    }
     let security_client =
         Arc::new(songbird_http_client::SecurityRpcClient::new_direct(security_socket.to_owned()));
 

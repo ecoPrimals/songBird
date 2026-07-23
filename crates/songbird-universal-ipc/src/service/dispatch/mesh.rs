@@ -48,6 +48,9 @@ pub(super) async fn dispatch_mesh(
             handler.mesh_handler.handle_subscribe(params).await
         }
         JsonRpcMethod::Mesh(MeshMethod::Enroll) => handler.mesh_handler.handle_enroll(params).await,
+        JsonRpcMethod::Mesh(MeshMethod::PruneStale) => {
+            handler.mesh_handler.handle_prune_stale(params).await
+        }
         other => Err(format!("Unknown method: {other}")),
     }
 }

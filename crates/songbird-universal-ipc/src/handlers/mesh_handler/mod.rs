@@ -26,6 +26,7 @@ mod enrollment;
 mod health_probing;
 mod json;
 pub mod persistence;
+mod prune_stale;
 pub(crate) mod topology_graph;
 mod udp_discovery;
 

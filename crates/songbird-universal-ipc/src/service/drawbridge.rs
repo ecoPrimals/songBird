@@ -280,10 +280,24 @@ async fn handle_drawbridge_connection(
     };
 
     let Some(route) = route else {
-        debug!(peer = %peer, path, "drawbridge: no capability route for path");
+        warn!(peer = %peer, path, "drawbridge: no capability route for path — check SONGBIRD_DRAWBRIDGE_ROUTES and SONGBIRD_PROXY_ROUTES env");
         let stream = reader.into_inner();
         let mut stream = stream;
-        stream.write_all(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n").await?;
+        let avail = router
+            .list_capabilities()
+            .iter()
+            .map(|c| format!("\"{c}\""))
+            .collect::<Vec<_>>()
+            .join(",");
+        let cap = capability.map_or_else(|| "null".to_string(), |c| format!("\"{c}\""));
+        let err_body = format!(
+            r#"{{"error":"no_capability_route","path":"{path}","capability":{cap},"available_capabilities":[{avail}],"hint":"Set SONGBIRD_DRAWBRIDGE_ROUTES (path=capability) and SONGBIRD_PROXY_ROUTES (capability=url)"}}"#,
+        );
+        let resp = format!(
+            "HTTP/1.1 502 Bad Gateway\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{err_body}",
+            err_body.len()
+        );
+        stream.write_all(resp.as_bytes()).await?;
         return Ok(());
     };
 

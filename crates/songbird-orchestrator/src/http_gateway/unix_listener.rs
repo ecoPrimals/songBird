@@ -178,8 +178,16 @@ impl UnixSocketListener {
     ///
     /// Returns an error if the operation fails.
     pub async fn start(self: Arc<Self>) -> Result<()> {
-        // Unconditional unlink before bind (prevents EADDRINUSE after crash)
-        let _ = tokio::fs::remove_file(&self.config.socket_path).await;
+        // Clean stale socket path (prevents EADDRINUSE after crash)
+        if self.config.socket_path.is_dir() {
+            warn!(
+                path = ?self.config.socket_path,
+                "Socket path is a directory (stale state) — removing to recover"
+            );
+            let _ = tokio::fs::remove_dir_all(&self.config.socket_path).await;
+        } else {
+            let _ = tokio::fs::remove_file(&self.config.socket_path).await;
+        }
 
         // Create parent directory if it doesn't exist
         if let Some(parent) = self.config.socket_path.parent() {

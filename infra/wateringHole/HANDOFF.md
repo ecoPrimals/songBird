@@ -1,8 +1,8 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave152  
-**Date**: July 22, 2026  
+**Version**: v0.2.1-wave150w  
+**Date**: July 23, 2026  
 **Gate**: eastGate
 
 ## Current State
@@ -18,7 +18,24 @@
 | Hardcoding | 0 in production (all env-driven, capability-based) |
 | Mocks in prod | 0 (all `#[cfg(test)]` gated) |
 
-## Recent Evolution (Wave 147f–150d)
+## Recent Evolution (Wave 147f–150w)
+
+### Wave 150w — P0 Blocker Resolution (Jul 23 2026)
+
+Tower Atomic exceeds WireGuard (2x throughput on WAN). Shadow deployment was blocked on 3 songBird issues on flockGate. Code-level fixes shipped from eastGate:
+
+1. **Socket directory guard** — `songbird.sock` was a directory (stale state from interrupted startup). Both UDS bind sites (`bin_interface/server.rs`, `http_gateway/unix_listener.rs`) now detect `is_dir()` and `remove_dir_all` before bind, with `warn!` log. Prevents broken UDS discovery.
+
+2. **Drawbridge 502 → diagnostic JSON** — Previously returned empty `502 Bad Gateway` when no capability route matched. Now returns structured JSON: `{"error":"no_capability_route","path":"...","capability":"...","available_capabilities":[...],"hint":"Set SONGBIRD_DRAWBRIDGE_ROUTES..."}`. Enables operators to diagnose routing gaps immediately.
+
+3. **`mesh.prune_stale` JSON-RPC method** — New method for removing dead/legacy peers. Supports explicit `node_ids` (force-prune specific peers like `old-peer`, `iron-gate`), threshold-based auto-pruning (`threshold_secs`, default 300), and `dry_run` mode. Also cleans `peer_capabilities` and `peer_metadata` maps. Backed by new `BeaconMesh::remove_peer()` in `songbird-onion-relay`.
+
+**Usage for flockGate operator** (to resolve stale peers):
+```json
+{"jsonrpc":"2.0","method":"mesh.prune_stale","params":{"node_ids":["old-peer","iron-gate","west-gate"]},"id":1}
+```
+Then enroll live gates: `mesh.enroll` with BTSP HMAC proofs for sporeGate, eastGate, golgiBody.
+
 
 | Wave | Summary |
 |------|---------|
