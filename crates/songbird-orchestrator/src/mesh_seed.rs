@@ -425,7 +425,9 @@ async fn register_lan_endpoints(
     for (node_id, addr) in lan_peers {
         let endpoint = RelayEndpoint {
             node_id: node_id.clone(),
-            endpoint_type: EndpointType::Local { addr: *addr },
+            endpoint_type: EndpointType::Local {
+                addr: *addr,
+            },
             latency: None,
             last_seen: Instant::now(),
             reachable: true,

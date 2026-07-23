@@ -137,7 +137,9 @@ pub fn load_persisted_peers_full() -> Option<(String, Vec<LoadedPeer>)> {
     let lan_count = peers.iter().filter(|p| p.lan_addr.is_some()).count();
     info!(
         "Loaded {} persisted mesh peer(s) for node '{}' ({} with LAN)",
-        peers.len(), file.node_id, lan_count
+        peers.len(),
+        file.node_id,
+        lan_count
     );
 
     Some((file.node_id, peers))
@@ -167,12 +169,7 @@ fn remove_persisted_peer(node_id: &str) {
 /// If an address is provided, it is stored alongside the node. If not, the node
 /// is recorded without an address (will be discoverable but not directly routable
 /// until it connects).
-pub(crate) fn save_enrolled_peer(
-    node_id: &str,
-    _public_key: &str,
-    address: &str,
-    lan_addr: &str,
-) {
+pub(crate) fn save_enrolled_peer(node_id: &str, _public_key: &str, address: &str, lan_addr: &str) {
     let path = peers_file_path();
     let mut file = load_peers_file().unwrap_or_default();
 

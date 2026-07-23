@@ -82,7 +82,9 @@ impl MeshHandler {
             if let Ok(lan) = lan_addr.parse::<std::net::SocketAddr>() {
                 let endpoint = songbird_onion_relay::mesh::RelayEndpoint {
                     node_id: node_id.to_string(),
-                    endpoint_type: songbird_onion_relay::mesh::EndpointType::Local { addr: lan },
+                    endpoint_type: songbird_onion_relay::mesh::EndpointType::Local {
+                        addr: lan,
+                    },
                     latency: None,
                     last_seen: std::time::Instant::now(),
                     reachable: true,
