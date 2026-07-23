@@ -1,9 +1,9 @@
 # Tower Atomic — Parity Convergence Brief
 
 **Date**: July 23, 2026  
-**Wave**: 150v  
-**Status**: Phase 1 PASS — Parity Proven, Shadow Mode (Phase 2) Next  
-**Target**: WireGuard replacement on LAN+WAN mesh
+**Wave**: 150w  
+**Status**: Phase 2 — Shadow Deploy All Live Topo + Exploration  
+**Target**: WireGuard replacement → sovereign compute mesh
 
 ---
 
@@ -133,8 +133,152 @@ songBird already has the building blocks for parity assessment:
 |-------|-----------|--------|
 | **Phase 0** | All Tower components live independently | **COMPLETE** |
 | **Phase 1** | Parity benchmark: measure Tower vs WG on LAN+WAN | **PASS** (Jul 23 — 0.99x latency, 1.07x throughput LAN) |
-| **Phase 2** (next) | Shadow mode: Tower runs alongside WG, metrics compared | Ready to begin |
+| **Phase 2** (current) | Shadow deploy all live topo + exploration | **DEPLOYING** |
 | **Phase 3** | Cutover: Tower replaces WG for inter-gate traffic | Pending Phase 2 validation |
+
+---
+
+## Phase 2: Shadow Deployment + Exploration
+
+### Deployment Scope
+
+Deploy Tower Atomic alongside WireGuard on all currently live gates. Both stacks
+run simultaneously — WireGuard carries production traffic, Tower carries mirrored
+traffic with continuous metrics.
+
+| Gate | Mesh IP | Status | Shadow Role |
+|------|---------|--------|-------------|
+| golgiBody | 10.13.37.1 | **LIVE** | Hub + TURN relay, multi-stack routing target |
+| sporeGate | 10.13.37.2 | **LIVE** | Build authority, benchmark driver |
+| eastGate | 10.13.37.5 | **LIVE** | Code hub, LAN peer to sporeGate |
+| flockGate | 10.13.37.6 | **LIVE** | WAN peer, remote covalent mesh |
+| ironGate | 10.13.37.7 | DOWN | Enroll when restored |
+| northGate | 10.13.37.8 | Enrolled | Windows — enroll when Linux dual-boot active |
+
+**Shadow mode per gate**: `membrane tower.shadow --enable` activates Tower
+transport on the songBird mesh port (7700) while WireGuard continues on wg0.
+All inter-gate RPC is duplicated: primary on WG, shadow on Tower. Metrics
+collected for latency, throughput, jitter, and error rate.
+
+### Exploration Domains — Where Tower Exceeds WireGuard
+
+WireGuard is a general-purpose kernel VPN. Tower Atomic is a userspace
+capability-routed mesh. The specialization opens exploration space that WG
+fundamentally cannot address:
+
+#### 1. Capability-Aware Routing
+
+WireGuard: All packets traverse the same tunnel. No application awareness.
+
+Tower Atomic: JSON-RPC dispatch routes by capability. songBird knows *what*
+the traffic is — `nestgate.blob_put`, `beardog.sign`, `toadstool.dispatch` —
+and can route, prioritize, and shape accordingly.
+
+**primalSpring exploration**: `s_tower_capability_routing` — measure latency
+and throughput per-capability class. Does RPC routing overhead amortize when
+mixed workloads compete for the same tunnel?
+
+#### 2. Multi-Stack Routing on golgiBody
+
+WireGuard: One tunnel, all traffic.
+
+Tower Atomic: golgiBody can run N Tower Atomic stacks, each tuned for a
+different traffic pattern. A TURN relay stack for WAN peers. A low-latency
+stack for real-time RPC. A high-throughput stack for blob sync.
+
+**primalSpring exploration**: `s_tower_multi_stack` — deploy 2–3 songBird
+instances on golgiBody with different tuning profiles. Measure whether
+per-purpose routing outperforms a single fat tunnel.
+
+#### 3. Large Data Transfer (nestGate CAS, ZFS replication)
+
+WireGuard: Fixed MTU (1420 bytes typically), no content awareness.
+
+Tower Atomic: Content-addressed blob routing via nestGate CAS. songBird
+can negotiate payload-optimal framing (jumbo frames on 10G backbone, chunked
+streaming on WAN). Blobs route to nearest cached copy rather than through
+a fixed tunnel endpoint.
+
+**primalSpring exploration**: `s_tower_large_data` — transfer 100MB, 1GB,
+10GB blobs through both stacks on LAN (10G when cabled) and WAN.
+Measure: throughput, CPU overhead, memory pressure, content-addressed
+deduplication benefit.
+
+**Springs science integration**:
+- `wetSpring`: Bioinformatics datasets (Kraken2 DB, alignment indices) — strandGate → eastGate
+- `hotSpring`: HBM2 benchmark results, compiler artifacts — biomeGate → gates
+- `neuralSpring`: Model weights, training checkpoints
+
+#### 4. Secure Compute Mesh
+
+WireGuard: Encrypted tunnel, but no application-layer crypto policy.
+
+Tower Atomic: bearDog provides end-to-end encryption *per capability*.
+Different trust levels per workload — `PostPrimordial` primals get stronger
+attestation than general data. CredentialStore integration means keys live
+in HSM/TEE where available (grapheneGate, SoloKeys).
+
+**primalSpring exploration**: `s_tower_secure_compute` — measure crypto
+overhead of bearDog per-session keys vs WireGuard's tunnel-level encryption.
+End-to-end: can a computation request be cryptographically bound to a
+specific gate's hardware attestation?
+
+#### 5. Distributed Compute Coordination
+
+WireGuard: Just a pipe. No compute awareness.
+
+Tower Atomic: songBird's mesh topology knows which gate has which hardware
+(GPU VRAM, NPU, CPU cores). Combined with biomeOS workload dispatch,
+Tower Atomic becomes a compute-aware mesh — workloads route to the
+gate with the right substrate.
+
+**primalSpring exploration**: `s_tower_compute_mesh` — toadStool dispatches
+a parallel workload across 2+ gates. Compare coordination latency through
+WG tunnel vs Tower Atomic's direct capability dispatch. Measure: task
+dispatch latency, intermediate result transfer, aggregation time.
+
+**Hardware targets**:
+- GPU compute: strandGate (RTX 3090 + RX 6950 XT) ↔ biomeGate (Titan V HBM2)
+- NPU: eastGate (Akida) ↔ strandGate (Akida) ↔ biomeGate (Akida)
+- CPU-parallel: strandGate (64-core EPYC) ↔ biomeGate (32-core Threadripper)
+
+#### 6. Edge + SFF Mesh (NUCs, NucBox)
+
+WireGuard: Same overhead regardless of hardware. Kernel module helps but
+NUC Celerons are CPU-constrained.
+
+Tower Atomic: Userspace, so overhead is tunable. songBird on a Celeron NUC
+can run a minimal relay/beacon profile — less crypto, fewer probes, lighter
+mesh heartbeat — that WireGuard cannot specialize.
+
+**primalSpring exploration**: `s_tower_edge_profile` — songBird on NUC
+with minimal config vs WireGuard. Measure: idle CPU, memory footprint,
+relay throughput, discovery latency.
+
+### Metrics Collection
+
+Shadow mode continuously collects for each gate pair:
+
+```toml
+[shadow_metrics]
+collection_interval_sec = 60
+export_format = "json"
+export_path = "benchScale/tower_shadow/"
+
+[shadow_metrics.dimensions]
+latency_p50_ms = true
+latency_p95_ms = true
+latency_p99_ms = true
+throughput_mbps = true
+jitter_ms = true
+setup_time_ms = true
+error_rate = true
+cpu_percent = true
+memory_mb = true
+```
+
+Reports land in `benchScale/tower_shadow/` per gate, per day. The
+`s_tower_atomic_parity_live` scenario reads these for validation.
 
 ## Protocol: HMAC Enrollment (mesh.enroll)
 
