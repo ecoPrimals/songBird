@@ -2,7 +2,7 @@
 
 **Date**: July 23, 2026  
 **Wave**: 150v  
-**Status**: Phase 2 — ALL BLOCKERS RESOLVED, Parity Benchmark Ready to Execute  
+**Status**: Phase 1 PASS — Parity Proven, Shadow Mode (Phase 2) Next  
 **Target**: WireGuard replacement on LAN+WAN mesh
 
 ---
@@ -132,8 +132,8 @@ songBird already has the building blocks for parity assessment:
 | Phase | Milestone | Status |
 |-------|-----------|--------|
 | **Phase 0** | All Tower components live independently | **COMPLETE** |
-| **Phase 1** (current) | Parity benchmark: measure Tower vs WG on LAN+WAN | **UNBLOCKED — harness + relay live** |
-| **Phase 2** | Shadow mode: Tower runs alongside WG, metrics compared | Pending Phase 1 results |
+| **Phase 1** | Parity benchmark: measure Tower vs WG on LAN+WAN | **PASS** (Jul 23 — 0.99x latency, 1.07x throughput LAN) |
+| **Phase 2** (next) | Shadow mode: Tower runs alongside WG, metrics compared | Ready to begin |
 | **Phase 3** | Cutover: Tower replaces WG for inter-gate traffic | Pending Phase 2 validation |
 
 ## Protocol: HMAC Enrollment (mesh.enroll)
