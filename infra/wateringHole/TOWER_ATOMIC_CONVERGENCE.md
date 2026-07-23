@@ -1,9 +1,9 @@
 # Tower Atomic — Parity Convergence Brief
 
-**Date**: July 21, 2026  
-**Wave**: 150t  
-**Status**: Phase 1 — Parity Benchmark Pending  
-**Target**: WireGuard replacement on LAN mesh
+**Date**: July 23, 2026  
+**Wave**: 150v  
+**Status**: Phase 2 — ALL BLOCKERS RESOLVED, Parity Benchmark Ready to Execute  
+**Target**: WireGuard replacement on LAN+WAN mesh
 
 ---
 
@@ -51,13 +51,22 @@ Before Tower Atomic can replace WireGuard on the LAN mesh, we need to demonstrat
 | CPU (idle) | ~0% | ≤1% | `top` with mesh active, no traffic |
 | CPU (saturated) | ~5% | ≤20% | `top` during throughput test |
 
-### Benchmark Harness (TODO — needs implementation)
+### Benchmark Harness — SHIPPED (Wave 150v)
+
+`songbird benchmark` CLI is live (`src/benchmark.rs`, 366 lines). 3-phase measurement:
+
+1. **Setup**: TCP connection establishment time (10 attempts)
+2. **Latency**: JSON-RPC `health.ping` round-trip (configurable probes, p50/p95/p99)
+3. **Throughput**: Sustained 64KiB chunk stream (configurable duration, Mbps)
 
 ```bash
-# Proposed: run on sporeGate↔ironGate (same LAN, WireGuard peers)
-songbird benchmark --mode tower-atomic --peer ironGate --duration 30s
-songbird benchmark --mode wireguard   --peer ironGate --duration 30s
-songbird benchmark --compare          --output /tmp/parity-report.json
+# LAN benchmark: eastGate ↔ sporeGate (same backbone)
+songbird benchmark --mode tower-atomic --peer 10.13.37.2:7700 --output json
+songbird benchmark --mode wireguard   --peer 10.13.37.2:7700 --output json
+
+# WAN benchmark: sporeGate → flockGate via TURN on golgiBody
+songbird benchmark --mode tower-atomic --peer 10.13.37.6:7700 --output json
+songbird benchmark --mode wireguard   --peer 10.13.37.6:7700 --output json
 ```
 
 ## What Each Team Needs To Do
@@ -86,20 +95,20 @@ songbird benchmark --compare          --output /tmp/parity-report.json
 | `mesh.enroll` with BTSP proof | LIVE | HMAC-SHA256 verification via bearDog |
 | BTSP Phase 3 encrypted framing | LIVE | ChaCha20-Poly1305 on all 3 IPC paths |
 | Cross-gate `capability.call` | LIVE | TCP direct + TURN relay fallback |
-| TURN relay server (VPS) | CODE COMPLETE | 42 tests pass, systemd unit ready |
+| TURN relay server (VPS) | **LIVE** | golgiBody:3478, PID 2140600, since Jul 12 |
 | TURN client (data plane) | LIVE | `send()`/`recv()` + ChannelData framing, 26 tests |
 | Shadow dual-path comparator | LIVE | TURN vs cloudflared setup time comparison |
 | NAT field test harness | LIVE | CGNAT/double-NAT/symmetric scenarios |
 | Latency measurement (`mesh.probe_latency`) | LIVE | TCP→`health.ping` RTT per peer |
 | Drawbridge port solving | LIVE | `:7780` capability→URL resolution |
-| Throughput benchmark | TODO | P2 — stream-based KB/s measurement |
-| `songbird benchmark` CLI | TODO | P2 — unified CLI subcommand |
+| Throughput benchmark | **SHIPPED** | 64KiB stream, configurable duration, Mbps output |
+| `songbird benchmark` CLI | **SHIPPED** | 3-phase harness, JSON+text, p50/p95/p99 |
 
 ### Deployment/Ops Team
 
 | Need | Priority | Detail |
 |------|----------|--------|
-| TURN relay deployment | P2 | Deploy `songbird relay` on golgiBody VPS (systemd unit ready) |
+| ~~TURN relay deployment~~ | **LIVE** | golgiBody VPS, LIVE since Jul 12, deployment guide at `deployment/relay/README.md` |
 | `SONGBIRD_DRAWBRIDGE_ADDR=0.0.0.0:7780` | P2 | Set on gates where cross-WG drawbridge access needed |
 | Parity benchmark environment | P2 | sporeGate↔ironGate LAN pair with both WG and Tower active |
 
@@ -116,19 +125,16 @@ songBird already has the building blocks for parity assessment:
 | `TurnRelayStats` | `songbird-stun` | Live stats: packets/bytes relayed, allocations, uptime |
 | `TurnSession::send()/recv()` | `songbird-turn-client` | Raw data plane (for throughput measurement) |
 
-**What's missing**: A unified `songbird benchmark` CLI subcommand that:
-1. Runs `mesh.probe_latency` for latency (already exists — just needs CLI exposure)
-2. Streams N bytes through `TurnSession` for throughput (new code needed)
-3. Reports structured JSON comparing Tower vs WG baselines
+**SHIPPED**: `songbird benchmark` CLI (366 lines, `src/benchmark.rs`). All 3 items above are live.
 
 ## Convergence Timeline
 
-| Phase | Milestone | Depends On |
-|-------|-----------|-----------|
-| **Phase 0** (current) | All Tower components live independently | — |
-| **Phase 1** | Parity benchmark: measure Tower vs WG on LAN | Benchmark harness |
-| **Phase 2** | Shadow mode: Tower runs alongside WG, metrics compared | Phase 1 pass |
-| **Phase 3** | Cutover: Tower replaces WG for inter-gate traffic | Phase 2 validated |
+| Phase | Milestone | Status |
+|-------|-----------|--------|
+| **Phase 0** | All Tower components live independently | **COMPLETE** |
+| **Phase 1** (current) | Parity benchmark: measure Tower vs WG on LAN+WAN | **UNBLOCKED — harness + relay live** |
+| **Phase 2** | Shadow mode: Tower runs alongside WG, metrics compared | Pending Phase 1 results |
+| **Phase 3** | Cutover: Tower replaces WG for inter-gate traffic | Pending Phase 2 validation |
 
 ## Protocol: HMAC Enrollment (mesh.enroll)
 
