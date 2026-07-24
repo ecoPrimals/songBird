@@ -28,7 +28,7 @@ fn config_from_env_defaults() {
     songbird_process_env::remove_var("SONGBIRD_DRAWBRIDGE_TRUSTED_PEERS");
     songbird_process_env::remove_var("SONGBIRD_DRAWBRIDGE_EXTERNAL_ALLOWLIST");
     let config = DrawbridgeConfig::from_env();
-    assert_eq!(config.bind_addr, "127.0.0.1:7780");
+    assert_eq!(config.bind_addr, songbird_types::defaults::ports::DEFAULT_DRAWBRIDGE_ADDR);
     assert!(config.routes.is_empty());
     assert!(!config.auth.is_enforcing());
     assert!(!config.external_allowlist.is_active());

@@ -10,13 +10,12 @@ keywords = ["compute", "distributed", "orchestration", "bridge", "agnostic"]
 categories = ["network-programming", "web-programming"]
 
 [dependencies]
-tokio = { workspace = true, features = ["full", "test-util"] }
+tokio = { workspace = true, features = ["full"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 axum = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-chrono = { workspace = true }
 uuid = { workspace = true }
 clap = { workspace = true }
 anyhow = { workspace = true }
@@ -33,5 +32,6 @@ songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rus
 workspace = true
 
 [dev-dependencies]
+tokio = { workspace = true, features = ["full", "test-util"] }
 tower = { workspace = true, features = ["util"] }
 

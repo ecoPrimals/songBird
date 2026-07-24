@@ -30,9 +30,6 @@ songbird-types = { path = "../songbird-types" }
 # Logging and tracing
 tracing = { workspace = true }
 
-# Time handling
-chrono = { workspace = true }
-
 # Internal dependencies
 songbird-config = { path = "../songbird-config" }
 

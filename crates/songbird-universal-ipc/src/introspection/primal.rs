@@ -183,23 +183,25 @@ pub fn primal_announce() -> Value {
 
 /// Resolve this instance's UDS path from the environment.
 fn resolve_self_socket_path() -> String {
+    use songbird_types::primal_names::{BIOMEOS_DIR, DEFAULT_FAMILY_ID, SELF_NAME};
+
     let family_id = songbird_process_env::var("FAMILY_ID")
         .or_else(|_| songbird_process_env::var("BIOMEOS_FAMILY_ID"))
         .or_else(|_| songbird_process_env::var("SONGBIRD_FAMILY_ID"))
-        .unwrap_or_else(|_| String::from("ecoPrimal"));
+        .unwrap_or_else(|_| String::from(DEFAULT_FAMILY_ID));
 
     let sock_name = if family_id == "default" || family_id.is_empty() {
-        String::from("songbird.sock")
+        format!("{SELF_NAME}.sock")
     } else {
-        format!("songbird-{family_id}.sock")
+        format!("{SELF_NAME}-{family_id}.sock")
     };
 
     if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-        return format!("{xdg}/biomeos/{sock_name}");
+        return format!("{xdg}/{BIOMEOS_DIR}/{sock_name}");
     }
 
     let tmp = std::env::temp_dir();
-    format!("{}/biomeos/{sock_name}", tmp.display())
+    format!("{}/{BIOMEOS_DIR}/{sock_name}", tmp.display())
 }
 
 /// `btsp.capabilities` — advertise supported BTSP transport security features.

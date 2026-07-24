@@ -87,3 +87,7 @@ pub const DEFAULT_AI_PROVIDER_PORT: u16 = 8083;
 pub const DEFAULT_FEDERATION_BROADCAST_PORT: u16 = 8090;
 /// Default IPC listen port (env: `SONGBIRD_IPC_PORT`)
 pub const DEFAULT_IPC_LISTEN_PORT: u16 = 9901;
+/// Default drawbridge HTTP proxy port (env: `SONGBIRD_DRAWBRIDGE_ADDR`)
+pub const DEFAULT_DRAWBRIDGE_PORT: u16 = 7780;
+/// Default drawbridge bind address (env: `SONGBIRD_DRAWBRIDGE_ADDR`)
+pub const DEFAULT_DRAWBRIDGE_ADDR: &str = "127.0.0.1:7780";

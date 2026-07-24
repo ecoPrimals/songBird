@@ -4,7 +4,7 @@
 //! Songbird federation registration and heartbeats.
 
 use super::types::{BridgeState, ServiceRegistration};
-use chrono::Utc;
+use songbird_types::defaults::time::rfc3339_now;
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time::interval;
@@ -50,8 +50,8 @@ pub async fn register_with_songbird(
         capabilities: config.capabilities.clone(),
         metadata,
         health_status: health.to_string(),
-        registered_at: Utc::now().to_rfc3339(),
-        last_seen: Utc::now().to_rfc3339(),
+        registered_at: rfc3339_now(),
+        last_seen: rfc3339_now(),
     };
 
     let url = format!("{songbird_endpoint}/api/federation/services");

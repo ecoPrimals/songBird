@@ -12,4 +12,5 @@ pub mod hosts;
 pub mod network;
 pub mod paths;
 pub mod ports;
+pub mod time;
 pub mod timeouts;

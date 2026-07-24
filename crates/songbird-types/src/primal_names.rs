@@ -27,6 +27,9 @@ pub const NEURAL_API: &str = "neural-api";
 /// Ecosystem socket directory name (`$XDG_RUNTIME_DIR/biomeos/`).
 pub const BIOMEOS_DIR: &str = "biomeos";
 
+/// Default biomeOS family identifier when no `FAMILY_ID` env is set.
+pub const DEFAULT_FAMILY_ID: &str = "ecoPrimal";
+
 #[cfg(test)]
 mod tests {
     use super::*;

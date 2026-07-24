@@ -24,9 +24,6 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 tracing = { workspace = true }
 
-# Async dependencies
-futures-util = { workspace = true }
-
 # System monitoring
 
 # HTTP client (✅ Pure Rust TLS 1.3!)

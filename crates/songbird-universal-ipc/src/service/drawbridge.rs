@@ -46,7 +46,7 @@ impl DrawbridgeConfig {
     #[must_use]
     pub fn from_env() -> Self {
         let bind_addr = songbird_process_env::var("SONGBIRD_DRAWBRIDGE_ADDR")
-            .unwrap_or_else(|_| String::from("127.0.0.1:7780"));
+            .unwrap_or_else(|_| String::from(songbird_types::defaults::ports::DEFAULT_DRAWBRIDGE_ADDR));
 
         let routes = songbird_process_env::var("SONGBIRD_DRAWBRIDGE_ROUTES")
             .unwrap_or_default()

@@ -32,7 +32,6 @@ thiserror = { workspace = true }
 uuid = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 futures-util = { workspace = true }
-rand = { workspace = true }
 dirs = { workspace = true }
 chrono = { workspace = true }
 url = "2.5"

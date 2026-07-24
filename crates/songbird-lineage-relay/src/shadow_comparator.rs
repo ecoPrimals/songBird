@@ -82,7 +82,7 @@ pub async fn compare_paths(peer_addr: SocketAddr) -> Result<ShadowComparisonRepo
 
     let report = ShadowComparisonReport {
         peer_addr: peer_addr.to_string(),
-        timestamp: chrono::Utc::now().to_rfc3339(),
+        timestamp: songbird_types::defaults::time::rfc3339_now(),
         turn_metrics,
         tunnel_metrics,
         recommended_tier,

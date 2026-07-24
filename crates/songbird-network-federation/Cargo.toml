@@ -32,9 +32,6 @@ anyhow = { workspace = true }
 # Networking (✅ 100% Pure Rust!)
 songbird-http-client = { path = "../songbird-http-client" }
 
-# Random number generation (missing dependency that caused errors)
-fastrand = { workspace = true }
-
 # Logging
 tracing = { workspace = true }
 

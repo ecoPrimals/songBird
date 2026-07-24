@@ -40,9 +40,6 @@ tracing = { workspace = true }
 uuid = { workspace = true }
 bytes = { workspace = true }
 
-# Zero-copy optimizations
-zerocopy = { version = "0.7", features = ["derive"] }
-
 [dev-dependencies]
 tokio = { workspace = true, features = ["full", "test-util"] }
 tokio-test = "0.4"
