@@ -99,13 +99,44 @@ impl UnixSocketServer {
                 .context(format!("Failed to create socket directory: {}", parent.display()))?;
         }
 
-        // Unconditional unlink before bind (prevents EADDRINUSE after crash).
-        // Ignoring errors: NotFound is expected on fresh start, PermissionDenied
-        // will surface as a bind error with better context below.
-        let _ = std::fs::remove_file(&self.socket_path);
+        // Directory guard: if socket path is a directory (stale state from
+        // previous crash or misconfiguration), remove it before bind.
+        if self.socket_path.is_dir() {
+            tracing::warn!(
+                path = %self.socket_path.display(),
+                "Socket path is a directory (stale state) — removing to recover"
+            );
+            let _ = std::fs::remove_dir_all(&*self.socket_path);
+        } else {
+            // Unconditional unlink before bind (prevents EADDRINUSE after crash).
+            let _ = std::fs::remove_file(&self.socket_path);
+        }
+
+        // Symlink protection: reject if socket path is a symlink (prevents
+        // an attacker from redirecting our bind to an arbitrary location).
+        if self.socket_path.is_symlink() {
+            anyhow::bail!(
+                "Socket path is a symlink — refusing to bind (potential symlink attack): {}",
+                self.socket_path.display()
+            );
+        }
 
         let listener = UnixListener::bind(&*self.socket_path)
             .context(format!("Failed to bind Unix socket: {}", self.socket_path.display()))?;
+
+        // Restrict socket permissions to owner-only (0o600).
+        // Prevents other users on multi-user systems from connecting.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let perms = std::fs::Permissions::from_mode(0o600);
+            if let Err(e) = std::fs::set_permissions(&*self.socket_path, perms) {
+                tracing::warn!(
+                    error = %e,
+                    "Failed to set socket permissions to 0600 — other users may be able to connect"
+                );
+            }
+        }
 
         crate::env_config::create_domain_socket_symlink(&self.socket_path);
 
@@ -131,6 +162,14 @@ impl UnixSocketServer {
         info!("   APIs: 14 (3 P2P + 4 registry + 4 graph + 3 coordination)");
         info!("   Status: READY ✅ (atomic flag set)");
 
+        // Concurrency limiter: prevent resource exhaustion from too many
+        // simultaneous UDS connections (e.g. misbehaving client flood).
+        let max_conns: usize = songbird_process_env::var("SONGBIRD_MAX_UDS_CONNECTIONS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(256);
+        let conn_semaphore = Arc::new(tokio::sync::Semaphore::new(max_conns));
+
         while self.is_running() {
             match tokio::time::timeout(
                 songbird_types::defaults::timeouts::DEFAULT_ACCEPT_POLL_INTERVAL,
@@ -139,12 +178,21 @@ impl UnixSocketServer {
             .await
             {
                 Ok(Ok((stream, _addr))) => {
+                    // Extract caller identity (SO_PEERCRED) before splitting
+                    let caller =
+                        super::super::method_gate::CallerContext::from_unix_stream(&stream);
+
                     let server = Arc::clone(&self);
+                    let sem = Arc::clone(&conn_semaphore);
                     tokio::spawn(async move {
+                        let Ok(_permit) = sem.try_acquire() else {
+                            warn!("UDS connection limit reached ({max_conns}) — rejecting");
+                            return;
+                        };
                         let result = if btsp_active {
-                            server.handle_connection_with_peek(stream).await
+                            server.handle_connection_with_peek(stream, &caller).await
                         } else {
-                            server.handle_connection(stream).await
+                            server.handle_connection(stream, &caller).await
                         };
                         if let Err(e) = result {
                             error!("Connection handler error: {}", e);
@@ -310,7 +358,11 @@ impl UnixSocketServer {
     /// For the binary BTSP path, the peeked byte is preserved in the
     /// `BufReader` and passed through via [`PeekedStream`].
     #[cfg(unix)]
-    async fn handle_connection_with_peek(&self, stream: UnixStream) -> Result<()> {
+    async fn handle_connection_with_peek(
+        &self,
+        stream: UnixStream,
+        caller: &super::super::method_gate::CallerContext,
+    ) -> Result<()> {
         const PEEK_TIMEOUT: Duration = songbird_types::defaults::timeouts::DEFAULT_PEEK_TIMEOUT;
 
         let (read_half, mut write_half) = stream.into_split();
@@ -382,26 +434,21 @@ impl UnixSocketServer {
 
             debug!("riboCipher signal: tier={tier}, version={version_byte} — routing");
 
-            let caller = super::super::method_gate::CallerContext::from_unix();
             match first_meaningful_byte {
                 ribocipher::CLEAR => {
-                    // Clear tier: standard ecosystem JSON-RPC follows after signal prefix
-                    self.handle_ndjson_session(reader, write_half, &caller).await
+                    self.handle_ndjson_session(reader, write_half, caller).await
                 }
                 ribocipher::MITO => {
-                    // Mito tier: federation inter-gate — currently routes to encrypted session
-                    // (future: mito-specific obfuscation layer)
                     tracing::info!("riboCipher mito: federation-tier connection accepted");
-                    self.handle_ndjson_session(reader, write_half, &caller).await
+                    self.handle_ndjson_session(reader, write_half, caller).await
                 }
                 ribocipher::NUCLEAR => {
-                    // Nuclear tier: high-security — route to BTSP encrypted session
                     tracing::info!("riboCipher nuclear: high-security connection accepted");
                     let stream = PeekedStream {
                         reader,
                         writer: write_half,
                     };
-                    self.handle_btsp_on_stream(stream, &caller).await
+                    self.handle_btsp_on_stream(stream, caller).await
                 }
                 _ => {
                     tracing::error!(
@@ -451,12 +498,10 @@ impl UnixSocketServer {
                     "BTSP NDJSON session {} authenticated (cipher: {})",
                     session.session_id, session.cipher
                 );
-                let caller = super::super::method_gate::CallerContext::from_unix();
-                self.handle_ndjson_session(reader, write_half, &caller).await
+                self.handle_ndjson_session(reader, write_half, caller).await
             } else {
                 debug!("UDS peek: JSON-RPC detected — plain NDJSON session");
-                let caller = super::super::method_gate::CallerContext::from_unix();
-                self.handle_ndjson_first_line_then_session(first_line, reader, write_half, &caller)
+                self.handle_ndjson_first_line_then_session(first_line, reader, write_half, caller)
                     .await
             }
         } else {
@@ -469,19 +514,21 @@ impl UnixSocketServer {
                 reader,
                 writer: write_half,
             };
-            let caller = super::super::method_gate::CallerContext::from_unix();
-            self.handle_btsp_on_stream(stream, &caller).await
+            self.handle_btsp_on_stream(stream, caller).await
         }
     }
 
     /// Handle a single UDS client connection with plain JSON-RPC 2.0 (no BTSP).
     #[cfg(unix)]
-    pub(crate) async fn handle_connection(&self, stream: UnixStream) -> Result<()> {
+    pub(crate) async fn handle_connection(
+        &self,
+        stream: UnixStream,
+        caller: &super::super::method_gate::CallerContext,
+    ) -> Result<()> {
         debug!("New IPC connection (development mode)");
-        let caller = super::super::method_gate::CallerContext::from_unix();
         let (read_half, write_half) = stream.into_split();
         let reader = BufReader::new(read_half);
-        self.handle_ndjson_session(reader, write_half, &caller).await
+        self.handle_ndjson_session(reader, write_half, caller).await
     }
 }
 

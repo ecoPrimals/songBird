@@ -49,15 +49,42 @@ impl EnforcementMode {
 #[derive(Debug)]
 pub struct MethodGate {
     mode: EnforcementMode,
+    /// UID of the process running songBird (for same-user trust bypass).
+    /// Read from `/proc/self/status` at startup (Linux) or UID env (macOS).
+    #[cfg(unix)]
+    own_uid: Option<u32>,
 }
 
 impl MethodGate {
     /// Create a gate with the given enforcement mode.
     #[must_use]
-    pub const fn new(mode: EnforcementMode) -> Self {
+    pub fn new(mode: EnforcementMode) -> Self {
         Self {
             mode,
+            #[cfg(unix)]
+            own_uid: Self::resolve_own_uid(),
         }
+    }
+
+    /// Read our own UID from `/proc/self/status` (pure Rust, no libc).
+    #[cfg(unix)]
+    fn resolve_own_uid() -> Option<u32> {
+        // Try /proc/self/status first (Linux)
+        if let Ok(status) = std::fs::read_to_string("/proc/self/status") {
+            for line in status.lines() {
+                if let Some(uid_str) = line.strip_prefix("Uid:")
+                    && let Some(real_uid) = uid_str.split_whitespace().next()
+                    && let Ok(uid) = real_uid.parse::<u32>()
+                {
+                    return Some(uid);
+                }
+            }
+        }
+        // Fallback: XDG_RUNTIME_DIR contains UID on systemd systems
+        songbird_process_env::var("XDG_RUNTIME_DIR")
+            .ok()
+            .and_then(|dir| dir.strip_prefix("/run/user/").map(String::from))
+            .and_then(|uid_str| uid_str.parse::<u32>().ok())
     }
 
     /// Create a gate from the environment (`SONGBIRD_AUTH_MODE`).
@@ -72,16 +99,42 @@ impl MethodGate {
         self.mode
     }
 
+    /// Check if the caller is a same-user local process (trusted).
+    ///
+    /// Returns `true` if the caller connected via UDS with valid peer
+    /// credentials AND runs as the same user (uid) as songBird.
+    /// Root (uid 0) is always considered trusted.
+    #[cfg(unix)]
+    fn is_trusted_local_peer(&self, caller: &CallerContext) -> bool {
+        if let Some(peer) = &caller.peer {
+            // Root is always trusted
+            if peer.uid == 0 {
+                return true;
+            }
+            // Same UID as us — trusted primal-to-primal within same ecosystem
+            if let Some(own) = self.own_uid {
+                return peer.uid == own;
+            }
+        }
+        false
+    }
+
+    #[cfg(not(unix))]
+    fn is_trusted_local_peer(&self, _caller: &CallerContext) -> bool {
+        false
+    }
+
     /// Pre-dispatch authorization check.
     ///
     /// Returns `Ok(())` if the call should proceed.
     ///
     /// Authorization order:
     /// 1. Public methods always pass.
-    /// 2. If verified claims are present, scope must cover the method.
-    /// 3. If only a raw bearer token is present (unverified), allow
+    /// 2. Trusted local peer (same uid via `SO_PEERCRED`) always passes.
+    /// 3. If verified claims are present, scope must cover the method.
+    /// 4. If only a raw bearer token is present (unverified), allow
     ///    (backward-compatible during rollout).
-    /// 4. No token → permissive logs and allows, enforced rejects.
+    /// 5. No token + different uid → permissive logs and allows, enforced rejects.
     ///
     /// # Errors
     ///
@@ -91,6 +144,11 @@ impl MethodGate {
         let level = classify_method(method);
 
         if level == MethodAccessLevel::Public {
+            return Ok(());
+        }
+
+        // Same-user local callers are trusted (primal-to-primal within ecosystem)
+        if self.is_trusted_local_peer(caller) {
             return Ok(());
         }
 
@@ -133,7 +191,7 @@ impl MethodGate {
             return Ok(());
         }
 
-        // No token at all
+        // No token + not same-uid local peer
         match self.mode {
             EnforcementMode::Permissive => {
                 tracing::warn!(
@@ -151,12 +209,12 @@ impl MethodGate {
                     caller_uid = caller.peer.as_ref().map(|p| p.uid),
                     caller_pid = caller.peer.as_ref().and_then(|p| p.pid),
                     origin = ?caller.origin,
-                    "method gate: REJECTED unauthenticated call to protected method"
+                    "method gate: REJECTED — different-uid or unknown caller without token"
                 );
                 Err(JsonRpcError {
                     code: error_codes::PERMISSION_DENIED,
                     message: format!(
-                        "permission denied: method '{method}' requires a capability token"
+                        "permission denied: method '{method}' requires same-uid peer or capability token"
                     ),
                     data: Some(serde_json::json!({ "method": method })),
                 })

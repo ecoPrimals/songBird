@@ -143,13 +143,32 @@ impl UnixPlatformIPC {
     }
 
     /// Create a listener on the native endpoint.
+    ///
+    /// Applies hardening: directory guard, symlink rejection, chmod 0600.
     pub async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<PlatformListenerImpl> {
         match endpoint {
             NativeEndpoint::UnixSocket(path) => {
                 debug!("Creating Unix listener on: {}", path.display());
 
-                // Unlink stale socket before bind (prevents EADDRINUSE after crash)
-                let _ = tokio::fs::remove_file(path).await;
+                // Directory guard: if socket path is a directory (stale state),
+                // remove before bind.
+                if path.is_dir() {
+                    tracing::warn!(
+                        path = %path.display(),
+                        "Socket path is a directory (stale state) — removing"
+                    );
+                    let _ = tokio::fs::remove_dir_all(path).await;
+                } else {
+                    let _ = tokio::fs::remove_file(path).await;
+                }
+
+                // Symlink protection: reject bind on symlink paths
+                if path.is_symlink() {
+                    return Err(IpcError::ListenerFailed(format!(
+                        "Refusing to bind on symlink (potential attack): {}",
+                        path.display()
+                    )));
+                }
 
                 let listener = TokioUnixListener::bind(path).map_err(|e| {
                     IpcError::ListenerFailed(format!(
@@ -158,6 +177,16 @@ impl UnixPlatformIPC {
                         e
                     ))
                 })?;
+
+                // Restrict socket permissions to owner-only (0o600)
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    let perms = std::fs::Permissions::from_mode(0o600);
+                    if let Err(e) = std::fs::set_permissions(path, perms) {
+                        tracing::warn!(error = %e, "Failed to chmod socket to 0600");
+                    }
+                }
 
                 info!("Unix listener created: {}", path.display());
 

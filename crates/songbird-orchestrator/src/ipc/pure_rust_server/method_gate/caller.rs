@@ -39,7 +39,7 @@ pub enum ConnectionOrigin {
 }
 
 impl CallerContext {
-    /// Create a caller context for a Unix domain socket connection.
+    /// Create a caller context for a Unix domain socket connection (no credentials).
     #[must_use]
     pub const fn from_unix() -> Self {
         Self {
@@ -47,6 +47,33 @@ impl CallerContext {
             verified_claims: None,
             peer: None,
             origin: ConnectionOrigin::Unix,
+        }
+    }
+
+    /// Extract peer credentials from a `UnixStream` via `SO_PEERCRED`.
+    ///
+    /// Falls back to credential-less context if extraction fails.
+    #[cfg(unix)]
+    #[must_use]
+    pub fn from_unix_stream(stream: &tokio::net::UnixStream) -> Self {
+        match stream.peer_cred() {
+            Ok(cred) => {
+                let peer = PeerCredentials {
+                    pid: cred.pid().map(|p| p as u32),
+                    uid: cred.uid(),
+                };
+                tracing::trace!(uid = peer.uid, pid = ?peer.pid, "UDS peer credentials extracted");
+                Self {
+                    bearer_token: None,
+                    verified_claims: None,
+                    peer: Some(peer),
+                    origin: ConnectionOrigin::Unix,
+                }
+            }
+            Err(e) => {
+                tracing::debug!(error = %e, "SO_PEERCRED extraction failed — proceeding without");
+                Self::from_unix()
+            }
         }
     }
 
