@@ -1,6 +1,6 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 14,332+ tests, 31 crates, 64+ JSON-RPC methods, inner membrane port solver (drawbridge :7780), Tower Atomic transport layer (bearDog + songBird + skunkBat), mesh.enroll BTSP-verified enrollment, 5-tier NAT traversal, cross-gate capability.call, BTSP Phase 3 encrypted framing, zero production unwraps, zero unsafe code, zero files >800L, 14 dead deps removed, ring→rustcrypto (zero C in production), pen test hardening (SO_PEERCRED + mesh validation + relay abuse prevention)"
+description = "Sovereign networking primal — 14,332+ tests, 31 crates, 64+ JSON-RPC methods, inner membrane port solver (drawbridge :7780), Tower Atomic transport layer (bearDog + songBird + skunkBat), mesh.enroll BTSP-verified enrollment, 5-tier NAT traversal, cross-gate capability.call, BTSP Phase 3 encrypted framing, zero production unwraps, zero unsafe code, zero files >800L, 24 dead deps removed, ring→rustcrypto (zero C in production), pen test hardening (SO_PEERCRED + mesh validation + relay abuse prevention), caller identity + UDS hardening, crypto composition delegation, legacy env deprecation"
 date = 2026-07-24
 
 [taxonomies]

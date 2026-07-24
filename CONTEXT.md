@@ -41,7 +41,7 @@ transport stack targeting WireGuard replacement. Every other primal and spring u
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`; Jul 21 verified); Windows cross-compile zero warnings |
 | Files >800 LOC | **0** — all production code below threshold (largest: mesh_handler/mod.rs at 746L) |
 | Unsafe blocks | 0 (`forbid(unsafe_code)` all 31 crates) |
-| C dependencies | Zero in default/production build; `ring` eliminated from production path (Wave 150x: `rustls-rustcrypto`); Bluetooth native deps only with `bluetooth` feature |
+| C dependencies | Zero in default/production build; `ring` eliminated from production path (Wave 150x: `rustls-rustcrypto`); 24 dead deps removed; `chrono` eliminated from 3 crates; Bluetooth native deps only with `bluetooth` feature |
 | Hardcoded primal names | 0 in production discovery (capability-first); all paths env-driven or XDG-compliant; zero `/tmp/` writes |
 | Resolver / DNS probes | No fixed `8.8.8.8` in production paths — netdev-based discovery |
 | Production panics/unwrap/todo | 0 unguarded; `.unwrap()` only under `#[expect(reason)]` for infallible ops |

@@ -20,6 +20,38 @@
 
 ## Recent Evolution (Wave 147f–150x)
 
+### Wave 150x — Deep Debt: Dependency Diet + Hardcoding Evolution (Jul 24 2026)
+
+**Dependency diet — 10 more dead deps removed** (total 24 dead deps removed this wave):
+- `chrono` from `songbird-canonical` (unused), `songbird-lineage-relay`, `songbird-compute-bridge`
+- `rand` from `songbird-config` (unused), `songbird-types` (replaced with `fastrand`)
+- `fastrand` from `songbird-network-federation` (unused)
+- `futures-util` from `songbird-registry` (unused)
+- `zerocopy` from `songbird-bluetooth` (unused)
+- `config` from workspace (dead)
+- `tower-http` from `songbird-orchestrator` (unused)
+- `whoami` from `songbird-cli` (replaced with `std::env`)
+
+**Feature trimming**:
+- `tower-http` workspace features: `["trace", "cors", "fs", "limit"]` → `["trace"]`
+- `tokio` `test-util` moved from production to dev-deps in `compute-bridge`
+
+**Zero-dep RFC3339 utility**: `songbird_types::defaults::time::rfc3339_now()` — pure std timestamp formatting, no chrono/time crate needed. Used to eliminate chrono from trivial crates.
+
+**Hardcoding centralization**:
+- Drawbridge default address → `DEFAULT_DRAWBRIDGE_ADDR` constant
+- Introspection `"ecoPrimal"/"biomeos"/"songbird.sock"` → `primal_names::{DEFAULT_FAMILY_ID, BIOMEOS_DIR, SELF_NAME}`
+
+**Legacy env var deprecation**:
+- ALL `BEARDOG_*`, `NESTGATE_*`, `SQUIRREL_*` env vars now emit `tracing::warn!` at runtime
+- `get_primal_endpoint(name)` marked `#[deprecated]` with runtime warning
+- IPC registry name-fallback path emits deprecation trace
+- Central catalog: `songbird_types::defaults::legacy_env`
+
+**Dead code evolution**:
+- 47 `#[allow(dead_code)]` → `#[expect(dead_code)]` (clippy fires when code gets wired)
+- ~15 remaining as `#[allow]` (items dead in lib, alive in test builds)
+
 ### Wave 150x — Caller Identity + UDS Hardening (Jul 24 2026)
 
 **P1 Caller Identity (4 findings) resolved**:
