@@ -1,8 +1,8 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave150w  
-**Date**: July 23, 2026  
+**Version**: v0.2.1-wave150x  
+**Date**: July 24, 2026  
 **Gate**: eastGate
 
 ## Current State
@@ -18,7 +18,30 @@
 | Hardcoding | 0 in production (all env-driven, capability-based) |
 | Mocks in prod | 0 (all `#[cfg(test)]` gated) |
 
-## Recent Evolution (Wave 147f–150w)
+## Recent Evolution (Wave 147f–150x)
+
+### Wave 150x — P1 Tower Hardening + Deep Debt (Jul 24 2026)
+
+**UDS Connection Pool** (`ipc_pool.rs`):
+- Pooled connections per socket path for `capability.call` dispatch
+- Eliminates per-request connect/disconnect overhead (measured in stress tests)
+- Auto-retry on stale/broken connections, idle eviction after 60s
+- Configurable: `SONGBIRD_IPC_POOL_SIZE` (default 4)
+
+**`federation.broadcast` JSON-RPC method**:
+- Broadcasts a JSON-RPC payload to all active federation peers
+- HTTP POST to each peer's best endpoint `/jsonrpc`
+- Returns per-peer delivery summary (`{delivered, failed, results}`)
+- Self-node skip, configurable `timeout_ms`
+
+**Benchmark evolution**:
+- Fixed `duration_ms: 0` truncation for sub-ms LAN transfers (`as_millis()` → `f64` + `duration_us`)
+- Added `--sustained` flag: iperf3-style continuous streaming (windowed throughput, p50/p95 per window)
+
+**Idiomatic Rust sweep**:
+- 12 `if let/else` → `Option::map_or_else` (drawbridge, discovery, ipc_registry, virtual_relay)
+- 8 `unused_async` functions annotated for interface consistency
+- Zero clippy warnings, zero fmt drift
 
 ### Wave 150w — P0 Blocker Resolution + JSON-RPC→HTTP Translation (Jul 23 2026)
 
