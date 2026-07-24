@@ -103,6 +103,49 @@ pub fn sha256_hash_sync(crypto: Option<&CryptoProvider>, data: &[u8]) -> Vec<u8>
     )
 }
 
+/// Compute BLAKE3 hash via bearDog UDS delegation (`crypto.hash.blake3`).
+///
+/// Falls back to local `blake3` crate only with `local-crypto-fallback` feature.
+/// Used by `dark_forest_beacon` once bearDog exposes `crypto.hash.blake3`.
+#[allow(dead_code, reason = "prepared for dark_forest_beacon migration to delegation")]
+pub async fn blake3_hash(crypto: Option<&CryptoProvider>, data: &[u8]) -> Vec<u8> {
+    if let Some(p) = crypto {
+        match p.call("crypto.hash.blake3", json!({ "data": BASE64.encode(data) })).await {
+            Ok(v) => {
+                if let Some(hash) = decode_hash_b64(&v) {
+                    return hash;
+                }
+            }
+            Err(e) => {
+                tracing::warn!(target: "songbird_discovery", "crypto.hash.blake3 delegation failed: {e}");
+            }
+        }
+    }
+
+    #[cfg(feature = "local-crypto-fallback")]
+    {
+        tracing::debug!(target: "songbird_discovery", "BLAKE3: using local fallback (bearDog unavailable)");
+        blake3::hash(data).as_bytes().to_vec()
+    }
+
+    #[cfg(not(feature = "local-crypto-fallback"))]
+    {
+        tracing::error!(target: "songbird_discovery", "BLAKE3: bearDog delegation failed and local-crypto-fallback disabled");
+        Vec::new()
+    }
+}
+
+/// Synchronous BLAKE3 hash — local fallback for sync contexts.
+///
+/// Used by `dark_forest_beacon::hash_capabilities` which is a sync function.
+/// When bearDog UDS delegation matures, this will attempt async delegation
+/// if a tokio runtime is available, otherwise falls back to local.
+#[cfg(feature = "local-crypto-fallback")]
+pub fn blake3_hash_sync(data: &[u8]) -> [u8; 32] {
+    let hash = blake3::hash(data);
+    *hash.as_bytes()
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]
@@ -164,5 +207,33 @@ mod tests {
         let a = sha256_hash(None, b"alpha").await;
         let b = sha256_hash(None, b"beta").await;
         assert_ne!(a, b);
+    }
+
+    #[tokio::test]
+    async fn blake3_hash_produces_32_byte_digest() {
+        let hash = blake3_hash(None, b"hello beacon").await;
+        assert_eq!(hash.len(), 32);
+    }
+
+    #[tokio::test]
+    async fn blake3_hash_is_deterministic() {
+        let a = blake3_hash(None, b"deterministic").await;
+        let b = blake3_hash(None, b"deterministic").await;
+        assert_eq!(a, b);
+    }
+
+    #[tokio::test]
+    async fn blake3_hash_different_inputs_differ() {
+        let a = blake3_hash(None, b"alpha").await;
+        let b = blake3_hash(None, b"beta").await;
+        assert_ne!(a, b);
+    }
+
+    #[tokio::test]
+    async fn blake3_hash_matches_local_crate() {
+        let data = b"parity check";
+        let delegated = blake3_hash(None, data).await;
+        let local = blake3::hash(data).as_bytes().to_vec();
+        assert_eq!(delegated, local);
     }
 }

@@ -349,22 +349,26 @@ impl BeaconPayload {
     /// ```
     #[must_use]
     pub fn hash_capabilities(capabilities: &[String]) -> [u8; 32] {
-        use blake3::Hasher;
-
         // Sort for deterministic hashing
         let mut sorted = capabilities.to_vec();
         sorted.sort();
 
-        let mut hasher = Hasher::new();
+        let mut data = Vec::new();
         for cap in sorted {
-            hasher.update(cap.as_bytes());
-            hasher.update(b"|"); // Separator to prevent ambiguity
+            data.extend_from_slice(cap.as_bytes());
+            data.extend_from_slice(b"|");
         }
 
-        let hash = hasher.finalize();
-        let mut result = [0u8; 32];
-        result.copy_from_slice(hash.as_bytes());
-        result
+        #[cfg(feature = "local-crypto-fallback")]
+        {
+            crate::crypto_helpers::blake3_hash_sync(&data)
+        }
+
+        #[cfg(not(feature = "local-crypto-fallback"))]
+        {
+            tracing::error!(target: "songbird_discovery", "hash_capabilities requires local-crypto-fallback or async bearDog path");
+            [0u8; 32]
+        }
     }
 
     /// Create new beacon payload with current timestamp
