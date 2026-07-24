@@ -79,6 +79,7 @@ fn test_environment_detection() {
 }
 
 #[test]
+#[allow(deprecated, reason = "exercises deprecated name-based endpoint resolution")]
 fn test_primal_endpoint_generation() {
     let endpoint = get_primal_endpoint("test_primal");
     assert!(endpoint.starts_with("http://") || endpoint.starts_with("https://"));

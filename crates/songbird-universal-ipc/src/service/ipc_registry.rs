@@ -314,6 +314,10 @@ impl IpcServiceHandler {
             if let Some(found) = registry.resolve_by_capability(capability).await {
                 found
             } else if let Some(entry) = registry.get_service(capability).await {
+                tracing::warn!(
+                    capability = %capability,
+                    "Name-based fallback in ipc.resolve is deprecated; resolve by capability, not primal name"
+                );
                 debug!(
                     "Capability '{capability}' not found, but matched as primal name (capability-first fallback)"
                 );

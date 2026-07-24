@@ -66,7 +66,9 @@ pub use network_extras::{
     protocol_port_mappings,
 };
 pub use paths::{get_cache_dir, get_config_dir, get_data_dir, get_log_dir, get_temp_dir};
-pub use primal_endpoints::{get_configured_primal_names, get_primal_endpoint};
+#[allow(deprecated, reason = "re-exporting deprecated shim for backward compatibility")]
+pub use primal_endpoints::get_primal_endpoint;
+pub use primal_endpoints::get_configured_primal_names;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]

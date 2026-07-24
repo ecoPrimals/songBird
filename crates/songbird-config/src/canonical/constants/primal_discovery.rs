@@ -21,8 +21,17 @@ use super::{
 // ==================== PRIMAL CONFIGURATION ====================
 
 /// Universal primal endpoint discovery - works with any primal name
+#[deprecated(
+    since = "0.2.1",
+    note = "use capability-based discovery via CapabilityEndpointResolver instead"
+)]
 #[must_use]
 pub fn get_primal_endpoint(primal_name: &str) -> String {
+    tracing::warn!(
+        primal_name = %primal_name,
+        "get_primal_endpoint is deprecated; use capability-based discovery via CapabilityEndpointResolver instead"
+    );
+
     get_primal_endpoint_with(primal_name, &read_process_env)
 }
 

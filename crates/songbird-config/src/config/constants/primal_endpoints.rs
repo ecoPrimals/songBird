@@ -9,8 +9,18 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 /// Universal primal endpoint discovery - works with any primal name
+#[deprecated(
+    since = "0.2.1",
+    note = "use capability-based discovery via CapabilityEndpointResolver instead"
+)]
 #[must_use]
+#[allow(deprecated, reason = "legacy shim delegates to sibling helpers in deprecated module")]
 pub fn get_primal_endpoint(primal_name: &str) -> String {
+    tracing::warn!(
+        primal_name = %primal_name,
+        "get_primal_endpoint is deprecated; use capability-based discovery via CapabilityEndpointResolver instead"
+    );
+
     // First try primal-specific environment variable
     let env_var = format!("{}_ENDPOINT", primal_name.to_uppercase());
     if let Ok(endpoint) = SafeEnv::get(&env_var) {
@@ -118,7 +128,11 @@ pub fn get_configured_primal_names() -> Vec<String> {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, reason = "test assertions")]
+#[allow(
+    clippy::unwrap_used,
+    deprecated,
+    reason = "test assertions; exercises deprecated name-based endpoint resolution"
+)]
 mod tests {
     use super::*;
     use songbird_test_utils::ScopedEnv;

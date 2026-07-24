@@ -95,7 +95,6 @@ pub use constants::{
     // Port configuration
     get_port_range_start,
     // Primal configuration
-    get_primal_endpoint,
     get_temp_dir,
     get_worker_threads,
     // Environment checks
@@ -105,6 +104,9 @@ pub use constants::{
     // Protocol configuration
     protocol_port_mappings,
 };
+
+#[allow(deprecated, reason = "re-exporting deprecated shim for backward compatibility")]
+pub use constants::get_primal_endpoint;
 
 // Re-export all canonical types
 pub use discovery::*;
