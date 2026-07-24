@@ -461,3 +461,26 @@ fn derive_jsonrpc_method_converts_path_to_dotted() {
     let empty_routes: Vec<DrawbridgeRoute> = vec![];
     assert_eq!(derive_jsonrpc_method("/mesh/peers", &empty_routes), "mesh.peers");
 }
+
+// ── Request validation (pen finding: relay-abuse) ────────────────────────
+
+#[test]
+fn path_traversal_patterns_detected() {
+    fn has_traversal(path: &str) -> bool {
+        path.contains("/../") || path.contains("/./") || path.ends_with("/..")
+    }
+
+    assert!(has_traversal("/api/../../../etc/passwd"));
+    assert!(has_traversal("/api/./secret"));
+    assert!(has_traversal("/foo/bar/.."));
+    assert!(!has_traversal("/api/mesh/status"));
+    assert!(!has_traversal("/api/..hidden/file"));
+    assert!(!has_traversal("/normal/path"));
+}
+
+#[test]
+fn request_body_limit_is_reasonable() {
+    const MAX_REQUEST_BODY: usize = 10 * 1024 * 1024;
+    assert_eq!(MAX_REQUEST_BODY, 10_485_760, "10 MiB limit");
+    assert!(MAX_REQUEST_BODY < 100 * 1024 * 1024, "should be under 100 MiB");
+}

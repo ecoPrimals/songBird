@@ -51,16 +51,18 @@ async fn unknown_wire_method_returns_parse_error() {
 #[tokio::test]
 async fn parsed_but_unhandled_method_returns_unknown_variant_error() {
     let h = ipc_handler();
-    for method in [
-        "songbird.federation.join",
-        "storage.get",
-        "primal.register",
-        "discovery.list_peers",
-        "ipc.find_capability",
-    ] {
+    for method in ["storage.get", "primal.register", "discovery.list_peers", "ipc.find_capability"]
+    {
         let err = h.handle(method, json!({})).await.expect_err(method);
         assert_unknown_dispatched_variant(&err);
     }
+}
+
+#[tokio::test]
+async fn federation_join_returns_orchestrator_level_error() {
+    let h = ipc_handler();
+    let err = h.handle("songbird.federation.join", json!({})).await.expect_err("federation.join");
+    assert!(err.contains("orchestrator level"), "expected orchestrator-level error, got: {err}");
 }
 
 #[tokio::test]
@@ -527,4 +529,61 @@ async fn capability_call_with_routing_local_skips_remote() {
         .expect_err("routing=local, no provider");
 
     assert!(err.contains("routing=local"), "unexpected error: {err}");
+}
+
+#[tokio::test]
+async fn capability_call_rejects_invalid_routing() {
+    let h = ipc_handler();
+
+    let err = h
+        .handle(
+            "capability.call",
+            json!({
+                "capability": "test",
+                "operation": "test.op",
+                "routing": "remote_only"
+            }),
+        )
+        .await
+        .expect_err("invalid routing should fail");
+
+    assert!(err.contains("Invalid routing"), "unexpected error: {err}");
+}
+
+#[tokio::test]
+async fn capability_call_rejects_empty_capability() {
+    let h = ipc_handler();
+
+    let err = h
+        .handle(
+            "capability.call",
+            json!({
+                "capability": "",
+                "operation": "test.op",
+                "routing": "local"
+            }),
+        )
+        .await
+        .expect_err("empty capability should fail");
+
+    assert!(err.contains("Invalid capability name"), "unexpected error: {err}");
+}
+
+#[tokio::test]
+async fn capability_call_rejects_empty_operation() {
+    let h = ipc_handler();
+
+    let err = h
+        .handle(
+            "capability.call",
+            json!({
+                "capability": "valid",
+                "operation": "",
+                "routing": "local"
+            }),
+        )
+        .await
+        .expect_err("empty operation should fail");
+
+    assert!(err.contains("Invalid operation name"), "unexpected error: {err}");
 }

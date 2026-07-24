@@ -195,9 +195,20 @@ impl MeshHandler {
     ///
     /// Called by remote gates when their primals register capabilities.
     /// Stores the announced capabilities so `discovery.peers` can return them.
+    ///
+    /// Validation:
+    /// - Rejects announcements from unknown peers (mesh-poison prevention)
+    /// - Limits capability count per peer (resource exhaustion prevention)
+    /// - Validates capability name format (no control chars, max length)
+    /// - Rate-limits per peer (flood prevention)
     pub async fn handle_capabilities_announce(&self, params: Value) -> Result<Value, String> {
         let node_id =
             params.get("node_id").and_then(Value::as_str).ok_or("Missing node_id")?.to_string();
+
+        // Validate node_id format: non-empty, reasonable length, no control characters
+        if node_id.is_empty() || node_id.len() > 128 || node_id.chars().any(char::is_control) {
+            return Err(String::from("Invalid node_id format"));
+        }
 
         // Only accept announcements from peers we know about in the mesh.
         // Prevents untrusted callers from polluting discovery.peers.
@@ -215,11 +226,37 @@ impl MeshHandler {
             return Err(format!("Rejected capability announce from unknown peer '{node_id}'"));
         }
 
+        // Rate limiting: reject if last announcement was within the rate limit window
+        {
+            let caps = self.peer_capabilities.read().await;
+            if let Some(existing) = caps.get(&node_id)
+                && existing.last_seen.elapsed() < self.min_announce_interval
+            {
+                return Err(format!("Rate limited: peer '{node_id}' announced too recently"));
+            }
+        }
+
         let capabilities: Vec<String> = params
             .get("capabilities")
             .and_then(Value::as_array)
             .map(|a| a.iter().filter_map(Value::as_str).map(String::from).collect())
             .unwrap_or_default();
+
+        // Validate capability list: max 64 capabilities, each max 128 chars, no control chars
+        const MAX_CAPABILITIES: usize = 64;
+        const MAX_CAP_NAME_LEN: usize = 128;
+
+        if capabilities.len() > MAX_CAPABILITIES {
+            return Err(format!(
+                "Too many capabilities ({}, max {MAX_CAPABILITIES})",
+                capabilities.len()
+            ));
+        }
+        for cap in &capabilities {
+            if cap.is_empty() || cap.len() > MAX_CAP_NAME_LEN || cap.chars().any(char::is_control) {
+                return Err(format!("Invalid capability name: '{cap}'"));
+            }
+        }
 
         let version = params.get("version").and_then(Value::as_str).map(String::from);
 

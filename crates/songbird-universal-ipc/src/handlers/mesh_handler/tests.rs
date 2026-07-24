@@ -542,7 +542,8 @@ async fn capabilities_announce_stores_remote_peer_caps() {
 
 #[tokio::test]
 async fn capabilities_announce_overwrites_on_update() {
-    let handler = MeshHandler::new();
+    let mut handler = MeshHandler::new();
+    handler.min_announce_interval = std::time::Duration::ZERO;
 
     handler
         .handle_capabilities_announce(serde_json::json!({
@@ -562,6 +563,56 @@ async fn capabilities_announce_overwrites_on_update() {
 
     let caps = handler.get_peer_capabilities("gate-a").await;
     assert_eq!(caps, vec!["new-cap-1", "new-cap-2"]);
+}
+
+#[tokio::test]
+async fn capabilities_announce_rate_limited() {
+    let mut handler = MeshHandler::new();
+    handler.min_announce_interval = std::time::Duration::from_secs(60);
+
+    handler
+        .handle_capabilities_announce(serde_json::json!({
+            "node_id": "flood-gate",
+            "capabilities": ["cap1"]
+        }))
+        .await
+        .expect("first should succeed");
+
+    let err = handler
+        .handle_capabilities_announce(serde_json::json!({
+            "node_id": "flood-gate",
+            "capabilities": ["cap2"]
+        }))
+        .await
+        .expect_err("second should be rate limited");
+
+    assert!(err.contains("Rate limited"), "expected rate limit error, got: {err}");
+}
+
+#[tokio::test]
+async fn capabilities_announce_validates_input() {
+    let handler = MeshHandler::new();
+
+    // Empty node_id
+    let err = handler
+        .handle_capabilities_announce(serde_json::json!({
+            "node_id": "",
+            "capabilities": ["cap"]
+        }))
+        .await
+        .expect_err("empty node_id should fail");
+    assert!(err.contains("Invalid node_id"), "got: {err}");
+
+    // Too many capabilities
+    let big_caps: Vec<String> = (0..65).map(|i| format!("cap-{i}")).collect();
+    let err = handler
+        .handle_capabilities_announce(serde_json::json!({
+            "node_id": "valid-gate",
+            "capabilities": big_caps
+        }))
+        .await
+        .expect_err("65 capabilities should fail");
+    assert!(err.contains("Too many capabilities"), "got: {err}");
 }
 
 #[tokio::test]

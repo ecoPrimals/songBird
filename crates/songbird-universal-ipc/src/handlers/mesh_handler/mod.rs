@@ -76,12 +76,19 @@ pub struct MeshHandler {
     pending_announces: Arc<RwLock<Vec<PendingAnnounce>>>,
     /// Per-peer metadata: version, cross-gate reachability reports (for partition detection).
     pub(crate) peer_metadata: Arc<RwLock<HashMap<String, PeerMetadata>>>,
+    /// Minimum interval between capability announcements from the same peer (flood prevention).
+    pub(crate) min_announce_interval: Duration,
 }
 
 impl MeshHandler {
     /// Create a new mesh handler (uninitialized - call `initialize` first)
     #[must_use]
     pub fn new() -> Self {
+        let min_announce_interval = songbird_process_env::var("SONGBIRD_ANNOUNCE_RATE_LIMIT_MS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .map_or(Duration::from_secs(2), Duration::from_millis);
+
         Self {
             mesh: Arc::new(RwLock::new(None::<Arc<BeaconMesh>>)),
             start_time: Instant::now(),
@@ -89,6 +96,7 @@ impl MeshHandler {
             peer_capabilities: Arc::new(RwLock::new(HashMap::new())),
             pending_announces: Arc::new(RwLock::new(Vec::new())),
             peer_metadata: Arc::new(RwLock::new(HashMap::new())),
+            min_announce_interval,
         }
     }
 
@@ -106,6 +114,7 @@ impl MeshHandler {
             peer_capabilities: Arc::new(RwLock::new(HashMap::new())),
             pending_announces: Arc::new(RwLock::new(Vec::new())),
             peer_metadata: Arc::new(RwLock::new(HashMap::new())),
+            min_announce_interval: Duration::from_secs(2),
         }
     }
 

@@ -16,7 +16,7 @@ use tokio::sync::RwLock;
 
 use super::ServerArgs;
 use super::ipc_session::handle_connection;
-use crate::ipc::pure_rust_server::method_gate::{CallerContext, MethodGate};
+use crate::ipc::pure_rust_server::method_gate::{CallerContext, MethodGate, PeerCredentials};
 
 pub(super) static BIN_GATE: std::sync::LazyLock<MethodGate> =
     std::sync::LazyLock::new(MethodGate::from_env);
@@ -345,13 +345,12 @@ async fn start_ipc_server(
     let listener = tokio::net::UnixListener::bind(socket_path)
         .map_err(|e| anyhow::anyhow!("Failed to bind to {socket_path}: {e}"))?;
 
-    let uds_caller = CallerContext::from_unix();
     loop {
         match listener.accept().await {
             Ok((stream, _)) => {
+                let caller = extract_unix_caller(&stream);
                 let handler = Arc::clone(&shared_handler);
                 let sec = Arc::clone(&security_client);
-                let caller = uds_caller.clone();
                 tokio::spawn(async move {
                     handle_connection(stream, handler, sec, "IPC", &caller).await;
                 });
@@ -420,6 +419,45 @@ fn parse_bind_flag(value: &str) -> (&str, Option<u16>) {
             }
         }
         None => (value, None),
+    }
+}
+
+/// Extract peer credentials from a Unix domain socket connection via `SO_PEERCRED`.
+///
+/// Provides caller identity (uid, pid) for authorization decisions.
+/// Falls back to a credential-less `CallerContext::from_unix()` if extraction fails
+/// (e.g. on non-Linux platforms or kernel edge cases).
+fn extract_unix_caller(stream: &tokio::net::UnixStream) -> CallerContext {
+    #[cfg(unix)]
+    {
+        match stream.peer_cred() {
+            Ok(cred) => {
+                let peer = PeerCredentials {
+                    pid: cred.pid().map(|p| p as u32),
+                    uid: cred.uid(),
+                };
+                tracing::trace!(
+                    uid = peer.uid,
+                    pid = ?peer.pid,
+                    "UDS peer credentials extracted"
+                );
+                CallerContext {
+                    bearer_token: None,
+                    verified_claims: None,
+                    peer: Some(peer),
+                    origin: crate::ipc::pure_rust_server::method_gate::ConnectionOrigin::Unix,
+                }
+            }
+            Err(e) => {
+                tracing::debug!(error = %e, "Failed to extract peer credentials — proceeding without");
+                CallerContext::from_unix()
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = stream;
+        CallerContext::from_unix()
     }
 }
 

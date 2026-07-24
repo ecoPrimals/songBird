@@ -109,12 +109,34 @@ impl IpcServiceHandler {
 
     /// Handle `capability.call` — cross-gate capability dispatch.
     ///
-    /// 1. Resolves the capability to a local provider (via registry)
-    /// 2. If local: connects to the provider's UDS socket and forwards the operation
-    /// 3. If not local and routing is `"any"`: attempts remote dispatch via mesh peer
+    /// 1. Validates routing field (must be `"local"` or `"any"`)
+    /// 2. Resolves the capability to a local provider (via registry)
+    /// 3. If local: connects to the provider's UDS socket and forwards the operation
+    /// 4. If not local and routing is `"any"`: attempts remote dispatch via mesh peer
     pub(super) async fn handle_capability_call(&self, params: Value) -> Result<Value, String> {
         let call: CapabilityCallParams =
             serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
+
+        // Routing validation: only explicit values accepted (pen finding: capability-escalation)
+        if call.routing != "local" && call.routing != "any" {
+            return Err(format!("Invalid routing '{}': must be 'local' or 'any'", call.routing));
+        }
+
+        // Capability name validation: prevent injection via malformed capability names
+        if call.capability.is_empty()
+            || call.capability.len() > 128
+            || call.capability.chars().any(char::is_control)
+        {
+            return Err(String::from("Invalid capability name"));
+        }
+
+        // Operation name validation
+        if call.operation.is_empty()
+            || call.operation.len() > 256
+            || call.operation.chars().any(char::is_control)
+        {
+            return Err(String::from("Invalid operation name"));
+        }
 
         debug!(
             capability = %call.capability,
@@ -148,60 +170,9 @@ impl IpcServiceHandler {
         }
         drop(registry);
 
-        // Fallback: check if the capability is served by the proxy router (drawbridge weak bond).
-        // This covers capabilities registered via SONGBIRD_PROXY_ROUTES or SONGBIRD_DRAWBRIDGE_ROUTES
-        // that have no dedicated UDS provider.
+        // Fallback: drawbridge proxy route or remote dispatch
         if let Some(route) = self.capability_router.route(&call.capability) {
-            debug!(
-                capability = %call.capability,
-                backend = %route.base_url,
-                "capability.call → drawbridge proxy route"
-            );
-            let path = call.params.get("path").and_then(|v| v.as_str()).unwrap_or("");
-            let method = call.params.get("method").and_then(|v| v.as_str()).unwrap_or("POST");
-            let body = call.params.get("body").and_then(|v| v.as_str()).map(String::from);
-            let headers: std::collections::HashMap<String, String> = call
-                .params
-                .get("headers")
-                .and_then(|v| serde_json::from_value(v.clone()).ok())
-                .unwrap_or_default();
-
-            let url = if path.is_empty() {
-                route.base_url.clone()
-            } else {
-                format!("{}/{}", route.base_url.trim_end_matches('/'), path.trim_start_matches('/'))
-            };
-
-            let mut merged_headers = route.default_headers.clone();
-            merged_headers.extend(headers);
-
-            if let Some(api_key) = &route.api_key_env
-                && let Ok(key) = songbird_process_env::var(api_key)
-            {
-                merged_headers.insert(String::from("Authorization"), format!("Bearer {key}"));
-            }
-
-            let request_params = crate::handlers::http_handler::HttpRequestParams {
-                url,
-                method: method.to_string(),
-                headers: merged_headers,
-                body,
-                timeout_ms: route.timeout_ms,
-            };
-
-            let result = self
-                .http_handler
-                .handle_request(request_params)
-                .await
-                .map_err(|e| format!("Drawbridge proxy failed: {e}"))?;
-
-            let response = CapabilityCallResult {
-                provider: String::from("drawbridge"),
-                gate: String::from("local"),
-                result: serde_json::to_value(result)
-                    .map_err(|e| format!("Serialization error: {e}"))?,
-            };
-            return serde_json::to_value(response).map_err(|e| format!("Serialization error: {e}"));
+            return self.forward_via_drawbridge_route(&call, route).await;
         }
 
         if call.routing == "local" {
@@ -212,6 +183,64 @@ impl IpcServiceHandler {
         }
 
         self.forward_to_remote_gate(&call).await
+    }
+
+    /// Forward a capability call through a drawbridge proxy route (HTTP backend).
+    async fn forward_via_drawbridge_route(
+        &self,
+        call: &CapabilityCallParams,
+        route: crate::service::ProxyRoute,
+    ) -> Result<Value, String> {
+        debug!(
+            capability = %call.capability,
+            backend = %route.base_url,
+            "capability.call → drawbridge proxy route"
+        );
+        let path = call.params.get("path").and_then(|v| v.as_str()).unwrap_or("");
+        let method = call.params.get("method").and_then(|v| v.as_str()).unwrap_or("POST");
+        let body = call.params.get("body").and_then(|v| v.as_str()).map(String::from);
+        let headers: std::collections::HashMap<String, String> = call
+            .params
+            .get("headers")
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .unwrap_or_default();
+
+        let url = if path.is_empty() {
+            route.base_url.clone()
+        } else {
+            format!("{}/{}", route.base_url.trim_end_matches('/'), path.trim_start_matches('/'))
+        };
+
+        let mut merged_headers = route.default_headers.clone();
+        merged_headers.extend(headers);
+
+        if let Some(api_key) = &route.api_key_env
+            && let Ok(key) = songbird_process_env::var(api_key)
+        {
+            merged_headers.insert(String::from("Authorization"), format!("Bearer {key}"));
+        }
+
+        let request_params = crate::handlers::http_handler::HttpRequestParams {
+            url,
+            method: method.to_string(),
+            headers: merged_headers,
+            body,
+            timeout_ms: route.timeout_ms,
+        };
+
+        let result = self
+            .http_handler
+            .handle_request(request_params)
+            .await
+            .map_err(|e| format!("Drawbridge proxy failed: {e}"))?;
+
+        let response = CapabilityCallResult {
+            provider: String::from("drawbridge"),
+            gate: String::from("local"),
+            result: serde_json::to_value(result)
+                .map_err(|e| format!("Serialization error: {e}"))?,
+        };
+        serde_json::to_value(response).map_err(|e| format!("Serialization error: {e}"))
     }
 
     /// Forward an operation to a local provider via its IPC socket.

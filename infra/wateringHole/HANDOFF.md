@@ -10,7 +10,7 @@
 | Metric | Status |
 |--------|--------|
 | Clippy | Zero warnings (pedantic + nursery, `-D warnings`); `doc_markdown` + `uninlined_format_args` now enforced |
-| Tests | 14,322+ pass, 1 known flaky (mesh persistence test-parallelism) |
+| Tests | 14,332+ pass, 1 known flaky (mesh persistence test-parallelism) |
 | Unsafe | 0 (`forbid(unsafe_code)` all 31 crates) |
 | Production unwraps | 0 (config.rs refactored to `fmt::Result`, RwLock sites `#[expect]`-annotated) |
 | Production stubs | 0 (Wave 137: last fake-data stub evolved to real probes) |
@@ -20,7 +20,35 @@
 
 ## Recent Evolution (Wave 147f–150x)
 
-### Wave 150x — P1 Tower Hardening + Deep Debt (Jul 24 2026)
+### Wave 150x — Pen Test Security Hardening (Jul 24 2026)
+
+**SO_PEERCRED Peer Verification** (pen finding: UDS-spoof):
+- IPC accept now extracts caller uid/pid via `SO_PEERCRED` on every connection
+- `CallerContext.peer` populated with `PeerCredentials { uid, pid }` before dispatch
+- Enables per-caller authorization decisions in downstream handlers
+- Graceful fallback on non-Unix platforms (credential-less context)
+
+**Mesh Announcement Validation** (pen finding: mesh-poison):
+- Rate limiting: minimum 2s between announces per peer (configurable via `SONGBIRD_ANNOUNCE_RATE_LIMIT_MS`)
+- `node_id` format validation: max 128 chars, no control characters
+- Capability list validation: max 64 capabilities per announce, each max 128 chars, no control chars
+- Pre-existing: unknown peer rejection when mesh is active
+
+**`capability.call` Input Validation** (pen finding: capability-escalation):
+- Routing whitelist: only `"local"` or `"any"` accepted (rejects arbitrary values)
+- Capability name validation: non-empty, max 128 chars, no control characters
+- Operation name validation: non-empty, max 256 chars, no control characters
+- Drawbridge proxy route extraction into `forward_via_drawbridge_route` (function size compliance)
+
+**Drawbridge Relay Abuse Prevention** (pen finding: relay-abuse):
+- Request body limit: 10 MiB max (HTTP 413 on exceed)
+- Header count limit: 128 max (HTTP 431 on exceed)
+- URI length limit: 8192 bytes (HTTP 414 on exceed)
+- Path traversal rejection: blocks `/../`, `/./`, trailing `/..` patterns
+
+**Test fix**: `federation.join` dispatch test updated (method now explicitly handled, not "unknown variant")
+
+### Wave 150x — P1 Tower Hardening + Deep Debt (Jul 24 2026, previous session)
 
 **UDS Connection Pool** (`ipc_pool.rs`):
 - Pooled connections per socket path for `capability.call` dispatch

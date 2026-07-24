@@ -138,8 +138,19 @@ async fn handle_drawbridge_connection(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut reader = BufReader::new(stream);
 
+    const MAX_REQUEST_BODY: usize = 10 * 1024 * 1024; // 10 MiB
+    const MAX_REQUEST_LINE: usize = 8192;
+    const MAX_HEADER_COUNT: usize = 128;
+
     let mut request_line = String::new();
     reader.read_line(&mut request_line).await?;
+
+    if request_line.len() > MAX_REQUEST_LINE {
+        let stream = reader.into_inner();
+        let mut stream = stream;
+        stream.write_all(b"HTTP/1.1 414 URI Too Long\r\nContent-Length: 0\r\n\r\n").await?;
+        return Ok(());
+    }
 
     let parts: Vec<&str> = request_line.split_whitespace().collect();
     if parts.len() < 3 {
@@ -153,6 +164,14 @@ async fn handle_drawbridge_connection(
     let path = parts[1];
     let _ = parts[2];
 
+    // Path traversal prevention: reject attempts to escape the routing prefix
+    if path.contains("/../") || path.contains("/./") || path.ends_with("/..") {
+        let stream = reader.into_inner();
+        let mut stream = stream;
+        stream.write_all(b"HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n").await?;
+        return Ok(());
+    }
+
     let mut headers: Vec<(String, String)> = Vec::new();
     let mut host = String::new();
     let mut content_length: usize = 0;
@@ -164,6 +183,16 @@ async fn handle_drawbridge_connection(
         if header_line.trim().is_empty() {
             break;
         }
+        if headers.len() >= MAX_HEADER_COUNT {
+            let stream = reader.into_inner();
+            let mut stream = stream;
+            stream
+                .write_all(
+                    b"HTTP/1.1 431 Request Header Fields Too Large\r\nContent-Length: 0\r\n\r\n",
+                )
+                .await?;
+            return Ok(());
+        }
         if let Some((name, value)) = header_line.split_once(':') {
             let name_trimmed = name.trim();
             let value = value.trim().to_string();
@@ -174,6 +203,13 @@ async fn handle_drawbridge_connection(
             }
             headers.push((name_trimmed.to_string(), value));
         }
+    }
+
+    if content_length > MAX_REQUEST_BODY {
+        let stream = reader.into_inner();
+        let mut stream = stream;
+        stream.write_all(b"HTTP/1.1 413 Payload Too Large\r\nContent-Length: 0\r\n\r\n").await?;
+        return Ok(());
     }
 
     let body = if content_length > 0 {
