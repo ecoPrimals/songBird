@@ -20,6 +20,22 @@
 
 ## Recent Evolution (Wave 147f–150x)
 
+### Wave 150x — Caller Identity + UDS Hardening (Jul 24 2026)
+
+**P1 Caller Identity (4 findings) resolved**:
+- `SO_PEERCRED` extraction on ALL production UDS accepts (primary `UnixSocketServer` + bin_interface)
+- `CallerContext::from_unix_stream()` — pure Rust credential extraction before stream split
+- uid-based authorization in `MethodGate`: same-uid local peers = trusted (bypass token check);
+  different-uid peers require capability token in `Enforced` mode
+- Own UID resolved from `/proc/self/status` (pure Rust, no libc)
+
+**P1 UDS Hardening (5 findings) resolved**:
+- Directory guard: detect stale directory at socket path → `remove_dir_all` before bind
+- Symlink rejection: refuse to bind over symlinks (prevents path hijack attacks)
+- `chmod 0o600` post-bind: restrict socket to owner-only (multi-user protection)
+- Concurrency semaphore: 256 max simultaneous UDS connections (`SONGBIRD_MAX_UDS_CONNECTIONS`)
+- Applied to both orchestrator `UnixSocketServer` AND universal-ipc platform layer
+
 ### Wave 150x — Crypto Composition Evolution (Jul 24 2026)
 
 **P1 Finding resolved**: "Crypto Composition Divergence" — songBird embedded `sha2`/`hmac`
