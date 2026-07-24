@@ -9,6 +9,7 @@
 pub mod beacon;
 pub mod bonds;
 pub mod hosts;
+pub mod legacy_env;
 pub mod network;
 pub mod paths;
 pub mod ports;

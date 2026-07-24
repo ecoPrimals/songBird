@@ -23,9 +23,9 @@ pub use LoadBalancingAlgorithm as LoadBalancingStrategy;
 /// **ZERO-COPY**: Config is shared via Arc to avoid clones during request routing (hot path).
 #[derive(Debug, Clone)]
 pub struct LoadBalancer {
-    #[allow(dead_code, reason = "retained for routing integration; hot path may read later")]
+    #[expect(dead_code, reason = "retained for routing integration; hot path may read later")]
     config: Arc<CanonicalLoadBalancerConfig>,
-    #[allow(dead_code, reason = "retained for algorithm dispatch when balancer is fully wired")]
+    #[expect(dead_code, reason = "retained for algorithm dispatch when balancer is fully wired")]
     strategy: LoadBalancingAlgorithm,
 }
 

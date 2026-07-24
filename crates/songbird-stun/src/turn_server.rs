@@ -98,7 +98,7 @@ impl CredentialStore for StaticCredentialStore {
 
 /// A single TURN allocation.
 #[derive(Debug)]
-#[allow(dead_code, reason = "fields model RFC 5766 state; client_addr/relay_addr for diagnostics")]
+#[expect(dead_code, reason = "fields model RFC 5766 state; client_addr/relay_addr for diagnostics")]
 struct Allocation {
     username: String,
     client_addr: SocketAddr,

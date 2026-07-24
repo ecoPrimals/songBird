@@ -75,7 +75,7 @@ impl JsonRpcRequestWire<'_> {
 /// Client response line: borrows error messages from the read buffer when possible.
 #[derive(Debug, Deserialize)]
 pub struct JsonRpcResponseWire<'a> {
-    #[allow(dead_code, reason = "envelope field; validated implicitly")]
+    #[expect(dead_code, reason = "envelope field; validated implicitly")]
     #[serde(borrow)]
     pub jsonrpc: Cow<'a, str>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -99,7 +99,7 @@ pub struct JsonRpcErrorWire<'a> {
     pub code: i32,
     #[serde(borrow)]
     pub message: Cow<'a, str>,
-    #[allow(dead_code, reason = "optional JSON-RPC error extension object")]
+    #[expect(dead_code, reason = "optional JSON-RPC error extension object")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
 }

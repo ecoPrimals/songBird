@@ -37,7 +37,7 @@ pub struct DynamicPluginRegistry {
         reason = "populated by register(); topological sort used by validate_composition()"
     )]
     requirement_graph: Arc<RwLock<HashMap<String, Vec<String>>>>,
-    #[allow(dead_code, reason = "tracks global health; consumed by future lifecycle.health API")]
+    #[expect(dead_code, reason = "tracks global health; consumed by future lifecycle.health API")]
     system_health: Arc<RwLock<SystemHealth>>,
 }
 

@@ -75,6 +75,7 @@ where
     }
     let override_var = format!("{}_SOCKET", primal_name.to_uppercase().replace('-', "_"));
     if let Ok(path) = env_reader(&override_var) {
+        songbird_types::defaults::legacy_env::warn_if_legacy_primal_env(&override_var);
         return PathBuf::from(path);
     }
 

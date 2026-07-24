@@ -18,7 +18,7 @@ use uuid;
 /// Zero-touch deployment command
 #[derive(Debug)]
 pub struct ZeroTouchCommand {
-    #[allow(dead_code, reason = "state held for multi-phase zero-touch deployment execution")]
+    #[expect(dead_code, reason = "state held for multi-phase zero-touch deployment execution")]
     deployment: ZeroTouchDeployment,
 }
 impl Default for ZeroTouchCommand {

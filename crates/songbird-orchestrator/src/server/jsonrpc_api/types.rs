@@ -60,7 +60,6 @@ pub struct JsonRpcError {
 }
 
 /// Standard JSON-RPC error codes
-#[allow(dead_code, reason = "JSON-RPC error constructors and codes reserved for API completeness")]
 impl JsonRpcError {
     pub const PARSE_ERROR: i32 = -32700;
     pub const INVALID_REQUEST: i32 = -32600;

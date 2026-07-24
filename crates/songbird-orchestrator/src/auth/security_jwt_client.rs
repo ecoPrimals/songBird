@@ -62,7 +62,7 @@ struct JsonRpcError {
 #[derive(Debug, Deserialize)]
 struct JwtSecretResult {
     secret: String,
-    #[allow(dead_code, reason = "deserialized from provider response; logged for audit trail")]
+    #[expect(dead_code, reason = "deserialized from provider response; logged for audit trail")]
     purpose: String,
     strength: String,
     byte_length: usize,

@@ -31,7 +31,7 @@ pub struct EnhancedCapabilityRouter {
     federation_state: Arc<FederationState>,
 
     /// Legacy federated service registry
-    #[allow(dead_code, reason = "retained for federation registry integration paths")]
+    #[expect(dead_code, reason = "retained for federation registry integration paths")]
     federated_service_registry: Arc<FederatedServiceRegistry>,
 
     /// Capability endpoint resolver

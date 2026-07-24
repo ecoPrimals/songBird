@@ -26,10 +26,8 @@ pub struct FederationAppState {
 #[derive(Debug, Deserialize)]
 pub struct HeartbeatRequest {
     pub node_id: String,
-    #[allow(dead_code, reason = "heartbeat JSON fields reserved for federation telemetry")]
     pub timestamp: String,
     pub status: Option<String>,
-    #[allow(dead_code, reason = "heartbeat JSON fields reserved for federation telemetry")]
     pub metrics: Option<serde_json::Value>,
 }
 

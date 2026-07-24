@@ -32,7 +32,7 @@ struct JsonRpcRequest {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code, reason = "fields consumed via Deserialize")]
+#[expect(dead_code, reason = "fields consumed via Deserialize")]
 struct JsonRpcResponse {
     jsonrpc: String,
     result: Option<Value>,
@@ -44,7 +44,7 @@ struct JsonRpcResponse {
 struct JsonRpcError {
     code: i32,
     message: String,
-    #[allow(dead_code, reason = "consumed via Deserialize")]
+    #[expect(dead_code, reason = "consumed via Deserialize")]
     data: Option<Value>,
 }
 

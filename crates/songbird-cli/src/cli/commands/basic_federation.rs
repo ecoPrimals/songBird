@@ -314,7 +314,7 @@ mod tests  {use super::*;
     use std::fs;
     use tempfile::TempDir;
 
-    #[allow(dead_code, reason = "test assertions and harness ergonomics")] // Helper function for future tests
+    #[expect(dead_code, reason = "test assertions and harness ergonomics")] // Helper function for future tests
     fn setup_test_config() -> (TempDir, std::path::PathBuf) {
         let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temporary directory for federation test: {}", e)))?;
         let config_path = temp_dir.path().join("test_config.toml");"

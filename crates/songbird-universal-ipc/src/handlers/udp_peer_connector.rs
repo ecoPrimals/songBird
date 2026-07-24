@@ -37,7 +37,7 @@ pub struct UdpPeerConnector {
 
 /// Active UDP binding entry
 #[derive(Debug, Clone)]
-#[allow(dead_code, reason = "reserved for active binding tracking when hole punch is wired")]
+#[expect(dead_code, reason = "reserved for active binding tracking when hole punch is wired")]
 struct BindingEntry {
     local_addr: SocketAddr,
     connection_id: String,

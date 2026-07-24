@@ -31,15 +31,15 @@ use tracing::{debug, info};
 const USB_CLASS_WIRELESS_CONTROLLER: u8 = 0xE0;
 
 /// HCI event endpoint (Interrupt IN)
-#[allow(dead_code, reason = "reserved for future streaming support")]
+#[expect(dead_code, reason = "reserved for future streaming support")]
 const HCI_EVENT_ENDPOINT: u8 = 0x81;
 
 /// HCI ACL data IN endpoint (Bulk IN)
-#[allow(dead_code, reason = "reserved for future streaming support")]
+#[expect(dead_code, reason = "reserved for future streaming support")]
 const HCI_ACL_IN_ENDPOINT: u8 = 0x82;
 
 /// HCI ACL data OUT endpoint (Bulk OUT)
-#[allow(dead_code, reason = "reserved for future streaming support")]
+#[expect(dead_code, reason = "reserved for future streaming support")]
 const HCI_ACL_OUT_ENDPOINT: u8 = 0x02;
 
 /// Default timeout for USB operations

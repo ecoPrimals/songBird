@@ -194,7 +194,7 @@ impl PoolConfigBuilder {
 pub struct PooledConnection<T: Send + Sync + 'static> {
     inner: Option<T>,
     pool: Arc<ConnectionPoolInner<T>>,
-    #[allow(dead_code, reason = "tracked for connection age eviction and pool health metrics")]
+    #[expect(dead_code, reason = "tracked for connection age eviction and pool health metrics")]
     created_at: Instant,
     last_used: Instant,
 }

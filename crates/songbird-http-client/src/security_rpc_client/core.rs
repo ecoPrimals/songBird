@@ -212,6 +212,7 @@ impl SecurityRpcClient {
         if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET")
             && !socket.is_empty()
         {
+            songbird_types::defaults::legacy_env::warn_if_legacy_primal_env("BEARDOG_SOCKET");
             info!("✅ Security socket via $BEARDOG_SOCKET: {}", socket);
             return IpcEndpoint::UnixSocket(socket);
         }

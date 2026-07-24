@@ -109,12 +109,12 @@ pub struct SongbirdOrchestrator {
     )]
     scheduler: Option<Arc<FairScheduler>>,
     admission_controller: Option<Arc<AdmissionController>>,
-    #[allow(dead_code, reason = "usage accounting reserved for quota enforcement hooks")]
+    #[expect(dead_code, reason = "usage accounting reserved for quota enforcement hooks")]
     usage_tracker: Option<Arc<UsageTracker>>,
 
     /// Error recovery (Week 3)
     circuit_breaker: Arc<CircuitBreaker>,
-    #[allow(dead_code, reason = "retry policy retained for transient failure recovery paths")]
+    #[expect(dead_code, reason = "retry policy retained for transient failure recovery paths")]
     retry_policy: RetryPolicy,
 
     /// Observability (Week 4)
@@ -125,7 +125,7 @@ pub struct SongbirdOrchestrator {
     consent_enforcer: Option<Arc<ConsentEnforcer>>,
 
     /// Configuration
-    #[allow(dead_code, reason = "retained for reconfiguration and diagnostics accessors")]
+    #[expect(dead_code, reason = "retained for reconfiguration and diagnostics accessors")]
     config: OrchestratorConfig,
 }
 

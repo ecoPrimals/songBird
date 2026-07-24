@@ -52,7 +52,7 @@ const USB_PROTOCOL_BLUETOOTH: u8 = 0x01;
 
 /// HCI command endpoint (Control)
 /// Note: Awaiting hardware validation - will be used in Phase 3
-#[allow(dead_code, reason = "reserved for Phase 3 HCI command path")]
+#[expect(dead_code, reason = "reserved for Phase 3 HCI command path")]
 const HCI_COMMAND_ENDPOINT: u8 = 0x00;
 
 /// HCI event endpoint (Interrupt IN)

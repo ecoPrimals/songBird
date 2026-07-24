@@ -56,7 +56,11 @@ impl SecurityTlsCryptoClient {
     /// Returns an error if socket discovery fails or the socket does not exist (Unix only).
     pub fn new() -> Result<Self> {
         let direct_mode = songbird_process_env::var("SECURITY_PROVIDER_MODE")
-            .or_else(|_| songbird_process_env::var("BEARDOG_MODE"))
+            .or_else(|_| {
+                songbird_process_env::var("BEARDOG_MODE").inspect(|_| {
+                    songbird_types::defaults::legacy_env::warn_if_legacy_primal_env("BEARDOG_MODE");
+                })
+            })
             .map(|v| v.eq_ignore_ascii_case("direct"))
             .unwrap_or(false);
 
@@ -615,7 +619,7 @@ impl SecurityTlsCryptoClient {
 ///
 /// Note: Fields are used during deserialization but not directly accessed in code.
 /// The response is parsed and converted to domain types immediately.
-#[allow(dead_code, reason = "deserialized from external data")]
+#[expect(dead_code, reason = "deserialized from external data")]
 #[derive(Debug, Deserialize)]
 struct JsonRpcResponse {
     jsonrpc: String,

@@ -5,7 +5,7 @@
 
 /// Consent request builder
 pub struct ConsentRequestBuilder {
-    #[allow(dead_code, reason = "captured for future consent payload serialization")]
+    #[expect(dead_code, reason = "captured for future consent payload serialization")]
     operation: String,
     estimated_cost: Option<f64>,
     justification: Option<String>,

@@ -26,16 +26,16 @@ struct NegotiationRequest {
 struct NegotiationResponse {
     negotiation_id: String,
     // Future: method validation
-    #[allow(dead_code, reason = "deserialized from negotiation JSON; not yet used by upload path")]
+    #[expect(dead_code, reason = "deserialized from negotiation JSON; not yet used by upload path")]
     accepted_method: String,
     chunk_size_mb: u32,
     total_chunks: usize,
     // Future: dynamic endpoint routing
-    #[allow(dead_code, reason = "deserialized from negotiation JSON; not yet used by upload path")]
+    #[expect(dead_code, reason = "deserialized from negotiation JSON; not yet used by upload path")]
     chunk_upload_path: String,
-    #[allow(dead_code, reason = "deserialized from negotiation JSON; not yet used by upload path")]
+    #[expect(dead_code, reason = "deserialized from negotiation JSON; not yet used by upload path")]
     finalize_path: String,
-    #[allow(dead_code, reason = "deserialized from negotiation JSON; not yet used by upload path")]
+    #[expect(dead_code, reason = "deserialized from negotiation JSON; not yet used by upload path")]
     timeout_seconds: u64,
 }
 

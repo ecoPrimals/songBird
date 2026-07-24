@@ -134,6 +134,7 @@ where
     if let Some(socket) = get_var("BEARDOG_SOCKET")
         && !socket.is_empty()
     {
+        songbird_types::defaults::legacy_env::warn_if_legacy_primal_env("BEARDOG_SOCKET");
         info!("✅ Neural API socket via $BEARDOG_SOCKET: {}", socket);
         return socket;
     }

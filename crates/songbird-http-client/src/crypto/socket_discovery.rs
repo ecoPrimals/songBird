@@ -472,6 +472,7 @@ pub fn discover_neural_api_socket() -> String {
     if let Ok(socket) = songbird_process_env::var("BEARDOG_SOCKET")
         && !socket.is_empty()
     {
+        songbird_types::defaults::legacy_env::warn_if_legacy_primal_env("BEARDOG_SOCKET");
         info!("✅ Socket discovered via $BEARDOG_SOCKET: {}", socket);
         return socket;
     }

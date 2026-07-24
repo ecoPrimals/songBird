@@ -294,9 +294,7 @@ impl CanonicalLoadBalancer {
 
         match self.strategy {
             CanonicalLoadBalancingStrategy::Random => {
-                use rand::Rng;
-                let mut rng = rand::thread_rng();
-                let index = rng.gen_range(0..services.len());
+                let index = fastrand::usize(0..services.len());
                 Ok(services[index].clone())
             }
             CanonicalLoadBalancingStrategy::RoundRobin
@@ -329,7 +327,7 @@ impl CanonicalLoadBalancer {
 pub struct CanonicalCircuitBreaker {
     states: Arc<RwLock<HashMap<String, CanonicalCircuitState>>>,
     /// Retained for threshold / timeout tuning when failure counting is wired.
-    #[allow(dead_code, reason = "stored for future per-service breaker tuning")]
+    #[expect(dead_code, reason = "stored for future per-service breaker tuning")]
     config: CanonicalCircuitBreakerConfig,
 }
 

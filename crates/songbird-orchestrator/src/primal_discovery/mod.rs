@@ -43,6 +43,7 @@ pub async fn discover(capability: Capability) -> Result<String> {
     }
     for alt_var in capability.alt_env_vars() {
         if let Some(socket_path) = env_reader(alt_var) {
+            songbird_types::defaults::legacy_env::warn_if_legacy_primal_env(alt_var);
             info!("   ✅ Found via {} (compatibility): {}", alt_var, socket_path);
             return Ok(socket_path);
         }
@@ -92,6 +93,7 @@ where
     }
     for alt in ["STORAGE_SOCKET", "NESTGATE_SOCKET"] {
         if let Some(p) = env_reader(alt) {
+            songbird_types::defaults::legacy_env::warn_if_legacy_primal_env(alt);
             return Ok(p);
         }
     }

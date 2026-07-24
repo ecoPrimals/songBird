@@ -76,7 +76,7 @@ impl ConnectionManager {
     }
 
     /// Get BTSP client (lazily initialized)
-    #[allow(dead_code, reason = "wires when BTSP peer connections go live")]
+    #[expect(dead_code, reason = "wires when BTSP peer connections go live")]
     async fn btsp_client(&self) -> Result<Arc<BtspClient>> {
         self.btsp_factory.get_or_init_client().await
     }
