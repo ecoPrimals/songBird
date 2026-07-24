@@ -532,8 +532,11 @@ async fn ribocipher_clear_signal_routes_to_ndjson() {
     let server = test_server();
     let (mut client, server_stream) = tokio::net::UnixStream::pair().unwrap();
 
+    let caller = super::super::super::method_gate::CallerContext::from_unix();
     let server_handle =
-        tokio::spawn(async move { server.handle_connection_with_peek(server_stream).await });
+        tokio::spawn(
+            async move { server.handle_connection_with_peek(server_stream, &caller).await },
+        );
 
     // Send riboCipher clear prefix + JSON-RPC request
     let request = serde_json::json!({
@@ -571,8 +574,11 @@ async fn ribocipher_mito_signal_accepted() {
     let server = test_server();
     let (mut client, server_stream) = tokio::net::UnixStream::pair().unwrap();
 
+    let caller = super::super::super::method_gate::CallerContext::from_unix();
     let server_handle =
-        tokio::spawn(async move { server.handle_connection_with_peek(server_stream).await });
+        tokio::spawn(
+            async move { server.handle_connection_with_peek(server_stream, &caller).await },
+        );
 
     let request = serde_json::json!({
         "jsonrpc": "2.0",
@@ -606,8 +612,11 @@ async fn ribocipher_unsupported_version_drops_cleanly() {
     let server = test_server();
     let (mut client, server_stream) = tokio::net::UnixStream::pair().unwrap();
 
+    let caller = super::super::super::method_gate::CallerContext::from_unix();
     let server_handle =
-        tokio::spawn(async move { server.handle_connection_with_peek(server_stream).await });
+        tokio::spawn(
+            async move { server.handle_connection_with_peek(server_stream, &caller).await },
+        );
 
     // Send signal byte 0xEC with bad version 0xFF
     client.write_all(&[0xEC, 0xFF]).await.unwrap();
@@ -627,8 +636,11 @@ async fn ribocipher_signal_only_no_version_drops_cleanly() {
     let server = test_server();
     let (mut client, server_stream) = tokio::net::UnixStream::pair().unwrap();
 
+    let caller = super::super::super::method_gate::CallerContext::from_unix();
     let server_handle =
-        tokio::spawn(async move { server.handle_connection_with_peek(server_stream).await });
+        tokio::spawn(
+            async move { server.handle_connection_with_peek(server_stream, &caller).await },
+        );
 
     // Send only the signal byte, then disconnect
     client.write_all(&[0xED]).await.unwrap();

@@ -435,9 +435,7 @@ impl UnixSocketServer {
             debug!("riboCipher signal: tier={tier}, version={version_byte} — routing");
 
             match first_meaningful_byte {
-                ribocipher::CLEAR => {
-                    self.handle_ndjson_session(reader, write_half, caller).await
-                }
+                ribocipher::CLEAR => self.handle_ndjson_session(reader, write_half, caller).await,
                 ribocipher::MITO => {
                     tracing::info!("riboCipher mito: federation-tier connection accepted");
                     self.handle_ndjson_session(reader, write_half, caller).await
