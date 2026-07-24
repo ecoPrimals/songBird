@@ -117,6 +117,118 @@ impl IpcServiceHandler {
         .map_err(|e| format!("Serialization error: {e}"))
     }
 
+    /// `federation.broadcast` / `songbird.federation.broadcast`
+    ///
+    /// Broadcasts a JSON-RPC payload to all active federation peers. Each peer
+    /// is contacted via its best endpoint with an HTTP POST to `/jsonrpc`.
+    /// Returns a summary of delivery results per peer.
+    ///
+    /// Params: `{ "method": "...", "params": {...}, "timeout_ms": 5000 }`
+    pub(super) async fn handle_federation_broadcast(&self, params: Value) -> Result<Value, String> {
+        let Some(ref state) = self.federation_state else {
+            return Err(String::from(
+                "federation not configured — set SONGBIRD_PEERS or inject FederationState",
+            ));
+        };
+
+        let method =
+            params.get("method").and_then(Value::as_str).ok_or("missing required field: method")?;
+        let inner_params = params.get("params").cloned().unwrap_or(Value::Null);
+        let timeout_ms = params.get("timeout_ms").and_then(Value::as_u64).unwrap_or(5000);
+
+        let active = state.active_nodes().await;
+        let self_node = songbird_process_env::var("SONGBIRD_NODE_ID")
+            .or_else(|_| songbird_process_env::var("NODE_ID"))
+            .unwrap_or_default();
+
+        let mut results = Vec::new();
+        let timeout_dur = std::time::Duration::from_millis(timeout_ms);
+
+        for node in &active {
+            if node.node_id == self_node {
+                continue;
+            }
+
+            let endpoint = state
+                .get_best_endpoint(&node.node_id)
+                .await
+                .unwrap_or_else(|| node.node_address.clone());
+
+            let payload = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": method,
+                "params": inner_params,
+                "id": 1
+            });
+
+            let outcome = Self::broadcast_to_peer(&endpoint, &payload, timeout_dur).await;
+            results.push(serde_json::json!({
+                "node_id": node.node_id,
+                "endpoint": endpoint,
+                "success": outcome.is_ok(),
+                "error": outcome.err(),
+            }));
+        }
+
+        let success_count = results.iter().filter(|r| r["success"] == true).count();
+        Ok(serde_json::json!({
+            "broadcast_method": method,
+            "total_peers": active.len().saturating_sub(1),
+            "delivered": success_count,
+            "failed": results.len() - success_count,
+            "results": results,
+        }))
+    }
+
+    async fn broadcast_to_peer(
+        endpoint: &str,
+        payload: &Value,
+        timeout: std::time::Duration,
+    ) -> Result<(), String> {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let addr = endpoint
+            .strip_prefix("https://")
+            .or_else(|| endpoint.strip_prefix("http://"))
+            .unwrap_or(endpoint);
+
+        let host_port = if addr.contains(':') {
+            addr.to_string()
+        } else {
+            format!("{addr}:7700")
+        };
+
+        let mut stream = tokio::time::timeout(timeout, tokio::net::TcpStream::connect(&host_port))
+            .await
+            .map_err(|_| format!("timeout connecting to {host_port}"))?
+            .map_err(|e| format!("connect failed to {host_port}: {e}"))?;
+
+        let body = serde_json::to_string(payload).map_err(|e| format!("serialize: {e}"))?;
+        let request = format!(
+            "POST /jsonrpc HTTP/1.1\r\nHost: {addr}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        );
+
+        tokio::time::timeout(timeout, stream.write_all(request.as_bytes()))
+            .await
+            .map_err(|_| format!("timeout writing to {host_port}"))?
+            .map_err(|e| format!("write error to {host_port}: {e}"))?;
+
+        let mut response = vec![0u8; 1024];
+        let n = tokio::time::timeout(timeout, stream.read(&mut response))
+            .await
+            .map_err(|_| format!("timeout reading from {host_port}"))?
+            .map_err(|e| format!("read error from {host_port}: {e}"))?;
+
+        let resp_str = String::from_utf8_lossy(&response[..n]);
+        if resp_str.starts_with("HTTP/1.1 2") || resp_str.starts_with("HTTP/1.0 2") {
+            Ok(())
+        } else {
+            let status = resp_str.lines().next().unwrap_or("no response");
+            Err(format!("peer returned: {status}"))
+        }
+    }
+
     /// `songbird.federation.status` / `federation.status`
     ///
     /// `enabled` reflects whether federation was configured (state injected OR env vars set),

@@ -145,6 +145,10 @@ impl HttpRemoteConnection {
         })
     }
 
+    #[expect(
+        clippy::unused_async,
+        reason = "interface consistency — real impls will have async cleanup"
+    )]
     pub async fn close(&self) -> Result<()> {
         Ok(())
     }

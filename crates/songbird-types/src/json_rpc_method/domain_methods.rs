@@ -226,6 +226,7 @@ pub enum FederationMethod {
     Peers,
     Status,
     Join,
+    Broadcast,
 }
 
 /// `tor.*`

@@ -451,11 +451,10 @@ impl DiscoveryHandler {
             Vec::new()
         };
 
-        let results: Vec<&DiscoveredPeerInfo> = if let Some(cap) = capability_filter {
-            peers.iter().filter(|p| p.capabilities.iter().any(|c| c == cap)).collect()
-        } else {
-            peers.iter().collect()
-        };
+        let results: Vec<&DiscoveredPeerInfo> = capability_filter.map_or_else(
+            || peers.iter().collect(),
+            |cap| peers.iter().filter(|p| p.capabilities.iter().any(|c| c == cap)).collect(),
+        );
 
         let services: Vec<Value> = results
             .iter()

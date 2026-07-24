@@ -160,6 +160,7 @@ impl IpcServiceHandler {
                 discover_crypto_signing_socket(),
             )),
             capability_router: Arc::new(CapabilityProxyRouter::default()),
+            ipc_pool: Arc::new(super::ipc_pool::IpcConnectionPool::new()),
         }
     }
 

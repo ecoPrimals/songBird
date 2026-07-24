@@ -104,6 +104,7 @@ impl InMemoryStorage {
     }
 
     /// Best-effort flush for consent data (no-op in memory).
+    #[expect(clippy::unused_async, reason = "interface parity with persistent backends")]
     pub async fn consent_flush(&self) -> anyhow::Result<()> {
         Ok(())
     }
@@ -171,6 +172,7 @@ impl InMemoryStorage {
     }
 
     /// Best-effort flush for task/checkpoint data (no-op in memory).
+    #[expect(clippy::unused_async, reason = "interface parity with persistent backends")]
     pub async fn flush_tasks(&self) -> anyhow::Result<()> {
         Ok(())
     }

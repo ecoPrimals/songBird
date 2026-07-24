@@ -86,18 +86,21 @@ impl VirtualRelayManager {
     /// degrades to trust-on-accept.
     #[must_use]
     pub fn with_crypto_verifier(base_dir: PathBuf, crypto_socket: Option<String>) -> Self {
-        let signature_verifier: Arc<dyn BtspSignatureVerifier> = if let Some(path) = crypto_socket {
-            tracing::info!(
-                socket = %path,
-                "Phase 3.5: Relay signature verification enabled via CryptoProvider"
-            );
-            Arc::new(super::relay_security::CryptoProviderVerifier::new(path))
-        } else {
-            tracing::warn!(
-                "Phase 3.5: No crypto socket — signed relay requests will be rejected until provider available"
-            );
-            Arc::new(UnavailableVerifier)
-        };
+        let signature_verifier: Arc<dyn BtspSignatureVerifier> = crypto_socket.map_or_else(
+            || {
+                tracing::warn!(
+                    "Phase 3.5: No crypto socket — signed relay requests will be rejected until provider available"
+                );
+                Arc::new(UnavailableVerifier) as Arc<dyn BtspSignatureVerifier>
+            },
+            |path| {
+                tracing::info!(
+                    socket = %path,
+                    "Phase 3.5: Relay signature verification enabled via CryptoProvider"
+                );
+                Arc::new(super::relay_security::CryptoProviderVerifier::new(path))
+            },
+        );
 
         Self {
             relays: RwLock::new(HashMap::new()),
@@ -117,11 +120,8 @@ impl VirtualRelayManager {
     /// Priority: `$XDG_RUNTIME_DIR/biomeos/songbird/virtual/` → `{temp_dir}/biomeos/songbird/virtual/`
     #[must_use]
     pub fn default_base_dir() -> PathBuf {
-        let base = if let Ok(xdg) = songbird_process_env::var("XDG_RUNTIME_DIR") {
-            PathBuf::from(xdg)
-        } else {
-            std::env::temp_dir()
-        };
+        let base = songbird_process_env::var("XDG_RUNTIME_DIR")
+            .map_or_else(|_| std::env::temp_dir(), PathBuf::from);
         base.join(songbird_types::defaults::paths::BIOMEOS_RUNTIME_SUBDIR)
             .join("songbird")
             .join("virtual")

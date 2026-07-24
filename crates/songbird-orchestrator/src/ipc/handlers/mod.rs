@@ -597,6 +597,7 @@ impl IpcHandlers {
     }
 
     /// Handle `discovery.bonds` — external API bonds from drawbridge allowlist.
+    #[expect(clippy::unused_async, reason = "called from async dispatch; may need await in future")]
     pub async fn discovery_bonds_json(
         &self,
         _params: Option<serde_json::Value>,

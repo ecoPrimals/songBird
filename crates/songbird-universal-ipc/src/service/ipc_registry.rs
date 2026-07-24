@@ -155,16 +155,16 @@ impl IpcServiceHandler {
             base64::engine::general_purpose::STANDARD.encode(canonical_payload.as_bytes());
 
         match provider.call("crypto.sign.ed25519", serde_json::json!({ "data": data_b64 })).await {
-            Ok(result) => {
-                let sig = result.get("signature").and_then(|v| v.as_str()).map(String::from);
-                if let Some(ref s) = sig {
-                    debug!("Signed registration payload ({} bytes)", s.len());
-                    (Some(s.clone()), Some(canonical_payload.to_string()))
-                } else {
+            Ok(result) => result.get("signature").and_then(|v| v.as_str()).map_or_else(
+                || {
                     tracing::warn!("crypto.sign.ed25519 returned no signature field");
                     (None, None)
-                }
-            }
+                },
+                |s| {
+                    debug!("Signed registration payload ({} bytes)", s.len());
+                    (Some(s.to_string()), Some(canonical_payload.to_string()))
+                },
+            ),
             Err(e) => {
                 tracing::warn!("Failed to sign registration (standalone fallback): {e}");
                 (None, None)

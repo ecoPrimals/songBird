@@ -241,6 +241,7 @@ impl JsonRpcMethod {
             Self::Federation(FederationMethod::Peers) => "songbird.federation.peers",
             Self::Federation(FederationMethod::Status) => "songbird.federation.status",
             Self::Federation(FederationMethod::Join) => "songbird.federation.join",
+            Self::Federation(FederationMethod::Broadcast) => "federation.broadcast",
             Self::Tor(TorMethod::Status) => "tor.status",
             Self::Tor(TorMethod::Connect) => "tor.connect",
             Self::Tor(TorMethod::ServiceStart) => "tor.service.start",
@@ -423,6 +424,9 @@ impl JsonRpcMethod {
                 Self::Federation(FederationMethod::Status)
             }
             "songbird.federation.join" => Self::Federation(FederationMethod::Join),
+            "federation.broadcast" | "songbird.federation.broadcast" => {
+                Self::Federation(FederationMethod::Broadcast)
+            }
             "tor.status" => Self::Tor(TorMethod::Status),
             "tor.connect" => Self::Tor(TorMethod::Connect),
             "tor.service.start" => Self::Tor(TorMethod::ServiceStart),

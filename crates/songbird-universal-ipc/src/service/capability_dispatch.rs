@@ -217,22 +217,15 @@ impl IpcServiceHandler {
     /// Forward an operation to a local provider via its IPC socket.
     /// On Unix: connects to a Unix domain socket at `socket_path`.
     /// On Windows: connects to TCP localhost, parsing the port from `socket_path`.
+    ///
+    /// Uses the IPC connection pool to avoid per-request connect/disconnect overhead.
+    /// Failed connections are retried once with a fresh connection.
     pub(super) async fn forward_to_local_provider(
         &self,
         socket_path: &str,
         operation: &str,
         params: &Value,
     ) -> Result<Value, String> {
-        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-
-        let stream = tokio::time::timeout(
-            DEFAULT_SOCKET_IO_TIMEOUT,
-            songbird_types::IpcStream::connect(socket_path),
-        )
-        .await
-        .map_err(|_| format!("Timeout connecting to provider at {socket_path}"))?
-        .map_err(|e| format!("Cannot connect to provider at {socket_path}: {e}"))?;
-
         let request = serde_json::json!({
             "jsonrpc": "2.0",
             "method": operation,
@@ -244,19 +237,10 @@ impl IpcServiceHandler {
             .map_err(|e| format!("Failed to serialize request: {e}"))?;
         request_bytes.push(b'\n');
 
-        let (reader, mut writer) = tokio::io::split(stream);
-
-        tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, writer.write_all(&request_bytes))
-            .await
-            .map_err(|_| format!("Timeout writing to provider at {socket_path}"))?
-            .map_err(|e| format!("Write error to provider: {e}"))?;
-
-        let mut buf_reader = BufReader::new(reader);
-        let mut response_line = String::new();
-        tokio::time::timeout(DEFAULT_SOCKET_IO_TIMEOUT, buf_reader.read_line(&mut response_line))
-            .await
-            .map_err(|_| format!("Timeout reading from provider at {socket_path}"))?
-            .map_err(|e| format!("Read error from provider: {e}"))?;
+        let response_line = self
+            .ipc_pool
+            .execute_jsonrpc(socket_path, &request_bytes, DEFAULT_SOCKET_IO_TIMEOUT)
+            .await?;
 
         let response: Value = serde_json::from_str(response_line.trim())
             .map_err(|e| format!("Invalid JSON response from provider: {e}"))?;

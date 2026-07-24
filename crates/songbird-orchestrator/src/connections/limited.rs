@@ -161,9 +161,12 @@ impl LimitedConnection {
         self.socket_path.to_str().unwrap_or(&self.peer_id)
     }
 
+    #[expect(
+        clippy::unused_async,
+        reason = "interface consistency — real impls will have async cleanup"
+    )]
     pub async fn close(&self) -> Result<()> {
         debug!("Closing limited connection to peer '{}'", self.peer_id);
-        // HTTP client cleanup happens automatically
         Ok(())
     }
 }

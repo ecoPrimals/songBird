@@ -250,20 +250,24 @@ impl IpcServiceHandler {
             .and_then(|r| r.get("provided_capabilities"))
             .and_then(Value::as_array);
 
-        if let Some(arr) = caps {
-            Ok(arr.iter().any(|c| {
-                c.as_str() == Some(capability)
-                    || c.get("type").and_then(Value::as_str) == Some(capability)
-            }))
-        } else {
-            let flat =
-                resp.get("result").and_then(|r| r.get("capabilities")).and_then(Value::as_array);
-            if let Some(arr) = flat {
-                Ok(arr.iter().any(|c| c.as_str() == Some(capability)))
-            } else {
-                Err(String::from("no provided_capabilities in response"))
-            }
-        }
+        caps.map_or_else(
+            || {
+                let flat = resp
+                    .get("result")
+                    .and_then(|r| r.get("capabilities"))
+                    .and_then(Value::as_array);
+                flat.map_or_else(
+                    || Err(String::from("no provided_capabilities in response")),
+                    |arr| Ok(arr.iter().any(|c| c.as_str() == Some(capability))),
+                )
+            },
+            |arr| {
+                Ok(arr.iter().any(|c| {
+                    c.as_str() == Some(capability)
+                        || c.get("type").and_then(Value::as_str) == Some(capability)
+                }))
+            },
+        )
     }
 
     /// Send a `capability.call` to a remote Songbird instance via HTTP POST.

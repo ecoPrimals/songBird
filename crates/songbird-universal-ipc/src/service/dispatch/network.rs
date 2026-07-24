@@ -111,6 +111,12 @@ pub(super) async fn dispatch_network(
         JsonRpcMethod::Federation(FederationMethod::Status) => {
             handler.handle_federation_status_rpc().await
         }
+        JsonRpcMethod::Federation(FederationMethod::Broadcast) => {
+            handler.handle_federation_broadcast(params).await
+        }
+        JsonRpcMethod::Federation(FederationMethod::Join) => {
+            Err(String::from("federation.join handled at orchestrator level"))
+        }
 
         JsonRpcMethod::Tor(TorMethod::Status) => handler.tor_handler.handle_status(params).await,
         JsonRpcMethod::Tor(TorMethod::Connect) => handler.tor_handler.handle_connect(params).await,

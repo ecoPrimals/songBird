@@ -54,6 +54,7 @@ pub mod drawbridge;
 pub mod drawbridge_auth;
 mod http;
 mod http_proxy;
+pub mod ipc_pool;
 mod ipc_registry;
 mod meta;
 pub mod relay_security;
@@ -105,6 +106,8 @@ pub struct IpcServiceHandler {
     virtual_relay: Arc<virtual_relay::VirtualRelayManager>,
     /// Capability-based HTTP proxy router for `http.proxy`.
     capability_router: Arc<CapabilityProxyRouter>,
+    /// UDS connection pool for `capability.call` dispatch (avoids per-request connect/disconnect).
+    ipc_pool: Arc<ipc_pool::IpcConnectionPool>,
 }
 
 impl IpcServiceHandler {

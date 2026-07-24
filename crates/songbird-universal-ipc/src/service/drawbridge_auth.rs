@@ -242,10 +242,8 @@ impl ExternalProxyAllowlist {
         path_after_prefix: &'a str,
     ) -> Option<(&'a ExternalService, &'a str)> {
         let trimmed = path_after_prefix.trim_start_matches('/');
-        let (service_name, remainder) = match trimmed.find('/') {
-            Some(i) => (&trimmed[..i], &trimmed[i..]),
-            None => (trimmed, "/"),
-        };
+        let (service_name, remainder) =
+            trimmed.find('/').map_or((trimmed, "/"), |i| (&trimmed[..i], &trimmed[i..]));
 
         self.services.get(service_name).map(move |svc| (svc, remainder))
     }

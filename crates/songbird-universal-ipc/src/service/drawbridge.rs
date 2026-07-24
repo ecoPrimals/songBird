@@ -59,11 +59,8 @@ impl DrawbridgeConfig {
                 if path.is_empty() || cap_raw.is_empty() {
                     return None;
                 }
-                let (cap, public) = if let Some(c) = cap_raw.strip_suffix("!public") {
-                    (c, true)
-                } else {
-                    (cap_raw, false)
-                };
+                let (cap, public) =
+                    cap_raw.strip_suffix("!public").map_or((cap_raw, false), |c| (c, true));
                 Some(DrawbridgeRoute {
                     path_prefix: path.to_string(),
                     capability: cap.to_string(),
@@ -268,16 +265,17 @@ async fn handle_drawbridge_connection(
         .await;
     }
 
-    let route = if let Some(cap) = capability {
-        router.route(cap)
-    } else {
-        let caps = router.list_capabilities();
-        if caps.len() == 1 {
-            router.route(&caps[0])
-        } else {
-            None
-        }
-    };
+    let route = capability.map_or_else(
+        || {
+            let caps = router.list_capabilities();
+            if caps.len() == 1 {
+                router.route(&caps[0])
+            } else {
+                None
+            }
+        },
+        |cap| router.route(cap),
+    );
 
     let Some(route) = route else {
         warn!(peer = %peer, path, "drawbridge: no capability route for path — check SONGBIRD_DRAWBRIDGE_ROUTES and SONGBIRD_PROXY_ROUTES env");
@@ -649,11 +647,7 @@ async fn proxy_to_external_tls(
         None => (stripped, "/"),
     };
 
-    let host = if let Some(colon) = authority.find(':') {
-        &authority[..colon]
-    } else {
-        authority
-    };
+    let host = authority.split(':').next().unwrap_or(authority);
 
     let addr = if authority.contains(':') {
         authority.to_string()
