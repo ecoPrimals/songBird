@@ -20,11 +20,14 @@ use base64::{
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sha2::Sha256;
 use songbird_crypto_provider::CryptoProvider;
 
+#[cfg(feature = "local-crypto-fallback")]
+use sha2::Sha256;
+#[cfg(feature = "local-crypto-fallback")]
 type HmacSha256 = Hmac<Sha256>;
 
+#[cfg(feature = "local-crypto-fallback")]
 fn hmac_sha256_local(secret: &[u8], message: &[u8]) -> Result<Vec<u8>> {
     let mut mac =
         HmacSha256::new_from_slice(secret).map_err(|e| anyhow!("Invalid secret key: {e}"))?;
@@ -66,19 +69,15 @@ impl Default for JwtHeader {
     }
 }
 
-/// Encode JWT token (Pure Rust implementation)
+/// Encode JWT token using local HMAC-SHA256 (sync fallback).
 ///
-/// Creates a JWT token with HMAC-SHA256 signature using Pure Rust crypto.
+/// Prefer `encode_with_crypto` which delegates to bearDog via UDS.
+/// This sync version requires the `local-crypto-fallback` feature.
 ///
-/// # Arguments
-/// * `claims` - The claims to encode
-/// * `secret` - Secret key for HMAC-SHA256
-///
-/// # Returns
-/// JWT token string in format: `header.payload.signature`
 /// # Errors
 ///
-/// Returns an error if the operation fails.
+/// Returns an error if HMAC computation or serialization fails.
+#[cfg(feature = "local-crypto-fallback")]
 pub fn encode<T: Serialize>(claims: &T, secret: &[u8]) -> Result<String> {
     let header = JwtHeader::default();
     let header_json =
@@ -116,29 +115,32 @@ pub async fn encode_with_crypto<T: Serialize>(
     let signature = if let Some(provider) = crypto {
         hmac_sha256_via_provider(secret, signing_input.as_bytes(), provider).await?
     } else {
-        tracing::warn!(
-            "JWT signing using local HMAC-SHA256; security provider crypto provider not configured"
-        );
-        hmac_sha256_local(secret, signing_input.as_bytes())?
+        #[cfg(feature = "local-crypto-fallback")]
+        {
+            tracing::debug!("JWT signing: using local HMAC-SHA256 fallback (bearDog unavailable)");
+            hmac_sha256_local(secret, signing_input.as_bytes())?
+        }
+        #[cfg(not(feature = "local-crypto-fallback"))]
+        {
+            return Err(anyhow!(
+                "JWT signing requires bearDog CryptoProvider (local-crypto-fallback disabled)"
+            ));
+        }
     };
     let signature_b64 = URL_SAFE_NO_PAD.encode(&signature);
 
     Ok(format!("{signing_input}.{signature_b64}"))
 }
 
-/// Decode JWT token (Pure Rust implementation)
+/// Decode JWT token using local HMAC-SHA256 (sync fallback).
 ///
-/// Verifies and decodes a JWT token using HMAC-SHA256 with Pure Rust crypto.
+/// Prefer `decode_with_crypto` which delegates to bearDog via UDS.
+/// This sync version requires the `local-crypto-fallback` feature.
 ///
-/// # Arguments
-/// * `token` - JWT token string
-/// * `secret` - Secret key for HMAC-SHA256 verification
-///
-/// # Returns
-/// Decoded claims if token is valid
 /// # Errors
 ///
-/// Returns an error if the operation fails.
+/// Returns an error if signature verification or deserialization fails.
+#[cfg(feature = "local-crypto-fallback")]
 pub fn decode<T: for<'de> Deserialize<'de>>(token: &str, secret: &[u8]) -> Result<T> {
     let parts: Vec<&str> = token.split('.').collect();
     if parts.len() != 3 {
@@ -197,10 +199,19 @@ pub async fn decode_with_crypto<T: for<'de> Deserialize<'de>>(
     let expected_signature = if let Some(provider) = crypto {
         hmac_sha256_via_provider(secret, signing_input.as_bytes(), provider).await?
     } else {
-        tracing::warn!(
-            "JWT verification using local HMAC-SHA256; security provider crypto provider not configured"
-        );
-        hmac_sha256_local(secret, signing_input.as_bytes())?
+        #[cfg(feature = "local-crypto-fallback")]
+        {
+            tracing::debug!(
+                "JWT verification: using local HMAC-SHA256 fallback (bearDog unavailable)"
+            );
+            hmac_sha256_local(secret, signing_input.as_bytes())?
+        }
+        #[cfg(not(feature = "local-crypto-fallback"))]
+        {
+            return Err(anyhow!(
+                "JWT verification requires bearDog CryptoProvider (local-crypto-fallback disabled)"
+            ));
+        }
     };
     let provided_signature = URL_SAFE_NO_PAD
         .decode(signature_b64)

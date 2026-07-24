@@ -36,7 +36,7 @@ uuid = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
 hickory-resolver = { workspace = true }
-sha2 = { workspace = true }  # For session ID generation in anonymous discovery
+sha2 = { workspace = true, optional = true }  # Local fallback for session ID generation
 anyhow = { workspace = true }  # For lineage discovery error handling
 hex = { workspace = true }  # For discovery packet hashing
 socket2 = { workspace = true }  # For multicast socket configuration (aligned with workspace 0.6)
@@ -47,7 +47,8 @@ getrandom = { workspace = true }  # Cryptographically secure random nonce for be
 rand = { workspace = true }
 
 [features]
-default = []
+default = ["local-crypto-fallback"]
+local-crypto-fallback = ["dep:sha2"]
 test-mocks = []
 
 security = []

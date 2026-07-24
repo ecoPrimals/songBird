@@ -141,11 +141,20 @@ impl Checkpoint {
         }
     }
 
+    #[cfg(feature = "local-crypto-fallback")]
     fn calculate_checksum_local(data: &[u8]) -> String {
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
         hasher.update(data);
         format!("{:x}", hasher.finalize())
+    }
+
+    #[cfg(not(feature = "local-crypto-fallback"))]
+    fn calculate_checksum_local(_data: &[u8]) -> String {
+        tracing::error!(
+            "Checkpoint checksum requires bearDog CryptoProvider or local-crypto-fallback feature"
+        );
+        String::from("0".repeat(64))
     }
 
     /// Compress state using gzip (pure Rust via flate2)
@@ -223,15 +232,23 @@ pub async fn calculate_checksum(data: &[u8], crypto: Option<&CryptoProvider>) ->
             use std::fmt::Write;
             let _ = write!(hex, "{b:02x}");
         }
-        Ok(hex)
-    } else {
-        tracing::warn!(
-            "Checkpoint checksum using local SHA-256; security provider crypto provider not configured"
-        );
+        return Ok(hex);
+    }
+
+    #[cfg(feature = "local-crypto-fallback")]
+    {
+        tracing::debug!("Checkpoint checksum: using local SHA-256 fallback (bearDog unavailable)");
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
         hasher.update(data);
         Ok(format!("{:x}", hasher.finalize()))
+    }
+
+    #[cfg(not(feature = "local-crypto-fallback"))]
+    {
+        anyhow::bail!(
+            "Checkpoint checksum requires bearDog CryptoProvider (local-crypto-fallback disabled)"
+        )
     }
 }
 

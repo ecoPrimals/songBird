@@ -1,11 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
+//! Crypto helpers with bearDog UDS delegation.
+//!
+//! All hashing routes through `CryptoProvider` (bearDog's `crypto.sha256`
+//! capability via UDS). The `local-crypto-fallback` feature provides a
+//! degraded local implementation for bootstrap/offline scenarios.
+
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use serde_json::json;
-use sha2::{Digest, Sha256};
 use songbird_crypto_provider::CryptoProvider;
 
+#[cfg(feature = "local-crypto-fallback")]
+use sha2::{Digest, Sha256};
+
+#[cfg(feature = "local-crypto-fallback")]
 fn sha256_local(data: &[u8]) -> Vec<u8> {
     let mut h = Sha256::new();
     h.update(data);
@@ -17,6 +26,10 @@ fn decode_hash_b64(v: &serde_json::Value) -> Option<Vec<u8>> {
     BASE64.decode(b64).ok()
 }
 
+/// Compute SHA-256 via bearDog UDS delegation.
+///
+/// Delegates to `crypto.sha256` when `CryptoProvider` is available.
+/// Falls back to local `sha2` crate only with `local-crypto-fallback` feature.
 pub async fn sha256_hash(crypto: Option<&CryptoProvider>, data: &[u8]) -> Vec<u8> {
     if let Some(p) = crypto {
         match p.call("crypto.sha256", json!({ "data": BASE64.encode(data) })).await {
@@ -26,37 +39,63 @@ pub async fn sha256_hash(crypto: Option<&CryptoProvider>, data: &[u8]) -> Vec<u8
                 }
             }
             Err(e) => {
-                tracing::warn!(target: "songbird_discovery", "crypto.sha256 failed: {e}; using local sha2");
+                tracing::warn!(target: "songbird_discovery", "crypto.sha256 delegation failed: {e}");
             }
         }
-    } else {
-        tracing::warn!(target: "songbird_discovery", "SHA-256 without CryptoProvider; using local sha2");
     }
-    sha256_local(data)
+
+    #[cfg(feature = "local-crypto-fallback")]
+    {
+        tracing::debug!(target: "songbird_discovery", "SHA-256: using local fallback (bearDog unavailable)");
+        sha256_local(data)
+    }
+
+    #[cfg(not(feature = "local-crypto-fallback"))]
+    {
+        tracing::error!(target: "songbird_discovery", "SHA-256: bearDog delegation failed and local-crypto-fallback disabled");
+        Vec::new()
+    }
 }
 
+/// Synchronous SHA-256 — uses local fallback in sync contexts.
+///
+/// Attempts delegation via `CryptoProvider` if a tokio runtime is available,
+/// otherwise uses local fallback. Returns empty vec if both paths are unavailable.
 pub fn sha256_hash_sync(crypto: Option<&CryptoProvider>, data: &[u8]) -> Vec<u8> {
     crypto.map_or_else(
         || {
-            tracing::warn!(target: "songbird_discovery", "SHA-256 without CryptoProvider; using local sha2");
-            sha256_local(data)
+            #[cfg(feature = "local-crypto-fallback")]
+            {
+                tracing::debug!(target: "songbird_discovery", "SHA-256 sync: local fallback (no provider)");
+                sha256_local(data)
+            }
+            #[cfg(not(feature = "local-crypto-fallback"))]
+            {
+                tracing::error!(target: "songbird_discovery", "SHA-256 sync: no provider and local-crypto-fallback disabled");
+                Vec::new()
+            }
         },
         |p| {
             if tokio::runtime::Handle::try_current().is_ok() {
-                tracing::warn!(
-                    target: "songbird_discovery",
-                    "SHA-256: CryptoProvider set but sync context cannot await security provider; using local sha2"
-                );
-                sha256_local(data)
+                #[cfg(feature = "local-crypto-fallback")]
+                {
+                    tracing::debug!(target: "songbird_discovery", "SHA-256 sync: local fallback (in async context)");
+                    sha256_local(data)
+                }
+                #[cfg(not(feature = "local-crypto-fallback"))]
+                {
+                    tracing::error!(target: "songbird_discovery", "SHA-256 sync: cannot delegate in sync context");
+                    Vec::new()
+                }
             } else {
                 match tokio::runtime::Runtime::new() {
                     Ok(rt) => rt.block_on(sha256_hash(Some(p), data)),
                     Err(e) => {
-                        tracing::warn!(
-                            target: "songbird_discovery",
-                            "SHA-256: cannot create runtime for security provider: {e}; using local sha2"
-                        );
-                        sha256_local(data)
+                        tracing::error!(target: "songbird_discovery", "SHA-256 sync: runtime creation failed: {e}");
+                        #[cfg(feature = "local-crypto-fallback")]
+                        { sha256_local(data) }
+                        #[cfg(not(feature = "local-crypto-fallback"))]
+                        { Vec::new() }
                     }
                 }
             }

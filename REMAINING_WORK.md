@@ -4,7 +4,7 @@
 **Version**: v0.2.1-wave150x  
 **Last Deep Debt Audit**: Wave 150x (July 24, 2026) — **Pen Test Security Hardening**: SO_PEERCRED peer credential extraction (caller identity for IPC dispatch), mesh announcement validation (rate limiting, node_id/capability format validation, max capability count), `capability.call` input validation (routing whitelist, capability/operation name validation, path traversal prevention), drawbridge request limits (10 MiB body max, 128 header max, 8192 URI max, path traversal rejection). **P1 Tower Hardening** (previous session): UDS connection pool, `federation.broadcast`, idiomatic evolution, benchmark fixes. Previous: Wave 150w (July 23, 2026) — **ALL P0s RESOLVED**: Drawbridge JSON-RPC→HTTP translation, socket directory guard, drawbridge diagnostic JSON, `mesh.prune_stale`, LAN peer discovery. Previous: Wave 152 (July 22, 2026) — Full deep debt sweep: 3 structural refactors, 8 dead deps removed, hardcoding→capability-based.
 **Composition Audit Status**: **CLEAR THROUGH STADIAL GATE** — UB-1 resolved (`songbird-turn-client` crate for lithoSpore). `primal.announce` adopted (biomeOS v3.57). GAP-16 (Tower atomic: mesh.* on canonical UDS) resolved. Songbird is no longer a sentinel blocker. Wave 206: deep debt cleanup — 2 files >800L refactored below threshold, 2 TURN server bugs fixed, `NoopVerifier` gated to test-only, legacy socket names deprecated, 5 dead functions removed.  
-**Current Wave**: 150x — **PEN TEST SECURITY HARDENING.** SO_PEERCRED peer verification on IPC accept (caller uid/pid for authorization), mesh announcement validation (rate limiting per peer, format validation, max 64 capabilities per announce), `capability.call` input validation (routing whitelist `local`/`any` only, name format validation), drawbridge relay abuse prevention (10 MiB body limit, 128 headers max, path traversal blocking). Previous session: P1 Tower Hardening (UDS pool, federation.broadcast, benchmark fixes, idiomatic evolution). 0 clippy warnings (`-D warnings`), 0 unsafe, 0 production mocks. Previous: 150w — ALL P0s RESOLVED. Previous: 152 — Deep debt sweep.  
+**Current Wave**: 150x — **CRYPTO COMPOSITION EVOLUTION.** Addressed P1 "Crypto Composition Divergence": gated local crypto (`sha2`, `hmac`) behind `local-crypto-fallback` feature in `songbird-discovery`, `songbird-network-federation`, `songbird-genesis`, `songbird-orchestrator`. Production path delegates ALL hashing/HMAC to bearDog's `crypto.*` capabilities via UDS (`CryptoProvider`/`SecurityRpcClient`). Local fallback only for bootstrap/offline. Hot-path crypto (ChaCha20-Poly1305 BTSP AEAD, TLS transcript, STUN MESSAGE-INTEGRITY, onion layers) documented as chimera candidates. Composition analysis: `infra/wateringHole/CRYPTO_COMPOSITION.md`. Previous session: Pen test security hardening (SO_PEERCRED, mesh validation, capability.call validation, drawbridge limits). 0 clippy warnings (`-D warnings`), 0 unsafe, 0 production mocks.  
 **Previous Waves** (full detail in `CHANGELOG.md`): 191 (ipc.register identity verification, whitespace-tolerant protocol detection, BufReader safety), 190 (IP literals, parse_endpoint IPv6, redundant clone, test Duration constants), 189 (ipc.resolve `socket` field for primalSpring tier-1 discovery), 188 (15 timeout constants, JSONRPC_VERSION, Box<dyn Error> elimination), 187 (smart refactor connection.rs, primal-name evolution, 4 timeout constants), 186 (BTSP Phase 3 live connection verification — 4 tests), 185 (deep debt: 11 timeout constants, JSON-RPC constructors, primal codename evolution), 184 (BTSP Phase 3 binary-framed dispatch fix), 183 (deep debt: lint evolution, timeout centralization, hardcoded elimination), 182 (BTSP Phase 3 spec alignment), 181 (port canonicalization), 180 (BTSP Phase 3 btsp.negotiate), 175 (PG-51 verified, ENVIRONMENT_VARIABLES.md), 174 (hardcoded IP/port elimination, flaky tests, dep cleanup, +18 tests), 173 (PG-51 socket discovery), 172 (root doc reconciliation), 171 (test coverage expansion 71.28%→73.41%, +271 tests), 170 (CLI flag alignment), 169 (remaining `new()` → `new_direct()` in bin_interface), 168 (BTSP routing + seed encoding), 167 (BTSP error frames, env fallbacks), 166 (root doc reconciliation), 165 (dep cleanup, hardcoded elimination, dead code removal), 162 (stream.shutdown BTSP fix), 161 (port centralization, dep cleanup, error typing), 160 (BTSP NDJSON auto-detect), 158 (BTSP Step 3→4 verification relay), 157 (hardcoded literals, dead deps, doc cleanup, debris removal), 154 (mock isolation, dead deps, lint hygiene), 153 (BTSP NDJSON wire-format alignment), 152 (dead deps, hardcoding, test hygiene), 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
@@ -65,6 +65,27 @@ Phase 2 relay fixed (Waves 132–169). **Phase 3 implemented** (Wave 180): `btsp
 **Keep as `#[cfg]` gates** (inherently platform-specific): `/proc/net/route`, `/proc/meminfo`, `/sys/block`, `iptables`, domain socket symlinks, `chmod`, `SO_REUSEPORT`.
 
 **Already partially abstracted**: `songbird-universal-ipc/src/platform/mod.rs` (`PlatformIpcImpl`, `AsyncStreamImpl` enum dispatch).
+
+---
+
+### Crypto Composition (Wave 150x — Phase 1 DONE)
+
+**Status**: Phase 1 (composition seams) COMPLETE. Phase 2 (measure) and Phase 3 (chimera) pending.
+
+**Phase 1** (DONE): Local crypto (`sha2`, `hmac`) gated behind `local-crypto-fallback` feature flag in 4 crates. Production path delegates to bearDog `crypto.*` via UDS. Feature enabled by default for backward compat; disabling removes `sha2`/`hmac` from those crate binaries.
+
+**Phase 2** (PENDING): Benchmark each delegation seam. Target: <1ms per `crypto.sha256` / `crypto.hmac.sha256` call over UDS. Blocking: requires live bearDog on flockGate.
+
+**Phase 3** (FUTURE — Chimera): Extract BTSP AEAD + onion crypto into shared `.so`. bearDog + songBird link same chimera lib (no IPC for hot path). Blocked on: Phase 2 measurements confirming IPC cost for hot-path operations is unacceptable.
+
+**Hot-path crypto (chimera candidates — cannot delegate via IPC)**:
+- `songbird-orchestrator/ipc/btsp_phase3.rs`: ChaCha20-Poly1305 + HKDF (per-frame at wire speed)
+- `songbird-http-client/tls/*/transcript.rs`: SHA-256 TLS transcript hash
+- `songbird-stun/message/attributes.rs`: HMAC-SHA1 STUN MESSAGE-INTEGRITY
+- `songbird-sovereign-onion/crypto.rs`: ChaCha20-Poly1305 onion layers
+- `songbird-orchestrator/access_control/auth.rs`: HMAC-SHA1 TOTP (RFC 4226)
+
+Full analysis: `infra/wateringHole/CRYPTO_COMPOSITION.md`.
 
 ---
 

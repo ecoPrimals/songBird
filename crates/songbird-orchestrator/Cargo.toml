@@ -84,11 +84,12 @@ module_inception = "allow"
 unnecessary_literal_unwrap = "allow"
 
 # `task-checkpoint-gzip` gates flate2 so minimal builds can omit gzip.
-# `sha2` + `hmac` back local JWT + checkpoint fallbacks when crypto provider is unavailable.
+# `local-crypto-fallback` enables sha2 + hmac for local JWT + checkpoint when bearDog is unavailable.
 # Storage: IPC storage.* JSON-RPC via capability discovery; in-memory fallback otherwise.
 [features]
-default = ["task-checkpoint-gzip"]
+default = ["task-checkpoint-gzip", "local-crypto-fallback"]
 task-checkpoint-gzip = ["dep:flate2"]
+local-crypto-fallback = ["dep:sha2"]
 
 [dependencies]
 # All workspace crates (songbird-core consolidated into this crate)
@@ -119,7 +120,7 @@ uuid = { workspace = true, features = ["v5", "v7"] }
 
 flate2 = { version = "1.0", default-features = false, features = ["rust_backend"], optional = true }
 sha1 = "0.10"
-sha2 = { workspace = true }
+sha2 = { workspace = true, optional = true }
 hkdf = "0.12"
 chacha20poly1305 = "0.10"
 base64 = { workspace = true }
@@ -148,8 +149,7 @@ bytes = { workspace = true }
 
 # Access control and authentication
 
-# ⚠️ TRUE PRIMAL EXCEPTION (Feb 6, 2026): Minimal JWT Auth Crypto
-# Songbird delegates 100% crypto to the security provider EXCEPT for local JWT auth (HMAC-SHA256)
+# HMAC: required by TOTP (RFC 4226, must be local) + transitive via hkdf
 hmac = { workspace = true }
 
 

@@ -8,7 +8,6 @@
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use songbird_http_client::IpcHttpClient;
 
 /// Security capability client for cryptographic operations
@@ -300,12 +299,32 @@ impl SecurityCapabilityClient {
         }
     }
 
-    /// Generate deterministic fingerprint from node ID (fallback)
+    /// Generate deterministic fingerprint from node ID (fallback).
+    ///
+    /// Uses local SHA-256 when `local-crypto-fallback` is enabled,
+    /// otherwise uses a simpler non-cryptographic approach (FNV-like mix).
     fn generate_deterministic_fingerprint(node_id: &str) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(node_id.as_bytes());
-        hasher.update(b"songbird-genesis-fallback-v1");
-        hex::encode(hasher.finalize())
+        #[cfg(feature = "local-crypto-fallback")]
+        {
+            use sha2::{Digest, Sha256};
+            let mut hasher = Sha256::new();
+            hasher.update(node_id.as_bytes());
+            hasher.update(b"songbird-genesis-fallback-v1");
+            hex::encode(hasher.finalize())
+        }
+        #[cfg(not(feature = "local-crypto-fallback"))]
+        {
+            // Without crypto fallback, use a deterministic non-crypto hash.
+            // This path is only hit when bearDog is unavailable AND the
+            // security provider fails to generate a fingerprint — a rare
+            // bootstrap edge case.
+            let mut state: u64 = 0xcbf2_9ce4_8422_2325;
+            for b in node_id.as_bytes().iter().chain(b"songbird-genesis-fallback-v1") {
+                state ^= u64::from(*b);
+                state = state.wrapping_mul(0x0100_0000_01b3);
+            }
+            format!("{state:016x}{state:016x}{state:016x}{state:016x}")
+        }
     }
 }
 

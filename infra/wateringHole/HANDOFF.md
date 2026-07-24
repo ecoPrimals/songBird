@@ -20,6 +20,25 @@
 
 ## Recent Evolution (Wave 147f–150x)
 
+### Wave 150x — Crypto Composition Evolution (Jul 24 2026)
+
+**P1 Finding resolved**: "Crypto Composition Divergence" — songBird embedded `sha2`/`hmac`
+across 10+ crates instead of routing through bearDog's `crypto.*` UDS capabilities.
+
+**Changes**:
+- Gated local crypto (`sha2`, `hmac`) behind `local-crypto-fallback` feature flag
+- Affected crates: `songbird-discovery`, `songbird-network-federation`, `songbird-genesis`, `songbird-orchestrator`
+- Production path delegates ALL hashing/HMAC to bearDog via `CryptoProvider`/`SecurityRpcClient`
+- Local fallback retained (default feature) for bootstrap/offline/testing only
+- Hot-path crypto (BTSP AEAD, TLS transcript, STUN, onion, TOTP) stays local — documented as chimera candidates
+
+**Upstream requirement for bearDog team**:
+- bearDog MUST expose `crypto.sha256`, `crypto.hmac.sha256` reliably on UDS
+- Target: <1ms response for delegation calls (Phase 2 will measure)
+- Future: `crypto.hash.blake3` endpoint requested for discovery beacon hashing
+
+**Composition analysis**: `infra/wateringHole/CRYPTO_COMPOSITION.md`
+
 ### Wave 150x — Dependency Diet + ring→rustcrypto + Idiomatic Evolution (Jul 24 2026)
 
 **Dependency diet** — 6 dead deps removed:

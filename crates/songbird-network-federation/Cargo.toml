@@ -40,8 +40,8 @@ tracing = { workspace = true }
 
 # Time and date handling
 chrono = { workspace = true }
-sha2 = { workspace = true }
-hmac = { workspace = true }
+sha2 = { workspace = true, optional = true }
+hmac = { workspace = true, optional = true }
 hex = { workspace = true }
 base64 = { workspace = true }
 
@@ -63,6 +63,7 @@ rand.workspace = true
 tokio-test = "0.4"
 
 [features]
-default = ["local-btsp"]
+default = ["local-btsp", "local-crypto-fallback"]
 local-btsp = ["aes-gcm"]
+local-crypto-fallback = ["dep:sha2", "dep:hmac"]
 test-mocks = []
