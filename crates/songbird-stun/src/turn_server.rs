@@ -648,11 +648,10 @@ impl TurnRelayServer {
                 let channel =
                     alloc.channels.iter().find(|&(_, &addr)| addr == peer_addr).map(|(&ch, _)| ch);
 
-                if let Some(ch) = channel {
-                    bytes::Bytes::from(TurnAttrs::build_channel_data(ch, &buf[..len]))
-                } else {
-                    TurnAttrs::build_data_indication(peer_addr, &buf[..len])
-                }
+                channel.map_or_else(
+                    || TurnAttrs::build_data_indication(peer_addr, &buf[..len]),
+                    |ch| bytes::Bytes::from(TurnAttrs::build_channel_data(ch, &buf[..len])),
+                )
             };
 
             if main_socket.send_to(&frame, client_addr).await.is_ok() {

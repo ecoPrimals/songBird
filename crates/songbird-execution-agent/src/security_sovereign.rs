@@ -245,37 +245,45 @@ impl SecurityProviderIntegration {
     /// Returns an error if HTTP client cannot be created, or if no endpoint
     /// is configured in release builds.
     async fn connect() -> SongbirdResult<Self> {
-        let endpoint = if let Ok(v) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT") {
-            v
-        } else if let Ok(v) = songbird_process_env::var("SECURITY_ENDPOINT") {
-            v
-        } else if let Ok(v) = songbird_process_env::var("BEARDOG_SECURITY_ENDPOINT") {
-            warn!(
-                "Using legacy env var BEARDOG_SECURITY_ENDPOINT — migrate to SECURITY_PROVIDER_ENDPOINT, SECURITY_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (capability-first)"
-            );
-            v
-        } else if let Ok(v) = songbird_process_env::var("SONGBIRD_SECURITY_ENDPOINT") {
-            warn!(
-                "Using legacy env var SONGBIRD_SECURITY_ENDPOINT — migrate to SECURITY_PROVIDER_ENDPOINT or SECURITY_ENDPOINT"
-            );
-            v
-        } else {
-            #[cfg(debug_assertions)]
-            {
-                use songbird_types::constants::LOCALHOST;
-                use songbird_types::defaults::ports::DEFAULT_HTTPS_PORT;
-                let fallback = format!("http://{LOCALHOST}:{DEFAULT_HTTPS_PORT}");
-                warn!("⚠️ Using development fallback for security provider security: {fallback}");
-                fallback
-            }
-            #[cfg(not(debug_assertions))]
-            {
-                return Err(SongbirdError::configuration(
-                    "Security provider endpoint not configured. \
-                     Set SECURITY_PROVIDER_ENDPOINT, SECURITY_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (legacy fallbacks: BEARDOG_SECURITY_ENDPOINT, SONGBIRD_SECURITY_ENDPOINT).",
-                ));
-            }
-        };
+        let endpoint = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT").map_or_else(
+            |_| songbird_process_env::var("SECURITY_ENDPOINT").map_or_else(
+                |_| songbird_process_env::var("BEARDOG_SECURITY_ENDPOINT").map_or_else(
+                    |_| songbird_process_env::var("SONGBIRD_SECURITY_ENDPOINT").map_or_else(
+                        |_| {
+                            #[cfg(debug_assertions)]
+                            {
+                                use songbird_types::constants::LOCALHOST;
+                                use songbird_types::defaults::ports::DEFAULT_HTTPS_PORT;
+                                let fallback = format!("http://{LOCALHOST}:{DEFAULT_HTTPS_PORT}");
+                                warn!("⚠️ Using development fallback for security provider security: {fallback}");
+                                fallback
+                            }
+                            #[cfg(not(debug_assertions))]
+                            {
+                                return Err(SongbirdError::configuration(
+                                    "Security provider endpoint not configured. \
+                                     Set SECURITY_PROVIDER_ENDPOINT, SECURITY_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (legacy fallbacks: BEARDOG_SECURITY_ENDPOINT, SONGBIRD_SECURITY_ENDPOINT).",
+                                ));
+                            }
+                        },
+                        |v| {
+                            warn!(
+                                "Using legacy env var SONGBIRD_SECURITY_ENDPOINT — migrate to SECURITY_PROVIDER_ENDPOINT or SECURITY_ENDPOINT"
+                            );
+                            v
+                        },
+                    ),
+                    |v| {
+                        warn!(
+                            "Using legacy env var BEARDOG_SECURITY_ENDPOINT — migrate to SECURITY_PROVIDER_ENDPOINT, SECURITY_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (capability-first)"
+                        );
+                        v
+                    },
+                ),
+                std::convert::identity,
+            ),
+            std::convert::identity,
+        );
 
         // Create HTTP client
         let client = IpcHttpClient::new().await.map_err(|e| {

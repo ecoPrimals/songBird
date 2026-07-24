@@ -220,21 +220,21 @@ impl ResourceDetector {
             return 0;
         }
 
-        let (num_part, unit) = if let Some(stripped) = size_str.strip_suffix('T') {
-            (stripped, 1024_u64)
-        } else if let Some(stripped) = size_str.strip_suffix('G') {
-            (stripped, 1_u64)
-        } else if let Some(stripped) = size_str.strip_suffix('M') {
-            (stripped, 0_u64)
-        } else {
-            (size_str, 0_u64)
-        };
+        let (num_part, unit) = size_str.strip_suffix('T').map_or_else(
+            || {
+                size_str.strip_suffix('G').map_or_else(
+                    || {
+                        size_str
+                            .strip_suffix('M')
+                            .map_or_else(|| (size_str, 0_u64), |stripped| (stripped, 0_u64))
+                    },
+                    |stripped| (stripped, 1_u64),
+                )
+            },
+            |stripped| (stripped, 1024_u64),
+        );
 
-        if let Ok(num) = num_part.parse::<f64>() {
-            (num * unit as f64) as u64
-        } else {
-            0
-        }
+        num_part.parse::<f64>().map_or(0, |num| (num * unit as f64) as u64)
     }
 
     /// Detect network bandwidth

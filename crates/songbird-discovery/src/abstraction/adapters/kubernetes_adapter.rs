@@ -214,10 +214,7 @@ impl DiscoveryProvider for KubernetesProviderAdapter {
 
     async fn health_check(&self) -> Result<bool> {
         let url = format!("{}/healthz", self.api_base);
-        match self.client.get(&url).await {
-            Ok(resp) => Ok(resp.is_success()),
-            Err(_) => Ok(false),
-        }
+        self.client.get(&url).await.map_or(Ok(false), |resp| Ok(resp.is_success()))
     }
 
     async fn register(&self, service: ServiceInfo) -> Result<()> {
@@ -251,12 +248,12 @@ impl DiscoveryProvider for KubernetesProviderAdapter {
     async fn discover(&self, query: ServiceQuery) -> Result<Vec<ServiceInfo>> {
         tracing::info!("🔍 Discovering services via Kubernetes API (ns={})", self.namespace);
 
-        let url = match query.name.as_deref() {
-            Some(name) => {
+        let url = query.name.as_deref().map_or_else(
+            || format!("{}/api/v1/namespaces/{}/services", self.api_base, self.namespace),
+            |name| {
                 format!("{}/api/v1/namespaces/{}/services/{}", self.api_base, self.namespace, name)
-            }
-            None => format!("{}/api/v1/namespaces/{}/services", self.api_base, self.namespace),
-        };
+            },
+        );
 
         let response = self
             .client

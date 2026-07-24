@@ -157,11 +157,10 @@ impl CloudflareDdnsProvider {
             "ttl": if ttl == 0 { 1 } else { ttl },
         });
 
-        let (method, url) = if let Some(id) = record_id {
-            ("PUT", format!("{CF_API_BASE}/zones/{}/dns_records/{id}", self.zone_id))
-        } else {
-            ("POST", format!("{CF_API_BASE}/zones/{}/dns_records", self.zone_id))
-        };
+        let (method, url) = record_id.map_or_else(
+            || ("POST", format!("{CF_API_BASE}/zones/{}/dns_records", self.zone_id)),
+            |id| ("PUT", format!("{CF_API_BASE}/zones/{}/dns_records/{id}", self.zone_id)),
+        );
 
         self.cf_request(HttpReq {
             method,

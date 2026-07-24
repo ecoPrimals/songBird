@@ -576,10 +576,8 @@ async fn proxy_to_backend(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let stripped = backend_url.strip_prefix("http://").unwrap_or(backend_url);
 
-    let (authority, path_and_query) = match stripped.find('/') {
-        Some(i) => (&stripped[..i], &stripped[i..]),
-        None => (stripped, "/"),
-    };
+    let (authority, path_and_query) =
+        stripped.find('/').map_or((stripped, "/"), |i| (&stripped[..i], &stripped[i..]));
 
     let addr = if authority.contains(':') {
         authority.to_string()
@@ -647,10 +645,12 @@ async fn proxy_to_external(
 
 /// Shared TLS connector for outbound HTTPS proxy requests.
 /// Initialized once on first use — avoids loading native CA roots per request.
+/// Uses `rustls-rustcrypto` (pure Rust, zero C dependencies).
 fn outbound_tls_connector() -> &'static tokio_rustls::TlsConnector {
     use std::sync::OnceLock;
     static CONNECTOR: OnceLock<tokio_rustls::TlsConnector> = OnceLock::new();
     CONNECTOR.get_or_init(|| {
+        rustls_rustcrypto::provider().install_default().ok();
         let mut root_store = rustls::RootCertStore::empty();
         let native_certs = rustls_native_certs::load_native_certs();
         for cert in native_certs.certs {
@@ -678,10 +678,8 @@ async fn proxy_to_external_tls(
 
     let stripped = external_url.strip_prefix("https://").unwrap_or(external_url);
 
-    let (authority, path_and_query) = match stripped.find('/') {
-        Some(i) => (&stripped[..i], &stripped[i..]),
-        None => (stripped, "/"),
-    };
+    let (authority, path_and_query) =
+        stripped.find('/').map_or((stripped, "/"), |i| (&stripped[..i], &stripped[i..]));
 
     let host = authority.split(':').next().unwrap_or(authority);
 

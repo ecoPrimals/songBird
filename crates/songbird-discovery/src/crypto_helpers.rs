@@ -36,12 +36,12 @@ pub async fn sha256_hash(crypto: Option<&CryptoProvider>, data: &[u8]) -> Vec<u8
 }
 
 pub fn sha256_hash_sync(crypto: Option<&CryptoProvider>, data: &[u8]) -> Vec<u8> {
-    match crypto {
-        None => {
+    crypto.map_or_else(
+        || {
             tracing::warn!(target: "songbird_discovery", "SHA-256 without CryptoProvider; using local sha2");
             sha256_local(data)
-        }
-        Some(p) => {
+        },
+        |p| {
             if tokio::runtime::Handle::try_current().is_ok() {
                 tracing::warn!(
                     target: "songbird_discovery",
@@ -60,8 +60,8 @@ pub fn sha256_hash_sync(crypto: Option<&CryptoProvider>, data: &[u8]) -> Vec<u8>
                     }
                 }
             }
-        }
-    }
+        },
+    )
 }
 
 #[cfg(test)]

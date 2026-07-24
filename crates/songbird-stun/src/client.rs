@@ -71,10 +71,9 @@ impl StunClient {
 
     /// Create a binding transaction, optionally authenticated.
     fn new_transaction(&self) -> BindingTransaction {
-        match self.credentials {
-            Some(ref creds) => BindingTransaction::with_credentials(creds),
-            None => BindingTransaction::new(),
-        }
+        self.credentials
+            .as_ref()
+            .map_or_else(|| BindingTransaction::new(), BindingTransaction::with_credentials)
     }
 
     /// Discover public address via STUN server

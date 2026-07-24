@@ -31,7 +31,6 @@ serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
 
 tracing = { workspace = true }
 futures-util = { workspace = true }
-tokio-stream = { version = "0.1", features = ["sync"] }
 base64 = "0.22"  # For security-provider BirdSong encoding
 uuid = { workspace = true }
 thiserror = { workspace = true }

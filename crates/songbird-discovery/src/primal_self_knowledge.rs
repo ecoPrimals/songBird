@@ -346,11 +346,7 @@ impl DiscoveryMechanism {
             Self::MappedEnvironment(map) => {
                 let map = Arc::clone(map);
                 EnvironmentDiscovery::discover_with(capability, move |k| {
-                    if let Some(v) = map.get(k) {
-                        Ok(v.clone())
-                    } else {
-                        songbird_process_env::var(k)
-                    }
+                    map.get(k).map_or_else(|| songbird_process_env::var(k), |v| Ok(v.clone()))
                 })
                 .await
             }

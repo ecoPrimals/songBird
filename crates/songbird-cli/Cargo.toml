@@ -50,7 +50,6 @@ songbird-http-client = { path = "../songbird-http-client" }
 hickory-resolver = { workspace = true }
 tracing = { workspace = true }
 dialoguer = "0.11"
-console = "0.15"
 indicatif = "0.17"
 uuid = { workspace = true }
 thiserror = { workspace = true }
@@ -59,7 +58,6 @@ tracing-subscriber = { workspace = true }
 # TLS provider: rustls-rustcrypto (pure Rust, zero C — ecoBin compliant).
 # SB-02 RESOLVED: ring-crypto opt-in feature removed (Wave 135). rustls_rustcrypto is
 # sufficient for both production (Tower Atomic delegation) and standalone bootstrap.
-rustls = { version = "0.23", default-features = false, features = ["std"] }
 rustls-rustcrypto = "0.0.2-alpha"
 anyhow = { workspace = true }
 

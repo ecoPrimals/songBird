@@ -375,27 +375,32 @@ fn resolve_consul_service(
 
     let entries: Vec<serde_json::Value> = serde_json::from_str(body).unwrap_or_default();
 
-    if let Some(entry) = entries.first() {
-        let svc_host = entry["ServiceAddress"]
-            .as_str()
-            .or_else(|| entry["Address"].as_str())
-            .unwrap_or(songbird_types::constants::LOCALHOST);
-        let svc_port = entry["ServicePort"].as_u64().unwrap_or(8080);
+    entries.first().map_or_else(
+        || {
+            Err(SongbirdError::Configuration {
+                message: format!("No healthy instances of '{service_name}' found in Consul"),
+                field: Some(String::from("service_name")),
+                suggestion: Some(String::from(
+                    "Register the service or check Consul health checks",
+                )),
+            })
+        },
+        |entry| {
+            let svc_host = entry["ServiceAddress"]
+                .as_str()
+                .or_else(|| entry["Address"].as_str())
+                .unwrap_or(songbird_types::constants::LOCALHOST);
+            let svc_port = entry["ServicePort"].as_u64().unwrap_or(8080);
 
-        Ok(EndpointSpec {
-            host: svc_host.to_string(),
-            port: u16::try_from(svc_port)
-                .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT),
-            protocol: Some(String::from("http")),
-            path: None,
-        })
-    } else {
-        Err(SongbirdError::Configuration {
-            message: format!("No healthy instances of '{service_name}' found in Consul"),
-            field: Some(String::from("service_name")),
-            suggestion: Some(String::from("Register the service or check Consul health checks")),
-        })
-    }
+            Ok(EndpointSpec {
+                host: svc_host.to_string(),
+                port: u16::try_from(svc_port)
+                    .unwrap_or(songbird_types::defaults::ports::DEFAULT_HTTP_PORT),
+                protocol: Some(String::from("http")),
+                path: None,
+            })
+        },
+    )
 }
 
 /// Parse endpoint from string based on parser type

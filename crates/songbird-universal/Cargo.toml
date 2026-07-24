@@ -35,7 +35,6 @@ tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
 url = "2.5"
 uuid = { workspace = true }
-base64 = "0.22"
 
 # tarpc dependencies for high-performance primal-to-primal RPC (v3.12.0)
 tarpc = { workspace = true }

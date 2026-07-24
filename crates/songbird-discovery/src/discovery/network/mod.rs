@@ -240,8 +240,8 @@ impl NetworkManager {
             })
             .map(ToString::to_string);
 
-        let subnet = if let Some(internal_ip_str) = &internal_ip {
-            if let Ok(internal_ip_addr) = internal_ip_str.parse::<std::net::IpAddr>() {
+        let subnet = internal_ip.as_ref().and_then(|internal_ip_str| {
+            internal_ip_str.parse::<std::net::IpAddr>().ok().and_then(|internal_ip_addr| {
                 match internal_ip_addr {
                     std::net::IpAddr::V4(ipv4) => {
                         let octets = ipv4.octets();
@@ -249,12 +249,8 @@ impl NetworkManager {
                     }
                     std::net::IpAddr::V6(_) => None,
                 }
-            } else {
-                None
-            }
-        } else {
-            None
-        };
+            })
+        });
 
         NetworkLocation {
             region,

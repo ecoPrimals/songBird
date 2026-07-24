@@ -49,10 +49,9 @@ impl BindingTransaction {
     /// the message includes MESSAGE-INTEGRITY (HMAC-SHA1) and FINGERPRINT (CRC32).
     #[must_use]
     pub fn encode_request(&self) -> Bytes {
-        match &self.key {
-            Some(k) => self.request.encode_authenticated(k),
-            None => self.request.encode(),
-        }
+        self.key
+            .as_ref()
+            .map_or_else(|| self.request.encode(), |k| self.request.encode_authenticated(k))
     }
 
     /// Decode a binding response, verify the transaction ID, and return the mapped address.

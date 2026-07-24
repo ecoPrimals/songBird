@@ -16,10 +16,7 @@
 /// unacknowledged packets.
 #[must_use]
 pub fn encode_pn_length(pn: u64, largest_acked: Option<u64>) -> u8 {
-    let num_unacked = match largest_acked {
-        Some(la) => pn.saturating_sub(la),
-        None => pn + 1,
-    };
+    let num_unacked = largest_acked.map_or(pn + 1, |la| pn.saturating_sub(la));
     // Need enough bits to encode 2 * num_unacked
     let range = 2 * num_unacked;
     if range < (1 << 8) {

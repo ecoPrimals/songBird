@@ -302,13 +302,14 @@ impl HealthProbe {
         let n = stream.read(&mut buf).map_err(|e| format!("read: {e}"))?;
         let resp: serde_json::Value =
             serde_json::from_slice(&buf[..n]).map_err(|e| format!("parse: {e}"))?;
-        if let Some(status) = resp["result"]["status"].as_str() {
-            Ok(status.to_string())
-        } else if let Some(err) = resp["error"]["message"].as_str() {
-            Err(err.to_string())
-        } else {
-            Ok(String::from("ok"))
-        }
+        resp["result"]["status"].as_str().map_or_else(
+            || {
+                resp["error"]["message"]
+                    .as_str()
+                    .map_or_else(|| Ok(String::from("ok")), |err| Err(err.to_string()))
+            },
+            |status| Ok(status.to_string()),
+        )
     }
 }
 

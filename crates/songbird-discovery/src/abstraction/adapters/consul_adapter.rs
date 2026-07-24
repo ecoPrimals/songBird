@@ -305,10 +305,7 @@ impl DiscoveryProvider for ConsulProviderAdapter {
 
     async fn health_check(&self) -> Result<bool> {
         let url = format!("{}/v1/status/leader", self.consul_url);
-        match self.client.get(&url).await {
-            Ok(resp) => Ok(resp.is_success()),
-            Err(_) => Ok(false),
-        }
+        self.client.get(&url).await.map_or(Ok(false), |resp| Ok(resp.is_success()))
     }
 
     async fn register(&self, service: ServiceInfo) -> Result<()> {
@@ -398,10 +395,10 @@ impl DiscoveryProvider for ConsulProviderAdapter {
     async fn discover(&self, query: ServiceQuery) -> Result<Vec<ServiceInfo>> {
         tracing::info!("🔍 Discovering services via native Consul adapter");
 
-        let url = match query.name.as_deref() {
-            Some(name) => format!("{}/v1/health/service/{name}", self.consul_url),
-            None => format!("{}/v1/agent/services", self.consul_url),
-        };
+        let url = query.name.as_deref().map_or_else(
+            || format!("{}/v1/agent/services", self.consul_url),
+            |name| format!("{}/v1/health/service/{name}", self.consul_url),
+        );
 
         let response = self
             .client

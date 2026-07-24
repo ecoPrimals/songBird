@@ -496,15 +496,25 @@ fn print_text_report(report: &BenchmarkReport) {
 
 fn parse_duration(s: &str) -> Result<Duration, String> {
     let s = s.trim();
-    if let Some(secs) = s.strip_suffix('s') {
-        secs.parse::<f64>()
-            .map(Duration::from_secs_f64)
-            .map_err(|e| format!("Invalid duration: {e}"))
-    } else if let Some(ms) = s.strip_suffix("ms") {
-        ms.parse::<u64>().map(Duration::from_millis).map_err(|e| format!("Invalid duration: {e}"))
-    } else {
-        s.parse::<f64>()
-            .map(Duration::from_secs_f64)
-            .map_err(|_| format!("Invalid duration '{s}' — use '10s' or '500ms'"))
-    }
+    s.strip_suffix('s').map_or_else(
+        || {
+            s.strip_suffix("ms").map_or_else(
+                || {
+                    s.parse::<f64>()
+                        .map(Duration::from_secs_f64)
+                        .map_err(|_| format!("Invalid duration '{s}' — use '10s' or '500ms'"))
+                },
+                |ms| {
+                    ms.parse::<u64>()
+                        .map(Duration::from_millis)
+                        .map_err(|e| format!("Invalid duration: {e}"))
+                },
+            )
+        },
+        |secs| {
+            secs.parse::<f64>()
+                .map(Duration::from_secs_f64)
+                .map_err(|e| format!("Invalid duration: {e}"))
+        },
+    )
 }
