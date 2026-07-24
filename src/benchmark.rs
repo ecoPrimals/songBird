@@ -53,6 +53,16 @@ pub struct BenchmarkArgs {
     /// Timeout for individual operations.
     #[arg(long, default_value = "5s", value_parser = parse_duration)]
     pub timeout: Duration,
+
+    /// Enable sustained streaming mode: continuous write over a single TCP
+    /// connection for the full duration, with windowed throughput samples.
+    /// Measures real sustained throughput (like iperf3).
+    #[arg(long)]
+    pub sustained: bool,
+
+    /// Window size for sustained streaming samples (default 1s).
+    #[arg(long, default_value = "1s", value_parser = parse_duration)]
+    pub window: Duration,
 }
 
 /// Output format for benchmark results.
@@ -74,6 +84,23 @@ pub struct BenchmarkReport {
     pub latency: LatencyReport,
     pub setup: SetupReport,
     pub throughput: ThroughputReport,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sustained: Option<SustainedReport>,
+}
+
+/// Sustained streaming throughput results (windowed measurement).
+#[derive(Debug, Serialize)]
+#[allow(missing_docs)]
+pub struct SustainedReport {
+    pub total_duration_ms: f64,
+    pub total_bytes: u64,
+    pub avg_mbps: f64,
+    pub min_window_mbps: f64,
+    pub max_window_mbps: f64,
+    pub p50_window_mbps: f64,
+    pub p95_window_mbps: f64,
+    pub window_count: u32,
+    pub window_size_ms: u64,
 }
 
 /// Latency measurement results.
@@ -105,7 +132,8 @@ pub struct SetupReport {
 #[derive(Debug, Serialize)]
 #[allow(missing_docs)]
 pub struct ThroughputReport {
-    pub duration_ms: u64,
+    pub duration_us: u64,
+    pub duration_ms: f64,
     pub bytes_sent: u64,
     pub throughput_mbps: f64,
 }
@@ -133,8 +161,21 @@ pub async fn run_benchmark(args: &BenchmarkArgs) -> Result<()> {
     let latency = measure_latency(peer_addr, args.timeout, args.probes).await?;
 
     // Phase 3: Throughput measurement
-    eprintln!("[3/3] Measuring throughput ({:?})...", args.duration);
+    let phases = if args.sustained {
+        "4"
+    } else {
+        "3"
+    };
+    eprintln!("[3/{phases}] Measuring throughput ({:?})...", args.duration);
     let throughput = measure_throughput(peer_addr, args.timeout, args.duration).await?;
+
+    // Phase 4 (optional): Sustained streaming
+    let sustained = if args.sustained {
+        eprintln!("[4/4] Sustained streaming ({:?}, window {:?})...", args.duration, args.window);
+        Some(measure_sustained(peer_addr, args.timeout, args.duration, args.window).await?)
+    } else {
+        None
+    };
 
     let report = BenchmarkReport {
         mode: mode_str.to_string(),
@@ -143,6 +184,7 @@ pub async fn run_benchmark(args: &BenchmarkArgs) -> Result<()> {
         latency,
         setup,
         throughput,
+        sustained,
     };
 
     match args.output {
@@ -289,12 +331,99 @@ async fn measure_throughput(
         0.0
     };
 
-    #[expect(clippy::cast_possible_truncation, reason = "benchmark duration < u64::MAX ms")]
-    let duration_ms = elapsed.as_millis() as u64;
+    #[expect(clippy::cast_possible_truncation, reason = "benchmark duration < u64::MAX µs")]
+    let duration_us = elapsed.as_micros() as u64;
     Ok(ThroughputReport {
-        duration_ms,
+        duration_us,
+        duration_ms: elapsed.as_secs_f64() * 1000.0,
         bytes_sent,
         throughput_mbps,
+    })
+}
+
+/// Sustained streaming throughput — single TCP connection, windowed samples.
+///
+/// Opens one connection and writes continuously for the full duration,
+/// recording throughput per window. This mimics iperf3-style measurement
+/// and avoids the connect/disconnect overhead of single-shot tests.
+async fn measure_sustained(
+    peer: SocketAddr,
+    op_timeout: Duration,
+    duration: Duration,
+    window: Duration,
+) -> Result<SustainedReport> {
+    let mut stream = timeout(op_timeout, TcpStream::connect(peer))
+        .await
+        .map_err(|_| anyhow!("Connection timeout for sustained test"))?
+        .map_err(|e| anyhow!("TCP connect failed: {e}"))?;
+
+    let chunk = vec![0xABu8; 65_536]; // 64 KiB
+    let start = Instant::now();
+    let mut window_start = Instant::now();
+    let mut window_bytes: u64 = 0;
+    let mut total_bytes: u64 = 0;
+    let mut window_rates: Vec<f64> = Vec::new();
+
+    while start.elapsed() < duration {
+        match timeout(Duration::from_secs(2), stream.write_all(&chunk)).await {
+            Ok(Ok(())) => {
+                let chunk_size = chunk.len() as u64;
+                window_bytes += chunk_size;
+                total_bytes += chunk_size;
+            }
+            _ => break,
+        }
+
+        if window_start.elapsed() >= window {
+            let elapsed_secs = window_start.elapsed().as_secs_f64();
+            #[expect(clippy::cast_precision_loss, reason = "throughput calculation")]
+            let rate_mbps = (window_bytes as f64 * 8.0) / (elapsed_secs * 1_000_000.0);
+            window_rates.push(rate_mbps);
+            window_bytes = 0;
+            window_start = Instant::now();
+        }
+    }
+
+    // Flush the final partial window
+    if window_bytes > 0 {
+        let elapsed_secs = window_start.elapsed().as_secs_f64();
+        if elapsed_secs > 0.01 {
+            #[expect(clippy::cast_precision_loss, reason = "throughput calculation")]
+            let rate_mbps = (window_bytes as f64 * 8.0) / (elapsed_secs * 1_000_000.0);
+            window_rates.push(rate_mbps);
+        }
+    }
+
+    let total_elapsed = start.elapsed();
+    #[expect(clippy::cast_precision_loss, reason = "throughput aggregate")]
+    let avg_mbps = if total_elapsed.as_secs_f64() > 0.0 {
+        (total_bytes as f64 * 8.0) / (total_elapsed.as_secs_f64() * 1_000_000.0)
+    } else {
+        0.0
+    };
+
+    window_rates.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+    let min_window = window_rates.first().copied().unwrap_or(0.0);
+    let max_window = window_rates.last().copied().unwrap_or(0.0);
+    let p50_window = percentile(&window_rates, 50.0);
+    let p95_window = percentile(&window_rates, 95.0);
+
+    #[expect(clippy::cast_possible_truncation, reason = "window count fits u32")]
+    let window_count = window_rates.len() as u32;
+    #[expect(clippy::cast_possible_truncation, reason = "window duration < u64::MAX ms")]
+    let window_size_ms = window.as_millis() as u64;
+
+    Ok(SustainedReport {
+        total_duration_ms: total_elapsed.as_secs_f64() * 1000.0,
+        total_bytes,
+        avg_mbps,
+        min_window_mbps: min_window,
+        max_window_mbps: max_window,
+        p50_window_mbps: p50_window,
+        p95_window_mbps: p95_window,
+        window_count,
+        window_size_ms,
     })
 }
 
@@ -340,13 +469,28 @@ fn print_text_report(report: &BenchmarkReport) {
     );
     println!("  │  jitter: {:.2} ms", report.latency.jitter_ms);
     println!("  │");
-    #[expect(clippy::cast_precision_loss, reason = "display formatting only")]
-    let dur_secs = report.throughput.duration_ms as f64 / 1000.0;
-    println!("  └─ Throughput ({dur_secs:.1}s)");
+    let dur_secs = report.throughput.duration_ms / 1000.0;
+    if report.sustained.is_some() {
+        println!("  ├─ Throughput ({dur_secs:.1}s, single-shot)");
+    } else {
+        println!("  └─ Throughput ({dur_secs:.1}s)");
+    }
     println!(
         "     sent: {} bytes  rate: {:.2} Mbps",
         report.throughput.bytes_sent, report.throughput.throughput_mbps
     );
+
+    if let Some(ref s) = report.sustained {
+        let sdur = s.total_duration_ms / 1000.0;
+        println!("  │");
+        println!("  └─ Sustained ({sdur:.1}s, {} windows)", s.window_count);
+        println!(
+            "     avg: {:.2} Mbps  min: {:.2}  max: {:.2}",
+            s.avg_mbps, s.min_window_mbps, s.max_window_mbps
+        );
+        println!("     p50: {:.2} Mbps  p95: {:.2} Mbps", s.p50_window_mbps, s.p95_window_mbps);
+        println!("     total: {} bytes", s.total_bytes);
+    }
     println!();
 }
 
