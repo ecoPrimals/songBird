@@ -20,6 +20,28 @@
 
 ## Recent Evolution (Wave 147f–150x)
 
+### Wave 150x — Dependency Diet + ring→rustcrypto + Idiomatic Evolution (Jul 24 2026)
+
+**Dependency diet** — 6 dead deps removed:
+- `tokio-stream` (discovery): unused, `futures-util` covers streaming
+- `console` (cli): redundant, pulled via `dialoguer`/`indicatif`
+- `rustls` direct dep (cli): only `rustls-rustcrypto` referenced
+- `url` (network-federation): unused, format strings used instead
+- `generic-array` (network-federation): not imported, `aes-gcm` uses internally
+- `base64` (universal): no usage in src/
+
+**ring → rustls-rustcrypto** (songbird-universal-ipc):
+- Drawbridge TLS outbound no longer links `ring` (C/assembly)
+- Pure Rust `rustls-rustcrypto` provider installed on first connector use
+- Zero functional change — same `ClientConfig + native CA roots` API
+
+**Security advisories patched**:
+- `anyhow` 1.0.102 → 1.0.104 (RUSTSEC-2026-0190)
+- `crossbeam-epoch` 0.9.18 → 0.9.20 (RUSTSEC-2026-0204)
+- `quick-xml`: blocked on upstream `netdev`/`plist` (documented)
+
+**Idiomatic Rust**: 17 `option_if_let_else` → `map_or_else` across 15 files
+
 ### Wave 150x — Pen Test Security Hardening (Jul 24 2026)
 
 **SO_PEERCRED Peer Verification** (pen finding: UDS-spoof):
