@@ -256,7 +256,7 @@ impl SecurityProviderIntegration {
                                 use songbird_types::defaults::ports::DEFAULT_HTTPS_PORT;
                                 let fallback = format!("http://{LOCALHOST}:{DEFAULT_HTTPS_PORT}");
                                 warn!("⚠️ Using development fallback for security provider security: {fallback}");
-                                Ok(fallback)
+                                Ok::<String, SongbirdError>(fallback)
                             }
                             #[cfg(not(debug_assertions))]
                             {

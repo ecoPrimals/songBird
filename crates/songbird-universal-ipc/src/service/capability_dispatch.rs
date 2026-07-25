@@ -151,16 +151,29 @@ impl IpcServiceHandler {
             drop(registry);
 
             if let Some(ref path) = socket_path {
-                let result =
-                    self.forward_to_local_provider(path, &call.operation, &call.params).await?;
-
-                let response = CapabilityCallResult {
-                    provider: primal_id,
-                    gate: String::from("local"),
-                    result,
-                };
-                return serde_json::to_value(response)
-                    .map_err(|e| format!("Serialization error: {e}"));
+                match self
+                    .forward_to_local_provider_with_retry(path, &call.operation, &call.params)
+                    .await
+                {
+                    Ok(result) => {
+                        let response = CapabilityCallResult {
+                            provider: primal_id,
+                            gate: String::from("local"),
+                            result,
+                        };
+                        return serde_json::to_value(response)
+                            .map_err(|e| format!("Serialization error: {e}"));
+                    }
+                    Err(e) => {
+                        debug!(
+                            provider = %primal_id,
+                            path = %path,
+                            error = %e,
+                            "Local provider dispatch failed after retries"
+                        );
+                        return Err(e);
+                    }
+                }
             }
 
             return Err(format!(
@@ -243,6 +256,40 @@ impl IpcServiceHandler {
         serde_json::to_value(response).map_err(|e| format!("Serialization error: {e}"))
     }
 
+    /// Forward to a local provider with exponential backoff retry.
+    ///
+    /// Handles transient provider restarts (e.g. bearDog cycling) by retrying
+    /// up to 2 additional times with increasing delay (100ms, 300ms).
+    async fn forward_to_local_provider_with_retry(
+        &self,
+        socket_path: &str,
+        operation: &str,
+        params: &Value,
+    ) -> Result<Value, String> {
+        const RETRY_DELAYS_MS: &[u64] = &[100, 300];
+
+        match self.forward_to_local_provider(socket_path, operation, params).await {
+            Ok(result) => Ok(result),
+            Err(e) if e.contains("Cannot connect") || e.contains("unreachable") => {
+                debug!(
+                    socket_path,
+                    error = %e,
+                    "Provider connect failed — entering retry loop"
+                );
+                let mut last_err = e;
+                for delay_ms in RETRY_DELAYS_MS {
+                    tokio::time::sleep(std::time::Duration::from_millis(*delay_ms)).await;
+                    match self.forward_to_local_provider(socket_path, operation, params).await {
+                        Ok(result) => return Ok(result),
+                        Err(retry_err) => last_err = retry_err,
+                    }
+                }
+                Err(last_err)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
     /// Forward an operation to a local provider via its IPC socket.
     /// On Unix: connects to a Unix domain socket at `socket_path`.
     /// On Windows: connects to TCP localhost, parsing the port from `socket_path`.
@@ -282,5 +329,66 @@ impl IpcServiceHandler {
         }
 
         Ok(response.get("result").cloned().unwrap_or(Value::Null))
+    }
+
+    /// Handle `capability.health` — dispatch-path health probe.
+    ///
+    /// For each registered provider with a local socket, attempts a lightweight
+    /// connection probe and reports reachability. Designed for cellMembrane
+    /// service monitoring and automated failover decisions.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error only if internal state is unreadable.
+    pub(super) async fn handle_capability_health(&self, _params: Value) -> Result<Value, String> {
+        let registry = self.registry.read().await;
+        let names = registry.list_services().await;
+        let mut providers: Vec<Value> = Vec::new();
+
+        for name in &names {
+            let Some(entry) = registry.get_service(name).await else {
+                continue;
+            };
+            let Some(socket_path) = entry.native_endpoint.socket_path() else {
+                continue;
+            };
+
+            let probe_start = std::time::Instant::now();
+            let reachable = tokio::time::timeout(
+                std::time::Duration::from_millis(500),
+                self.ipc_pool.acquire(&socket_path),
+            )
+            .await;
+
+            let (status, latency_ms) = match reachable {
+                Ok(Ok(stream)) => {
+                    let ms = u64::try_from(probe_start.elapsed().as_millis()).unwrap_or(u64::MAX);
+                    self.ipc_pool.release(&socket_path, stream).await;
+                    ("reachable", Some(ms))
+                }
+                Ok(Err(e)) => {
+                    debug!(name, socket_path, error = %e, "capability.health: unreachable");
+                    ("unreachable", None)
+                }
+                Err(_) => {
+                    debug!(name, socket_path, "capability.health: timeout");
+                    ("timeout", None)
+                }
+            };
+
+            providers.push(serde_json::json!({
+                "primal_id": name,
+                "socket": socket_path,
+                "status": status,
+                "latency_ms": latency_ms,
+            }));
+        }
+
+        let all_healthy = providers.iter().all(|p| p["status"] == "reachable");
+        Ok(serde_json::json!({
+            "healthy": all_healthy,
+            "provider_count": providers.len(),
+            "providers": providers,
+        }))
     }
 }

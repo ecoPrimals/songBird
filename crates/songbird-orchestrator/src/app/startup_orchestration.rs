@@ -610,10 +610,12 @@ impl<'a> StartupOrchestrator<'a> {
         Ok(())
     }
 
-    /// Spawn a background task that periodically re-scans biomeos socket dirs
-    /// and registers any newly-appeared primals. This makes the `ipc.resolve`
-    /// registry self-healing: primals that start after Songbird are picked up
-    /// within `SOCKET_RESCAN_INTERVAL_SECS` without launcher assistance.
+    /// Spawn a background task that watches biomeos socket directories and
+    /// registers any newly-appeared primals. Uses adaptive polling: starts with
+    /// a tight interval (2s) when no providers are registered, then relaxes to
+    /// `SOCKET_RESCAN_INTERVAL_SECS` (30s) once the registry is populated. This
+    /// gives near-instant recovery when bearDog or other primals restart, without
+    /// requiring `inotify` as an external dependency.
     #[cfg(unix)]
     fn start_periodic_socket_rescan(&self) {
         let Some(ref registry) = self.orchestrator.broker_registry else {
@@ -622,11 +624,19 @@ impl<'a> StartupOrchestrator<'a> {
         };
 
         let registry = std::sync::Arc::clone(registry);
-        let interval = std::time::Duration::from_secs(SOCKET_RESCAN_INTERVAL_SECS);
 
         tokio::spawn(async move {
+            const FAST_INTERVAL: std::time::Duration = std::time::Duration::from_secs(2);
+            let normal_interval = std::time::Duration::from_secs(SOCKET_RESCAN_INTERVAL_SECS);
+
             loop {
+                let reg = registry.read().await;
+                let service_count = reg.list_services().await.len();
+                let interval = if service_count == 0 { FAST_INTERVAL } else { normal_interval };
+                drop(reg);
+
                 tokio::time::sleep(interval).await;
+
                 let reg = registry.read().await;
                 let count =
                     crate::primal_discovery::socket_auto_discovery::discover_and_register_biomeos_primals(&reg).await;
@@ -636,7 +646,7 @@ impl<'a> StartupOrchestrator<'a> {
             }
         });
 
-        info!("🔄 Periodic socket re-scan: enabled (every {}s)", SOCKET_RESCAN_INTERVAL_SECS);
+        info!("🔄 Adaptive socket watch: enabled (2s until populated, then {}s)", SOCKET_RESCAN_INTERVAL_SECS);
     }
 
     #[cfg(not(unix))]

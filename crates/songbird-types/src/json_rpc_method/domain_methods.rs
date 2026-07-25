@@ -61,6 +61,9 @@ pub enum CapabilitiesMethod {
     /// `capability.call` — cross-gate dispatch: invoke a capability operation, resolving
     /// locally or forwarding to a remote gate via mesh/relay transport.
     Call,
+    /// `capability.health` — dispatch-path health probe: checks reachability of
+    /// registered capability providers for cellMembrane monitoring.
+    Health,
 }
 
 /// `lifecycle.*` — composition and runtime state introspection.
@@ -198,6 +201,8 @@ pub enum MeshMethod {
     Subscribe,
     ProbeLatency,
     CapabilitiesAnnounce,
+    /// `mesh.capabilities_revoke` — explicit capability withdrawal propagated mesh-wide.
+    CapabilitiesRevoke,
     Enroll,
     PruneStale,
 }

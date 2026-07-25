@@ -37,6 +37,9 @@ pub(super) async fn dispatch_mesh(
         JsonRpcMethod::Mesh(MeshMethod::CapabilitiesAnnounce) => {
             handler.mesh_handler.handle_capabilities_announce(params).await
         }
+        JsonRpcMethod::Mesh(MeshMethod::CapabilitiesRevoke) => {
+            handler.mesh_handler.handle_capabilities_revoke(params).await
+        }
         JsonRpcMethod::Mesh(MeshMethod::DiscoverRemotes) => {
             handler.mesh_handler.handle_discover_remotes(params).await
         }

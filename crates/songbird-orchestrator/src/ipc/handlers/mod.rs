@@ -655,6 +655,9 @@ impl IpcHandlers {
             MeshMethod::CapabilitiesAnnounce => {
                 self.mesh_handler.handle_capabilities_announce(params).await
             }
+            MeshMethod::CapabilitiesRevoke => {
+                self.mesh_handler.handle_capabilities_revoke(params).await
+            }
             MeshMethod::Subscribe => self.mesh_handler.handle_subscribe(params).await,
             MeshMethod::Enroll => self.mesh_handler.handle_enroll(params).await,
             MeshMethod::PruneStale => self.mesh_handler.handle_prune_stale(params).await,

@@ -28,6 +28,9 @@ pub(super) async fn dispatch_capability(
         JsonRpcMethod::Capabilities(CapabilitiesMethod::Call) => {
             handler.handle_capability_call(params).await
         }
+        JsonRpcMethod::Capabilities(CapabilitiesMethod::Health) => {
+            handler.handle_capability_health(params).await
+        }
 
         JsonRpcMethod::Discovery(DiscoveryMethod::Peers) => IpcServiceHandler::wrap_result(
             handler.discovery_handler.handle_list_peers(params).await,

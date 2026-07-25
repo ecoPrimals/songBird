@@ -119,8 +119,12 @@ impl IpcConnectionPool {
                 debug!(
                     socket_path,
                     error = %first_err,
-                    "Pooled connection failed — retrying with fresh connection"
+                    "Pooled connection failed — retrying with fresh connection after backoff"
                 );
+
+                // Brief backoff to handle transient provider restarts (bearDog, etc.)
+                tokio::time::sleep(Duration::from_millis(50)).await;
+
                 let fresh = IpcStream::connect(socket_path)
                     .await
                     .map_err(|e| format!("Retry connect failed to {socket_path}: {e}"))?;
