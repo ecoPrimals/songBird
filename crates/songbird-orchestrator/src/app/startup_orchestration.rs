@@ -632,7 +632,11 @@ impl<'a> StartupOrchestrator<'a> {
             loop {
                 let reg = registry.read().await;
                 let service_count = reg.list_services().await.len();
-                let interval = if service_count == 0 { FAST_INTERVAL } else { normal_interval };
+                let interval = if service_count == 0 {
+                    FAST_INTERVAL
+                } else {
+                    normal_interval
+                };
                 drop(reg);
 
                 tokio::time::sleep(interval).await;
@@ -646,7 +650,10 @@ impl<'a> StartupOrchestrator<'a> {
             }
         });
 
-        info!("🔄 Adaptive socket watch: enabled (2s until populated, then {}s)", SOCKET_RESCAN_INTERVAL_SECS);
+        info!(
+            "🔄 Adaptive socket watch: enabled (2s until populated, then {}s)",
+            SOCKET_RESCAN_INTERVAL_SECS
+        );
     }
 
     #[cfg(not(unix))]

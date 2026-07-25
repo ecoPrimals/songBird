@@ -173,32 +173,7 @@ impl MeshHandler {
             .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
             .unwrap_or_default();
 
-        let bootstrap_peers: Vec<(String, std::net::SocketAddr)> = params
-            .get("bootstrap_peers")
-            .or_else(|| params.get("peers"))
-            .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|entry| {
-                        // Object format: {"node_id": "...", "address": "host:port"}
-                        if let Some(obj_id) = entry.get("node_id").and_then(Value::as_str) {
-                            let addr_str = entry.get("address")?.as_str()?;
-                            let addr: std::net::SocketAddr = addr_str.parse().ok()?;
-                            return Some((obj_id.to_string(), addr));
-                        }
-                        // String format: "node_id@host:port" or bare "host:port"
-                        let s = entry.as_str()?;
-                        if let Some((nid, addr_part)) = s.split_once('@') {
-                            let addr: std::net::SocketAddr = addr_part.parse().ok()?;
-                            Some((nid.to_string(), addr))
-                        } else {
-                            let addr: std::net::SocketAddr = s.parse().ok()?;
-                            Some((format!("peer-{}", addr.ip()), addr))
-                        }
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
+        let bootstrap_peers = parse_peer_list(&params, &["bootstrap_peers", "peers"], false);
 
         info!(
             "🌐 Initializing mesh for node {} with {} bootstrap onions, {} bootstrap peers",
@@ -224,28 +199,7 @@ impl MeshHandler {
         }
 
         // Register LAN endpoints (same-subnet — priority 0, always preferred)
-        let lan_peers: Vec<(String, std::net::SocketAddr)> = params
-            .get("lan_peers")
-            .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|entry| {
-                        if let Some(obj_id) = entry.get("node_id").and_then(Value::as_str) {
-                            let addr_str = entry.get("address")?.as_str()?;
-                            let addr: std::net::SocketAddr = addr_str.parse().ok()?;
-                            return Some((obj_id.to_string(), addr));
-                        }
-                        let s = entry.as_str()?;
-                        if let Some((nid, addr_part)) = s.split_once('@') {
-                            let addr: std::net::SocketAddr = addr_part.parse().ok()?;
-                            Some((nid.to_string(), addr))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
+        let lan_peers = parse_peer_list(&params, &["lan_peers"], true);
 
         for (peer_id, addr) in &lan_peers {
             let endpoint = RelayEndpoint {
@@ -263,28 +217,7 @@ impl MeshHandler {
         // Register overlay endpoints (WireGuard/VPN — priority 1, fallback when no LAN)
         let overlay_name =
             params.get("overlay_name").and_then(Value::as_str).unwrap_or("wireguard");
-        let overlay_peers: Vec<(String, std::net::SocketAddr)> = params
-            .get("overlay_peers")
-            .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|entry| {
-                        if let Some(obj_id) = entry.get("node_id").and_then(Value::as_str) {
-                            let addr_str = entry.get("address")?.as_str()?;
-                            let addr: std::net::SocketAddr = addr_str.parse().ok()?;
-                            return Some((obj_id.to_string(), addr));
-                        }
-                        let s = entry.as_str()?;
-                        if let Some((nid, addr_part)) = s.split_once('@') {
-                            let addr: std::net::SocketAddr = addr_part.parse().ok()?;
-                            Some((nid.to_string(), addr))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
+        let overlay_peers = parse_peer_list(&params, &["overlay_peers"], true);
 
         for (peer_id, addr) in &overlay_peers {
             let endpoint = RelayEndpoint {
@@ -776,6 +709,43 @@ impl MeshHandler {
         *self.mesh.write().await = Some(mesh);
         *self.node_id.write().await = Arc::from(node_id);
     }
+}
+
+/// Parse a peer list from a JSON array field.
+///
+/// Supports two formats:
+/// - Object: `{"node_id": "...", "address": "host:port"}`
+/// - String: `"node_id@host:port"` or `"host:port"` (auto-named)
+///
+/// If `require_node_id` is true, bare `"host:port"` strings without `@` are skipped.
+fn parse_peer_list(
+    params: &Value,
+    keys: &[&str],
+    require_node_id: bool,
+) -> Vec<(String, std::net::SocketAddr)> {
+    let arr = keys.iter().find_map(|k| params.get(*k).and_then(Value::as_array));
+    let Some(arr) = arr else {
+        return Vec::new();
+    };
+    arr.iter()
+        .filter_map(|entry| {
+            if let Some(obj_id) = entry.get("node_id").and_then(Value::as_str) {
+                let addr_str = entry.get("address")?.as_str()?;
+                let addr: std::net::SocketAddr = addr_str.parse().ok()?;
+                return Some((obj_id.to_string(), addr));
+            }
+            let s = entry.as_str()?;
+            if let Some((nid, addr_part)) = s.split_once('@') {
+                let addr: std::net::SocketAddr = addr_part.parse().ok()?;
+                Some((nid.to_string(), addr))
+            } else if require_node_id {
+                None
+            } else {
+                let addr: std::net::SocketAddr = s.parse().ok()?;
+                Some((format!("peer-{}", addr.ip()), addr))
+            }
+        })
+        .collect()
 }
 
 /// Scan `wateringHole/heads/*.toml` for gate head files older than 24 hours.

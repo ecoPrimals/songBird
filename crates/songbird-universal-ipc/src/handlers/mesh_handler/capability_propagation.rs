@@ -510,11 +510,16 @@ impl MeshHandler {
         for node_id in &reachable {
             if let Some(path) = mesh.get_best_path(node_id).await {
                 let address = match path.endpoint_type {
-                    EndpointType::Direct { addr }
-                    | EndpointType::Local { addr }
-                    | EndpointType::Overlay { addr, .. } => {
-                        songbird_types::constants::jsonrpc_endpoint_url(&addr)
+                    EndpointType::Direct {
+                        addr,
                     }
+                    | EndpointType::Local {
+                        addr,
+                    }
+                    | EndpointType::Overlay {
+                        addr,
+                        ..
+                    } => songbird_types::constants::jsonrpc_endpoint_url(&addr),
                     _ => continue,
                 };
                 let payload = payload.clone();
@@ -637,14 +642,23 @@ impl MeshHandler {
     ) {
         let address = {
             let guard = mesh.read().await;
-            let Some(ref m) = *guard else { return };
-            let Some(path) = m.get_best_path(node_id).await else { return };
+            let Some(ref m) = *guard else {
+                return;
+            };
+            let Some(path) = m.get_best_path(node_id).await else {
+                return;
+            };
             match path.endpoint_type {
-                EndpointType::Direct { addr }
-                | EndpointType::Local { addr }
-                | EndpointType::Overlay { addr, .. } => {
-                    songbird_types::constants::jsonrpc_endpoint_url(&addr)
+                EndpointType::Direct {
+                    addr,
                 }
+                | EndpointType::Local {
+                    addr,
+                }
+                | EndpointType::Overlay {
+                    addr,
+                    ..
+                } => songbird_types::constants::jsonrpc_endpoint_url(&addr),
                 _ => return,
             }
         };
