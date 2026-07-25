@@ -85,6 +85,7 @@ pub struct TaskLifecycleManager {
     pub(crate) checkpoint_config: CheckpointConfig,
     pub(crate) event_tx: broadcast::Sender<TaskEvent>,
     pub(crate) cleanup_interval: std::time::Duration,
+    pub(crate) crypto: Option<songbird_crypto_provider::CryptoProvider>,
 }
 
 impl TaskLifecycleManager {
@@ -102,6 +103,7 @@ impl TaskLifecycleManager {
             checkpoint_config: CheckpointConfig::default(),
             event_tx,
             cleanup_interval: songbird_types::defaults::timeouts::DEFAULT_CLEANUP_INTERVAL,
+            crypto: None,
         };
 
         cleanup::spawn_checkpoint_cleanup_task(

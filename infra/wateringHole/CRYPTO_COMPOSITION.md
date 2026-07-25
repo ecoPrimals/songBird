@@ -75,7 +75,7 @@ These run infrequently. IPC cost (~0.5ms per call) is negligible vs operation fr
 
 ## Migration Path
 
-### Phase 1: Composition (current wave)
+### Phase 1: Composition (COMPLETE — Wave 150x + 151a)
 - Document seams (this file) ✅
 - Route `pure_rust_jwt.rs` through bearDog exclusively (remove local fallback when provider available) ✅
 - Route `checkpoint.rs` SHA-256 through `SecurityRpcClient` ✅
@@ -85,6 +85,9 @@ These run infrequently. IPC cost (~0.5ms per call) is negligible vs operation fr
 - `blake3` dep made optional behind `local-crypto-fallback` feature ✅
 - Remove direct `sha2`/`hmac` deps from crates that now delegate ✅ (5 crates now optional)
 - **PHASE 1 COMPLETE** — all delegatable seams route through bearDog UDS
+- **Wave 151a**: `Checkpoint::new_with_crypto()`, `verify_with_crypto()`, `AccessToken::encode_with_crypto()`, `decode_with_crypto()` — all production callers now delegate when bearDog available ✅
+- **Wave 151a**: `TaskLifecycleManager` holds `Option<CryptoProvider>` for checkpoint operations ✅
+- **Wave 151a**: `login()` handler discovers crypto provider and delegates JWT signing ✅
 
 ### Phase 2: Measure IPC Cost
 - Benchmark each delegation seam (target: <1ms per call)

@@ -220,7 +220,7 @@ impl TaskLifecycleManager {
     pub async fn create_checkpoint(&self, task_id: TaskId, state: Vec<u8>) -> Result<Arc<str>> {
         let task = self.require_task(task_id).await?;
 
-        let checkpoint = self.make_checkpoint(task_id, task.progress, state)?;
+        let checkpoint = self.make_checkpoint_async(task_id, task.progress, state).await?;
 
         let checkpoint_id = Arc::clone(&checkpoint.id);
 
@@ -239,6 +239,22 @@ impl TaskLifecycleManager {
         Ok(checkpoint_id)
     }
 
+    async fn make_checkpoint_async(
+        &self,
+        task_id: TaskId,
+        progress: f32,
+        state: Vec<u8>,
+    ) -> Result<Checkpoint> {
+        let threshold = self.checkpoint_config.compression_threshold as usize;
+        if cfg!(feature = "task-checkpoint-gzip") && state.len() > threshold {
+            Checkpoint::new_compressed_with_crypto(task_id, progress, state, self.crypto.as_ref())
+                .await
+        } else {
+            Checkpoint::new_with_crypto(task_id, progress, state, self.crypto.as_ref()).await
+        }
+    }
+
+    #[expect(dead_code, reason = "sync fallback retained for non-async contexts and testing")]
     fn make_checkpoint(
         &self,
         task_id: TaskId,
@@ -264,7 +280,10 @@ impl TaskLifecycleManager {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Checkpoint not found"))?;
 
-        checkpoint.verify().context("Checkpoint integrity check failed")?;
+        checkpoint
+            .verify_with_crypto(self.crypto.as_ref())
+            .await
+            .context("Checkpoint integrity check failed")?;
 
         let state = checkpoint.get_state()?;
 

@@ -145,7 +145,7 @@ pub async fn login(Json(req): Json<LoginRequest>) -> Result<Json<LoginResponse>,
         }
     };
 
-    // Encode token — requires explicit secret (no dev fallback in production)
+    // Encode token — delegates HMAC-SHA256 to bearDog when available
     let secret = songbird_process_env::var("SONGBIRD_JWT_SECRET").map_err(|_| {
         tracing::error!(
             "SONGBIRD_JWT_SECRET not set — cannot issue tokens; \
@@ -154,7 +154,14 @@ pub async fn login(Json(req): Json<LoginRequest>) -> Result<Json<LoginResponse>,
         AuthError::InvalidToken
     })?;
 
-    let token_str = token.encode(secret.as_bytes()).map_err(|_| AuthError::InvalidToken)?;
+    let crypto = crate::primal_discovery::discover_crypto_provider()
+        .await
+        .ok()
+        .map(songbird_crypto_provider::CryptoProvider::new);
+    let token_str = token
+        .encode_with_crypto(secret.as_bytes(), crypto.as_ref())
+        .await
+        .map_err(|_| AuthError::InvalidToken)?;
 
     tracing::info!("Login successful for user '{}'", req.user_id);
 

@@ -175,7 +175,32 @@ impl AccessToken {
         }
     }
 
-    /// Encode as JWT string (✅ Pure Rust using `RustCrypto` hmac + sha2!)
+    /// Encode as JWT string with crypto delegation to bearDog.
+    ///
+    /// When a `CryptoProvider` is available, HMAC-SHA256 signing is delegated
+    /// via UDS. Falls back to local crypto with `local-crypto-fallback` feature.
+    /// # Errors
+    ///
+    /// Returns an error if signing fails.
+    pub async fn encode_with_crypto(
+        &self,
+        secret: &[u8],
+        crypto: Option<&songbird_crypto_provider::CryptoProvider>,
+    ) -> Result<String> {
+        let claims = Claims {
+            sub: self.sub.clone(),
+            iat: self.iat,
+            exp: self.exp,
+            role: self.role.clone(),
+            token_type: self.token_type.clone(),
+        };
+
+        pure_rust_jwt::encode_with_crypto(&claims, secret, crypto).await
+    }
+
+    /// Encode as JWT string (sync local-only fallback).
+    ///
+    /// Prefer [`Self::encode_with_crypto`] which delegates to bearDog.
     /// # Errors
     ///
     /// Returns an error if the operation fails.
@@ -191,7 +216,35 @@ impl AccessToken {
         pure_rust_jwt::encode(&claims, secret)
     }
 
-    /// Decode from JWT string (✅ Pure Rust using `RustCrypto` hmac + sha2!)
+    /// Decode from JWT string with crypto delegation to bearDog.
+    ///
+    /// When a `CryptoProvider` is available, HMAC-SHA256 verification is
+    /// delegated via UDS. Falls back to local crypto with `local-crypto-fallback`.
+    /// # Errors
+    ///
+    /// Returns an error if verification or deserialization fails.
+    pub async fn decode_with_crypto(
+        token_str: &str,
+        secret: &[u8],
+        crypto: Option<&songbird_crypto_provider::CryptoProvider>,
+    ) -> Result<Self> {
+        let claims: Claims = pure_rust_jwt::decode_with_crypto(token_str, secret, crypto).await?;
+
+        Ok(Self {
+            token_type: claims.token_type,
+            sub: claims.sub.clone(),
+            iat: claims.iat,
+            exp: claims.exp,
+            role: claims.role.clone(),
+            subject: claims.sub,
+            issued_at: claims.iat,
+            expires_at: claims.exp,
+        })
+    }
+
+    /// Decode from JWT string (sync local-only fallback).
+    ///
+    /// Prefer [`Self::decode_with_crypto`] which delegates to bearDog.
     /// # Errors
     ///
     /// Returns an error if the operation fails.

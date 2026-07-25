@@ -65,7 +65,36 @@ pub enum CompressionAlgorithm {
 }
 
 impl Checkpoint {
-    /// Create a new checkpoint
+    /// Create a new checkpoint with crypto delegation to bearDog.
+    ///
+    /// When a `CryptoProvider` is available, delegates SHA-256 checksum to bearDog
+    /// via UDS. Falls back to local crypto with `local-crypto-fallback` feature.
+    pub async fn new_with_crypto(
+        task_id: TaskId,
+        progress: f32,
+        state: Vec<u8>,
+        crypto: Option<&CryptoProvider>,
+    ) -> Result<Self> {
+        let size_bytes = state.len() as u64;
+        let checksum = calculate_checksum(&state, crypto).await?;
+
+        Ok(Self {
+            id: Arc::from(uuid::Uuid::now_v7().to_string()),
+            task_id,
+            created_at: Utc::now(),
+            progress,
+            state,
+            metadata: CheckpointMetadata {
+                size_bytes,
+                compression: Some(CompressionAlgorithm::None),
+                checksum: Arc::from(checksum),
+            },
+        })
+    }
+
+    /// Create a new checkpoint (sync local-only fallback).
+    ///
+    /// Prefer [`Self::new_with_crypto`] which delegates to bearDog.
     #[must_use]
     pub fn new(task_id: TaskId, progress: f32, state: Vec<u8>) -> Self {
         let size_bytes = state.len() as u64;
@@ -85,7 +114,49 @@ impl Checkpoint {
         }
     }
 
-    /// Create a checkpoint with compression
+    /// Create a checkpoint with compression and crypto delegation.
+    ///
+    /// Prefer this over `new_compressed` when a `CryptoProvider` is available.
+    /// # Errors
+    ///
+    /// Returns an error if compression or checksum delegation fails.
+    pub async fn new_compressed_with_crypto(
+        task_id: TaskId,
+        progress: f32,
+        state: Vec<u8>,
+        crypto: Option<&CryptoProvider>,
+    ) -> Result<Self> {
+        #[cfg(not(feature = "task-checkpoint-gzip"))]
+        {
+            let _ = (task_id, progress, state, crypto);
+            anyhow::bail!(
+                "checkpoint gzip compression requires the `task-checkpoint-gzip` crate feature"
+            );
+        }
+        #[cfg(feature = "task-checkpoint-gzip")]
+        {
+            let compressed = Self::compress_state(&state)?;
+            let size_bytes = compressed.len() as u64;
+            let checksum = calculate_checksum(&compressed, crypto).await?;
+
+            Ok(Self {
+                id: Arc::from(uuid::Uuid::now_v7().to_string()),
+                task_id,
+                created_at: Utc::now(),
+                progress,
+                state: compressed,
+                metadata: CheckpointMetadata {
+                    size_bytes,
+                    compression: Some(CompressionAlgorithm::Gzip),
+                    checksum: Arc::from(checksum),
+                },
+            })
+        }
+    }
+
+    /// Create a checkpoint with compression (sync local-only fallback).
+    ///
+    /// Prefer [`Self::new_compressed_with_crypto`] which delegates to bearDog.
     /// # Errors
     ///
     /// Returns an error if the operation fails.
@@ -117,7 +188,21 @@ impl Checkpoint {
         }
     }
 
-    /// Verify checkpoint integrity
+    /// Verify checkpoint integrity with crypto delegation to bearDog.
+    /// # Errors
+    ///
+    /// Returns an error if checksum mismatch or crypto delegation fails.
+    pub async fn verify_with_crypto(&self, crypto: Option<&CryptoProvider>) -> Result<()> {
+        let calculated = calculate_checksum(&self.state, crypto).await?;
+        if calculated != self.metadata.checksum.as_ref() {
+            anyhow::bail!("Checkpoint integrity check failed: checksum mismatch");
+        }
+        Ok(())
+    }
+
+    /// Verify checkpoint integrity (sync local-only fallback).
+    ///
+    /// Prefer [`Self::verify_with_crypto`] which delegates to bearDog.
     /// # Errors
     ///
     /// Returns an error if the operation fails.
