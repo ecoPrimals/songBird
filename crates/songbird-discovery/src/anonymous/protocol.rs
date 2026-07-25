@@ -178,7 +178,8 @@ pub async fn build_dark_forest_beacon_bytes(
         crypto_ref,
         None,
         super::scheduling::rotating_session_id(),
-    ).await;
+    )
+    .await;
 
     let beacon = birdsong
         .encrypt_dark_forest_beacon(&payload)

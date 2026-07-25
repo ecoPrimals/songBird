@@ -347,25 +347,33 @@ async fn endpoint_type_priority_ordering() {
         0
     );
     assert_eq!(
+        EndpointType::Overlay {
+            addr: "10.13.37.1:7700".parse().unwrap(),
+            overlay_name: "wireguard".into()
+        }
+        .priority(),
+        1
+    );
+    assert_eq!(
         EndpointType::Direct {
             addr: "1.1.1.1:1".parse().unwrap()
         }
         .priority(),
-        1
+        2
     );
     assert_eq!(
         EndpointType::FamilyRelay {
             relay_node_id: "r".into()
         }
         .priority(),
-        2
+        3
     );
     assert_eq!(
         EndpointType::TorOnion {
             onion_addr: "x.onion".into()
         }
         .priority(),
-        3
+        4
     );
 }
 

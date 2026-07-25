@@ -15,10 +15,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// Never panics. If the system clock is before the Unix epoch, returns the epoch itself.
 #[must_use]
 pub fn rfc3339_now() -> String {
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
+    let secs = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
     epoch_secs_to_rfc3339(secs)
 }
 
@@ -38,7 +35,11 @@ fn days_to_ymd(mut days: u64) -> (i32, u32, u32) {
     let mut y = 1970i32;
     loop {
         let leap = is_leap(y);
-        let year_days: u64 = if leap { 366 } else { 365 };
+        let year_days: u64 = if leap {
+            366
+        } else {
+            365
+        };
         if days < year_days {
             break;
         }
@@ -48,7 +49,11 @@ fn days_to_ymd(mut days: u64) -> (i32, u32, u32) {
     let leap = is_leap(y);
     let month_lengths: [u32; 12] = [
         31,
-        if leap { 29 } else { 28 },
+        if leap {
+            29
+        } else {
+            28
+        },
         31,
         30,
         31,

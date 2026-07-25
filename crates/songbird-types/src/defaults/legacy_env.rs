@@ -16,9 +16,7 @@ pub fn warn_if_legacy_primal_env(env: &str) {
         "BEARDOG_SOCKET" => {
             "use SECURITY_PROVIDER_SOCKET, SECURITY_SOCKET, or capability discovery instead"
         }
-        "BEARDOG_CRYPTO_SOCKET" => {
-            "use CRYPTO_PROVIDER_SOCKET or capability discovery instead"
-        }
+        "BEARDOG_CRYPTO_SOCKET" => "use CRYPTO_PROVIDER_SOCKET or capability discovery instead",
         "BEARDOG_SOCKET_PATH" => "use SECURITY_PROVIDER_SOCKET instead",
         "BEARDOG_MODE" => "use SECURITY_PROVIDER_MODE or capability discovery instead",
         "BEARDOG_ENDPOINT" => {

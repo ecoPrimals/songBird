@@ -33,9 +33,24 @@ fn parse_peers_env() -> Vec<(String, String)> {
 /// Parse `SONGBIRD_OVERLAY_PEERS` into `(node_id, address)` pairs for overlay endpoints.
 ///
 /// Same format as `SONGBIRD_PEERS`. These are registered as `EndpointType::Overlay`
-/// (priority 0, same as Local) so `WireGuard` paths are preferred over WAN Direct.
+/// (priority 1) so WireGuard paths are preferred over WAN Direct but not over LAN.
 fn parse_overlay_peers_env() -> Vec<(String, String)> {
     let raw = match songbird_process_env::var("SONGBIRD_OVERLAY_PEERS") {
+        Ok(v) if !v.is_empty() => v,
+        _ => return Vec::new(),
+    };
+    parse_peers_str(&raw)
+}
+
+/// Parse `SONGBIRD_LOCAL_PEERS` into `(node_id, address)` pairs for LAN endpoints.
+///
+/// Same format as `SONGBIRD_PEERS`. These are registered as `EndpointType::Local`
+/// (priority 0) — always preferred over overlay/direct. Use for same-subnet peers
+/// where sub-millisecond latency is available (e.g., same MikroTik switch).
+///
+/// Format: `SONGBIRD_LOCAL_PEERS=eastGate@192.168.4.244:7700,sporeGate@192.168.4.2:7700`
+fn parse_local_peers_env() -> Vec<(String, String)> {
+    let raw = match songbird_process_env::var("SONGBIRD_LOCAL_PEERS") {
         Ok(v) if !v.is_empty() => v,
         _ => return Vec::new(),
     };
@@ -484,6 +499,7 @@ pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
     };
 
     let overlay_peers = parse_overlay_peers_env();
+    let local_peers_env = parse_local_peers_env();
     let overlay_name = songbird_process_env::var("SONGBIRD_OVERLAY_NAME")
         .unwrap_or_else(|_| String::from("wireguard"));
 
@@ -500,6 +516,7 @@ pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
         node_id = %node_id,
         peer_count = peers.len(),
         overlay_count = overlay_peers.len(),
+        local_count = lan_peers.len() + local_peers_env.len(),
         source = source,
         "Auto-seeding mesh"
     );
@@ -544,8 +561,18 @@ pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
                     register_overlay_endpoints(&mesh_handler, &overlay_peers, &overlay_name).await;
                 }
 
-                if !lan_peers.is_empty() {
-                    register_lan_endpoints(&mesh_handler, &lan_peers).await;
+                // Merge persisted LAN peers with SONGBIRD_LOCAL_PEERS env
+                let mut all_lan_peers = lan_peers;
+                for (nid, addr_str) in &local_peers_env {
+                    if let Ok(addr) = addr_str.parse::<std::net::SocketAddr>() {
+                        if !all_lan_peers.iter().any(|(n, _)| n == nid) {
+                            all_lan_peers.push((nid.clone(), addr));
+                        }
+                    }
+                }
+
+                if !all_lan_peers.is_empty() {
+                    register_lan_endpoints(&mesh_handler, &all_lan_peers).await;
                 }
 
                 let peer_addrs: Vec<(String, std::net::SocketAddr)> = peers_for_trust

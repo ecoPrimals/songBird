@@ -214,7 +214,9 @@ pub async fn execute_quick_setup_api(
     let node_name = request.node_name.unwrap_or_else(|| {
         format!(
             "{}-{}",
-            std::env::var("USER").unwrap_or_else(|_| std::env::var("USERNAME").unwrap_or_else(|_| String::from("unknown"))),
+            std::env::var("USER").unwrap_or_else(
+                |_| std::env::var("USERNAME").unwrap_or_else(|_| String::from("unknown"))
+            ),
             gethostname::gethostname().to_string_lossy().into_owned()
         )
     });

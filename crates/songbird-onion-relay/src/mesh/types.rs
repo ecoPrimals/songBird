@@ -54,25 +54,30 @@ pub enum EndpointType {
 }
 
 impl EndpointType {
-    /// Priority for selection (lower = better)
+    /// Priority for selection (lower = better).
+    ///
+    /// Local (same-LAN) is always preferred over overlay tunnels — direct L2
+    /// avoids encrypt/decrypt overhead and kernel round-trips. A LAN path at
+    /// 0.45ms should never lose to a `WireGuard` overlay at 158ms on the same
+    /// switch.
     #[must_use]
     pub const fn priority(&self) -> u8 {
         match self {
             Self::Local {
                 ..
-            }
-            | Self::Overlay {
-                ..
             } => 0,
-            Self::Direct {
+            Self::Overlay {
                 ..
             } => 1,
-            Self::FamilyRelay {
+            Self::Direct {
                 ..
             } => 2,
-            Self::TorOnion {
+            Self::FamilyRelay {
                 ..
             } => 3,
+            Self::TorOnion {
+                ..
+            } => 4,
         }
     }
 
@@ -148,6 +153,10 @@ mod tests {
         let local = EndpointType::Local {
             addr: "10.0.0.2:1".parse().unwrap(),
         };
+        let overlay = EndpointType::Overlay {
+            addr: "10.13.37.1:7700".parse().unwrap(),
+            overlay_name: "wireguard".into(),
+        };
         let direct = EndpointType::Direct {
             addr: "198.51.100.1:2".parse().unwrap(),
         };
@@ -157,7 +166,8 @@ mod tests {
         let tor = EndpointType::TorOnion {
             onion_addr: "abcdefghijklmnop.onion".into(),
         };
-        assert!(local.priority() < direct.priority());
+        assert!(local.priority() < overlay.priority());
+        assert!(overlay.priority() < direct.priority());
         assert!(direct.priority() < family.priority());
         assert!(family.priority() < tor.priority());
     }
@@ -257,7 +267,7 @@ mod tests {
         let tor = EndpointType::TorOnion {
             onion_addr: "x.onion".into(),
         };
-        assert_eq!(tor.priority(), 3);
+        assert_eq!(tor.priority(), 4);
     }
 
     #[test]
@@ -269,12 +279,12 @@ mod tests {
     }
 
     #[test]
-    fn endpoint_type_overlay_priority_zero_same_as_local() {
+    fn endpoint_type_overlay_priority_lower_than_direct() {
         let overlay = EndpointType::Overlay {
             addr: "10.13.37.5:7700".parse().unwrap(),
             overlay_name: "wireguard".into(),
         };
-        assert_eq!(overlay.priority(), 0);
+        assert_eq!(overlay.priority(), 1);
     }
 
     #[test]
@@ -287,6 +297,18 @@ mod tests {
             addr: "203.0.113.5:7700".parse().unwrap(),
         };
         assert!(overlay.priority() < direct.priority());
+    }
+
+    #[test]
+    fn endpoint_type_local_preferred_over_overlay() {
+        let local = EndpointType::Local {
+            addr: "192.168.4.244:7700".parse().unwrap(),
+        };
+        let overlay = EndpointType::Overlay {
+            addr: "10.13.37.5:7700".parse().unwrap(),
+            overlay_name: "wireguard".into(),
+        };
+        assert!(local.priority() < overlay.priority());
     }
 
     #[test]

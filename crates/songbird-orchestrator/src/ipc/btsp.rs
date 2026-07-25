@@ -117,7 +117,9 @@ fn resolve_family_seed() -> Option<String> {
     let raw = songbird_process_env::var("FAMILY_SEED")
         .or_else(|_| {
             songbird_process_env::var("BEARDOG_FAMILY_SEED").inspect(|_| {
-                songbird_types::defaults::legacy_env::warn_if_legacy_primal_env("BEARDOG_FAMILY_SEED");
+                songbird_types::defaults::legacy_env::warn_if_legacy_primal_env(
+                    "BEARDOG_FAMILY_SEED",
+                );
             })
         })
         .or_else(|_| songbird_process_env::var("BIOMEOS_FAMILY_SEED"))
