@@ -126,7 +126,7 @@ impl MeshHandler {
     /// `lan_peers` (optional) registers same-subnet LAN peers as `EndpointType::Local`
     /// (priority 0 — always preferred over overlay/direct). Use physical LAN addresses
     /// here so `mesh.find_path` returns the sub-millisecond local path instead of
-    /// routing through WireGuard overlay at 100ms+ penalty.
+    /// routing through `WireGuard` overlay at 100ms+ penalty.
     ///
     /// `overlay_peers` (optional) registers WireGuard/VPN endpoints for peers
     /// (priority 1 — used when no LAN path exists).

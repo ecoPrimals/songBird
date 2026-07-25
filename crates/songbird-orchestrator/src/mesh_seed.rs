@@ -564,10 +564,10 @@ pub fn spawn_mesh_seed(mesh_handler: Arc<MeshHandler>) {
                 // Merge persisted LAN peers with SONGBIRD_LOCAL_PEERS env
                 let mut all_lan_peers = lan_peers;
                 for (nid, addr_str) in &local_peers_env {
-                    if let Ok(addr) = addr_str.parse::<std::net::SocketAddr>() {
-                        if !all_lan_peers.iter().any(|(n, _)| n == nid) {
-                            all_lan_peers.push((nid.clone(), addr));
-                        }
+                    if let Ok(addr) = addr_str.parse::<std::net::SocketAddr>()
+                        && !all_lan_peers.iter().any(|(n, _)| n == nid)
+                    {
+                        all_lan_peers.push((nid.clone(), addr));
                     }
                 }
 
