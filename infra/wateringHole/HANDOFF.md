@@ -1,8 +1,8 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave150x  
-**Date**: July 24, 2026  
+**Version**: v0.2.1-wave151a  
+**Date**: July 25, 2026  
 **Gate**: eastGate
 
 ## Current State
@@ -14,11 +14,39 @@
 | Unsafe | 0 (`forbid(unsafe_code)` all 31 crates) |
 | Production unwraps | 0 (config.rs refactored to `fmt::Result`, RwLock sites `#[expect]`-annotated) |
 | Production stubs | 0 (Wave 137: last fake-data stub evolved to real probes) |
-| Files >800L | 0 (max 749L — security.rs→module tree, production.rs→370L, virtual_relay.rs→553L) |
+| Files >800L | 0 (max 797L — mesh_handler/mod.rs refactored via parse_peer_list dedup) |
 | Hardcoding | 0 in production (all env-driven, capability-based) |
 | Mocks in prod | 0 (all `#[cfg(test)]` gated) |
 
-## Recent Evolution (Wave 147f–150x)
+## Recent Evolution (Wave 147f–151a)
+
+### Wave 151a — Tower Debt Resolution + Deep Debt (Jul 25 2026)
+
+**TOWER ATOMIC COMPLETE** — All 6 songBird-owned Tower debt failures resolved:
+
+**Failover Resilience (P1)**:
+- Exponential backoff retry in `capability_dispatch.rs` (50ms pool-level + 100/300ms dispatch-level)
+- `capability.health` JSON-RPC method: probes all registered providers, reports reachability + latency
+- Adaptive socket watch: 2s poll when empty → 30s when populated (near-instant provider recovery)
+
+**Capability Trust (P1)**:
+- Challenge-verify on `mesh.capabilities_announce` (probe peer reachability after announcement)
+- `mesh.capabilities_revoke` method for explicit mesh-wide capability withdrawal
+- `revoke_capabilities_to_peers()` propagates local unregistrations outward
+
+**Deep Debt**:
+- `mesh_handler/mod.rs` refactored 825→797L via `parse_peer_list()` helper (3x duplicated logic)
+- `songbird-execution-agent` type inference fix in `security_sovereign.rs`
+- Full audit confirms: 0 production unwraps, 0 unsafe, 0 mocks in prod, 0 hardcoding, all deps pure Rust
+
+**Remaining Tower debt**: 1/7 — "BTSP on local UDS" (shared with bearDog, P2)
+
+### Wave 151a — LAN Mesh Priority (Jul 25 2026)
+
+- `EndpointType::priority()` evolved: Local(0) → Overlay(1) → Direct(2) → FamilyRelay(3) → TorOnion(4)
+- `discover_and_dispatch` sorts peers by best-path priority before dispatch (LAN-first)
+- `mesh.find_path`, `mesh.peers`, `mesh.topology` responses include `priority` field
+- Crypto delegation Phase 1 confirmed COMPLETE (all seams wired, feature-gated)
 
 ### Wave 150x — Deep Debt: Dependency Diet + Hardcoding Evolution (Jul 24 2026)
 

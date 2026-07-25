@@ -3,9 +3,9 @@
 **Primal**: Songbird  
 **Role**: Network Orchestration & Discovery Primal — Inner Membrane Port Solver  
 **Phase**: Stadial (S1-S4 graduated, 6-gate mesh collective LIVE, zero-config mesh init)  
-**Version**: 0.2.1-wave150x  
+**Version**: 0.2.1-wave151a  
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)  
-**Last Updated**: July 24, 2026
+**Last Updated**: July 25, 2026
 
 ## What It Does
 
@@ -39,7 +39,7 @@ transport stack targeting WireGuard replacement. Every other primal and spring u
 | Coverage | Line coverage **73.41%** (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`; Jul 21 verified); Windows cross-compile zero warnings |
-| Files >800 LOC | **0** — all production code below threshold (largest: mesh_handler/mod.rs at 746L) |
+| Files >800 LOC | **0** — all production code below threshold (largest: mesh_handler/mod.rs at 797L) |
 | Unsafe blocks | 0 (`forbid(unsafe_code)` all 31 crates) |
 | C dependencies | Zero in default/production build; `ring` eliminated from production path (Wave 150x: `rustls-rustcrypto`); 24 dead deps removed; `chrono` eliminated from 3 crates; Bluetooth native deps only with `bluetooth` feature |
 | Hardcoded primal names | 0 in production discovery (capability-first); all paths env-driven or XDG-compliant; zero `/tmp/` writes |

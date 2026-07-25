@@ -1,10 +1,10 @@
 # Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v0.2.1-wave150x  
+**Version**: v0.2.1-wave151a  
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: July 24, 2026
+**Last Updated**: July 25, 2026
 
 Songbird is the universal network orchestrator and **inner membrane port solver** for the ecoPrimals ecosystem. It manages service discovery, connection management, inter-primal communication across multiple protocols, and drawbridge capability→port resolution for production routing. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
@@ -32,7 +32,7 @@ Songbird is one third of **Tower Atomic** (bearDog + songBird + skunkBat) — th
 | Build | Clean (zero errors, zero warnings; cross-platform verified) |
 | Formatting | Clean (`cargo fmt --check`; Jul 21 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >800 lines | **0** (max 749L) — Wave 152: `security.rs` (761→mod tree, max 277L), `production.rs` (754→370L via test extraction), `virtual_relay.rs` (753→553L via test extraction). Previous: Wave 150t: `mesh_handler/mod.rs` (841→746L); Wave 149b: `drawbridge.rs` (1,019→578L), `mesh_seed.rs` (834→523L) |
+| Files >800 lines | **0** (max 797L) — Wave 151a: `mesh_handler/mod.rs` (825→797L via `parse_peer_list()` dedup). Previous: Wave 152: `security.rs` (761→mod tree, max 277L), `production.rs` (754→370L via test extraction), `virtual_relay.rs` (753→553L via test extraction). Previous: Wave 150t: `mesh_handler/mod.rs` (841→746L); Wave 149b: `drawbridge.rs` (1,019→578L), `mesh_seed.rs` (834→523L) |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 33 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, lifecycle, inference, etc.) |
