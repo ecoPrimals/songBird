@@ -256,34 +256,34 @@ impl SecurityProviderIntegration {
                                 use songbird_types::defaults::ports::DEFAULT_HTTPS_PORT;
                                 let fallback = format!("http://{LOCALHOST}:{DEFAULT_HTTPS_PORT}");
                                 warn!("⚠️ Using development fallback for security provider security: {fallback}");
-                                fallback
+                                Ok(fallback)
                             }
                             #[cfg(not(debug_assertions))]
                             {
-                                return Err(SongbirdError::configuration(
+                                Err(SongbirdError::configuration(
                                     "Security provider endpoint not configured. \
                                      Set SECURITY_PROVIDER_ENDPOINT, SECURITY_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (legacy fallbacks: BEARDOG_SECURITY_ENDPOINT, SONGBIRD_SECURITY_ENDPOINT).",
-                                ));
+                                ))
                             }
                         },
                         |v| {
                             warn!(
                                 "Using legacy env var SONGBIRD_SECURITY_ENDPOINT — migrate to SECURITY_PROVIDER_ENDPOINT or SECURITY_ENDPOINT"
                             );
-                            v
+                            Ok(v)
                         },
                     ),
                     |v| {
                         warn!(
                             "Using legacy env var BEARDOG_SECURITY_ENDPOINT — migrate to SECURITY_PROVIDER_ENDPOINT, SECURITY_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (capability-first)"
                         );
-                        v
+                        Ok(v)
                     },
                 ),
-                std::convert::identity,
+                Ok,
             ),
-            std::convert::identity,
-        );
+            Ok,
+        )?;
 
         // Create HTTP client
         let client = IpcHttpClient::new().await.map_err(|e| {
