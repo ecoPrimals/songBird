@@ -51,7 +51,7 @@ These run infrequently. IPC cost (~0.5ms per call) is negligible vs operation fr
 | `songbird-orchestrator` | `access_control/pure_rust_jwt.rs` | HMAC-SHA256 | `CryptoProvider` (ALREADY dual-path) |
 | `songbird-orchestrator` | `task_lifecycle/checkpoint.rs` | SHA-256 | `SecurityRpcClient::sha256` |
 | `songbird-discovery` | `crypto_helpers.rs` | SHA-256 | `SecurityRpcClient::sha256` |
-| `songbird-discovery` | `dark_forest_beacon.rs` | blake3 | New: `crypto.hash.blake3` |
+| `songbird-discovery` | `dark_forest_beacon.rs` | blake3 | `crypto.hash.blake3` — **DONE** (Wave 150x: `new_with_crypto` + `hash_capabilities_async`) |
 | `songbird-network-federation` | `crypto_helpers.rs` | HMAC-SHA256 | `SecurityRpcClient::hmac_sha256` |
 | `songbird-genesis` | `security_capability_client.rs` | SHA-256 | Already named for delegation! |
 
@@ -81,6 +81,8 @@ These run infrequently. IPC cost (~0.5ms per call) is negligible vs operation fr
 - Route `checkpoint.rs` SHA-256 through `SecurityRpcClient`
 - Route `network-federation/crypto_helpers.rs` HMAC through delegation
 - Route `discovery/crypto_helpers.rs` SHA-256 through delegation
+- Route `discovery/dark_forest_beacon.rs` blake3 through bearDog ✅ (`new_with_crypto` + `hash_capabilities_async`)
+- `blake3` dep made optional behind `local-crypto-fallback` feature ✅
 - Remove direct `sha2`/`hmac` deps from crates that now delegate
 
 ### Phase 2: Measure IPC Cost
@@ -101,7 +103,7 @@ After Phase 1 delegation, these deps become removable from production crates:
 |-----|-------------|---------|
 | `sha2` | `orchestrator`, `discovery`, `genesis`, `federation` | `http-client` (TLS transcript), `sovereign-onion` |
 | `hmac` | `orchestrator`, `federation` | `stun` (wire format), `tls` |
-| `blake3` | `discovery` (if bearDog adds `crypto.hash.blake3`) | — |
+| `blake3` | `discovery` | ~~if bearDog adds `crypto.hash.blake3`~~ **DONE** — delegating via `blake3_hash()` | — |
 | `chacha20poly1305` | — | `orchestrator` (BTSP hot path), `sovereign-onion` |
 | `hkdf` | — | `orchestrator` (BTSP session derivation) |
 | `ed25519-dalek` | — | `sovereign-onion`, `tls` (test), `quic` (test feature) |

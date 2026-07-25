@@ -170,14 +170,15 @@ pub async fn build_dark_forest_beacon_bytes(
         |eps| eps.iter().map(|e| format!("{}:{}", e.interface_type, e.address)).collect(),
     );
 
-    let payload = BeaconPayload::new(
+    let payload = BeaconPayload::new_with_crypto(
         beacon_id,
         node_id.unwrap_or_else(|| String::from("unknown")),
         endpoints_list,
         capabilities,
+        crypto_ref,
         None,
         super::scheduling::rotating_session_id(),
-    );
+    ).await;
 
     let beacon = birdsong
         .encrypt_dark_forest_beacon(&payload)

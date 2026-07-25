@@ -106,8 +106,6 @@ pub fn sha256_hash_sync(crypto: Option<&CryptoProvider>, data: &[u8]) -> Vec<u8>
 /// Compute BLAKE3 hash via bearDog UDS delegation (`crypto.hash.blake3`).
 ///
 /// Falls back to local `blake3` crate only with `local-crypto-fallback` feature.
-/// Used by `dark_forest_beacon` once bearDog exposes `crypto.hash.blake3`.
-#[allow(dead_code, reason = "prepared for dark_forest_beacon migration to delegation")]
 pub async fn blake3_hash(crypto: Option<&CryptoProvider>, data: &[u8]) -> Vec<u8> {
     if let Some(p) = crypto {
         match p.call("crypto.hash.blake3", json!({ "data": BASE64.encode(data) })).await {

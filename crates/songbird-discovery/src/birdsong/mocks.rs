@@ -152,6 +152,7 @@ impl DarkForestTestProvider {
     }
 
     /// Same derivation as production beacon id (tests / harness).
+    #[cfg(feature = "local-crypto-fallback")]
     #[must_use]
     pub fn derive_beacon_id(seed: &[u8; 32]) -> Vec<u8> {
         use blake3::Hasher;

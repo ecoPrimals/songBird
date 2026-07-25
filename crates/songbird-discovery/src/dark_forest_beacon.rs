@@ -371,6 +371,32 @@ impl BeaconPayload {
         }
     }
 
+    /// Async blake3 hashing via bearDog UDS delegation (`crypto.hash.blake3`).
+    ///
+    /// Falls back to local `blake3` crate when delegation is unavailable.
+    pub async fn hash_capabilities_async(
+        capabilities: &[String],
+        crypto: Option<&songbird_crypto_provider::CryptoProvider>,
+    ) -> [u8; 32] {
+        let mut sorted = capabilities.to_vec();
+        sorted.sort();
+
+        let mut data = Vec::new();
+        for cap in &sorted {
+            data.extend_from_slice(cap.as_bytes());
+            data.extend_from_slice(b"|");
+        }
+
+        let result = crate::crypto_helpers::blake3_hash(crypto, &data).await;
+        if result.len() == 32 {
+            let mut arr = [0u8; 32];
+            arr.copy_from_slice(&result);
+            arr
+        } else {
+            Self::hash_capabilities(capabilities)
+        }
+    }
+
     /// Create new beacon payload with current timestamp
     ///
     /// # Arguments
@@ -402,7 +428,32 @@ impl BeaconPayload {
             capabilities_hash: Self::hash_capabilities(capabilities),
             cluster_id,
             session_id,
-            external_tunnels: Vec::new(), // Empty by default
+            external_tunnels: Vec::new(),
+            created_at: DarkForestBeacon::current_timestamp(),
+        }
+    }
+
+    /// Create beacon payload with async blake3 delegation through bearDog.
+    ///
+    /// Preferred over [`Self::new`] when a `CryptoProvider` is available.
+    /// Delegates `hash_capabilities` to `crypto.hash.blake3` via UDS.
+    pub async fn new_with_crypto(
+        beacon_id: Vec<u8>,
+        node_id: String,
+        endpoints: Vec<String>,
+        capabilities: &[String],
+        crypto: Option<&songbird_crypto_provider::CryptoProvider>,
+        cluster_id: Option<String>,
+        session_id: String,
+    ) -> Self {
+        Self {
+            beacon_id,
+            node_id,
+            endpoints,
+            capabilities_hash: Self::hash_capabilities_async(capabilities, crypto).await,
+            cluster_id,
+            session_id,
+            external_tunnels: Vec::new(),
             created_at: DarkForestBeacon::current_timestamp(),
         }
     }
