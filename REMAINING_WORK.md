@@ -68,11 +68,13 @@ Phase 2 relay fixed (Waves 132–169). **Phase 3 implemented** (Wave 180): `btsp
 
 ---
 
-### Crypto Composition (Wave 150x — Phase 1 DONE)
+### Crypto Composition (Wave 151a — Phase 1 FULLY WIRED)
 
-**Status**: Phase 1 (composition seams) COMPLETE. Phase 2 (measure) and Phase 3 (chimera) pending.
+**Status**: Phase 1 (composition seams + caller wiring) **FULLY COMPLETE**. Phase 2 (measure) and Phase 3 (chimera) pending.
 
-**Phase 1** (DONE): Local crypto (`sha2`, `hmac`) gated behind `local-crypto-fallback` feature flag in 4 crates. Production path delegates to bearDog `crypto.*` via UDS. Feature enabled by default for backward compat; disabling removes `sha2`/`hmac` from those crate binaries.
+**Phase 1** (DONE): Local crypto (`sha2`, `hmac`) gated behind `local-crypto-fallback` feature flag in 4 crates. Production path delegates to bearDog `crypto.*` via UDS. Feature enabled by default for backward compat; disabling removes `sha2`/`hmac` from those crate binaries. **Wave 151a**: All 6 production callers now delegate: `AccessToken::encode_with_crypto()`, `AccessToken::decode_with_crypto()`, `Checkpoint::new_with_crypto()`, `Checkpoint::verify_with_crypto()`, `TaskLifecycleManager` async checkpoint ops, `login()` handler crypto discovery. Chimera Phase 0 UNBLOCKED.
+
+**Phase 1.5** (P2 — NEW): BTSP ClientHello for bearDog strict mode. When `BEARDOG_UDS_REQUIRE_BTSP=1`, songBird must send ClientHello before JSON-RPC to bearDog. Uses LOCAL HMAC (family seed from `FAMILY_ID`) to avoid chicken-and-egg. Implementation: `perform_client_handshake()` in `songbird-crypto-provider`. Not blocking — bearDog gracefully accepts plain JSON-RPC unless strict mode is enabled.
 
 **Phase 2** (PENDING): Benchmark each delegation seam. Target: <1ms per `crypto.sha256` / `crypto.hmac.sha256` call over UDS. Blocking: requires live bearDog on flockGate.
 
