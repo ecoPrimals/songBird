@@ -77,13 +77,14 @@ These run infrequently. IPC cost (~0.5ms per call) is negligible vs operation fr
 
 ### Phase 1: Composition (current wave)
 - Document seams (this file) ✅
-- Route `pure_rust_jwt.rs` through bearDog exclusively (remove local fallback when provider available)
-- Route `checkpoint.rs` SHA-256 through `SecurityRpcClient`
-- Route `network-federation/crypto_helpers.rs` HMAC through delegation
-- Route `discovery/crypto_helpers.rs` SHA-256 through delegation
+- Route `pure_rust_jwt.rs` through bearDog exclusively (remove local fallback when provider available) ✅
+- Route `checkpoint.rs` SHA-256 through `SecurityRpcClient` ✅
+- Route `network-federation/crypto_helpers.rs` HMAC through delegation ✅
+- Route `discovery/crypto_helpers.rs` SHA-256 through delegation ✅
 - Route `discovery/dark_forest_beacon.rs` blake3 through bearDog ✅ (`new_with_crypto` + `hash_capabilities_async`)
 - `blake3` dep made optional behind `local-crypto-fallback` feature ✅
-- Remove direct `sha2`/`hmac` deps from crates that now delegate
+- Remove direct `sha2`/`hmac` deps from crates that now delegate ✅ (5 crates now optional)
+- **PHASE 1 COMPLETE** — all delegatable seams route through bearDog UDS
 
 ### Phase 2: Measure IPC Cost
 - Benchmark each delegation seam (target: <1ms per call)

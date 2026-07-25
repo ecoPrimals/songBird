@@ -586,6 +586,7 @@ impl MeshHandler {
                     peers.push((node_id.clone(), json!({
                         "node_id": node_id,
                         "path_type": path_type,
+                        "priority": path.endpoint_type.priority(),
                         "address": address,
                         "last_seen_ms": u64::try_from(path.last_seen.elapsed().as_millis()).unwrap_or(u64::MAX),
                         "is_relay": is_relay,
@@ -707,6 +708,7 @@ impl MeshHandler {
                     "from": self_id.as_ref(),
                     "to": peer_id,
                     "path_type": path_type,
+                    "priority": path.endpoint_type.priority(),
                     "address": address,
                     "latency_ms": path.latency.map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX)),
                     "reachable": path.reachable,

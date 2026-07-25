@@ -13,6 +13,7 @@ pub(super) fn path_to_json(path: &RelayEndpoint, found: bool) -> Value {
         "found": found,
         "target_node_id": path.node_id,
         "path_type": path_type,
+        "priority": path.endpoint_type.priority(),
         "address": address,
         "estimated_latency_ms": path.latency.map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX)),
         "reachable": path.reachable

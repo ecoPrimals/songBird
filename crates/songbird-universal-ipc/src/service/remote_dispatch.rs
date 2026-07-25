@@ -91,10 +91,14 @@ impl IpcServiceHandler {
         let mut last_tcp_error = String::new();
         let mut peer_addrs: Vec<(String, std::net::SocketAddr)> = Vec::new();
 
+        // Sort peers by best-path priority: LAN (0) first, then overlay (1), direct (2), etc.
+        // This ensures same-switch peers are tried before tunnel-routed peers.
+        let mut prioritized: Vec<(String, u8, std::net::SocketAddr)> = Vec::new();
         for node_id in &reachable {
             let Some(path) = mesh.get_best_path(node_id).await else {
                 continue;
             };
+            let priority = path.endpoint_type.priority();
             let peer_sock = path.endpoint_type.socket_addr().unwrap_or_else(|| {
                 let ip = path
                     .endpoint_type
@@ -102,9 +106,14 @@ impl IpcServiceHandler {
                     .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
                 std::net::SocketAddr::new(ip, DEFAULT_HTTP_PORT)
             });
-            peer_addrs.push((node_id.clone(), peer_sock));
+            prioritized.push((node_id.clone(), priority, peer_sock));
+        }
+        prioritized.sort_by_key(|(_, prio, _)| *prio);
 
-            let tcp_endpoint = songbird_types::constants::jsonrpc_endpoint_url(&peer_sock);
+        for (node_id, _, peer_sock) in &prioritized {
+            peer_addrs.push((node_id.clone(), *peer_sock));
+
+            let tcp_endpoint = songbird_types::constants::jsonrpc_endpoint_url(peer_sock);
 
             if self.peer_has_capability(&tcp_endpoint, &call.capability).await == Ok(false) {
                 debug!(peer = %node_id, "Peer lacks capability '{}', skipping", call.capability);

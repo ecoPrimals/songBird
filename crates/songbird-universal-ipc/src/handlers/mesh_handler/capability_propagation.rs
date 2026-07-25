@@ -143,8 +143,9 @@ impl MeshHandler {
     ///
     /// Searches the `peer_capabilities` map for non-expired entries containing
     /// the capability string. When multiple peers provide the same capability,
-    /// selects the one with the lowest-cost path (overlay preferred, then latency).
-    /// Returns `Some((node_id, capabilities))` for the best match, or `None`.
+    /// selects the one with the lowest-cost path (LAN preferred, then overlay,
+    /// then latency). Returns `Some((node_id, capabilities))` for the best match,
+    /// or `None`.
     pub async fn find_peer_with_capability(
         &self,
         capability: &str,
