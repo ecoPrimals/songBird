@@ -103,19 +103,19 @@ pub fn sha256_hash_sync(crypto: Option<&CryptoProvider>, data: &[u8]) -> Vec<u8>
     )
 }
 
-/// Compute BLAKE3 hash via bearDog UDS delegation (`crypto.hash.blake3`).
+/// Compute BLAKE3 hash via bearDog UDS delegation (`crypto.blake3_hash`).
 ///
 /// Falls back to local `blake3` crate only with `local-crypto-fallback` feature.
 pub async fn blake3_hash(crypto: Option<&CryptoProvider>, data: &[u8]) -> Vec<u8> {
     if let Some(p) = crypto {
-        match p.call("crypto.hash.blake3", json!({ "data": BASE64.encode(data) })).await {
+        match p.call("crypto.blake3_hash", json!({ "data": BASE64.encode(data) })).await {
             Ok(v) => {
                 if let Some(hash) = decode_hash_b64(&v) {
                     return hash;
                 }
             }
             Err(e) => {
-                tracing::warn!(target: "songbird_discovery", "crypto.hash.blake3 delegation failed: {e}");
+                tracing::warn!(target: "songbird_discovery", "crypto.blake3_hash delegation failed: {e}");
             }
         }
     }

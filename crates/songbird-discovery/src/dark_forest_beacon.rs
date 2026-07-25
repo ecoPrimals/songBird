@@ -371,7 +371,7 @@ impl BeaconPayload {
         }
     }
 
-    /// Async blake3 hashing via bearDog UDS delegation (`crypto.hash.blake3`).
+    /// Async blake3 hashing via bearDog UDS delegation (`crypto.blake3_hash`).
     ///
     /// Falls back to local `blake3` crate when delegation is unavailable.
     pub async fn hash_capabilities_async(
@@ -436,7 +436,7 @@ impl BeaconPayload {
     /// Create beacon payload with async blake3 delegation through bearDog.
     ///
     /// Preferred over [`Self::new`] when a `CryptoProvider` is available.
-    /// Delegates `hash_capabilities` to `crypto.hash.blake3` via UDS.
+    /// Delegates `hash_capabilities` to `crypto.blake3_hash` via UDS.
     pub async fn new_with_crypto(
         beacon_id: Vec<u8>,
         node_id: String,
