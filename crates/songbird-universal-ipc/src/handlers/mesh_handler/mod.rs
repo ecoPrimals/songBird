@@ -123,8 +123,13 @@ impl MeshHandler {
     /// `bootstrap_peers` enables cross-gate discovery by adding TCP-reachable peers
     /// to the mesh at init time (connection attempts are spawned asynchronously).
     ///
-    /// `overlay_peers` (optional) registers WireGuard/VPN endpoints for peers.
-    /// These get priority 0 (same as Local) so overlay paths are preferred when reachable.
+    /// `lan_peers` (optional) registers same-subnet LAN peers as `EndpointType::Local`
+    /// (priority 0 — always preferred over overlay/direct). Use physical LAN addresses
+    /// here so `mesh.find_path` returns the sub-millisecond local path instead of
+    /// routing through WireGuard overlay at 100ms+ penalty.
+    ///
+    /// `overlay_peers` (optional) registers WireGuard/VPN endpoints for peers
+    /// (priority 1 — used when no LAN path exists).
     ///
     /// # Request Example
     ///
@@ -137,6 +142,9 @@ impl MeshHandler {
     ///     "bootstrap_onions": ["xyz.onion"],
     ///     "bootstrap_peers": [
     ///       { "node_id": "west-gate", "address": "192.168.1.50:7700" }
+    ///     ],
+    ///     "lan_peers": [
+    ///       { "node_id": "west-gate", "address": "192.168.4.50:7700" }
     ///     ],
     ///     "overlay_peers": [
     ///       { "node_id": "west-gate", "address": "10.13.37.2:7700" }
@@ -215,7 +223,44 @@ impl MeshHandler {
             mesh.add_endpoint(peer_id.clone(), endpoint).await;
         }
 
-        // Register overlay endpoints (WireGuard/VPN — priority 0, preferred)
+        // Register LAN endpoints (same-subnet — priority 0, always preferred)
+        let lan_peers: Vec<(String, std::net::SocketAddr)> = params
+            .get("lan_peers")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|entry| {
+                        if let Some(obj_id) = entry.get("node_id").and_then(Value::as_str) {
+                            let addr_str = entry.get("address")?.as_str()?;
+                            let addr: std::net::SocketAddr = addr_str.parse().ok()?;
+                            return Some((obj_id.to_string(), addr));
+                        }
+                        let s = entry.as_str()?;
+                        if let Some((nid, addr_part)) = s.split_once('@') {
+                            let addr: std::net::SocketAddr = addr_part.parse().ok()?;
+                            Some((nid.to_string(), addr))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        for (peer_id, addr) in &lan_peers {
+            let endpoint = RelayEndpoint {
+                node_id: peer_id.clone(),
+                endpoint_type: EndpointType::Local {
+                    addr: *addr,
+                },
+                latency: None,
+                last_seen: std::time::Instant::now(),
+                reachable: true,
+            };
+            mesh.add_endpoint(peer_id.clone(), endpoint).await;
+        }
+
+        // Register overlay endpoints (WireGuard/VPN — priority 1, fallback when no LAN)
         let overlay_name =
             params.get("overlay_name").and_then(Value::as_str).unwrap_or("wireguard");
         let overlay_peers: Vec<(String, std::net::SocketAddr)> = params
@@ -255,11 +300,33 @@ impl MeshHandler {
             mesh.add_endpoint(peer_id.clone(), endpoint).await;
         }
 
+        // Load persisted peers — restore LAN endpoints from prior enrollment
+        if let Some((_, persisted)) = persistence::load_persisted_peers_full() {
+            for peer in &persisted {
+                if let Some(lan) = peer.lan_addr {
+                    let already_has_local = lan_peers.iter().any(|(id, _)| id == &peer.node_id);
+                    if !already_has_local {
+                        let endpoint = RelayEndpoint {
+                            node_id: peer.node_id.clone(),
+                            endpoint_type: EndpointType::Local {
+                                addr: lan,
+                            },
+                            latency: None,
+                            last_seen: std::time::Instant::now(),
+                            reachable: true,
+                        };
+                        mesh.add_endpoint(peer.node_id.clone(), endpoint).await;
+                    }
+                }
+            }
+        }
+
         let mesh_ref = Arc::clone(&mesh);
         *self.mesh.write().await = Some(mesh);
         *self.node_id.write().await = node_id.clone();
 
         let peers_added = bootstrap_peers.len();
+        let lan_peers_added = lan_peers.len();
         let overlay_for_health: Vec<(String, std::net::SocketAddr, String)> = overlay_peers
             .iter()
             .map(|(id, addr)| (id.clone(), *addr, String::from(overlay_name)))
@@ -284,7 +351,8 @@ impl MeshHandler {
         Ok(json!({
             "initialized": true,
             "node_id": node_id.as_ref(),
-            "bootstrap_peers_added": peers_added
+            "bootstrap_peers_added": peers_added,
+            "lan_peers_added": lan_peers_added
         }))
     }
 
