@@ -1,10 +1,10 @@
 # Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v0.2.1-wave151a  
+**Version**: v0.2.1-wave151b  
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: July 25, 2026
+**Last Updated**: July 26, 2026
 
 Songbird is the universal network orchestrator and **inner membrane port solver** for the ecoPrimals ecosystem. It manages service discovery, connection management, inter-primal communication across multiple protocols, and drawbridge capability→port resolution for production routing. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
@@ -23,7 +23,7 @@ Songbird is one third of **Tower Atomic** (bearDog + songBird + skunkBat) — th
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[allow(reason)]` / `#[expect(reason)]` throughout — Wave 150x: 47 `#[allow(dead_code)]` evolved to `#[expect(dead_code)]` (warns if code gets wired); Wave 58: 146 item-level suppressions evolved to `#[expect(clippy::...)]`; module-level `unwrap_used`/`expect_used` blanket suppressions remain `#[allow]` (correct for module scope); Wave 149: blanket `#![allow(clippy::all, pedantic, nursery)]` removed from 11 files; zero reasonless suppressions, zero blanket suppressions remain |
 | Concurrent Tests | Injectable env via `songbird-process-env` overlay (all production env sites migrated — zero `std::env` in production); all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
-| Tests | 14,332+ total tests (667 in universal-ipc; integration suites) |
+| Tests | 14,835+ total tests (667 in universal-ipc; integration suites) |
 | Line Coverage | **73.41%** (`llvm-cov --workspace --lib`, Apr 27 2026; target 90%; Wave 53: +74 tests across pure-logic modules) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all dispatch handlers |
@@ -32,7 +32,7 @@ Songbird is one third of **Tower Atomic** (bearDog + songBird + skunkBat) — th
 | Build | Clean (zero errors, zero warnings; cross-platform verified) |
 | Formatting | Clean (`cargo fmt --check`; Jul 21 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >800 lines | **0** (max 797L) — Wave 151a: `mesh_handler/mod.rs` (825→797L via `parse_peer_list()` dedup). Previous: Wave 152: `security.rs` (761→mod tree, max 277L), `production.rs` (754→370L via test extraction), `virtual_relay.rs` (753→553L via test extraction). Previous: Wave 150t: `mesh_handler/mod.rs` (841→746L); Wave 149b: `drawbridge.rs` (1,019→578L), `mesh_seed.rs` (834→523L) |
+| Files >800 lines | **0** (max 795L) — Wave 151b: deep debt audit confirmed. `mesh_handler/mod.rs` (795L), `drawbridge.rs` (749L). Previous: Wave 151a: `mesh_handler/mod.rs` (825→797L via `parse_peer_list()` dedup). Wave 152: `security.rs` (761→mod tree, max 277L), `production.rs` (754→370L via test extraction). Wave 150t: `mesh_handler/mod.rs` (841→746L); Wave 149b: `drawbridge.rs` (1,019→578L), `mesh_seed.rs` (834→523L) |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 33 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, lifecycle, inference, etc.) |

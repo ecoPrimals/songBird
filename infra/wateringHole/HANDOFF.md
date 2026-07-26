@@ -1,8 +1,8 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave151a  
-**Date**: July 25, 2026  
+**Version**: v0.2.1-wave151b  
+**Date**: July 26, 2026  
 **Gate**: eastGate
 
 ## Current State
@@ -10,11 +10,11 @@
 | Metric | Status |
 |--------|--------|
 | Clippy | Zero warnings (pedantic + nursery, `-D warnings`); `doc_markdown` + `uninlined_format_args` now enforced |
-| Tests | 14,332+ pass, 1 known flaky (mesh persistence test-parallelism) |
+| Tests | 14,835+ pass, 0 failures (Wave 151b full audit) |
 | Unsafe | 0 (`forbid(unsafe_code)` all 31 crates) |
 | Production unwraps | 0 (config.rs refactored to `fmt::Result`, RwLock sites `#[expect]`-annotated) |
 | Production stubs | 0 (Wave 137: last fake-data stub evolved to real probes) |
-| Files >800L | 0 (max 797L — mesh_handler/mod.rs refactored via parse_peer_list dedup) |
+| Files >800L | 0 (max 795L — mesh_handler/mod.rs 795L, drawbridge.rs 749L) |
 | Hardcoding | 0 in production (all env-driven, capability-based) |
 | Mocks in prod | 0 (all `#[cfg(test)]` gated) |
 

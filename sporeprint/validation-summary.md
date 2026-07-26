@@ -1,7 +1,7 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 14,332+ tests, 31 crates, 64+ JSON-RPC methods, inner membrane port solver (drawbridge :7780), Tower Atomic transport layer (bearDog + songBird + skunkBat), mesh.enroll BTSP-verified enrollment, 5-tier NAT traversal, cross-gate capability.call, BTSP Phase 3 encrypted framing, zero production unwraps, zero unsafe code, zero files >800L, 24 dead deps removed, ring→rustcrypto (zero C in production), pen test hardening (SO_PEERCRED + mesh validation + relay abuse prevention), caller identity + UDS hardening, crypto composition delegation, legacy env deprecation"
-date = 2026-07-24
+description = "Sovereign networking primal — 14,835+ tests, 31 crates, 64+ JSON-RPC methods, inner membrane port solver (drawbridge :7780), Tower Atomic transport layer (bearDog + songBird + skunkBat), mesh.enroll BTSP-verified enrollment, 5-tier NAT traversal, cross-gate capability.call, BTSP Phase 3 encrypted framing, BTSP ClientHello consumer handshake (Wave 151b), zero production unwraps, zero unsafe code, zero files >800L, all deps pure Rust, crypto delegation 6/6, pen test hardening, caller identity + UDS hardening, BTSP strict mode ecosystem-wide"
+date = 2026-07-26
 
 [taxonomies]
 primals = ["songbird"]
@@ -10,7 +10,7 @@ springs = ["primalspring"]
 
 ## Status
 
-- **14,332+ total tests** (667 in universal-ipc; integration suites)
+- **14,835+ total tests** (667 in universal-ipc; integration suites)
 - **31 workspace crates**, ~422,000 lines of Rust (Edition 2024)
 - **64+ JSON-RPC methods** across 17 capability domains (network, mesh, stun, relay, http, tor, onion, punch, discovery, birdsong, capability, ipc, primal, lifecycle, federation, graph, coordination)
 - **BTSP Phase 3 FULL** — ChaCha20-Poly1305 AEAD, HKDF-SHA256 session keys, bond type enforcement
