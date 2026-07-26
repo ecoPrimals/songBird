@@ -245,23 +245,26 @@ mod tests {
     }
 
     #[test]
+    #[expect(clippy::expect_used)]
     fn hmac_computation_produces_32_bytes() {
         let key = b"test-family-seed";
         let challenge = b"random-challenge-data";
-        let mut mac = HmacSha256::new_from_slice(key).unwrap();
+        let mut mac =
+            HmacSha256::new_from_slice(key).expect("HMAC key creation should not fail for tests");
         mac.update(challenge);
         let result = mac.finalize().into_bytes();
         assert_eq!(result.len(), 32);
     }
 
     #[test]
+    #[expect(clippy::expect_used)]
     fn client_hello_serializes_correctly() {
         let hello = ClientHello {
             protocol: "btsp",
             version: 1,
             client_ephemeral_pub: String::from("AAAA"),
         };
-        let json = serde_json::to_string(&hello).unwrap();
+        let json = serde_json::to_string(&hello).expect("ClientHello serialization should succeed");
         assert!(json.contains("\"protocol\":\"btsp\""));
         assert!(json.contains("\"version\":1"));
     }
