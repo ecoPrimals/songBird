@@ -17,6 +17,8 @@
 //!   Neural API, which translates and forwards to the security provider.
 //! - **`Direct`**: Calls `security provider` directly (bootstrap / fallback).
 
+#[cfg(feature = "btsp-client")]
+pub mod btsp_client;
 mod rpc;
 pub mod socket_discovery;
 
