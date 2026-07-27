@@ -231,11 +231,9 @@ impl MeshHandler {
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_secs());
 
-        let family_seed = std::env::var("FAMILY_SEED")
-            .or_else(|_| std::env::var("BEARDOG_FAMILY_SEED"))
-            .ok();
+        let family_seed_bytes = load_family_seed_bytes();
 
-        let Some(seed) = family_seed else {
+        let Some(seed_bytes) = family_seed_bytes else {
             return EnrollPhase {
                 name: "genetic.enroll".into(),
                 ok: false,
@@ -244,7 +242,7 @@ impl MeshHandler {
         };
 
         let proof = compute_hub_enrollment_proof(
-            seed.as_bytes(),
+            &seed_bytes,
             gate_name,
             public_key,
             timestamp,
@@ -576,13 +574,47 @@ async fn register_forgejo_key(gate_name: &str, ssh_pubkey: &str) -> (EnrollPhase
     }
 }
 
+/// Load the family seed, resolving file paths if needed.
+///
+/// The `FAMILY_SEED` env var may contain a direct value or a file path
+/// (e.g. `/etc/membrane/family/family.key`). If it starts with `/` and
+/// the file exists, read the file and base64-encode the raw bytes.
+fn load_family_seed_value() -> Option<String> {
+    let raw = std::env::var("FAMILY_SEED")
+        .or_else(|_| std::env::var("BEARDOG_FAMILY_SEED"))
+        .ok()?;
+
+    if raw.starts_with('/') {
+        match std::fs::read(&raw) {
+            Ok(bytes) => {
+                use base64::Engine;
+                Some(base64::engine::general_purpose::STANDARD.encode(&bytes))
+            }
+            Err(_) => Some(raw),
+        }
+    } else {
+        Some(raw)
+    }
+}
+
+/// Load the family seed as raw bytes for HMAC computation.
+fn load_family_seed_bytes() -> Option<Vec<u8>> {
+    let raw = std::env::var("FAMILY_SEED")
+        .or_else(|_| std::env::var("BEARDOG_FAMILY_SEED"))
+        .ok()?;
+
+    if raw.starts_with('/') {
+        std::fs::read(&raw).ok().or_else(|| Some(raw.into_bytes()))
+    } else {
+        Some(raw.into_bytes())
+    }
+}
+
 /// Deliver the family seed encrypted to the enrollee's WireGuard public key.
 ///
 /// Uses bearDog's `crypto.encrypt` to wrap the seed before transit.
 async fn deliver_family_seed(wg_pubkey: &str) -> (EnrollPhase, Option<String>) {
-    let family_seed = std::env::var("FAMILY_SEED")
-        .or_else(|_| std::env::var("BEARDOG_FAMILY_SEED"))
-        .ok();
+    let family_seed = load_family_seed_value();
 
     let Some(seed) = family_seed else {
         return (
