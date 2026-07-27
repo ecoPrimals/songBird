@@ -1,9 +1,9 @@
 # Tower Atomic — Parity Convergence Brief
 
-**Date**: July 26, 2026  
-**Wave**: 151b  
-**Status**: **COMPLETE** — All P1 debt resolved. BTSP standard all primals. Nest Atomic begins.  
-**Target**: WireGuard replacement → sovereign compute mesh
+**Date**: July 27, 2026  
+**Wave**: 155b  
+**Status**: **COMPLETE + EVOLVING** — All debt resolved. BTSP 13/13. G1 (Windows IPC) unblocked. Glacial goals active.  
+**Target**: WireGuard replacement → sovereign compute mesh → cross-platform proof
 
 ---
 

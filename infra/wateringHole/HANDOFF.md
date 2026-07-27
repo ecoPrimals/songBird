@@ -1,8 +1,8 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave151b  
-**Date**: July 26, 2026  
+**Version**: v0.2.1-wave155b  
+**Date**: July 27, 2026  
 **Gate**: eastGate
 
 ## Current State
@@ -10,7 +10,7 @@
 | Metric | Status |
 |--------|--------|
 | Clippy | Zero warnings (pedantic + nursery, `-D warnings`); `doc_markdown` + `uninlined_format_args` now enforced |
-| Tests | 14,835+ pass, 0 failures (Wave 151b full audit) |
+| Tests | 14,835+ pass, 0 failures (Wave 155b audit) |
 | Unsafe | 0 (`forbid(unsafe_code)` all 31 crates) |
 | Production unwraps | 0 (config.rs refactored to `fmt::Result`, RwLock sites `#[expect]`-annotated) |
 | Production stubs | 0 (Wave 137: last fake-data stub evolved to real probes) |
@@ -18,9 +18,23 @@
 | Hardcoding | 0 in production (all env-driven, capability-based) |
 | Mocks in prod | 0 (all `#[cfg(test)]` gated) |
 
-## Recent Evolution (Wave 147f–151a)
+## Recent Evolution (Wave 151b–155b)
 
-### Wave 151a — Tower Debt Resolution + Deep Debt (Jul 25 2026)
+### Wave 155b — G1 Windows Named Pipe Evolution (Jul 27 2026)
+
+**GENOMEBINS CONVERGENCE** — Tracks converged, glacial goals set. songBird G1 (Tower Atomic on Windows) unblocked:
+
+**IPC Stream Evolution**:
+- `IpcStream::NamedPipe` variant: native Windows named pipe connection (no TCP fallback penalty)
+- `TransportEndpoint::NamedPipe`: first-class wire format for Windows local endpoints
+- `connect_windows()`: recognizes pipe names directly or derives them from Unix socket paths
+- `NativeEndpoint::NamedPipe` → `socket_path()` → `IpcStream::connect()` dispatch chain complete
+- `transport_endpoint_from_native()` maps `NamedPipe` to `TransportEndpoint::NamedPipe` (was incorrectly mapped to `Uds`)
+- `ipc_registry` service registration now emits proper `NamedPipe` transport for Windows providers
+
+**blueGate Validation Ready**: Named pipe IPC dispatch chain is complete end-to-end. On Windows, a provider registering with a named pipe endpoint will have its pipe name correctly flow through the pool to `IpcStream::connect`, which opens the pipe directly.
+
+### Wave 151b — BTSP Standard All Primals (Jul 26 2026)
 
 **TOWER ATOMIC COMPLETE** — All 6 songBird-owned Tower debt failures resolved:
 

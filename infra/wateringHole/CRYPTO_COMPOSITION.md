@@ -1,8 +1,8 @@
 # songBird Crypto Composition Analysis
 
-**Date**: July 26, 2026  
-**Wave**: 151b  
-**Finding**: Crypto Composition COMPLETE (Phase 1 fully wired, P2 BTSP ClientHello shipped)
+**Date**: July 27, 2026  
+**Wave**: 155b  
+**Finding**: Crypto Composition COMPLETE (Phase 1 fully wired, P2 BTSP ClientHello shipped, G5 Chimera unblocked)
 
 ## Problem
 

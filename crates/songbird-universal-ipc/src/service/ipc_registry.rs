@@ -89,6 +89,9 @@ impl IpcServiceHandler {
                 host: songbird_types::constants::LOCALHOST.to_string(),
                 port: *port,
             }),
+            NativeEndpoint::NamedPipe(name) => Some(TransportEndpoint::NamedPipe {
+                name: name.clone(),
+            }),
             _ => None,
         };
 
@@ -616,8 +619,8 @@ pub(super) fn transport_endpoint_from_native(ep: &NativeEndpoint) -> TransportEn
             host: songbird_types::constants::LOCALHOST.to_string(),
             port: *port,
         },
-        NativeEndpoint::NamedPipe(name) => TransportEndpoint::Uds {
-            path: name.clone(),
+        NativeEndpoint::NamedPipe(name) => TransportEndpoint::NamedPipe {
+            name: name.clone(),
         },
         NativeEndpoint::XPC(service) => TransportEndpoint::Uds {
             path: service.clone(),

@@ -1,7 +1,7 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 14,835+ tests, 31 crates, 64+ JSON-RPC methods, inner membrane port solver (drawbridge :7780), Tower Atomic transport layer (bearDog + songBird + skunkBat), mesh.enroll BTSP-verified enrollment, 5-tier NAT traversal, cross-gate capability.call, BTSP Phase 3 encrypted framing, BTSP ClientHello consumer handshake (Wave 151b), zero production unwraps, zero unsafe code, zero files >800L, all deps pure Rust, crypto delegation 6/6, pen test hardening, caller identity + UDS hardening, BTSP strict mode ecosystem-wide"
-date = 2026-07-26
+description = "Sovereign networking primal — 14,835+ tests, 31 crates, 64+ JSON-RPC methods, inner membrane port solver (drawbridge :7780), Tower Atomic transport layer (bearDog + songBird + skunkBat), mesh.enroll BTSP-verified enrollment, 5-tier NAT traversal, cross-gate capability.call, BTSP Phase 3 encrypted framing, BTSP ClientHello consumer handshake, G1 Windows named pipe IPC (first-class TransportEndpoint::NamedPipe + IpcStream::NamedPipe, Wave 155b), zero production unwraps, zero unsafe code, zero files >800L, all deps pure Rust, crypto delegation 6/6, pen test hardening, caller identity + UDS hardening, BTSP strict mode ecosystem-wide"
+date = 2026-07-27
 
 [taxonomies]
 primals = ["songbird"]

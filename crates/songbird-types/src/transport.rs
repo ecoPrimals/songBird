@@ -53,6 +53,7 @@ use std::fmt;
 /// - [`Uds`](Self::Uds): Unix Domain Socket — same-host inter-primal communication (fastest)
 /// - [`Tcp`](Self::Tcp): Direct TCP — cross-host or container networking
 /// - [`MeshRelay`](Self::MeshRelay): Songbird mesh relay — cross-gate NAT-traversal
+/// - [`NamedPipe`](Self::NamedPipe): Windows named pipe — same-host on Windows (native IPC)
 ///
 /// # Ordering
 ///
@@ -95,6 +96,16 @@ pub enum TransportEndpoint {
         /// Capability being resolved on the remote peer.
         capability: String,
     },
+
+    /// Windows named pipe — local primal on same Windows host.
+    ///
+    /// Native Windows IPC mechanism. ~10μs latency, kernel-managed lifetime.
+    /// Preferred over TCP loopback on Windows targets.
+    #[serde(rename = "named_pipe")]
+    NamedPipe {
+        /// Pipe name (e.g. `\\.\pipe\biomeos_beardog`).
+        name: String,
+    },
 }
 
 impl TransportEndpoint {
@@ -103,6 +114,9 @@ impl TransportEndpoint {
     pub fn is_local(&self) -> bool {
         match self {
             Self::Uds {
+                ..
+            }
+            | Self::NamedPipe {
                 ..
             } => true,
             Self::Tcp {
@@ -140,6 +154,9 @@ impl TransportEndpoint {
             Self::MeshRelay {
                 ..
             } => "mesh_relay",
+            Self::NamedPipe {
+                ..
+            } => "named_pipe",
         }
     }
 
@@ -169,6 +186,9 @@ impl TransportEndpoint {
                 peer_id,
                 capability,
             } => format!("mesh://{peer_id}/{capability}"),
+            Self::NamedPipe {
+                name,
+            } => format!("pipe://{name}"),
         }
     }
 
@@ -230,6 +250,25 @@ impl TransportEndpoint {
         Self::MeshRelay {
             peer_id: peer_id.into(),
             capability: capability.into(),
+        }
+    }
+
+    /// Construct a Windows named pipe endpoint.
+    #[must_use]
+    pub fn named_pipe(name: impl Into<String>) -> Self {
+        Self::NamedPipe {
+            name: name.into(),
+        }
+    }
+
+    /// Returns the pipe name if this is a named pipe endpoint.
+    #[must_use]
+    pub fn pipe_name(&self) -> Option<&str> {
+        match self {
+            Self::NamedPipe {
+                name,
+            } => Some(name),
+            _ => None,
         }
     }
 }
@@ -406,7 +445,55 @@ mod tests {
         let _ = TransportEndpoint::uds("/path");
         let _ = TransportEndpoint::tcp("host", 80);
         let _ = TransportEndpoint::mesh_relay("peer", "cap");
+        let _ = TransportEndpoint::named_pipe(r"\\.\pipe\biomeos_test");
         let _ = TransportEndpoint::uds(String::from("/dynamic"));
         let _ = TransportEndpoint::tcp(String::from("dynamic"), 443);
+    }
+
+    #[test]
+    fn named_pipe_is_local() {
+        assert!(TransportEndpoint::named_pipe(r"\\.\pipe\biomeos_beardog").is_local());
+    }
+
+    #[test]
+    fn named_pipe_transport_name() {
+        assert_eq!(
+            TransportEndpoint::named_pipe(r"\\.\pipe\biomeos_test").transport_name(),
+            "named_pipe"
+        );
+    }
+
+    #[test]
+    fn named_pipe_display_uri() {
+        assert_eq!(
+            TransportEndpoint::named_pipe(r"\\.\pipe\biomeos_beardog").display_uri(),
+            r"pipe://\\.\pipe\biomeos_beardog"
+        );
+    }
+
+    #[test]
+    fn named_pipe_round_trips() {
+        let ep = TransportEndpoint::named_pipe(r"\\.\pipe\biomeos_songbird");
+        let json_str = serde_json::to_string(&ep).unwrap();
+        let de: TransportEndpoint = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(ep, de);
+    }
+
+    #[test]
+    fn named_pipe_deserializes_from_wire() {
+        let ep: TransportEndpoint = serde_json::from_str(
+            r#"{"transport":"named_pipe","name":"\\\\.\\pipe\\biomeos_test"}"#,
+        )
+        .unwrap();
+        assert_eq!(ep.pipe_name(), Some(r"\\.\pipe\biomeos_test"));
+    }
+
+    #[test]
+    fn named_pipe_accessor() {
+        let ep = TransportEndpoint::named_pipe(r"\\.\pipe\biomeos_squirrel");
+        assert_eq!(ep.pipe_name(), Some(r"\\.\pipe\biomeos_squirrel"));
+        assert_eq!(ep.uds_path(), None);
+        assert_eq!(ep.tcp_addr(), None);
+        assert_eq!(ep.mesh_peer(), None);
     }
 }

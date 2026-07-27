@@ -3,9 +3,9 @@
 **Primal**: Songbird  
 **Role**: Network Orchestration & Discovery Primal — Inner Membrane Port Solver  
 **Phase**: Stadial (S1-S4 graduated, 6-gate mesh collective LIVE, zero-config mesh init)  
-**Version**: 0.2.1-wave151b  
+**Version**: 0.2.1-wave155b  
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)  
-**Last Updated**: July 26, 2026
+**Last Updated**: July 27, 2026
 
 ## What It Does
 

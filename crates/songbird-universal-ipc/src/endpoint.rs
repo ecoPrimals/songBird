@@ -140,14 +140,15 @@ impl NativeEndpoint {
     /// Bare filesystem path for Unix sockets, or equivalent connect target for other transports.
     ///
     /// Returns the path without any scheme prefix, suitable for direct
-    /// `UnixStream::connect()` or `TcpStream::connect()`.
+    /// `UnixStream::connect()`, `TcpStream::connect()`, or named pipe open.
     #[must_use]
     pub fn socket_path(&self) -> Option<String> {
         match self {
             Self::UnixSocket(path) => Some(path.display().to_string()),
             Self::AbstractSocket(name) => Some(format!("@{name}")),
             Self::TcpLocal(port) => Some(format!("{LOCALHOST}:{port}")),
-            Self::NamedPipe(_) | Self::XPC(_) | Self::InProcess(_) | Self::SharedMemory(_) => None,
+            Self::NamedPipe(name) => Some(name.clone()),
+            Self::XPC(_) | Self::InProcess(_) | Self::SharedMemory(_) => None,
         }
     }
 
