@@ -397,14 +397,29 @@ async fn proxy_to_jsonrpc_backend(
         std::path::PathBuf::from(socket_path_hint)
     };
 
-    let params: serde_json::Value =
-        http_body.and_then(|b| serde_json::from_str(b).ok()).unwrap_or(serde_json::Value::Null);
+    let body_json: Option<serde_json::Value> =
+        http_body.and_then(|b| serde_json::from_str(b).ok());
+
+    let (effective_method, params) = if method.is_empty() {
+        if let Some(ref obj) = body_json {
+            let m = obj.get("method").and_then(|v| v.as_str()).unwrap_or("");
+            let p = obj.get("params").cloned().unwrap_or(serde_json::Value::Null);
+            (m.to_string(), p)
+        } else {
+            (String::new(), serde_json::Value::Null)
+        }
+    } else {
+        (method.to_string(), body_json.clone().unwrap_or(serde_json::Value::Null))
+    };
 
     let jsonrpc_request = serde_json::json!({
         "jsonrpc": "2.0",
-        "method": method,
+        "method": effective_method,
         "params": params,
-        "id": 1
+        "id": body_json.as_ref()
+            .and_then(|v| v.get("id"))
+            .cloned()
+            .unwrap_or(serde_json::json!(1))
     });
 
     let path_str = socket_path.to_string_lossy();
