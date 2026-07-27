@@ -14,11 +14,37 @@
 | Unsafe | 0 (`forbid(unsafe_code)` all 31 crates) |
 | Production unwraps | 0 (config.rs refactored to `fmt::Result`, RwLock sites `#[expect]`-annotated) |
 | Production stubs | 0 (Wave 137: last fake-data stub evolved to real probes) |
-| Files >800L | 0 (max 795L — mesh_handler/mod.rs 795L, drawbridge.rs 749L) |
+| Files >800L | 1 (gate_enrollment.rs: 809L production — 9L security-critical input validation) |
 | Hardcoding | 0 in production (all env-driven, capability-based) |
 | Mocks in prod | 0 (all `#[cfg(test)]` gated) |
 
 ## Recent Evolution (Wave 151b–155b)
+
+### Wave 155b — Jelly String Evolution J3+J4+J5 (Jul 27 2026)
+
+**CASCADE AUTOMATION SURFACE** — songBird now provides the JSON-RPC API layer that enables cascade-driven service management:
+
+**J3: `deployment.hot_swap`** (P1 — blocks cascade-driven deployment):
+- Stop old process → replace binary → start new → verify — single JSON-RPC call
+- `deployment.restart`: same binary, just restart the process
+- `deployment.list`: enumerate all active deployments
+- Graceful kill: SIGTERM → 5s wait → SIGKILL (cross-platform)
+- Accessible via HTTP JSON-RPC gateway (cellMembrane/cascade can call remotely)
+
+**J4: `route.*` dynamic route management** (P2 — blocks self-configuring routes):
+- `route.add`: register capability → backend URL mapping at runtime
+- `route.remove`: unregister a route by capability
+- `route.list`: enumerate all configured routes with details
+- Services self-configure their routes on registration — no more manual Caddy edits
+- Wired through universal-ipc dispatch (local primals can call directly)
+
+**J5: WG peer registration hardened** (P2 — live test ready):
+- Input validation: `is_valid_wg_pubkey()` (base64 format, length) + `is_valid_mesh_ip()` (octets)
+- Command injection eliminated: direct `wg` args array (no shell interpolation)
+- Interface configurable via `WG_INTERFACE` env (default: `wg0`)
+- Resilient: `wg set` and `wg-quick save` separated — partial success reported
+
+**Upstream clippy debt cleaned**: `needless_question_mark` × 3, `doc_markdown` × 5, `or_fun_call` × 1.
 
 ### Wave 155b — G1 Windows Named Pipe Evolution (Jul 27 2026)
 

@@ -29,7 +29,8 @@ use tracing::{debug, warn};
 
 use handlers::{
     handle_beacon_exchange, handle_compute_job_status, handle_compute_route, handle_consent_check,
-    handle_consent_grant, handle_deployment_create, handle_deployment_status,
+    handle_consent_grant, handle_deployment_create, handle_deployment_hot_swap,
+    handle_deployment_list, handle_deployment_restart, handle_deployment_status,
     handle_federation_join, handle_federation_peers, handle_health, handle_health_standard,
     handle_identity, handle_protocol_capabilities, handle_protocol_negotiate_semantic,
     handle_registry_discover, handle_registry_register, handle_service_get,
@@ -157,6 +158,15 @@ async fn handle_jsonrpc_request(
         }
         Ok(JsonRpcMethod::Deployment(DeploymentMethod::Status)) => {
             handle_deployment_status(&state, params).await
+        }
+        Ok(JsonRpcMethod::Deployment(DeploymentMethod::HotSwap)) => {
+            handle_deployment_hot_swap(&state, params).await
+        }
+        Ok(JsonRpcMethod::Deployment(DeploymentMethod::Restart)) => {
+            handle_deployment_restart(&state, params).await
+        }
+        Ok(JsonRpcMethod::Deployment(DeploymentMethod::List)) => {
+            handle_deployment_list(&state).await
         }
         Ok(JsonRpcMethod::Task(TaskMethod::Create)) => handle_task_create(&state, params).await,
         Ok(JsonRpcMethod::Task(TaskMethod::List)) => handle_task_list(&state, params).await,

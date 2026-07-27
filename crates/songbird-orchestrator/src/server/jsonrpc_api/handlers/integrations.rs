@@ -109,6 +109,71 @@ pub async fn handle_deployment_status(
     }
 }
 
+/// `deployment.hot_swap` — stop old process → replace binary → start new.
+///
+/// Params: `{ "deployment_id": "...", "binary_base64": "..." }`
+pub async fn handle_deployment_hot_swap(
+    state: &JsonRpcState,
+    params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
+    let obj = params
+        .as_ref()
+        .and_then(|p| p.as_object())
+        .ok_or_else(|| JsonRpcError::invalid_params("Parameters must be an object"))?;
+    let deployment_id = obj
+        .get("deployment_id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| JsonRpcError::invalid_params("Missing deployment_id"))?;
+    let b64 = obj
+        .get("binary_base64")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| JsonRpcError::invalid_params("Missing binary_base64"))?;
+    let raw = base64::engine::general_purpose::STANDARD
+        .decode(b64)
+        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid base64: {e}")))?;
+
+    let info = crate::server::deployment_api::hot_swap_deployment(
+        &state.deployment_state,
+        deployment_id,
+        axum::body::Bytes::from(raw),
+    )
+    .await
+    .map_err(|(code, msg)| JsonRpcError {
+        code: jsonrpc_code_from_http_status(code),
+        message: msg,
+        data: None,
+    })?;
+
+    serde_json::to_value(info).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+}
+
+/// `deployment.restart` — restart an existing deployment (same binary).
+///
+/// Params: `{ "deployment_id": "..." }`
+pub async fn handle_deployment_restart(
+    state: &JsonRpcState,
+    params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
+    let deployment_id = extract_str_param(params.as_ref(), "deployment_id")?;
+
+    let info =
+        crate::server::deployment_api::restart_deployment(&state.deployment_state, &deployment_id)
+            .await
+            .map_err(|(code, msg)| JsonRpcError {
+                code: jsonrpc_code_from_http_status(code),
+                message: msg,
+                data: None,
+            })?;
+
+    serde_json::to_value(info).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+}
+
+/// `deployment.list` — list all active deployments.
+pub async fn handle_deployment_list(state: &JsonRpcState) -> Result<Value, JsonRpcError> {
+    let list = crate::server::deployment_api::list_deployments_vec(&state.deployment_state).await;
+    serde_json::to_value(list).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+}
+
 /// `task.create` — same as `POST /api/v1/tasks`
 pub async fn handle_task_create(
     state: &JsonRpcState,

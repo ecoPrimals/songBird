@@ -118,6 +118,113 @@ async fn list_deployments(State(state): State<DeploymentState>) -> Json<Vec<Depl
     Json(deployments.values().cloned().collect())
 }
 
+/// List deployments (for JSON-RPC `deployment.list`).
+pub(crate) async fn list_deployments_vec(state: &DeploymentState) -> Vec<DeploymentInfo> {
+    state.deployments.read().await.values().cloned().collect()
+}
+
+/// Restart a deployment (stop + start same binary).
+///
+/// # Errors
+///
+/// Returns an error if the deployment is not found or the restart fails.
+pub(crate) async fn restart_deployment(
+    state: &DeploymentState,
+    deployment_id: &str,
+) -> Result<DeploymentInfo, (StatusCode, String)> {
+    let mut deployments = state.deployments.write().await;
+    let deployment = deployments.get_mut(deployment_id).ok_or_else(|| {
+        (StatusCode::NOT_FOUND, format!("Deployment '{deployment_id}' not found"))
+    })?;
+
+    if let Some(pid) = deployment.pid.take() {
+        graceful_kill(pid).await;
+    }
+
+    deployment.status = DeploymentStatus::Deploying;
+
+    match start_service(&deployment.binary_path, &deployment.env_vars).await {
+        Ok(pid) => {
+            info!(deployment_id, pid, "Service restarted");
+            deployment.pid = Some(pid);
+            deployment.status = DeploymentStatus::Running;
+            Ok(deployment.clone())
+        }
+        Err(e) => {
+            deployment.status = DeploymentStatus::Failed;
+            Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Restart failed: {e}")))
+        }
+    }
+}
+
+/// Hot-swap a deployment: stop old → replace binary → start new.
+///
+/// # Errors
+///
+/// Returns an error if the deployment is not found or the swap fails.
+pub(crate) async fn hot_swap_deployment(
+    state: &DeploymentState,
+    deployment_id: &str,
+    new_binary: axum::body::Bytes,
+) -> Result<DeploymentInfo, (StatusCode, String)> {
+    let mut deployments = state.deployments.write().await;
+    let deployment = deployments.get_mut(deployment_id).ok_or_else(|| {
+        (StatusCode::NOT_FOUND, format!("Deployment '{deployment_id}' not found"))
+    })?;
+
+    if let Some(pid) = deployment.pid.take() {
+        graceful_kill(pid).await;
+    }
+
+    deployment.status = DeploymentStatus::Deploying;
+
+    let binary_path = std::path::PathBuf::from(&deployment.binary_path);
+    tokio::fs::write(&binary_path, &new_binary)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Binary write failed: {e}")))?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(meta) = tokio::fs::metadata(&binary_path).await {
+            let mut perms = meta.permissions();
+            perms.set_mode(0o755);
+            let _ = tokio::fs::set_permissions(&binary_path, perms).await;
+        }
+    }
+
+    match start_service(&deployment.binary_path, &deployment.env_vars).await {
+        Ok(pid) => {
+            info!(deployment_id, pid, "Service hot-swapped");
+            deployment.pid = Some(pid);
+            deployment.status = DeploymentStatus::Running;
+            Ok(deployment.clone())
+        }
+        Err(e) => {
+            deployment.status = DeploymentStatus::Failed;
+            Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Hot-swap start failed: {e}")))
+        }
+    }
+}
+
+/// Gracefully terminate a process: SIGTERM → wait 5s → SIGKILL.
+async fn graceful_kill(pid: u32) {
+    #[cfg(unix)]
+    {
+        let _ = std::process::Command::new("kill").arg("-TERM").arg(pid.to_string()).output();
+        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+        let _ = std::process::Command::new("kill").arg("-9").arg(pid.to_string()).output();
+    }
+    #[cfg(windows)]
+    {
+        let _ = std::process::Command::new("taskkill")
+            .arg("/PID")
+            .arg(pid.to_string())
+            .arg("/T")
+            .output();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, reason = "test assertions")]

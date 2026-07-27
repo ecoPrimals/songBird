@@ -59,6 +59,7 @@ mod ipc_registry;
 mod meta;
 pub mod relay_security;
 mod remote_dispatch;
+mod route;
 mod util;
 pub mod virtual_relay;
 

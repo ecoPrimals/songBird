@@ -62,11 +62,14 @@ JSON-RPC 2.0 methods via typed `JsonRpcMethod` enum dispatch (ecosystem standard
 - `onion.*`, `tor.*`
 - `discovery.announce` (presence + topic-based content federation), `discovery.content_peers` (seeder/leecher query with topic/manifest/family filters)
 - `compute.route`, `registry.*`, `consent.*`, `task.*`
+- `route.add`, `route.remove`, `route.list` (dynamic proxy route management)
+- `deployment.create`, `deployment.status`, `deployment.hot_swap`, `deployment.restart`, `deployment.list`
 - `graph.validate`, `graph.check_availability`, `graph.suggest_alternatives`
 - `coordination.validate_pattern`
 - `songbird.federation.*`, `songbird.compute.*`, `songbird.services.*`, `songbird.health`, `songbird.version`
 - `network.beacon_exchange`, `network.broadcast`, `network.listen`
-- `deployment.create`, `deployment.status`, `protocol.negotiate`
+- `deployment.create`, `deployment.status`, `deployment.hot_swap`, `deployment.restart`, `deployment.list`
+- `protocol.negotiate`
 
 ## Capabilities (17 tokens)
 

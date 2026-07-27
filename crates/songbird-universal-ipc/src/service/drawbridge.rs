@@ -397,8 +397,7 @@ async fn proxy_to_jsonrpc_backend(
         std::path::PathBuf::from(socket_path_hint)
     };
 
-    let body_json: Option<serde_json::Value> =
-        http_body.and_then(|b| serde_json::from_str(b).ok());
+    let body_json: Option<serde_json::Value> = http_body.and_then(|b| serde_json::from_str(b).ok());
 
     let (effective_method, params) = if method.is_empty() {
         if let Some(ref obj) = body_json {
@@ -419,7 +418,7 @@ async fn proxy_to_jsonrpc_backend(
         "id": body_json.as_ref()
             .and_then(|v| v.get("id"))
             .cloned()
-            .unwrap_or(serde_json::json!(1))
+            .unwrap_or_else(|| serde_json::json!(1))
     });
 
     let path_str = socket_path.to_string_lossy();

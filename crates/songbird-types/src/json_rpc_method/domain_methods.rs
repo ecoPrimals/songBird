@@ -108,6 +108,17 @@ pub enum HttpMethod {
     Proxy,
 }
 
+/// `route.*` — dynamic route configuration for drawbridge proxy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RouteMethod {
+    /// Add or update a route mapping (capability → backend URL).
+    Add,
+    /// Remove a route by capability name.
+    Remove,
+    /// List all configured routes with details.
+    List,
+}
+
 /// `stun.*`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StunMethod {
@@ -268,6 +279,12 @@ pub enum SongbirdComputeMethod {
 pub enum DeploymentMethod {
     Create,
     Status,
+    /// Hot-swap a running service binary — stop old, deploy new, start, verify.
+    HotSwap,
+    /// Restart an existing deployment without changing the binary.
+    Restart,
+    /// List all active deployments.
+    List,
 }
 
 /// `task.*`

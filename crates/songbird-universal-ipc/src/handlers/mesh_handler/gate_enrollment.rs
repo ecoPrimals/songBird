@@ -7,7 +7,7 @@
 //!
 //! 1. Verify physical proof (FIDO2 attestation / beacon proximity / token)
 //! 2. Allocate mesh IP from the dynamic pool (.20–.254)
-//! 3. Register WireGuard peer on the hub
+//! 3. Register `WireGuard` peer on the hub
 //! 4. Register SSH key via Forgejo API
 //! 5. Deliver family seed (encrypted to enrollee's WG public key)
 //! 6. Call `mesh.enroll` for BTSP-verified genetic enrollment
@@ -30,7 +30,7 @@ const MESH_SUBNET: &str = "10.13.37";
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum PhysicalProof {
-    /// FIDO2/WebAuthn attestation (SoloKey, YubiKey) — strongest tier.
+    /// FIDO2/`WebAuthn` attestation (`SoloKey`, `YubiKey`) — strongest tier.
     Fido2 {
         credential_id: String,
         attestation: String,
@@ -41,7 +41,9 @@ pub enum PhysicalProof {
         challenge_response: String,
     },
     /// Pre-shared enrollment token — weakest autonomous tier.
-    Token { token: String },
+    Token {
+        token: String,
+    },
 }
 
 /// Request parameters for `mesh.gate_enroll`.
@@ -74,7 +76,7 @@ pub struct GateEnrollResponse {
     pub phases: Vec<EnrollPhase>,
 }
 
-/// WireGuard provisioning details returned to the enrollee.
+/// `WireGuard` provisioning details returned to the enrollee.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WgProvisionConfig {
     pub hub_endpoint: String,
@@ -104,8 +106,8 @@ pub struct EnrollPhase {
 impl MeshHandler {
     /// Handle `mesh.gate_enroll` — full autonomous gate enrollment.
     pub async fn handle_gate_enroll(&self, params: Value) -> Result<Value, String> {
-        let request: GateEnrollRequest =
-            serde_json::from_value(params).map_err(|e| format!("Invalid gate_enroll params: {e}"))?;
+        let request: GateEnrollRequest = serde_json::from_value(params)
+            .map_err(|e| format!("Invalid gate_enroll params: {e}"))?;
 
         info!(gate = %request.gate_name, "mesh.gate_enroll: starting autonomous enrollment");
 
@@ -117,7 +119,7 @@ impl MeshHandler {
         phases.push(proof_phase);
 
         if !proof_ok {
-            return Ok(serde_json::to_value(GateEnrollResponse {
+            return serde_json::to_value(GateEnrollResponse {
                 enrolled: false,
                 gate_name: request.gate_name,
                 mesh_ip: None,
@@ -127,7 +129,7 @@ impl MeshHandler {
                 reason: Some("Physical proof verification failed".into()),
                 phases,
             })
-            .map_err(|e| format!("Serialize: {e}"))?);
+            .map_err(|e| format!("Serialize: {e}"));
         }
 
         // Phase 2: Allocate mesh IP
@@ -135,7 +137,7 @@ impl MeshHandler {
         phases.push(ip_phase);
 
         let Some(mesh_ip) = allocated_ip else {
-            return Ok(serde_json::to_value(GateEnrollResponse {
+            return serde_json::to_value(GateEnrollResponse {
                 enrolled: false,
                 gate_name: request.gate_name,
                 mesh_ip: None,
@@ -145,18 +147,16 @@ impl MeshHandler {
                 reason: Some("IP pool exhausted".into()),
                 phases,
             })
-            .map_err(|e| format!("Serialize: {e}"))?);
+            .map_err(|e| format!("Serialize: {e}"));
         };
 
         // Phase 3: Register WireGuard peer on hub
-        let wg_phase =
-            register_wg_peer(&request.gate_name, &request.wg_public_key, &mesh_ip).await;
+        let wg_phase = register_wg_peer(&request.gate_name, &request.wg_public_key, &mesh_ip).await;
         phases.push(wg_phase);
 
         // Phase 4: Register SSH key on Forgejo (if provided)
         let forgejo_config = if let Some(ref ssh_key) = request.ssh_public_key {
-            let (fg_phase, registered) =
-                register_forgejo_key(&request.gate_name, ssh_key).await;
+            let (fg_phase, registered) = register_forgejo_key(&request.gate_name, ssh_key).await;
             phases.push(fg_phase);
             Some(ForgejoProvisionConfig {
                 host: "10.13.37.1".into(),
@@ -174,14 +174,12 @@ impl MeshHandler {
         };
 
         // Phase 5: Encrypt and deliver family seed
-        let (seed_phase, encrypted_seed) =
-            deliver_family_seed(&request.wg_public_key).await;
+        let (seed_phase, encrypted_seed) = deliver_family_seed(&request.wg_public_key).await;
         phases.push(seed_phase);
 
         // Phase 6: BTSP genetic enrollment via mesh.enroll
-        let enroll_phase = self
-            .genetic_enroll(&request.gate_name, &request.wg_public_key, &mesh_ip)
-            .await;
+        let enroll_phase =
+            self.genetic_enroll(&request.gate_name, &request.wg_public_key, &mesh_ip).await;
         let genetically_enrolled = enroll_phase.ok;
         phases.push(enroll_phase);
 
@@ -203,7 +201,7 @@ impl MeshHandler {
             "mesh.gate_enroll: complete"
         );
 
-        Ok(serde_json::to_value(GateEnrollResponse {
+        serde_json::to_value(GateEnrollResponse {
             enrolled: all_pass,
             gate_name: request.gate_name,
             mesh_ip: Some(mesh_ip),
@@ -217,7 +215,7 @@ impl MeshHandler {
             },
             phases,
         })
-        .map_err(|e| format!("Serialize: {e}"))?)
+        .map_err(|e| format!("Serialize: {e}"))
     }
 
     /// Internal: run BTSP genetic enrollment after provisioning.
@@ -241,13 +239,7 @@ impl MeshHandler {
             };
         };
 
-        let proof = compute_hub_enrollment_proof(
-            &seed_bytes,
-            gate_name,
-            public_key,
-            timestamp,
-            0,
-        );
+        let proof = compute_hub_enrollment_proof(&seed_bytes, gate_name, public_key, timestamp, 0);
 
         let enroll_params = json!({
             "node_id": gate_name,
@@ -259,20 +251,15 @@ impl MeshHandler {
 
         match self.handle_enroll(enroll_params).await {
             Ok(result) => {
-                let enrolled = result
-                    .get("enrolled")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(false);
+                let enrolled = result.get("enrolled").and_then(Value::as_bool).unwrap_or(false);
                 EnrollPhase {
                     name: "genetic.enroll".into(),
                     ok: enrolled,
                     detail: if enrolled {
                         format!("{gate_name} genetically enrolled into mesh")
                     } else {
-                        let reason = result
-                            .get("reason")
-                            .and_then(Value::as_str)
-                            .unwrap_or("unknown");
+                        let reason =
+                            result.get("reason").and_then(Value::as_str).unwrap_or("unknown");
                         format!("genetic enrollment failed: {reason}")
                     },
                 }
@@ -306,15 +293,15 @@ async fn verify_physical_proof(proof: &PhysicalProof) -> EnrollPhase {
 
             match result {
                 Ok(value) => {
-                    let valid = value
-                        .get("valid")
-                        .and_then(Value::as_bool)
-                        .unwrap_or(false);
+                    let valid = value.get("valid").and_then(Value::as_bool).unwrap_or(false);
                     EnrollPhase {
                         name: "proof.verify".into(),
                         ok: valid,
                         detail: if valid {
-                            format!("FIDO2 attestation verified (credential: {}...)", &credential_id[..8.min(credential_id.len())])
+                            format!(
+                                "FIDO2 attestation verified (credential: {}...)",
+                                &credential_id[..8.min(credential_id.len())]
+                            )
                         } else {
                             "FIDO2 attestation invalid".into()
                         },
@@ -342,10 +329,7 @@ async fn verify_physical_proof(proof: &PhysicalProof) -> EnrollPhase {
 
             match result {
                 Ok(value) => {
-                    let valid = value
-                        .get("valid")
-                        .and_then(Value::as_bool)
-                        .unwrap_or(false);
+                    let valid = value.get("valid").and_then(Value::as_bool).unwrap_or(false);
                     EnrollPhase {
                         name: "proof.verify".into(),
                         ok: valid,
@@ -363,7 +347,9 @@ async fn verify_physical_proof(proof: &PhysicalProof) -> EnrollPhase {
                 },
             }
         }
-        PhysicalProof::Token { token } => {
+        PhysicalProof::Token {
+            token,
+        } => {
             let expected = std::env::var("GATE_ENROLLMENT_TOKEN").ok();
             match expected {
                 Some(exp) if constant_time_eq(exp.as_bytes(), token.as_bytes()) => EnrollPhase {
@@ -420,7 +406,9 @@ async fn allocate_mesh_ip(gate_name: &str) -> (EnrollPhase, Option<String>) {
                 EnrollPhase {
                     name: "ip.allocate".into(),
                     ok: true,
-                    detail: format!("{candidate} allocated for {gate_name} (pool .{POOL_START}–.{POOL_END})"),
+                    detail: format!(
+                        "{candidate} allocated for {gate_name} (pool .{POOL_START}–.{POOL_END})"
+                    ),
                 },
                 Some(candidate),
             );
@@ -443,30 +431,58 @@ fn parse_used_ips(wg_output: &str) -> Vec<String> {
     wg_output
         .lines()
         .flat_map(|line| {
-            line.split_whitespace().skip(1).filter_map(|cidr| {
-                cidr.split('/').next().map(String::from)
-            })
+            line.split_whitespace()
+                .skip(1)
+                .filter_map(|cidr| cidr.split('/').next().map(String::from))
         })
         .collect()
 }
 
-/// Register a WireGuard peer on the local hub.
+/// Register a `WireGuard` peer on the local hub.
 async fn register_wg_peer(gate_name: &str, wg_pubkey: &str, mesh_ip: &str) -> EnrollPhase {
-    let cmd = format!(
-        "wg set wg0 peer {wg_pubkey} allowed-ips {mesh_ip}/32 && wg-quick save wg0"
-    );
+    if !is_valid_wg_pubkey(wg_pubkey) {
+        return EnrollPhase {
+            name: "wg.peer".into(),
+            ok: false,
+            detail: format!(
+                "invalid WireGuard public key format: {}",
+                &wg_pubkey[..wg_pubkey.len().min(8)]
+            ),
+        };
+    }
+    if !is_valid_mesh_ip(mesh_ip) {
+        return EnrollPhase {
+            name: "wg.peer".into(),
+            ok: false,
+            detail: format!("invalid mesh IP format: {mesh_ip}"),
+        };
+    }
 
-    match tokio::process::Command::new("sh")
-        .args(["-c", &cmd])
+    let wg_interface = std::env::var("WG_INTERFACE").unwrap_or_else(|_| "wg0".into());
+
+    match tokio::process::Command::new("wg")
+        .args(["set", &wg_interface, "peer", wg_pubkey, "allowed-ips", &format!("{mesh_ip}/32")])
         .output()
         .await
     {
         Ok(output) if output.status.success() => {
-            info!(gate = %gate_name, ip = %mesh_ip, "wg.peer: registered on hub");
+            let save_result = tokio::process::Command::new("wg-quick")
+                .args(["save", &wg_interface])
+                .output()
+                .await;
+            let save_ok = save_result.as_ref().is_ok_and(|o| o.status.success());
+            info!(gate = %gate_name, ip = %mesh_ip, save_ok, "wg.peer: registered on hub");
             EnrollPhase {
                 name: "wg.peer".into(),
                 ok: true,
-                detail: format!("peer {gate_name} ({mesh_ip}) registered on hub wg0"),
+                detail: format!(
+                    "peer {gate_name} ({mesh_ip}) registered on hub {wg_interface}{}",
+                    if save_ok {
+                        ""
+                    } else {
+                        " (save failed — runtime-only)"
+                    }
+                ),
             }
         }
         Ok(output) => EnrollPhase {
@@ -486,13 +502,29 @@ async fn register_wg_peer(gate_name: &str, wg_pubkey: &str, mesh_ip: &str) -> En
     }
 }
 
+/// Validate `WireGuard` public key format (base64-encoded 32 bytes = 44 chars + optional `=`).
+fn is_valid_wg_pubkey(key: &str) -> bool {
+    let len = key.len();
+    (43..=44).contains(&len)
+        && key.chars().all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '=')
+}
+
+/// Validate mesh IP format (must match `10.13.37.N` with N in valid range).
+fn is_valid_mesh_ip(ip: &str) -> bool {
+    let parts: Vec<&str> = ip.split('.').collect();
+    if parts.len() != 4 {
+        return false;
+    }
+    parts.iter().all(|p| p.parse::<u8>().is_ok())
+}
+
 /// Register an SSH public key on Forgejo via its REST API.
 ///
 /// Uses `curl` to POST to the Forgejo API, avoiding additional HTTP client
 /// dependencies. Requires `FORGEJO_API_TOKEN` and optionally `FORGEJO_API_URL`.
 async fn register_forgejo_key(gate_name: &str, ssh_pubkey: &str) -> (EnrollPhase, bool) {
-    let forgejo_url = std::env::var("FORGEJO_API_URL")
-        .unwrap_or_else(|_| "http://localhost:3000/api/v1".into());
+    let forgejo_url =
+        std::env::var("FORGEJO_API_URL").unwrap_or_else(|_| "http://localhost:3000/api/v1".into());
     let forgejo_token = std::env::var("FORGEJO_API_TOKEN");
 
     let Ok(token) = forgejo_token else {
@@ -516,12 +548,18 @@ async fn register_forgejo_key(gate_name: &str, ssh_pubkey: &str) -> (EnrollPhase
     match tokio::process::Command::new("curl")
         .args([
             "-s",
-            "-o", "/dev/stdout",
-            "-w", "\n%{http_code}",
-            "-X", "POST",
-            "-H", &format!("Authorization: token {token}"),
-            "-H", "Content-Type: application/json",
-            "-d", &body.to_string(),
+            "-o",
+            "/dev/stdout",
+            "-w",
+            "\n%{http_code}",
+            "-X",
+            "POST",
+            "-H",
+            &format!("Authorization: token {token}"),
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            &body.to_string(),
             &url,
         ])
         .output()
@@ -580,9 +618,8 @@ async fn register_forgejo_key(gate_name: &str, ssh_pubkey: &str) -> (EnrollPhase
 /// (e.g. `/etc/membrane/family/family.key`). If it starts with `/` and
 /// the file exists, read the file and base64-encode the raw bytes.
 fn load_family_seed_value() -> Option<String> {
-    let raw = std::env::var("FAMILY_SEED")
-        .or_else(|_| std::env::var("BEARDOG_FAMILY_SEED"))
-        .ok()?;
+    let raw =
+        std::env::var("FAMILY_SEED").or_else(|_| std::env::var("BEARDOG_FAMILY_SEED")).ok()?;
 
     if raw.starts_with('/') {
         match std::fs::read(&raw) {
@@ -599,9 +636,8 @@ fn load_family_seed_value() -> Option<String> {
 
 /// Load the family seed as raw bytes for HMAC computation.
 fn load_family_seed_bytes() -> Option<Vec<u8>> {
-    let raw = std::env::var("FAMILY_SEED")
-        .or_else(|_| std::env::var("BEARDOG_FAMILY_SEED"))
-        .ok()?;
+    let raw =
+        std::env::var("FAMILY_SEED").or_else(|_| std::env::var("BEARDOG_FAMILY_SEED")).ok()?;
 
     if raw.starts_with('/') {
         std::fs::read(&raw).ok().or_else(|| Some(raw.into_bytes()))
@@ -610,7 +646,7 @@ fn load_family_seed_bytes() -> Option<Vec<u8>> {
     }
 }
 
-/// Deliver the family seed encrypted to the enrollee's WireGuard public key.
+/// Deliver the family seed encrypted to the enrollee's `WireGuard` public key.
 ///
 /// Uses bearDog's `crypto.encrypt` to wrap the seed before transit.
 async fn deliver_family_seed(wg_pubkey: &str) -> (EnrollPhase, Option<String>) {
@@ -638,10 +674,7 @@ async fn deliver_family_seed(wg_pubkey: &str) -> (EnrollPhase, Option<String>) {
     .await
     {
         Ok(result) => {
-            let ciphertext = result
-                .get("ciphertext")
-                .and_then(Value::as_str)
-                .map(String::from);
+            let ciphertext = result.get("ciphertext").and_then(Value::as_str).map(String::from);
 
             match ciphertext {
                 Some(ct) => (
@@ -677,8 +710,7 @@ async fn deliver_family_seed(wg_pubkey: &str) -> (EnrollPhase, Option<String>) {
 
 /// Call bearDog's security provider via JSON-RPC over UDS.
 async fn call_security_provider(method: &str, params: Value) -> Result<Value, String> {
-    let socket_path =
-        songbird_crypto_provider::socket_discovery::discover_security_socket();
+    let socket_path = songbird_crypto_provider::socket_discovery::discover_security_socket();
 
     if !std::path::Path::new(&socket_path).exists() {
         return Err(format!("bearDog socket not found: {socket_path}"));
@@ -698,25 +730,13 @@ async fn call_security_provider(method: &str, params: Value) -> Result<Value, St
 
     let (reader, mut writer) = stream.into_split();
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-    writer
-        .write_all(request.as_bytes())
-        .await
-        .map_err(|e| format!("write to bearDog: {e}"))?;
-    writer
-        .write_all(b"\n")
-        .await
-        .map_err(|e| format!("write newline: {e}"))?;
-    writer
-        .shutdown()
-        .await
-        .map_err(|e| format!("shutdown write: {e}"))?;
+    writer.write_all(request.as_bytes()).await.map_err(|e| format!("write to bearDog: {e}"))?;
+    writer.write_all(b"\n").await.map_err(|e| format!("write newline: {e}"))?;
+    writer.shutdown().await.map_err(|e| format!("shutdown write: {e}"))?;
 
     let mut response = String::new();
     let mut buf_reader = BufReader::new(reader);
-    buf_reader
-        .read_line(&mut response)
-        .await
-        .map_err(|e| format!("read from bearDog: {e}"))?;
+    buf_reader.read_line(&mut response).await.map_err(|e| format!("read from bearDog: {e}"))?;
 
     let parsed: Value =
         serde_json::from_str(&response).map_err(|e| format!("parse bearDog response: {e}"))?;
@@ -734,8 +754,7 @@ async fn call_security_provider(method: &str, params: Value) -> Result<Value, St
 }
 
 fn resolve_hub_endpoint() -> String {
-    std::env::var("WG_HUB_ENDPOINT")
-        .unwrap_or_else(|_| "157.230.3.183:51820".into())
+    std::env::var("WG_HUB_ENDPOINT").unwrap_or_else(|_| "157.230.3.183:51820".into())
 }
 
 fn resolve_hub_pubkey() -> String {
@@ -760,8 +779,7 @@ fn compute_hub_enrollment_proof(
     let family_id = std::env::var("FAMILY_ID").unwrap_or_else(|_| "default".into());
 
     // HKDF extract
-    let mut extract_mac =
-        HmacSha256::new_from_slice(family_id.as_bytes()).expect("HMAC key init");
+    let mut extract_mac = HmacSha256::new_from_slice(family_id.as_bytes()).expect("HMAC key init");
     extract_mac.update(family_seed);
     let prk = extract_mac.finalize().into_bytes();
 
@@ -786,10 +804,7 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
     if a.len() != b.len() {
         return false;
     }
-    a.iter()
-        .zip(b.iter())
-        .fold(0u8, |acc, (x, y)| acc | (x ^ y))
-        == 0
+    a.iter().zip(b.iter()).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
 }
 
 #[cfg(test)]
@@ -894,5 +909,22 @@ Kz9p...= 10.13.37.7/32
         let json = serde_json::to_string(&resp).expect("should serialize");
         assert!(json.contains("testGate"));
         assert!(json.contains("10.13.37.20"));
+    }
+
+    #[test]
+    fn valid_wg_pubkey_format() {
+        assert!(is_valid_wg_pubkey("A2fvz3czkqRUuu2mzkSS6IVr/TCQcpsJX9HbDBa1FBc="));
+        assert!(!is_valid_wg_pubkey("too_short"));
+        assert!(!is_valid_wg_pubkey("A2fvz3czkqRUuu2mzkSS6IVr/TCQcpsJX9Hb; rm -rf /"));
+        assert!(!is_valid_wg_pubkey(""));
+    }
+
+    #[test]
+    fn valid_mesh_ip_format() {
+        assert!(is_valid_mesh_ip("10.13.37.20"));
+        assert!(is_valid_mesh_ip("192.168.1.1"));
+        assert!(!is_valid_mesh_ip("10.13.37.999"));
+        assert!(!is_valid_mesh_ip("10.13.37"));
+        assert!(!is_valid_mesh_ip("; rm -rf /"));
     }
 }

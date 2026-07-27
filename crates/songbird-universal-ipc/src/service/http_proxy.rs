@@ -116,6 +116,19 @@ impl CapabilityProxyRouter {
         #[expect(clippy::unwrap_used, reason = "RwLock poisoning is unrecoverable")]
         self.routes.read().unwrap().keys().cloned().collect()
     }
+
+    /// Remove a capability route. Returns whether the route existed.
+    pub fn remove(&self, capability: &str) -> bool {
+        #[expect(clippy::unwrap_used, reason = "RwLock poisoning is unrecoverable")]
+        self.routes.write().unwrap().remove(capability).is_some()
+    }
+
+    /// List all routes with full details (for JSON-RPC serialization).
+    #[must_use]
+    pub fn list_routes(&self) -> Vec<(String, ProxyRoute)> {
+        #[expect(clippy::unwrap_used, reason = "RwLock poisoning is unrecoverable")]
+        self.routes.read().unwrap().iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+    }
 }
 
 impl Default for CapabilityProxyRouter {

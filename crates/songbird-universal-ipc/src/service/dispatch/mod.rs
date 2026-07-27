@@ -19,7 +19,7 @@ use introspection::dispatch_introspection;
 use mesh::dispatch_mesh;
 use network::dispatch_network;
 use serde_json::Value;
-use songbird_types::json_rpc_method::{CapabilitiesMethod, HttpMethod, JsonRpcMethod};
+use songbird_types::json_rpc_method::{CapabilitiesMethod, HttpMethod, JsonRpcMethod, RouteMethod};
 
 /// Domain-routed JSON-RPC dispatch for [`IpcServiceHandler`].
 pub trait IpcServiceDispatch: Send + Sync {
@@ -50,6 +50,10 @@ impl IpcServiceDispatch for IpcServiceHandler {
             JsonRpcMethod::Http(HttpMethod::Put) => self.handle_http_put(params).await,
             JsonRpcMethod::Http(HttpMethod::Delete) => self.handle_http_delete(params).await,
             JsonRpcMethod::Http(HttpMethod::Proxy) => self.handle_http_proxy(params).await,
+
+            JsonRpcMethod::Route(RouteMethod::Add) => self.handle_route_add(params).await,
+            JsonRpcMethod::Route(RouteMethod::Remove) => self.handle_route_remove(params).await,
+            JsonRpcMethod::Route(RouteMethod::List) => self.handle_route_list().await,
 
             JsonRpcMethod::Ipc(_)
             | JsonRpcMethod::Capabilities(CapabilitiesMethod::Resolve | CapabilitiesMethod::Call)
