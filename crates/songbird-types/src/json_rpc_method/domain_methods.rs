@@ -204,6 +204,10 @@ pub enum MeshMethod {
     /// `mesh.capabilities_revoke` — explicit capability withdrawal propagated mesh-wide.
     CapabilitiesRevoke,
     Enroll,
+    /// `mesh.gate_enroll` — full autonomous gate enrollment: verifies physical proof,
+    /// allocates mesh IP, registers WG peer, provisions Forgejo SSH key, delivers
+    /// family seed. The zero-operator enrollment endpoint.
+    GateEnroll,
     PruneStale,
 }
 

@@ -63,6 +63,10 @@ uuid = { workspace = true }
 # Base64 encoding (for BirdSong beacons)
 base64 = "0.22"
 
+# HMAC-SHA256 for enrollment proof computation
+hmac = { workspace = true }
+sha2 = { workspace = true }
+
 # Unix RPC client (re-export from songbird-universal)
 songbird-universal = { path = "../songbird-universal" }
 

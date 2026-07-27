@@ -61,7 +61,8 @@ rust-version = "1.87"
 license = "AGPL-3.0-or-later"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 repository = "https://github.com/ecoPrimals/SongBird"
-homepage = "https://songbird.ecoprimals.dev"
+homepage = "https://sporeprint.primals.eco"
+documentation = "https://sporeprint.primals.eco/lab/"
 
 [package]
 name = "songbird"

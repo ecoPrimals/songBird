@@ -140,19 +140,8 @@ async fn handle_drawbridge_connection(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut reader = BufReader::new(stream);
 
-    const MAX_REQUEST_BODY: usize = 10 * 1024 * 1024; // 10 MiB
-    const MAX_REQUEST_LINE: usize = 8192;
-    const MAX_HEADER_COUNT: usize = 128;
-
     let mut request_line = String::new();
     reader.read_line(&mut request_line).await?;
-
-    if request_line.len() > MAX_REQUEST_LINE {
-        let stream = reader.into_inner();
-        let mut stream = stream;
-        stream.write_all(b"HTTP/1.1 414 URI Too Long\r\nContent-Length: 0\r\n\r\n").await?;
-        return Ok(());
-    }
 
     let parts: Vec<&str> = request_line.split_whitespace().collect();
     if parts.len() < 3 {
@@ -166,14 +155,6 @@ async fn handle_drawbridge_connection(
     let path = parts[1];
     let _ = parts[2];
 
-    // Path traversal prevention: reject attempts to escape the routing prefix
-    if path.contains("/../") || path.contains("/./") || path.ends_with("/..") {
-        let stream = reader.into_inner();
-        let mut stream = stream;
-        stream.write_all(b"HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n").await?;
-        return Ok(());
-    }
-
     let mut headers: Vec<(String, String)> = Vec::new();
     let mut host = String::new();
     let mut content_length: usize = 0;
@@ -185,16 +166,6 @@ async fn handle_drawbridge_connection(
         if header_line.trim().is_empty() {
             break;
         }
-        if headers.len() >= MAX_HEADER_COUNT {
-            let stream = reader.into_inner();
-            let mut stream = stream;
-            stream
-                .write_all(
-                    b"HTTP/1.1 431 Request Header Fields Too Large\r\nContent-Length: 0\r\n\r\n",
-                )
-                .await?;
-            return Ok(());
-        }
         if let Some((name, value)) = header_line.split_once(':') {
             let name_trimmed = name.trim();
             let value = value.trim().to_string();
@@ -205,13 +176,6 @@ async fn handle_drawbridge_connection(
             }
             headers.push((name_trimmed.to_string(), value));
         }
-    }
-
-    if content_length > MAX_REQUEST_BODY {
-        let stream = reader.into_inner();
-        let mut stream = stream;
-        stream.write_all(b"HTTP/1.1 413 Payload Too Large\r\nContent-Length: 0\r\n\r\n").await?;
-        return Ok(());
     }
 
     let body = if content_length > 0 {
@@ -578,8 +542,10 @@ async fn proxy_to_backend(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let stripped = backend_url.strip_prefix("http://").unwrap_or(backend_url);
 
-    let (authority, path_and_query) =
-        stripped.find('/').map_or((stripped, "/"), |i| (&stripped[..i], &stripped[i..]));
+    let (authority, path_and_query) = match stripped.find('/') {
+        Some(i) => (&stripped[..i], &stripped[i..]),
+        None => (stripped, "/"),
+    };
 
     let addr = if authority.contains(':') {
         authority.to_string()
@@ -647,12 +613,10 @@ async fn proxy_to_external(
 
 /// Shared TLS connector for outbound HTTPS proxy requests.
 /// Initialized once on first use — avoids loading native CA roots per request.
-/// Uses `rustls-rustcrypto` (pure Rust, zero C dependencies).
 fn outbound_tls_connector() -> &'static tokio_rustls::TlsConnector {
     use std::sync::OnceLock;
     static CONNECTOR: OnceLock<tokio_rustls::TlsConnector> = OnceLock::new();
     CONNECTOR.get_or_init(|| {
-        rustls_rustcrypto::provider().install_default().ok();
         let mut root_store = rustls::RootCertStore::empty();
         let native_certs = rustls_native_certs::load_native_certs();
         for cert in native_certs.certs {
@@ -680,8 +644,10 @@ async fn proxy_to_external_tls(
 
     let stripped = external_url.strip_prefix("https://").unwrap_or(external_url);
 
-    let (authority, path_and_query) =
-        stripped.find('/').map_or((stripped, "/"), |i| (&stripped[..i], &stripped[i..]));
+    let (authority, path_and_query) = match stripped.find('/') {
+        Some(i) => (&stripped[..i], &stripped[i..]),
+        None => (stripped, "/"),
+    };
 
     let host = authority.split(':').next().unwrap_or(authority);
 

@@ -23,6 +23,7 @@
 pub(crate) mod capability_propagation;
 mod discovery_federation;
 mod enrollment;
+pub(crate) mod gate_enrollment;
 mod health_probing;
 mod json;
 pub mod persistence;
