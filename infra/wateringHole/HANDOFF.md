@@ -1,7 +1,7 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave155d  
+**Version**: v0.2.1-wave155f  
 **Date**: July 28, 2026  
 **Gate**: eastGate
 
@@ -18,7 +18,28 @@
 | Hardcoding | 0 in production (all env-driven, capability-based) |
 | Mocks in prod | 0 (all `#[cfg(test)]` gated) |
 
-## Recent Evolution (Wave 151b–155d)
+## Recent Evolution (Wave 151b–155f)
+
+### Wave 155f — ACME Challenge Responder + rustls-rustcrypto Elimination Path (Jul 28 2026)
+
+**ACME HTTP-01 CHALLENGE SUPPORT** — songBird's drawbridge now serves ACME challenge tokens for bearDog cert provisioning:
+
+**`acme.challenge_ready`** — register a challenge token:
+- bearDog calls via JSON-RPC to register `{token, authorization}` pairs
+- Drawbridge serves `GET /.well-known/acme-challenge/{token}` → authorization response
+- No auth required on challenge path (ACME CA must validate without credentials)
+- Thread-safe in-memory store (`LazyLock<RwLock<HashMap>>`)
+
+**`acme.challenge_cleanup`** — remove completed challenge:
+- bearDog calls after ACME validation completes to clean up token
+- Prevents stale challenge accumulation
+
+**Elimination path for `rustls-rustcrypto 0.0.2-alpha`**:
+- Phase 1 ✅ DONE: ACME challenge responder shipped (this wave)
+- Phase 2 BLOCKED on bearDog: ACME cert provisioning using this responder
+- Phase 3: `songbird-tls` client mode replaces `outbound_tls_connector()`
+- Phase 4: Remove `rustls-rustcrypto` from 2 Cargo.toml files, cut dep tree
+- **Net**: Eliminates alpha-quality crate, all transitive RustCrypto dupes, `rustls-webpki 0.102` ghost lock
 
 ### Wave 155d — Tower Atomic Health Facade (Jul 28 2026)
 

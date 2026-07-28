@@ -191,6 +191,16 @@ async fn handle_drawbridge_connection(
         return handle_jsonrpc_forward(reader.into_inner(), body.as_deref(), peer).await;
     }
 
+    // ACME HTTP-01 challenge responder — publicly accessible (no auth required).
+    // bearDog registers challenge tokens via `acme.challenge_ready` JSON-RPC;
+    // Let's Encrypt/ACME CA validates by hitting this path.
+    if let Some(token) = path.strip_prefix("/.well-known/acme-challenge/") {
+        let response = serve_acme_challenge(token);
+        let mut stream = reader.into_inner();
+        stream.write_all(response.as_bytes()).await?;
+        return Ok(());
+    }
+
     // Auth gate enforcement — resolve route first to check per-route public flag
     let matched_route = config.resolve_route(path);
     let route_is_public = matched_route.is_some_and(|r| r.public);
@@ -722,6 +732,49 @@ async fn proxy_to_external_tls(
     client_stream.write_all(&response_buf).await?;
 
     Ok(())
+}
+
+// --- ACME HTTP-01 Challenge Infrastructure ---
+
+use std::collections::HashMap;
+use std::sync::{LazyLock, RwLock};
+
+/// In-memory store for ACME HTTP-01 challenge tokens.
+/// bearDog registers tokens via `acme.challenge_ready` JSON-RPC; the ACME CA
+/// validates by fetching `/.well-known/acme-challenge/{token}` on drawbridge.
+static ACME_CHALLENGES: LazyLock<RwLock<HashMap<String, String>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
+
+/// Register an ACME challenge token+authorization pair.
+/// Called by bearDog via `acme.challenge_ready` JSON-RPC.
+pub fn register_acme_challenge(token: &str, authorization: &str) {
+    if let Ok(mut store) = ACME_CHALLENGES.write() {
+        info!(token = %token, "ACME challenge registered");
+        store.insert(token.to_string(), authorization.to_string());
+    }
+}
+
+/// Remove an ACME challenge after validation completes.
+pub fn remove_acme_challenge(token: &str) {
+    if let Ok(mut store) = ACME_CHALLENGES.write() {
+        store.remove(token);
+    }
+}
+
+/// Serve an ACME HTTP-01 challenge response.
+fn serve_acme_challenge(token: &str) -> String {
+    let authorization = ACME_CHALLENGES.read().ok().and_then(|store| store.get(token).cloned());
+
+    if let Some(auth) = authorization {
+        info!(token = %token, "ACME challenge served");
+        format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {}\r\n\r\n{auth}",
+            auth.len(),
+        )
+    } else {
+        debug!(token = %token, "ACME challenge not found");
+        "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n".to_string()
+    }
 }
 
 #[cfg(test)]

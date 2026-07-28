@@ -458,8 +458,45 @@ fn derive_jsonrpc_method_converts_path_to_dotted() {
     assert_eq!(derive_jsonrpc_method("/api/health/ping", &routes), "health.ping");
     assert_eq!(derive_jsonrpc_method("/api/tower/health", &routes), "tower.health");
     assert_eq!(derive_jsonrpc_method("/api/tower/mesh_status", &routes), "tower.mesh_status");
+    assert_eq!(derive_jsonrpc_method("/api/acme/challenge_ready", &routes), "acme.challenge_ready");
+    assert_eq!(
+        derive_jsonrpc_method("/api/acme/challenge_cleanup", &routes),
+        "acme.challenge_cleanup"
+    );
     assert_eq!(derive_jsonrpc_method("/api/mesh/status?timeout=5", &routes), "mesh.status");
 
     let empty_routes: Vec<DrawbridgeRoute> = vec![];
     assert_eq!(derive_jsonrpc_method("/mesh/peers", &empty_routes), "mesh.peers");
+}
+
+// ── ACME HTTP-01 Challenge Tests ─────────────────────────────────────
+
+#[test]
+fn acme_challenge_register_and_serve() {
+    let token = "test-token-abc123";
+    let auth = "test-token-abc123.thumb-print-xyz";
+
+    register_acme_challenge(token, auth);
+
+    let response = serve_acme_challenge(token);
+    assert!(response.contains("200 OK"));
+    assert!(response.contains(auth));
+}
+
+#[test]
+fn acme_challenge_not_found_returns_404() {
+    let response = serve_acme_challenge("nonexistent-token");
+    assert!(response.contains("404 Not Found"));
+}
+
+#[test]
+fn acme_challenge_cleanup_removes_token() {
+    let token = "cleanup-test-token";
+    let auth = "cleanup-test-token.thumbprint";
+
+    register_acme_challenge(token, auth);
+    assert!(serve_acme_challenge(token).contains("200 OK"));
+
+    remove_acme_challenge(token);
+    assert!(serve_acme_challenge(token).contains("404 Not Found"));
 }

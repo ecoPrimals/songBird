@@ -60,6 +60,15 @@ pub enum TowerMethod {
     MeshStatus,
 }
 
+/// `acme.*` — ACME certificate management (Tower Atomic collaboration with bearDog).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AcmeMethod {
+    /// `acme.challenge_ready` — register an HTTP-01 challenge token for serving.
+    ChallengeReady,
+    /// `acme.challenge_cleanup` — remove a completed challenge token.
+    ChallengeCleanup,
+}
+
 /// `capabilities.*`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CapabilitiesMethod {

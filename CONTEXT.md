@@ -65,6 +65,7 @@ JSON-RPC 2.0 methods via typed `JsonRpcMethod` enum dispatch (ecosystem standard
 - `compute.route`, `registry.*`, `consent.*`, `task.*`
 - `route.add`, `route.remove`, `route.list` (dynamic proxy route management)
 - `deployment.create`, `deployment.status`, `deployment.hot_swap`, `deployment.restart`, `deployment.list`
+- `acme.challenge_ready`, `acme.challenge_cleanup` (ACME HTTP-01 challenge management — Tower Atomic collab with bearDog)
 - `graph.validate`, `graph.check_availability`, `graph.suggest_alternatives`
 - `coordination.validate_pattern`
 - `songbird.federation.*`, `songbird.compute.*`, `songbird.services.*`, `songbird.health`, `songbird.version`

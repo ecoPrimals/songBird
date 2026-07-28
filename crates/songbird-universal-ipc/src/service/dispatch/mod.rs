@@ -20,7 +20,7 @@ use mesh::dispatch_mesh;
 use network::dispatch_network;
 use serde_json::Value;
 use songbird_types::json_rpc_method::{
-    CapabilitiesMethod, HttpMethod, JsonRpcMethod, RouteMethod, TowerMethod,
+    AcmeMethod, CapabilitiesMethod, HttpMethod, JsonRpcMethod, RouteMethod, TowerMethod,
 };
 
 /// Domain-routed JSON-RPC dispatch for [`IpcServiceHandler`].
@@ -59,6 +59,13 @@ impl IpcServiceDispatch for IpcServiceHandler {
 
             JsonRpcMethod::Tower(TowerMethod::Health) => self.handle_tower_health().await,
             JsonRpcMethod::Tower(TowerMethod::MeshStatus) => self.handle_tower_mesh_status().await,
+
+            JsonRpcMethod::Acme(AcmeMethod::ChallengeReady) => {
+                self.handle_acme_challenge_ready(params).await
+            }
+            JsonRpcMethod::Acme(AcmeMethod::ChallengeCleanup) => {
+                self.handle_acme_challenge_cleanup(params).await
+            }
 
             JsonRpcMethod::Ipc(_)
             | JsonRpcMethod::Capabilities(CapabilitiesMethod::Resolve | CapabilitiesMethod::Call)

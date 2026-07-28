@@ -69,4 +69,42 @@ impl IpcServiceHandler {
             },
         }))
     }
+
+    /// Handle `acme.challenge_ready` — register an HTTP-01 challenge token.
+    ///
+    /// bearDog calls this when it needs songBird's drawbridge to serve an
+    /// ACME challenge response. Once registered, GET requests to
+    /// `/.well-known/acme-challenge/{token}` will return the authorization.
+    #[allow(clippy::unused_async)]
+    pub(super) async fn handle_acme_challenge_ready(&self, params: Value) -> Result<Value, String> {
+        let token = params
+            .get("token")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "missing 'token' parameter".to_string())?;
+
+        let authorization = params
+            .get("authorization")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "missing 'authorization' parameter".to_string())?;
+
+        super::drawbridge::register_acme_challenge(token, authorization);
+
+        Ok(json!({ "registered": true, "token": token }))
+    }
+
+    /// Handle `acme.challenge_cleanup` — remove a completed challenge token.
+    #[allow(clippy::unused_async)]
+    pub(super) async fn handle_acme_challenge_cleanup(
+        &self,
+        params: Value,
+    ) -> Result<Value, String> {
+        let token = params
+            .get("token")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "missing 'token' parameter".to_string())?;
+
+        super::drawbridge::remove_acme_challenge(token);
+
+        Ok(json!({ "removed": true, "token": token }))
+    }
 }
