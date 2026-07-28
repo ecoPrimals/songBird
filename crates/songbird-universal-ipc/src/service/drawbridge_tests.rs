@@ -456,6 +456,8 @@ fn derive_jsonrpc_method_converts_path_to_dotted() {
     assert_eq!(derive_jsonrpc_method("/api/mesh/status", &routes), "mesh.status");
     assert_eq!(derive_jsonrpc_method("/api/mesh/prune_stale", &routes), "mesh.prune_stale");
     assert_eq!(derive_jsonrpc_method("/api/health/ping", &routes), "health.ping");
+    assert_eq!(derive_jsonrpc_method("/api/tower/health", &routes), "tower.health");
+    assert_eq!(derive_jsonrpc_method("/api/tower/mesh_status", &routes), "tower.mesh_status");
     assert_eq!(derive_jsonrpc_method("/api/mesh/status?timeout=5", &routes), "mesh.status");
 
     let empty_routes: Vec<DrawbridgeRoute> = vec![];

@@ -153,3 +153,32 @@ fn ipc_heartbeat_roundtrip_wire_and_serde() {
     let back: JsonRpcMethod = serde_json::from_str(&v).unwrap();
     assert_eq!(back, m);
 }
+
+#[test]
+fn tower_methods_roundtrip() {
+    let cases = [
+        ("tower.health", JsonRpcMethod::Tower(TowerMethod::Health)),
+        ("tower.mesh_status", JsonRpcMethod::Tower(TowerMethod::MeshStatus)),
+    ];
+    for (wire, expected) in cases {
+        let parsed = JsonRpcMethod::from_wire_str(wire).unwrap();
+        assert_eq!(parsed, expected);
+        assert_eq!(parsed.as_wire_str(), wire);
+        let json = serde_json::to_string(&parsed).unwrap();
+        let back: JsonRpcMethod = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, expected);
+    }
+}
+
+#[test]
+fn health_ping_roundtrip() {
+    let m = JsonRpcMethod::from_wire_str("health.ping").unwrap();
+    assert_eq!(m, JsonRpcMethod::Health(HealthMethod::Ping));
+    assert_eq!(m.as_wire_str(), "health.ping");
+}
+
+#[test]
+fn tower_enroll_normalizes_to_mesh_enroll() {
+    let m = JsonRpcMethod::parse_ipc("tower.enroll").unwrap();
+    assert_eq!(m, JsonRpcMethod::Mesh(MeshMethod::Enroll));
+}
