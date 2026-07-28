@@ -1,7 +1,7 @@
 +++
 title = "Songbird Validation Summary"
-description = "Sovereign networking primal — 14,835+ tests, 31 crates, 67+ JSON-RPC methods, inner membrane port solver (drawbridge :7780), Tower Atomic transport layer (bearDog + songBird + skunkBat), mesh.enroll BTSP-verified enrollment, 5-tier NAT traversal, cross-gate capability.call, BTSP Phase 3 encrypted framing, BTSP ClientHello consumer handshake, G1 Windows named pipe IPC, J3 deployment.hot_swap cascade automation, J4 route.* self-configuring proxy routes, J5 WG peer reg hardened (input validation + injection-safe), zero production unwraps, zero unsafe code, all deps pure Rust, crypto delegation 6/6"
-date = 2026-07-27
+description = "Sovereign networking primal — 14,835+ tests, 31 crates, 70+ JSON-RPC methods, inner membrane port solver (drawbridge :7780), Tower Atomic transport layer (bearDog + songBird + skunkBat), tower.health + tower.mesh_status biomeOS signal graph facade, mesh.enroll BTSP-verified enrollment, 5-tier NAT traversal, cross-gate capability.call, BTSP Phase 3 encrypted framing, BTSP ClientHello consumer handshake, G1 Windows named pipe IPC, J3 deployment.hot_swap cascade automation, J4 route.* self-configuring proxy routes, J5 WG peer reg hardened (input validation + injection-safe), zero production unwraps, zero unsafe code, all deps pure Rust, crypto delegation 6/6"
+date = 2026-07-28
 
 [taxonomies]
 primals = ["songbird"]
@@ -10,9 +10,9 @@ springs = ["primalspring"]
 
 ## Status
 
-- **14,835+ total tests** (667 in universal-ipc; integration suites)
+- **14,835+ total tests** (677 in universal-ipc; integration suites)
 - **31 workspace crates**, ~422,000 lines of Rust (Edition 2024)
-- **67+ JSON-RPC methods** across 18 capability domains (network, mesh, stun, relay, http, route, tor, onion, punch, discovery, birdsong, capability, ipc, primal, lifecycle, federation, graph, coordination, deployment)
+- **70+ JSON-RPC methods** across 19 capability domains (network, mesh, stun, relay, http, route, tower, tor, onion, punch, discovery, birdsong, capability, ipc, primal, lifecycle, federation, graph, coordination, deployment)
 - **BTSP Phase 3 FULL** — ChaCha20-Poly1305 AEAD, HKDF-SHA256 session keys, bond type enforcement
 - **5-tier ConnectionFallbackChain**: direct → STUN → lineage relay → TURN → emergency tunnel
 - **`capability.call` cross-gate dispatch** (Wave 211+38): local UDS + remote mesh TCP + TURN relay fallback for NAT'd peers

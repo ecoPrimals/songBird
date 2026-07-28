@@ -45,6 +45,9 @@ pub fn normalize_json_rpc_method_name(method: &str) -> &str {
         "ipc.resolve_by_name" => "ipc.resolve",
         "health_check" | "status" | "check" | "health" => "health.check",
 
+        // Tower Atomic aliases — biomeOS signal graph compatibility
+        "tower.enroll" => "mesh.enroll",
+
         // Canonical inference namespace (inference.* is canonical; model.*/ai.* are aliases)
         "model.infer" | "ai.infer" | "ai.inference" => "inference.infer",
         "model.status" | "ai.status" => "inference.status",
@@ -79,6 +82,7 @@ pub enum JsonRpcMethod {
     /// Raw `health` on the orchestrator Unix socket (biomeOS); not `health.check`.
     BiomeOsHealth,
     Health(HealthMethod),
+    Tower(TowerMethod),
     Capabilities(CapabilitiesMethod),
     Ipc(IpcMethod),
     Http(HttpMethod),
@@ -156,6 +160,9 @@ impl JsonRpcMethod {
             Self::Health(HealthMethod::Liveness) => "health.liveness",
             Self::Health(HealthMethod::Readiness) => "health.readiness",
             Self::Health(HealthMethod::Check) => "health.check",
+            Self::Health(HealthMethod::Ping) => "health.ping",
+            Self::Tower(TowerMethod::Health) => "tower.health",
+            Self::Tower(TowerMethod::MeshStatus) => "tower.mesh_status",
             Self::Capabilities(CapabilitiesMethod::List) => "capabilities.list",
             Self::Capabilities(CapabilitiesMethod::Methods) => "capabilities.methods",
             Self::Capabilities(CapabilitiesMethod::Resolve) => "capability.resolve",
@@ -340,6 +347,9 @@ impl JsonRpcMethod {
             "health.liveness" => Self::Health(HealthMethod::Liveness),
             "health.readiness" => Self::Health(HealthMethod::Readiness),
             "health.check" => Self::Health(HealthMethod::Check),
+            "health.ping" => Self::Health(HealthMethod::Ping),
+            "tower.health" => Self::Tower(TowerMethod::Health),
+            "tower.mesh_status" => Self::Tower(TowerMethod::MeshStatus),
             "capabilities.list" => Self::Capabilities(CapabilitiesMethod::List),
             "capabilities.methods" => Self::Capabilities(CapabilitiesMethod::Methods),
             "capability.resolve" => Self::Capabilities(CapabilitiesMethod::Resolve),

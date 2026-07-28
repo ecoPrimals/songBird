@@ -60,6 +60,7 @@ mod meta;
 pub mod relay_security;
 mod remote_dispatch;
 mod route;
+mod tower;
 mod util;
 pub mod virtual_relay;
 

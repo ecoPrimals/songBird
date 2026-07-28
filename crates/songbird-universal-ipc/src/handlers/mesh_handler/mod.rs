@@ -119,6 +119,24 @@ impl MeshHandler {
         }
     }
 
+    /// Whether the mesh has been initialized (has a node ID set).
+    #[must_use]
+    pub fn is_initialized(&self) -> bool {
+        !self.node_id.blocking_read().is_empty()
+    }
+
+    /// Number of peers with known capabilities.
+    #[must_use]
+    pub fn peer_count(&self) -> usize {
+        self.peer_capabilities.blocking_read().len()
+    }
+
+    /// The local node ID.
+    #[must_use]
+    pub fn node_id(&self) -> String {
+        self.node_id.blocking_read().to_string()
+    }
+
     /// Initialize the mesh with node ID, bootstrap onions, and/or bootstrap peers.
     ///
     /// `bootstrap_peers` enables cross-gate discovery by adding TCP-reachable peers

@@ -1,8 +1,8 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave155b  
-**Date**: July 27, 2026  
+**Version**: v0.2.1-wave155d  
+**Date**: July 28, 2026  
 **Gate**: eastGate
 
 ## Current State
@@ -18,7 +18,32 @@
 | Hardcoding | 0 in production (all env-driven, capability-based) |
 | Mocks in prod | 0 (all `#[cfg(test)]` gated) |
 
-## Recent Evolution (Wave 151b–155b)
+## Recent Evolution (Wave 151b–155d)
+
+### Wave 155d — Tower Atomic Health Facade (Jul 28 2026)
+
+**TOWER HEALTH PROBE** — biomeOS signal graphs can now directly probe Tower Atomic stack health:
+
+**`tower.health`** — aggregate Tower stack status:
+- Process liveness + crypto provider availability + mesh state + peer count
+- Returns structured `tower_atomic` object for signal graph consumption
+- Status: `healthy` / `degraded` / `initializing` based on component readiness
+- Available via UDS (songbird.sock) and HTTP JSON-RPC (:3492)
+
+**`tower.mesh_status`** — enriched mesh status for Tower validation:
+- Node ID, peer count, initialization state
+- Transport endpoint metadata (IPC socket, federation port, drawbridge port)
+- Complement to existing `mesh.status` with Tower-specific framing
+
+**`health.ping`** — wired as first-class handler:
+- Previously used in benchmarks/probes/mesh health checks without dispatch
+- Now responds via `health.liveness` semantics (RTT measurement)
+- Available on all transport paths (UDS, TCP, drawbridge)
+
+**`tower.enroll`** — normalization alias to `mesh.enroll`:
+- Signal graph compatibility — biomeOS graphs can use tower-prefixed names
+
+**MeshHandler accessors**: `is_initialized()`, `peer_count()`, `node_id()` — synchronous, non-allocating accessors for health probing without async overhead.
 
 ### Wave 155b — Jelly String Evolution J3+J4+J5 (Jul 27 2026)
 

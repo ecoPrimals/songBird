@@ -214,7 +214,7 @@ async fn handle_jsonrpc_request(
         Ok(JsonRpcMethod::Songbird(SongbirdMethod::Health)) => handle_health(&state).await,
         Ok(JsonRpcMethod::Songbird(SongbirdMethod::Version)) => handle_version().await,
 
-        Ok(JsonRpcMethod::Health(HealthMethod::Liveness)) => {
+        Ok(JsonRpcMethod::Health(HealthMethod::Liveness | HealthMethod::Ping)) => {
             Ok(songbird_universal_ipc::introspection::health_liveness())
         }
         Ok(JsonRpcMethod::Health(HealthMethod::Readiness)) => {

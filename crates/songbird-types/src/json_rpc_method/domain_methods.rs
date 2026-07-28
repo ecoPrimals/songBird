@@ -46,6 +46,18 @@ pub enum HealthMethod {
     Readiness,
     /// `health.check`
     Check,
+    /// `health.ping` — RTT probe for latency measurement.
+    Ping,
+}
+
+/// `tower.*` — Tower Atomic stack health facade for biomeOS signal graphs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TowerMethod {
+    /// `tower.health` — aggregate Tower Atomic stack health
+    /// (process + crypto + mesh + connectivity).
+    Health,
+    /// `tower.mesh_status` — enriched mesh status for Tower validation.
+    MeshStatus,
 }
 
 /// `capabilities.*`

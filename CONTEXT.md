@@ -3,9 +3,9 @@
 **Primal**: Songbird  
 **Role**: Network Orchestration & Discovery Primal — Inner Membrane Port Solver  
 **Phase**: Stadial (S1-S4 graduated, 6-gate mesh collective LIVE, zero-config mesh init)  
-**Version**: 0.2.1-wave155b  
+**Version**: 0.2.1-wave155d  
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)  
-**Last Updated**: July 27, 2026
+**Last Updated**: July 28, 2026
 
 ## What It Does
 
@@ -35,7 +35,7 @@ transport stack targeting WireGuard replacement. Every other primal and spring u
 | Metric | Value |
 |--------|-------|
 | Crates | 31 workspace members |
-| Tests | 14,332+ total (667 in universal-ipc; integration suites) |
+| Tests | 14,835+ total (677 in universal-ipc; integration suites) |
 | Coverage | Line coverage **73.41%** (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`; Jul 21 verified); Windows cross-compile zero warnings |
@@ -50,7 +50,8 @@ transport stack targeting WireGuard replacement. Every other primal and spring u
 
 JSON-RPC 2.0 methods via typed `JsonRpcMethod` enum dispatch (ecosystem standard `domain.verb` naming):
 
-- `health.liveness`, `health.readiness`, `health.check`
+- `health.liveness`, `health.readiness`, `health.check`, `health.ping`
+- `tower.health`, `tower.mesh_status` (Tower Atomic stack facade for biomeOS signal graphs)
 - `capabilities.list` (Wire Standard L3 envelope: `{primal, version, methods, provided_capabilities, consumed_capabilities, protocol, transport}`), `capabilities.methods`
 - `identity.get` (Wire Standard L3: `{primal, version, domain, license}`), `identity`
 - `capability.resolve` (single-step capability→endpoint, wired Wave 137), `discovery.peers` (wired Wave 137), `ipc.resolve` (capability-first with primal-name fallback; `capability`/`primal_id`/`name` params; `ipc.resolve_by_name` alias; evolved Wave 137b LD-02, Wave 151 PG-37), `lifecycle.composition`, `lifecycle.validate_consumed`

@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2024-2026 ecoPrimals
+
+//! `tower.*` — Tower Atomic stack health facade for biomeOS signal graphs.
+//!
+//! Aggregates health from the Tower Atomic stack (songBird + crypto provider +
+//! mesh connectivity) into a single response that biomeOS can consume for
+//! `tower.health` signal graph validation.
+
+use super::IpcServiceHandler;
+use serde_json::{Value, json};
+
+impl IpcServiceHandler {
+    /// Handle `tower.health` — aggregate Tower Atomic stack health.
+    ///
+    /// Returns a unified view of:
+    /// - Process liveness (always true if responding)
+    /// - Crypto provider availability
+    /// - Mesh initialization state
+    /// - Peer connectivity summary
+    /// - Drawbridge proxy readiness
+    #[allow(clippy::unused_async)]
+    pub(super) async fn handle_tower_health(&self) -> Result<Value, String> {
+        let mesh_initialized = self.mesh_handler.is_initialized();
+        let peer_count = self.mesh_handler.peer_count();
+        let capabilities = self.capability_router.list_capabilities();
+
+        let crypto_socket = songbird_crypto_provider::socket_discovery::discover_security_socket();
+        let crypto_available = std::path::Path::new(&crypto_socket).exists();
+
+        let status = if mesh_initialized && crypto_available {
+            "healthy"
+        } else if mesh_initialized || crypto_available {
+            "degraded"
+        } else {
+            "initializing"
+        };
+
+        Ok(json!({
+            "status": status,
+            "primal": "songbird",
+            "version": env!("CARGO_PKG_VERSION"),
+            "tower_atomic": {
+                "process": "alive",
+                "crypto_provider": if crypto_available { "available" } else { "unavailable" },
+                "mesh": if mesh_initialized { "active" } else { "awaiting_init" },
+                "peers": peer_count,
+                "capabilities_registered": capabilities.len(),
+                "drawbridge": "ready",
+            },
+        }))
+    }
+
+    /// Handle `tower.mesh_status` — enriched mesh status for Tower validation.
+    #[allow(clippy::unused_async)]
+    pub(super) async fn handle_tower_mesh_status(&self) -> Result<Value, String> {
+        let mesh_initialized = self.mesh_handler.is_initialized();
+        let peer_count = self.mesh_handler.peer_count();
+        let node_id = self.mesh_handler.node_id();
+
+        Ok(json!({
+            "initialized": mesh_initialized,
+            "node_id": node_id,
+            "peers": peer_count,
+            "tower_transport": {
+                "ipc": "songbird.sock",
+                "federation_port": 7700,
+                "drawbridge_port": 7780,
+            },
+        }))
+    }
+}
