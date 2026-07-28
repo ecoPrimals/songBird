@@ -258,27 +258,24 @@ impl RendezvousClient {
         Ok(format!("hmac-sha256:{}", hex::encode(tag)))
     }
 
-    /// Sign registration message with security provider or return None
+    /// Sign registration message via crypto provider delegation.
     ///
-    /// In production, this would use the security provider service to
-    /// cryptographically sign the registration message.
+    /// Uses `CryptoProvider` (discovered from environment) to sign the
+    /// registration payload. Returns `None` if no crypto provider is available
+    /// — registration proceeds unsigned (relay accepts with reduced trust tier).
     async fn sign_message_for_registration(&self) -> Option<String> {
-        if let Ok(security_url) = songbird_process_env::var("SECURITY_PROVIDER_ENDPOINT").or_else(
-            |_| {
-                songbird_process_env::var("BEARDOG_ENDPOINT").inspect(|_| {
-                    tracing::warn!(
-                        "BEARDOG_ENDPOINT is deprecated — migrate to SECURITY_PROVIDER_ENDPOINT, SECURITY_ENDPOINT, or CAPABILITY_SECURITY_ENDPOINT (capability-first)"
-                    );
-                })
-            },
-        ) {
-            debug!(
-                "Security provider endpoint configured at {}, signature integration pending",
-                security_url
-            );
-        }
+        let crypto = songbird_crypto_provider::CryptoProvider::from_env();
 
-        None
+        let node_id = self.node_info.as_ref().map_or("unknown", |n| n.node_id.as_str());
+        let payload = format!("rendezvous:register:{node_id}");
+
+        match crypto.call("crypto.sign.ed25519", serde_json::json!({ "data": payload })).await {
+            Ok(v) => v.get("signature").and_then(serde_json::Value::as_str).map(String::from),
+            Err(e) => {
+                tracing::debug!("Registration signature unavailable: {e}");
+                None
+            }
+        }
     }
 }
 

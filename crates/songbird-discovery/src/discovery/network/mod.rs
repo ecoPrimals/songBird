@@ -3,7 +3,7 @@
 
 use crate::discovery::types::{NetworkLocation, NetworkMeasurement};
 use chrono::Utc;
-use songbird_types::SongbirdResult;
+use songbird_types::{SongbirdError, SongbirdResult};
 type Result<T> = SongbirdResult<T>;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::process::Command;
@@ -43,7 +43,11 @@ impl NetworkManager {
             }
         }
 
-        Ok(10.0)
+        Err(SongbirdError::Network {
+            message: format!("ping measurement unavailable for {target_address} on this platform"),
+            interface: None,
+            suggestion: Some("ensure ping is available or use a supported platform".into()),
+        })
     }
 
     /// Estimate bandwidth to target (simplified)
@@ -71,7 +75,11 @@ impl NetworkManager {
             }
         }
 
-        Ok(1000.0)
+        Err(SongbirdError::Network {
+            message: "bandwidth estimation unavailable on this platform".into(),
+            interface: None,
+            suggestion: Some("check /sys/class/net on Linux".into()),
+        })
     }
 
     #[must_use]
@@ -392,15 +400,21 @@ mod tests {
     }
 
     #[test]
-    fn measure_ping_latency_returns_positive_fallback() {
-        let latency = NetworkManager::measure_ping_latency("127.0.0.1").unwrap();
-        assert!(latency > 0.0);
+    fn measure_ping_latency_localhost_succeeds_or_errors() {
+        let result = NetworkManager::measure_ping_latency("127.0.0.1");
+        // On Linux/macOS with ping available, this succeeds; on other platforms, it errors
+        if let Ok(latency) = result {
+            assert!(latency > 0.0);
+        }
     }
 
     #[test]
-    fn estimate_bandwidth_returns_positive_value() {
-        let bandwidth = NetworkManager::estimate_bandwidth("127.0.0.1").unwrap();
-        assert!(bandwidth > 0.0);
+    fn estimate_bandwidth_succeeds_or_errors() {
+        let result = NetworkManager::estimate_bandwidth("127.0.0.1");
+        // On Linux with /sys/class/net, this succeeds; on other platforms, it errors
+        if let Ok(bandwidth) = result {
+            assert!(bandwidth > 0.0);
+        }
     }
 
     #[test]
@@ -447,8 +461,10 @@ mod tests {
 
         assert!(DEFAULT_TIMEOUT_MS >= MIN_TIMEOUT_MS);
         let unreachable_target = "192.0.2.1";
-        let latency = NetworkManager::measure_ping_latency(unreachable_target).unwrap();
-        assert!(latency > 0.0, "Timeout path should still return fallback latency");
+        let result = NetworkManager::measure_ping_latency(unreachable_target);
+        if let Ok(latency) = result {
+            assert!(latency > 0.0);
+        }
     }
 
     #[tokio::test]

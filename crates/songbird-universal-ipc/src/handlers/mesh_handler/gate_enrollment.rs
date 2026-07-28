@@ -24,7 +24,10 @@ use super::MeshHandler;
 /// IP pool range for dynamic gate allocation.
 const POOL_START: u8 = 20;
 const POOL_END: u8 = 254;
-const MESH_SUBNET: &str = "10.13.37";
+
+fn mesh_subnet() -> String {
+    songbird_process_env::var("SONGBIRD_MESH_SUBNET").unwrap_or_else(|_| "10.13.37".into())
+}
 
 /// Physical proof types for enrollment trust tiers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -159,9 +162,13 @@ impl MeshHandler {
             let (fg_phase, registered) = register_forgejo_key(&request.gate_name, ssh_key).await;
             phases.push(fg_phase);
             Some(ForgejoProvisionConfig {
-                host: "10.13.37.1".into(),
-                port: 2222,
-                org: "ecoPrimals".into(),
+                host: format!("{}.1", mesh_subnet()),
+                port: songbird_process_env::var("FORGEJO_SSH_PORT")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(2222),
+                org: songbird_process_env::var("FORGEJO_ORG")
+                    .unwrap_or_else(|_| "ecoPrimals".into()),
                 ssh_key_registered: registered,
             })
         } else {
@@ -187,8 +194,8 @@ impl MeshHandler {
             hub_endpoint: resolve_hub_endpoint(),
             hub_public_key: resolve_hub_pubkey(),
             assigned_ip: mesh_ip.clone(),
-            subnet: format!("{MESH_SUBNET}.0/24"),
-            dns: format!("{MESH_SUBNET}.1"),
+            subnet: format!("{}.0/24", mesh_subnet()),
+            dns: format!("{}.1", mesh_subnet()),
         });
 
         let all_pass = phases.iter().all(|p| p.ok);
@@ -399,7 +406,7 @@ async fn allocate_mesh_ip(gate_name: &str) -> (EnrollPhase, Option<String>) {
     };
 
     for octet in POOL_START..=POOL_END {
-        let candidate = format!("{MESH_SUBNET}.{octet}");
+        let candidate = format!("{}.{octet}", mesh_subnet());
         if !used_ips.contains(&candidate) {
             info!(gate = %gate_name, ip = %candidate, "ip.allocate: assigned from pool");
             return (
@@ -754,12 +761,17 @@ async fn call_security_provider(method: &str, params: Value) -> Result<Value, St
 }
 
 fn resolve_hub_endpoint() -> String {
-    std::env::var("WG_HUB_ENDPOINT").unwrap_or_else(|_| "157.230.3.183:51820".into())
+    std::env::var("WG_HUB_ENDPOINT").unwrap_or_else(|_| {
+        tracing::warn!("WG_HUB_ENDPOINT not set — using development default");
+        "157.230.3.183:51820".into()
+    })
 }
 
 fn resolve_hub_pubkey() -> String {
-    std::env::var("WG_HUB_PUBKEY")
-        .unwrap_or_else(|_| "A2fvz3czkqRUuu2mzkSS6IVr/TCQcpsJX9HbDBa1FBc=".into())
+    std::env::var("WG_HUB_PUBKEY").unwrap_or_else(|_| {
+        tracing::warn!("WG_HUB_PUBKEY not set — using development default");
+        "A2fvz3czkqRUuu2mzkSS6IVr/TCQcpsJX9HbDBa1FBc=".into()
+    })
 }
 
 /// Compute HMAC-SHA256 enrollment proof (mirrors bearDog's algorithm).
