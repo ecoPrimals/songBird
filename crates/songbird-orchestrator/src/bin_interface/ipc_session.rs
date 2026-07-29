@@ -139,9 +139,9 @@ pub(super) async fn handle_connection<S: tokio::io::AsyncRead + tokio::io::Async
     }
 
     // Legacy path: line-based BTSP/JSON-RPC detection (no riboCipher prefix)
-    // Wave 112: ERROR on unsignalled connections (deprecation escalation)
-    tracing::error!(
-        "{peer_label} connection without riboCipher signal — legacy path (deprecated Wave 112, reject Wave 113)"
+    // Wave 155i: downgrade to debug — many primals still probe without prefix
+    tracing::debug!(
+        "{peer_label} connection without riboCipher signal — legacy path (reject Wave 113)"
     );
     let mut first_line = String::new();
 

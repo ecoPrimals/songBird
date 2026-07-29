@@ -195,7 +195,6 @@ impl VirtualRelayManager {
         primal_name: &str,
         native_socket_path: &str,
     ) -> anyhow::Result<PathBuf> {
-        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
         use tokio::net::TcpListener;
 
         let listener = TcpListener::bind("127.0.0.1:0").await?;

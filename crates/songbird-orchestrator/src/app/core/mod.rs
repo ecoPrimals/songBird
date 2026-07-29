@@ -57,6 +57,7 @@ pub struct SongbirdOrchestrator {
     pub(super) ipc_server_handle: Option<tokio::task::JoinHandle<()>>,
     pub(super) broker_registry: Option<crate::ipc::universal_broker::SharedServiceRegistry>,
     pub(super) broker_mesh_handler: Option<Arc<songbird_universal_ipc::handlers::MeshHandler>>,
+    pub(crate) shared_ipc_handler: Option<Arc<songbird_universal_ipc::service::IpcServiceHandler>>,
     pub(super) shutdown_signal: tokio::sync::broadcast::Receiver<()>,
     pub(super) shutdown_sender: tokio::sync::broadcast::Sender<()>,
 }
@@ -198,6 +199,7 @@ impl SongbirdOrchestrator {
             ipc_server_handle: None,   // Will be set in start()
             broker_registry: None,     // Set in stage_2 when broker starts
             broker_mesh_handler: None, // Set in stage_2 when broker starts
+            shared_ipc_handler: None,  // Set in stage_2 before start_ipc_server
             shutdown_signal,
             shutdown_sender,
         })
@@ -494,13 +496,14 @@ impl SongbirdOrchestrator {
                 .unwrap_or_else(|_| String::from("default"))
         );
 
-        let shared_handler =
+        let shared_handler = self.shared_ipc_handler.clone().unwrap_or_else(|| {
             Arc::new(songbird_universal_ipc::service::IpcServiceHandler::with_federation_state(
                 Arc::new(tokio::sync::RwLock::new(
                     songbird_universal_ipc::registry::ServiceRegistry::new(),
                 )),
                 Arc::clone(&self.federation_state),
-            ));
+            ))
+        });
 
         let addr: std::net::SocketAddr = listen_addr
             .parse()
@@ -521,7 +524,25 @@ impl SongbirdOrchestrator {
                         let handler = Arc::clone(&shared_handler_clone);
                         tokio::spawn(async move {
                             let (reader, mut writer) = stream.into_split();
-                            let mut lines = BufReader::new(reader).lines();
+                            let mut buf_reader = BufReader::new(reader);
+
+                            // Strip riboCipher prefix if present (probes send 2-byte signal)
+                            if let Ok(buf) = buf_reader.fill_buf().await {
+                                if buf.len() >= 2
+                                    && songbird_types::constants::ribocipher::is_signal_byte(buf[0])
+                                {
+                                    let consume = if buf[1]
+                                        == songbird_types::constants::ribocipher::VERSION_1
+                                    {
+                                        2
+                                    } else {
+                                        1
+                                    };
+                                    buf_reader.consume(consume);
+                                }
+                            }
+
+                            let mut lines = buf_reader.lines();
                             while let Ok(Some(line)) = lines.next_line().await {
                                 let line = line.trim().to_string();
                                 if line.is_empty() {

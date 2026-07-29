@@ -240,6 +240,8 @@ impl<'a> StartupOrchestrator<'a> {
         info!("✅ HTTP server started on port {}", actual_https_port);
 
         // 🎧 Start IPC Server for inter-primal communication
+        // Store shared handler so TCP path uses the same registry as HTTP/UDS broker
+        self.orchestrator.shared_ipc_handler = Some(Arc::clone(&shared_ipc_handler));
         info!("🎧 Starting IPC server...");
         self.orchestrator.start_ipc_server().await?;
         info!("✅ IPC server started");

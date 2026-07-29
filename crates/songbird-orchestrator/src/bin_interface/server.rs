@@ -16,7 +16,9 @@ use tokio::sync::RwLock;
 
 use super::ServerArgs;
 use super::ipc_session::handle_connection;
-use crate::ipc::pure_rust_server::method_gate::{CallerContext, MethodGate, PeerCredentials};
+#[cfg(unix)]
+use crate::ipc::pure_rust_server::method_gate::PeerCredentials;
+use crate::ipc::pure_rust_server::method_gate::{CallerContext, MethodGate};
 
 pub(super) static BIN_GATE: std::sync::LazyLock<MethodGate> =
     std::sync::LazyLock::new(MethodGate::from_env);
@@ -164,7 +166,8 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         }
     });
     let socket_path_for_registration = args.socket.clone().or_else(|| effective_listen.clone());
-    let shared_handler = create_shared_handler();
+    let shared_handler =
+        orchestrator.shared_ipc_handler.clone().unwrap_or_else(create_shared_handler);
     let _ipc_handle = spawn_ipc_listener(
         &args,
         effective_listen.as_ref(),

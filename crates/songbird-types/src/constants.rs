@@ -94,8 +94,26 @@ pub const SYSTEM_RUNTIME_DIR: &str = "/var/run";
 /// biomeOS system runtime socket directory (FHS-standard).
 pub const BIOMEOS_SYSTEM_RUNTIME_DIR: &str = "/var/run/biomeos";
 
-/// Songbird PID/state directory under FHS system runtime.
+/// Songbird PID/state directory under FHS system runtime (Unix only).
 pub const SONGBIRD_SYSTEM_RUNTIME_DIR: &str = "/var/run/songbird";
+
+/// Platform-aware PID/state directory.
+///
+/// On Unix: `/var/run/songbird`
+/// On Windows: `%PROGRAMDATA%\songbird` (falls back to `C:\ProgramData\songbird`)
+#[must_use]
+pub fn songbird_runtime_dir() -> std::path::PathBuf {
+    #[cfg(unix)]
+    {
+        std::path::PathBuf::from(SONGBIRD_SYSTEM_RUNTIME_DIR)
+    }
+    #[cfg(not(unix))]
+    {
+        std::env::var("PROGRAMDATA")
+            .map(|pd| std::path::PathBuf::from(pd).join("songbird"))
+            .unwrap_or_else(|_| std::path::PathBuf::from(r"C:\ProgramData\songbird"))
+    }
+}
 
 /// User runtime directory prefix (FHS: /run/user/{uid}).
 pub const USER_RUNTIME_PREFIX: &str = "/run/user";
