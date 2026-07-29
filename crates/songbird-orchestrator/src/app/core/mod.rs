@@ -495,7 +495,7 @@ impl SongbirdOrchestrator {
         );
 
         let shared_handler =
-            Arc::new(songbird_universal_ipc::IpcServiceHandler::with_federation_state(
+            Arc::new(songbird_universal_ipc::service::IpcServiceHandler::with_federation_state(
                 Arc::new(tokio::sync::RwLock::new(
                     songbird_universal_ipc::registry::ServiceRegistry::new(),
                 )),

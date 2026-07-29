@@ -442,6 +442,7 @@ fn parse_bind_flag(value: &str) -> (&str, Option<u16>) {
 /// Provides caller identity (uid, pid) for authorization decisions.
 /// Falls back to a credential-less `CallerContext::from_unix()` if extraction fails
 /// (e.g. on non-Linux platforms or kernel edge cases).
+#[cfg(unix)]
 fn extract_unix_caller(stream: &tokio::net::UnixStream) -> CallerContext {
     #[cfg(unix)]
     {

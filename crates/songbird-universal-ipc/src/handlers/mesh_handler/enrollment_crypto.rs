@@ -86,13 +86,9 @@ pub fn compute_hub_enrollment_proof(
     base64::engine::general_purpose::STANDARD.encode(proof_bytes)
 }
 
-/// Call bearDog's security provider via JSON-RPC over UDS.
+/// Call bearDog's security provider via JSON-RPC over platform-native transport.
 pub async fn call_security_provider(method: &str, params: Value) -> Result<Value, String> {
     let socket_path = songbird_crypto_provider::socket_discovery::discover_security_socket();
-
-    if !std::path::Path::new(&socket_path).exists() {
-        return Err(format!("bearDog socket not found: {socket_path}"));
-    }
 
     let request = json!({
         "jsonrpc": "2.0",
@@ -102,9 +98,27 @@ pub async fn call_security_provider(method: &str, params: Value) -> Result<Value
     })
     .to_string();
 
-    let stream = tokio::net::UnixStream::connect(&socket_path)
-        .await
-        .map_err(|e| format!("connect to bearDog: {e}"))?;
+    #[cfg(unix)]
+    let stream = {
+        if !std::path::Path::new(&socket_path).exists() {
+            return Err(format!("bearDog socket not found: {socket_path}"));
+        }
+        tokio::net::UnixStream::connect(&socket_path)
+            .await
+            .map_err(|e| format!("connect to bearDog (UDS): {e}"))?
+    };
+
+    #[cfg(not(unix))]
+    let stream = {
+        let addr = if socket_path.contains(':') {
+            socket_path.clone()
+        } else {
+            "127.0.0.1:9100".to_string()
+        };
+        tokio::net::TcpStream::connect(&addr)
+            .await
+            .map_err(|e| format!("connect to bearDog (TCP {addr}): {e}"))?
+    };
 
     let (reader, mut writer) = stream.into_split();
     writer.write_all(request.as_bytes()).await.map_err(|e| format!("write to bearDog: {e}"))?;
