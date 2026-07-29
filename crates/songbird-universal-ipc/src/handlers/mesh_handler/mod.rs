@@ -34,7 +34,6 @@ pub(crate) mod topology_graph;
 mod udp_discovery;
 
 #[cfg(test)]
-#[allow(clippy::expect_used, reason = "test assertions")]
 mod tests;
 
 use serde_json::{Value, json};

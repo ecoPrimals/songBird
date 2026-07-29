@@ -11,7 +11,8 @@
 //! - `QrCodeChannel` for QR code verification
 //! - `BluetoothChannel` for Bluetooth proximity
 
-use crate::{error::*, types::*};
+use crate::error::{GenesisError, Result};
+use crate::types::{PhysicalChannelType, ProximityProof, TrustLevel};
 use chrono::Utc;
 
 use super::PhysicalChannelProvider;

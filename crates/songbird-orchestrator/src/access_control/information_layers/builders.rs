@@ -200,7 +200,9 @@ impl super::super::InformationLayerBuilder {
                 name: tower.as_str().to_string(),
                 internal_ip: songbird_process_env::var("SONGBIRD_FEDERATION_BIND")
                     .or_else(|_| songbird_process_env::var("SONGBIRD_PRODUCTION_BIND_ADDRESS"))
-                    .unwrap_or_else(|_| String::from("0.0.0.0")),
+                    .unwrap_or_else(|_| {
+                        String::from(songbird_types::constants::PRODUCTION_BIND_ADDRESS)
+                    }),
                 uptime_hours,
                 temperature_c: if task.spec.resources.gpu_count.unwrap_or(0) > 0 {
                     Some(65.0)

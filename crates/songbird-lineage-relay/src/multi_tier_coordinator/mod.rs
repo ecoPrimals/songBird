@@ -268,20 +268,27 @@ impl MultiTierCoordinator {
                 .push((ConnectionTier::TurnRelay, String::from("TURN client not configured")));
         }
 
-        // --- Tier 5: Emergency tunnel (cloudflared) ---
-        match self.try_emergency_tunnel().await {
-            Ok(endpoint) => {
-                info!("  tier=emergency-tunnel: tunnel established at {endpoint}");
-                return Ok(ConnectionResult::Tunneled {
-                    endpoint,
-                    tier: ConnectionTier::EmergencyTunnel,
-                });
+        // --- Tier 5: Emergency tunnel (cloudflared) — opt-in only ---
+        if self.config.emergency_tunnel_enabled {
+            match self.try_emergency_tunnel().await {
+                Ok(endpoint) => {
+                    info!("  tier=emergency-tunnel: tunnel established at {endpoint}");
+                    return Ok(ConnectionResult::Tunneled {
+                        endpoint,
+                        tier: ConnectionTier::EmergencyTunnel,
+                    });
+                }
+                Err(e) => {
+                    let msg = format!("{e}");
+                    warn!("  tier=emergency-tunnel: failed — {msg}");
+                    tier_attempts.push((ConnectionTier::EmergencyTunnel, msg));
+                }
             }
-            Err(e) => {
-                let msg = format!("{e}");
-                warn!("  tier=emergency-tunnel: failed — {msg}");
-                tier_attempts.push((ConnectionTier::EmergencyTunnel, msg));
-            }
+        } else {
+            tier_attempts.push((
+                ConnectionTier::EmergencyTunnel,
+                String::from("emergency tunnel disabled (sovereignty-first default)"),
+            ));
         }
 
         let summary = tier_attempts

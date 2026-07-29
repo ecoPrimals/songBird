@@ -171,7 +171,7 @@ impl IpcConnectionPool {
         Ok((response_line, stream))
     }
 
-    /// Evict all idle connections older than [`MAX_IDLE_DURATION`].
+    /// Evict all idle connections older than the maximum idle duration (60 s).
     pub async fn evict_stale(&self) {
         let mut pools = self.pools.lock().await;
         let mut total_evicted = 0usize;

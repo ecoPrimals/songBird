@@ -101,33 +101,39 @@ impl<T> SongbirdResult<T> {
     /// Get the data if successful, or return an error
     ///
     /// # Errors
-    /// Returns error if response contains an error instead of data
-    pub fn get_data(&self) -> anyhow::Result<&T> {
+    /// Returns [`SongbirdError::ResponseExtraction`] if response contains an error
+    /// or is marked successful but has no data.
+    pub fn get_data(&self) -> Result<&T, SongbirdError> {
         if self.success {
-            self.data.as_ref().ok_or_else(|| {
-                anyhow::anyhow!("Response marked as successful but contains no data")
+            self.data.as_ref().ok_or_else(|| SongbirdError::ResponseExtraction {
+                message: String::from("Response marked as successful but contains no data"),
             })
         } else {
             let msg = self.error.as_ref().map_or("Unknown error", |e| &e.message);
-            Err(anyhow::anyhow!("{msg}"))
+            Err(SongbirdError::ResponseExtraction {
+                message: msg.to_string(),
+            })
         }
     }
 
     /// Convert response into `Result`
     ///
     /// # Errors
-    /// Returns error if response contains an error instead of data
-    pub fn into_result(self) -> anyhow::Result<T> {
+    /// Returns [`SongbirdError::ResponseExtraction`] if response contains an error
+    /// or is marked successful but has no data.
+    pub fn into_result(self) -> Result<T, SongbirdError> {
         if self.success {
-            self.data.ok_or_else(|| {
-                anyhow::anyhow!("Response marked as successful but contains no data")
+            self.data.ok_or_else(|| SongbirdError::ResponseExtraction {
+                message: String::from("Response marked as successful but contains no data"),
             })
         } else {
             let msg = self
                 .error
                 .as_ref()
                 .map_or_else(|| String::from("Unknown error"), |e| e.message.clone());
-            Err(anyhow::anyhow!("{msg}"))
+            Err(SongbirdError::ResponseExtraction {
+                message: msg,
+            })
         }
     }
 }

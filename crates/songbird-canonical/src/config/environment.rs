@@ -218,7 +218,7 @@ impl Default for ObservabilityConfig {
 impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
-            bind_address: String::from("0.0.0.0"),
+            bind_address: String::from(songbird_types::defaults::hosts::DEFAULT_BIND_ALL),
             enable_tls: false,
             tls_cert_path: None,
             tls_key_path: None,

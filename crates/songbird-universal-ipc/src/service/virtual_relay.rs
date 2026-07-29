@@ -184,14 +184,66 @@ impl VirtualRelayManager {
         Ok(relay_path)
     }
 
-    /// Virtual relays require Unix domain sockets; unsupported on this platform.
+    /// Start a TCP-based virtual relay on non-Unix platforms.
+    ///
+    /// On Windows (and other non-Unix targets), virtual relays use TCP localhost
+    /// instead of Unix domain sockets. The relay binds an ephemeral port and
+    /// forwards JSON-RPC traffic to the native endpoint (also TCP on these platforms).
     #[cfg(not(unix))]
     pub async fn start_relay(
         &self,
-        _primal_name: &str,
-        _native_socket_path: &str,
+        primal_name: &str,
+        native_socket_path: &str,
     ) -> anyhow::Result<PathBuf> {
-        anyhow::bail!("Virtual relays require Unix domain sockets (not available on this platform)")
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        use tokio::net::TcpListener;
+
+        let listener = TcpListener::bind("127.0.0.1:0").await?;
+        let local_addr = listener.local_addr()?;
+        let relay_path = PathBuf::from(format!("tcp://127.0.0.1:{}", local_addr.port()));
+
+        let native_target = native_socket_path.to_string();
+        let metrics = Arc::clone(&self.metrics);
+
+        tracing::info!(
+            primal = primal_name,
+            virtual_endpoint = %relay_path.display(),
+            native_target = %native_target,
+            "Virtual relay listener started (TCP fallback)"
+        );
+
+        let task = tokio::spawn(async move {
+            loop {
+                match listener.accept().await {
+                    Ok((mut client, _peer)) => {
+                        let target = native_target.clone();
+                        let _m = Arc::clone(&metrics);
+                        tokio::spawn(async move {
+                            if let Ok(mut upstream) = tokio::net::TcpStream::connect(&target).await
+                            {
+                                let _ =
+                                    tokio::io::copy_bidirectional(&mut client, &mut upstream).await;
+                            }
+                        });
+                    }
+                    Err(e) => {
+                        tracing::warn!("Virtual relay accept error: {e}");
+                        break;
+                    }
+                }
+            }
+        });
+
+        let mut relays = self.relays.write().await;
+        relays.insert(
+            primal_name.to_string(),
+            RelayEntry {
+                socket_path: relay_path.clone(),
+                task,
+            },
+        );
+
+        Ok(relay_path)
     }
 
     /// Stop and remove a relay for the given primal.

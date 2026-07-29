@@ -61,6 +61,14 @@ pub struct StunRelayConfig {
     #[serde(default)]
     pub rendezvous: RendezvousConfig,
 
+    /// Tier 5: Emergency tunnel (cloudflared quick-tunnel)
+    ///
+    /// **Sovereignty Warning**: Routes traffic through Cloudflare infrastructure.
+    /// Disabled by default (sovereignty-first). Enable only as a last resort when
+    /// all sovereign relay paths are unavailable.
+    #[serde(default)]
+    pub emergency_tunnel_enabled: bool,
+
     /// Advanced settings
     #[serde(default)]
     pub advanced: AdvancedStunConfig,
@@ -76,6 +84,7 @@ impl Default for StunRelayConfig {
             user_provided: Vec::new(),
             public_stun: PublicStunConfig::default(),
             rendezvous: RendezvousConfig::default(),
+            emergency_tunnel_enabled: false,
             advanced: AdvancedStunConfig::default(),
         }
     }

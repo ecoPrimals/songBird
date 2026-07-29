@@ -288,8 +288,23 @@ fn spawn_ipc_listener(
         }
         #[cfg(not(unix))]
         {
-            tracing::info!("IPC server: Windows TCP fallback (coming in Phase 2)");
-            None
+            tracing::info!(
+                "IPC server: --socket specified on non-Unix — falling back to TCP on port {}",
+                songbird_types::defaults::ports::DEFAULT_IPC_LISTEN_PORT
+            );
+            let tcp_addr =
+                format!("127.0.0.1:{}", songbird_types::defaults::ports::DEFAULT_IPC_LISTEN_PORT);
+            let security_socket = args.security_socket.clone().unwrap_or_else(|| {
+                songbird_crypto_provider::socket_discovery::discover_security_socket()
+            });
+            let listen_clone = tcp_addr;
+            let handler = shared_handler;
+            Some(tokio::spawn(async move {
+                match start_tcp_ipc_server(&listen_clone, &security_socket, handler).await {
+                    Ok(()) => tracing::info!("TCP IPC server stopped gracefully"),
+                    Err(e) => tracing::error!("TCP IPC server error: {}", e),
+                }
+            }))
         }
     } else {
         tracing::info!("");

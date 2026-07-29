@@ -192,6 +192,7 @@ impl MockSecurityProvider {
     }
 
     /// Get visibility level based on lineage depth
+    #[must_use]
     pub fn get_visibility_level(&self, lineage_depth: usize) -> AccessLevel {
         AccessLevel::from_lineage_depth(lineage_depth)
     }
@@ -220,6 +221,7 @@ impl MockSecurityProvider {
     }
 
     /// Provider version for compatibility checking
+    #[must_use]
     pub fn version(&self) -> &'static str {
         "0.0.0-mock"
     }

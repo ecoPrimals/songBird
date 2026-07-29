@@ -335,8 +335,8 @@ mod tests {
     #[test]
     fn parse_tower_address_preserves_ipv4_mapped_literal() {
         assert_eq!(
-            parse_tower_address("127.0.0.1:65535"),
-            "127.0.0.1",
+            parse_tower_address(&format!("{LOCALHOST}:65535")),
+            LOCALHOST,
             "IPv4 host:port should strip port"
         );
     }

@@ -463,26 +463,112 @@ impl SongbirdOrchestrator {
         Ok(())
     }
 
-    /// Start the JSON-RPC IPC server (**known platform limitation on non-Unix**).
+    /// Start the JSON-RPC IPC server on non-Unix platforms (Windows, etc.).
     ///
-    /// Production IPC uses Unix domain sockets (`UnixSocketServer`). Native Windows builds
-    /// do not start an equivalent transport (named pipes / TCP parity is not implemented).
+    /// On platforms without Unix domain sockets, we fall back to TCP IPC using
+    /// `SONGBIRD_IPC_PORT` (default 9901). This follows the same pattern that
+    /// bearDog uses successfully on Windows with `--bind-mode tcp`.
     ///
-    /// **Tracking**: Treat native Windows IPC as out of scope until an explicit transport
-    /// design is scheduled; use [WSL2](https://learn.microsoft.com/windows/wsl/) for the same
-    /// socket-based workflow as Linux.
+    /// Named pipes (`\\.\pipe\biomeos_songbird`) are preferred on Windows when
+    /// available; TCP localhost is the universal fallback.
     #[cfg(not(unix))]
     pub(crate) async fn start_ipc_server(&self) -> Result<()> {
-        warn!(
-            target_os = std::env::consts::OS,
-            "IPC server is unavailable on this platform: Songbird's primal IPC requires Unix domain sockets"
+        use songbird_types::defaults::ports::DEFAULT_IPC_LISTEN_PORT;
+        use songbird_universal_ipc::tower_atomic::JsonRpcHandler;
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+        let ipc_port = songbird_process_env::var("SONGBIRD_IPC_PORT")
+            .ok()
+            .and_then(|v| v.parse::<u16>().ok())
+            .unwrap_or(DEFAULT_IPC_LISTEN_PORT);
+
+        let bind_host = &self._config.network.bind_host;
+        let listen_addr = format!("{bind_host}:{ipc_port}");
+
+        info!("🎧 Starting TCP IPC server (non-Unix platform: {})", std::env::consts::OS);
+        info!("   Listen: {listen_addr}");
+        info!("   Protocol: JSON-RPC 2.0 over TCP");
+        info!(
+            "   Family ID: {}",
+            songbird_process_env::var("SONGBIRD_FAMILY_ID")
+                .unwrap_or_else(|_| String::from("default"))
         );
-        warn!(
-            "For Windows hosts, run Songbird under WSL2 or wait for tracked native IPC (named pipes / TCP) support"
-        );
-        Err(anyhow::anyhow!(
-            "IPC server requires Unix domain sockets (Linux/macOS/BSD). On Windows use WSL2 for parity."
-        ))
+
+        let shared_handler =
+            Arc::new(songbird_universal_ipc::IpcServiceHandler::with_federation_state(
+                Arc::new(tokio::sync::RwLock::new(
+                    songbird_universal_ipc::registry::ServiceRegistry::new(),
+                )),
+                Arc::clone(&self.federation_state),
+            ));
+
+        let addr: std::net::SocketAddr = listen_addr
+            .parse()
+            .map_err(|e| anyhow::anyhow!("Invalid IPC listen address '{listen_addr}': {e}"))?;
+
+        let listener = tokio::net::TcpListener::bind(addr)
+            .await
+            .map_err(|e| anyhow::anyhow!("TCP IPC server failed to bind {listen_addr}: {e}"))?;
+
+        info!("✅ TCP IPC server started on {listen_addr}");
+        info!("   🌱 Primals can now register and discover each other (TCP transport)");
+
+        let shared_handler_clone = Arc::clone(&shared_handler);
+        tokio::spawn(async move {
+            loop {
+                match listener.accept().await {
+                    Ok((stream, peer_addr)) => {
+                        let handler = Arc::clone(&shared_handler_clone);
+                        tokio::spawn(async move {
+                            let (reader, mut writer) = stream.into_split();
+                            let mut lines = BufReader::new(reader).lines();
+                            while let Ok(Some(line)) = lines.next_line().await {
+                                let line = line.trim().to_string();
+                                if line.is_empty() {
+                                    continue;
+                                }
+                                let parsed: serde_json::Value = match serde_json::from_str(&line) {
+                                    Ok(v) => v,
+                                    Err(_) => continue,
+                                };
+                                let method =
+                                    parsed["method"].as_str().unwrap_or_default().to_string();
+                                let params = parsed
+                                    .get("params")
+                                    .cloned()
+                                    .unwrap_or(serde_json::Value::Object(Default::default()));
+                                let id = parsed.get("id").cloned();
+
+                                let result = handler.handle(&method, params).await;
+                                let response = match result {
+                                    Ok(data) => serde_json::json!({
+                                        "jsonrpc": "2.0",
+                                        "result": data,
+                                        "id": id,
+                                    }),
+                                    Err(msg) => serde_json::json!({
+                                        "jsonrpc": "2.0",
+                                        "error": { "code": -32603, "message": msg },
+                                        "id": id,
+                                    }),
+                                };
+
+                                let mut resp_line =
+                                    serde_json::to_string(&response).unwrap_or_default();
+                                resp_line.push('\n');
+                                if writer.write_all(resp_line.as_bytes()).await.is_err() {
+                                    break;
+                                }
+                            }
+                            debug!("TCP IPC connection closed: {peer_addr}");
+                        });
+                    }
+                    Err(e) => warn!("Failed to accept TCP IPC connection: {e}"),
+                }
+            }
+        });
+
+        Ok(())
     }
 
     /// Start the tarpc binary RPC server for high-performance primal-to-primal communication.

@@ -221,6 +221,13 @@ pub enum SongbirdError {
         /// Optional human-readable detail
         detail: Option<String>,
     },
+
+    /// Response extraction failed (success but empty data, or error response)
+    #[error("Response error: {message}")]
+    ResponseExtraction {
+        /// Error message describing why extraction failed
+        message: String,
+    },
 }
 
 /// Security-specific error details
