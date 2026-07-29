@@ -39,7 +39,7 @@ transport stack targeting WireGuard replacement. Every other primal and spring u
 | Coverage | Line coverage **73.41%** (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`; Jul 21 verified); Windows cross-compile zero warnings |
-| Files >800 LOC | **0** — all production code below threshold (largest: mesh_handler/mod.rs at 795L, drawbridge.rs at 749L) |
+| Files >800 LOC | **0** — all production code below threshold (largest: gate_enrollment.rs at 753L, mesh_handler/mod.rs at 735L, drawbridge.rs at 782L) |
 | Unsafe blocks | 0 (`forbid(unsafe_code)` all 31 crates) |
 | C dependencies | Zero in default/production build; `ring` eliminated from production path (Wave 150x: `rustls-rustcrypto`); 24 dead deps removed; `chrono` eliminated from 3 crates; Bluetooth native deps only with `bluetooth` feature |
 | Hardcoded primal names | 0 in production discovery (capability-first); all paths env-driven or XDG-compliant; zero `/tmp/` writes |

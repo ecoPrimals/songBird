@@ -20,7 +20,7 @@
 | **Clippy Pedantic** | 31/31 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, July 22 verified); `doc_markdown` + `uninlined_format_args` now enforced (removed from allows) |
 | **Format** | Clean (`cargo fmt --check` passes; July 22 verified) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
-| **Files >800 lines** | **1** (gate_enrollment.rs: 809L production + 121L tests = 930L total; overshoot is 9L of command-injection input validation — security-critical) — Previous max 797L |
+| **Files >800 lines** | **0** — all production code below 800L. `gate_enrollment.rs` refactored (942→753L via `enrollment_crypto.rs` extraction); `mesh_handler/mod.rs` refactored (815→735L via `mesh_helpers.rs` extraction). Largest: drawbridge.rs 782L. |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 31 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 unguarded — `.unwrap()` in production only under `#[expect(clippy::unwrap_used, reason = "...")]` for provably infallible operations (e.g. `write!` to `String`); all others in `#[cfg(test)]` or doc examples |

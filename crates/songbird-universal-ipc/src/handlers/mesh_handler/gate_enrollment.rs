@@ -20,6 +20,11 @@ use serde_json::{Value, json};
 use tracing::{info, warn};
 
 use super::MeshHandler;
+use super::enrollment_crypto::{
+    call_security_provider, compute_hub_enrollment_proof, constant_time_eq, is_valid_mesh_ip,
+    is_valid_wg_pubkey, load_family_seed_bytes, load_family_seed_value, resolve_hub_endpoint,
+    resolve_hub_pubkey,
+};
 
 /// IP pool range for dynamic gate allocation.
 const POOL_START: u8 = 20;
@@ -191,8 +196,8 @@ impl MeshHandler {
         phases.push(enroll_phase);
 
         let wg_config = Some(WgProvisionConfig {
-            hub_endpoint: resolve_hub_endpoint(),
-            hub_public_key: resolve_hub_pubkey(),
+            hub_endpoint: resolve_hub_endpoint().unwrap_or_default(),
+            hub_public_key: resolve_hub_pubkey().unwrap_or_default(),
             assigned_ip: mesh_ip.clone(),
             subnet: format!("{}.0/24", mesh_subnet()),
             dns: format!("{}.1", mesh_subnet()),
@@ -509,22 +514,6 @@ async fn register_wg_peer(gate_name: &str, wg_pubkey: &str, mesh_ip: &str) -> En
     }
 }
 
-/// Validate `WireGuard` public key format (base64-encoded 32 bytes = 44 chars + optional `=`).
-fn is_valid_wg_pubkey(key: &str) -> bool {
-    let len = key.len();
-    (43..=44).contains(&len)
-        && key.chars().all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '=')
-}
-
-/// Validate mesh IP format (must match `10.13.37.N` with N in valid range).
-fn is_valid_mesh_ip(ip: &str) -> bool {
-    let parts: Vec<&str> = ip.split('.').collect();
-    if parts.len() != 4 {
-        return false;
-    }
-    parts.iter().all(|p| p.parse::<u8>().is_ok())
-}
-
 /// Register an SSH public key on Forgejo via its REST API.
 ///
 /// Uses `curl` to POST to the Forgejo API, avoiding additional HTTP client
@@ -619,40 +608,6 @@ async fn register_forgejo_key(gate_name: &str, ssh_pubkey: &str) -> (EnrollPhase
     }
 }
 
-/// Load the family seed, resolving file paths if needed.
-///
-/// The `FAMILY_SEED` env var may contain a direct value or a file path
-/// (e.g. `/etc/membrane/family/family.key`). If it starts with `/` and
-/// the file exists, read the file and base64-encode the raw bytes.
-fn load_family_seed_value() -> Option<String> {
-    let raw =
-        std::env::var("FAMILY_SEED").or_else(|_| std::env::var("BEARDOG_FAMILY_SEED")).ok()?;
-
-    if raw.starts_with('/') {
-        match std::fs::read(&raw) {
-            Ok(bytes) => {
-                use base64::Engine;
-                Some(base64::engine::general_purpose::STANDARD.encode(&bytes))
-            }
-            Err(_) => Some(raw),
-        }
-    } else {
-        Some(raw)
-    }
-}
-
-/// Load the family seed as raw bytes for HMAC computation.
-fn load_family_seed_bytes() -> Option<Vec<u8>> {
-    let raw =
-        std::env::var("FAMILY_SEED").or_else(|_| std::env::var("BEARDOG_FAMILY_SEED")).ok()?;
-
-    if raw.starts_with('/') {
-        std::fs::read(&raw).ok().or_else(|| Some(raw.into_bytes()))
-    } else {
-        Some(raw.into_bytes())
-    }
-}
-
 /// Deliver the family seed encrypted to the enrollee's `WireGuard` public key.
 ///
 /// Uses bearDog's `crypto.encrypt` to wrap the seed before transit.
@@ -713,112 +668,6 @@ async fn deliver_family_seed(wg_pubkey: &str) -> (EnrollPhase, Option<String>) {
     }
 }
 
-// ── Helpers ────────────────────────────────────────────────────────
-
-/// Call bearDog's security provider via JSON-RPC over UDS.
-async fn call_security_provider(method: &str, params: Value) -> Result<Value, String> {
-    let socket_path = songbird_crypto_provider::socket_discovery::discover_security_socket();
-
-    if !std::path::Path::new(&socket_path).exists() {
-        return Err(format!("bearDog socket not found: {socket_path}"));
-    }
-
-    let request = json!({
-        "jsonrpc": "2.0",
-        "method": method,
-        "params": params,
-        "id": 1,
-    })
-    .to_string();
-
-    let stream = tokio::net::UnixStream::connect(&socket_path)
-        .await
-        .map_err(|e| format!("connect to bearDog: {e}"))?;
-
-    let (reader, mut writer) = stream.into_split();
-    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-    writer.write_all(request.as_bytes()).await.map_err(|e| format!("write to bearDog: {e}"))?;
-    writer.write_all(b"\n").await.map_err(|e| format!("write newline: {e}"))?;
-    writer.shutdown().await.map_err(|e| format!("shutdown write: {e}"))?;
-
-    let mut response = String::new();
-    let mut buf_reader = BufReader::new(reader);
-    buf_reader.read_line(&mut response).await.map_err(|e| format!("read from bearDog: {e}"))?;
-
-    let parsed: Value =
-        serde_json::from_str(&response).map_err(|e| format!("parse bearDog response: {e}"))?;
-
-    if let Some(result) = parsed.get("result") {
-        Ok(result.clone())
-    } else if let Some(error) = parsed.get("error") {
-        Err(format!(
-            "bearDog error: {}",
-            error.get("message").and_then(Value::as_str).unwrap_or("unknown")
-        ))
-    } else {
-        Ok(parsed)
-    }
-}
-
-fn resolve_hub_endpoint() -> String {
-    std::env::var("WG_HUB_ENDPOINT").unwrap_or_else(|_| {
-        tracing::warn!("WG_HUB_ENDPOINT not set — using development default");
-        "157.230.3.183:51820".into()
-    })
-}
-
-fn resolve_hub_pubkey() -> String {
-    std::env::var("WG_HUB_PUBKEY").unwrap_or_else(|_| {
-        tracing::warn!("WG_HUB_PUBKEY not set — using development default");
-        "A2fvz3czkqRUuu2mzkSS6IVr/TCQcpsJX9HbDBa1FBc=".into()
-    })
-}
-
-/// Compute HMAC-SHA256 enrollment proof (mirrors bearDog's algorithm).
-fn compute_hub_enrollment_proof(
-    family_seed: &[u8],
-    node_id: &str,
-    public_key: &str,
-    timestamp: u64,
-    generation: u32,
-) -> String {
-    use base64::Engine;
-    use hmac::{Hmac, Mac};
-    use sha2::Sha256;
-
-    type HmacSha256 = Hmac<Sha256>;
-
-    let family_id = std::env::var("FAMILY_ID").unwrap_or_else(|_| "default".into());
-
-    // HKDF extract
-    let mut extract_mac = HmacSha256::new_from_slice(family_id.as_bytes()).expect("HMAC key init");
-    extract_mac.update(family_seed);
-    let prk = extract_mac.finalize().into_bytes();
-
-    // HKDF expand
-    let info = format!("enrollment-v{generation}");
-    let mut expand_mac = HmacSha256::new_from_slice(&prk).expect("HMAC key init");
-    expand_mac.update(info.as_bytes());
-    expand_mac.update(&[1u8]);
-    let enrollment_key: [u8; 32] = expand_mac.finalize().into_bytes().into();
-
-    // HMAC proof
-    let message = format!("{node_id}|{public_key}|{timestamp}|{generation}");
-    let mut proof_mac = HmacSha256::new_from_slice(&enrollment_key).expect("HMAC key init");
-    proof_mac.update(message.as_bytes());
-    let proof_bytes = proof_mac.finalize().into_bytes();
-
-    base64::engine::general_purpose::STANDARD.encode(proof_bytes)
-}
-
-/// Constant-time equality check for tokens.
-fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
-    if a.len() != b.len() {
-        return false;
-    }
-    a.iter().zip(b.iter()).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -840,27 +689,6 @@ Kz9p...= 10.13.37.7/32
     #[test]
     fn parse_used_ips_empty() {
         assert!(parse_used_ips("").is_empty());
-    }
-
-    #[test]
-    fn constant_time_eq_works() {
-        assert!(constant_time_eq(b"hello", b"hello"));
-        assert!(!constant_time_eq(b"hello", b"world"));
-        assert!(!constant_time_eq(b"hello", b"hell"));
-    }
-
-    #[test]
-    fn hub_enrollment_proof_is_deterministic() {
-        let p1 = compute_hub_enrollment_proof(b"seed", "gate1", "key1", 1000, 0);
-        let p2 = compute_hub_enrollment_proof(b"seed", "gate1", "key1", 1000, 0);
-        assert_eq!(p1, p2);
-    }
-
-    #[test]
-    fn hub_enrollment_proof_varies_with_input() {
-        let p1 = compute_hub_enrollment_proof(b"seed", "gate1", "key1", 1000, 0);
-        let p2 = compute_hub_enrollment_proof(b"seed", "gate2", "key1", 1000, 0);
-        assert_ne!(p1, p2);
     }
 
     #[test]
@@ -921,22 +749,5 @@ Kz9p...= 10.13.37.7/32
         let json = serde_json::to_string(&resp).expect("should serialize");
         assert!(json.contains("testGate"));
         assert!(json.contains("10.13.37.20"));
-    }
-
-    #[test]
-    fn valid_wg_pubkey_format() {
-        assert!(is_valid_wg_pubkey("A2fvz3czkqRUuu2mzkSS6IVr/TCQcpsJX9HbDBa1FBc="));
-        assert!(!is_valid_wg_pubkey("too_short"));
-        assert!(!is_valid_wg_pubkey("A2fvz3czkqRUuu2mzkSS6IVr/TCQcpsJX9Hb; rm -rf /"));
-        assert!(!is_valid_wg_pubkey(""));
-    }
-
-    #[test]
-    fn valid_mesh_ip_format() {
-        assert!(is_valid_mesh_ip("10.13.37.20"));
-        assert!(is_valid_mesh_ip("192.168.1.1"));
-        assert!(!is_valid_mesh_ip("10.13.37.999"));
-        assert!(!is_valid_mesh_ip("10.13.37"));
-        assert!(!is_valid_mesh_ip("; rm -rf /"));
     }
 }
