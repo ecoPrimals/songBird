@@ -11,12 +11,6 @@ pub const DEFAULT_CONFIG_PATH: &str = "songbird.toml";
 /// IPv4 localhost address constant — re-export from canonical source.
 pub const LOCALHOST_IPV4: &str = songbird_types::constants::LOCALHOST;
 
-/// Default bind address for backwards compatibility with tests.
-///
-/// Production code should use [`get_bind_address()`] which respects environment configuration.
-#[deprecated(since = "0.2.1", note = "Use get_bind_address() for runtime-aware binding")]
-pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1:8080";
-
 /// Default localhost constant — re-export from canonical source.
 pub const DEFAULT_LOCALHOST: &str = songbird_types::constants::LOCALHOST;
 
@@ -185,7 +179,6 @@ mod tests {
         assert_eq!(DEFAULT_CONFIG_PATH, "songbird.toml");
         assert_eq!(LOCALHOST_IPV4, "127.0.0.1");
         assert_eq!(DEFAULT_LOCALHOST, "127.0.0.1");
-        assert!(DEFAULT_BIND_ADDRESS.contains(':'));
     }
 
     #[tokio::test]

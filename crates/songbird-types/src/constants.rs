@@ -338,19 +338,8 @@ pub const ENV_STAGING: &str = "staging";
 pub const ENV_PRODUCTION: &str = "production";
 
 // ============================================================================
-// BACKWARD COMPATIBILITY EXPORTS
+// TESTS
 // ============================================================================
-
-/// Backward compatibility module for legacy code
-pub mod legacy {
-    pub use super::*;
-
-    // Additional legacy aliases if needed
-    /// Legacy alias for the development bind address (`127.0.0.1`).
-    pub const DEFAULT_BIND_ADDRESS: &str = super::DEVELOPMENT_BIND_ADDRESS;
-    /// Legacy alias for loopback (`127.0.0.1`).
-    pub const DEFAULT_LOCALHOST: &str = super::LOCALHOST;
-}
 
 #[allow(
     clippy::unwrap_used,

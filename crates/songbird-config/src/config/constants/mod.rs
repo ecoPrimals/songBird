@@ -49,8 +49,6 @@ pub mod network;
 pub mod resources;
 pub mod services;
 
-#[allow(deprecated, reason = "re-exporting deprecated item for backward compatibility")]
-pub use bind_and_ports::DEFAULT_BIND_ADDRESS;
 pub use bind_and_ports::{
     DEFAULT_CONFIG_PATH, DEFAULT_LOCALHOST, LOCALHOST_IPV4, get_bind_address,
     get_common_primal_ports, get_port_range_end, get_port_range_start,
@@ -88,7 +86,6 @@ mod tests {
     fn string_constants_are_documented_non_empty() {
         assert_eq!(super::LOCALHOST_IPV4, "127.0.0.1");
         assert!(!super::DEFAULT_CONFIG_PATH.is_empty());
-        assert!(!super::DEFAULT_BIND_ADDRESS.is_empty());
     }
 
     #[test]
