@@ -26,6 +26,7 @@ mod enrollment;
 pub(crate) mod enrollment_crypto;
 pub(crate) mod gate_enrollment;
 mod health_probing;
+mod intergate_validation;
 mod json;
 mod mesh_helpers;
 pub mod persistence;

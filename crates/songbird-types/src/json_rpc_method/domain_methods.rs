@@ -241,6 +241,13 @@ pub enum MeshMethod {
     /// family seed. The zero-operator enrollment endpoint.
     GateEnroll,
     PruneStale,
+    /// `mesh.connectivity_check` — active E2E validation across gate boundaries.
+    /// Sends bidirectional JSON-RPC probes and reports per-peer reachability with
+    /// riboCipher acceptance, cross-gate path status, and round-trip latency.
+    ConnectivityCheck,
+    /// `mesh.throughput` — sustained TCP streaming test measuring actual transfer
+    /// capacity between this node and a target peer. Returns MB/s achieved.
+    Throughput,
 }
 
 /// `punch.*`

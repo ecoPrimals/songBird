@@ -367,6 +367,10 @@ async fn dispatch_covers_remaining_json_rpc_arms() {
     h.handle("mesh.topology", json!({})).await.ok();
     h.handle("mesh.health_check", json!({})).await.ok();
     h.handle("mesh.auto_discover", json!({})).await.ok();
+    h.handle("mesh.connectivity_check", json!({})).await.ok();
+    let tp_err =
+        h.handle("mesh.throughput", json!({})).await.expect_err("throughput needs target_address");
+    assert!(tp_err.contains("target_address"), "unexpected: {tp_err}");
 
     let enroll_result = h
         .handle(

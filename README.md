@@ -27,7 +27,7 @@ Songbird is one third of **Tower Atomic** (bearDog + songBird + skunkBat) — th
 | Line Coverage | **73.41%** (`llvm-cov --workspace --lib`, Apr 27 2026; target 90%; Wave 53: +74 tests across pure-logic modules) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all dispatch handlers |
-| JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (58+ methods, 34 domain sub-enums including `Btsp`, `Lifecycle` and `Inference`) — zero string matching in dispatch; `birdsong.schema` introspection; `normalize_json_rpc_method_name()` absorbs `discovery.find_by_capability`, `net.discovery.find_by_capability`, `model.*`, `ai.*` aliases; Wave 60: `mesh.discover_remotes`, `mesh.mirror`, `mesh.publish`; Wave 70: `mesh.probe_latency`; Wave 74: `ipc.relay_stats`; Wave 75: `mesh.capabilities_announce` |
+| JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (60+ methods, 34 domain sub-enums including `Btsp`, `Lifecycle` and `Inference`) — zero string matching in dispatch; `birdsong.schema` introspection; `normalize_json_rpc_method_name()` absorbs `discovery.find_by_capability`, `net.discovery.find_by_capability`, `model.*`, `ai.*` aliases; Wave 60: `mesh.discover_remotes`, `mesh.mirror`, `mesh.publish`; Wave 70: `mesh.probe_latency`; Wave 74: `ipc.relay_stats`; Wave 75: `mesh.capabilities_announce`; Wave 155n: `mesh.connectivity_check`, `mesh.throughput` |
 | Clippy Pedantic | All 31 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets`; Jul 21 2026 verified); **Windows cross-compile zero warnings** (`x86_64-pc-windows-gnu`) |
 | Build | Clean (zero errors, zero warnings; cross-platform verified) |
 | Formatting | Clean (`cargo fmt --check`; Jul 21 verified) |
@@ -181,7 +181,7 @@ mesh.peers           → List reachable peers (direct, relay, onion, LAN)
 mesh.status          → Mesh topology, reachable count, path types
 ```
 
-Additional methods: `mesh.find_path` (best route to peer), `mesh.health_check` (probe peer connections), `mesh.auto_discover` (scan for new peers).
+Additional methods: `mesh.find_path` (best route to peer), `mesh.health_check` (probe peer connections), `mesh.auto_discover` (scan for new peers), `mesh.connectivity_check` (active E2E inter-gate validation with riboCipher acceptance), `mesh.throughput` (sustained bandwidth test — target >800 MB/s on 10G), `mesh.probe_latency` (RTT measurement).
 
 See [`specs/SOVEREIGN_BEACON_MESH_SPECIFICATION.md`](specs/SOVEREIGN_BEACON_MESH_SPECIFICATION.md) for the full protocol specification.
 
