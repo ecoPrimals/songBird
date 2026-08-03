@@ -13,12 +13,12 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 14,835+ total (677 in universal-ipc; integration suites) |
+| **Tests** | 14,840+ total (685 in universal-ipc; integration suites) |
 | **Line Coverage** | **73.41%** measured (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | **Edition** | Rust 2024 |
-| **Build** | Zero errors, zero warnings, all 31 crates compile clean (~10s incremental); Windows cross-compile (`x86_64-pc-windows-gnu`) zero warnings (July 29, 2026) |
-| **Clippy Pedantic** | 31/31 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, July 22 verified); `doc_markdown` + `uninlined_format_args` now enforced (removed from allows) |
-| **Format** | Clean (`cargo fmt --check` passes; July 22 verified) |
+| **Build** | Zero errors, zero warnings, all 31 crates compile clean (~10s incremental); Windows cross-compile (`x86_64-pc-windows-gnu`) zero warnings (Aug 3, 2026) |
+| **Clippy Pedantic** | 31/31 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Aug 3 verified) |
+| **Format** | Clean (`cargo fmt --check` passes; Aug 3 verified) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
 | **Files >800 lines** | **0** — all code below 800L. Wave 155i: `service_tests.rs` (1,018→5 modules), `mesh_handler/tests.rs` (998→5 modules). Largest: drawbridge.rs 782L. |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 31 crates |
