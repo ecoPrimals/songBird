@@ -18,10 +18,12 @@ pub const GIS_BONDS: &[(&str, &str)] = &[
     ("osm", "https://tile.openstreetmap.org"),
     ("overpass", "https://overpass-api.de"),
     ("fema", "https://hazards.fema.gov"),
+    ("arcgis", "https://services.arcgis.com"),
     ("arcgis1", "https://services1.arcgis.com"),
     ("arcgis2", "https://services2.arcgis.com"),
     ("nominatim", "https://nominatim.openstreetmap.org"),
     ("usgs", "https://epqs.nationalmap.gov"),
+    ("usgs_eq", "https://earthquake.usgs.gov"),
     ("nrcs", "https://sdmdataaccess.sc.egov.usda.gov"),
     ("michigan", "https://gisagocss.state.mi.us"),
     ("mcgi", "https://gisp.mcgi.state.mi.us"),
@@ -52,10 +54,12 @@ pub const ALL_BONDS: &[(&str, &str)] = &[
     ("osm", "https://tile.openstreetmap.org"),
     ("overpass", "https://overpass-api.de"),
     ("fema", "https://hazards.fema.gov"),
+    ("arcgis", "https://services.arcgis.com"),
     ("arcgis1", "https://services1.arcgis.com"),
     ("arcgis2", "https://services2.arcgis.com"),
     ("nominatim", "https://nominatim.openstreetmap.org"),
     ("usgs", "https://epqs.nationalmap.gov"),
+    ("usgs_eq", "https://earthquake.usgs.gov"),
     ("nrcs", "https://sdmdataaccess.sc.egov.usda.gov"),
     ("michigan", "https://gisagocss.state.mi.us"),
     ("mcgi", "https://gisp.mcgi.state.mi.us"),
@@ -97,9 +101,8 @@ mod tests {
     fn format_all_bonds_allowlist() {
         let value = format_allowlist(ALL_BONDS);
         assert_eq!(value.matches(',').count(), ALL_BONDS.len() - 1);
-        // ALL_BONDS = GIS(11) + Science(6) + tideGlass unique(3, excluding "geo" which
-        // is served by the existing "ncbi" E-utilities endpoint)
-        assert_eq!(ALL_BONDS.len(), 20);
+        // ALL_BONDS = GIS(13) + Science(6) + tideGlass unique(3)
+        assert_eq!(ALL_BONDS.len(), 22);
     }
 
     #[test]
