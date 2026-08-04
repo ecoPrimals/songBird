@@ -31,7 +31,7 @@ let stream = ipc::connect("security").await?;
 
 - ✅ **Platform-Agnostic**: Same API on all platforms
 - ✅ **Unix Sockets**: Linux, macOS, BSD (implemented)
-- ✅ **Named Pipes**: Windows (TODO)
+- ✅ **Named Pipes**: Windows (implemented + TCP fallback)
 - ✅ **TCP Fallback**: For platforms without native IPC
 - ✅ **Service Discovery**: Find services by capability
 - ✅ **Type-Safe**: Rust type system ensures correctness
@@ -127,7 +127,7 @@ let all_services = ipc::list_services().await;
 | Linux | Unix sockets | ✅ Implemented |
 | macOS | Unix sockets | ✅ Implemented |
 | BSD | Unix sockets | ✅ Implemented |
-| Windows | Named pipes | 🚧 TODO |
+| Windows | Named pipes + TCP fallback | ✅ Implemented (Wave 155b/155i) |
 | Others | TCP localhost | ✅ Fallback |
 
 ## Examples

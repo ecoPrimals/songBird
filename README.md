@@ -28,9 +28,9 @@ Songbird is one third of **Tower Atomic** (bearDog + songBird + skunkBat) — th
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all dispatch handlers |
 | JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (60+ methods, 34 domain sub-enums including `Btsp`, `Lifecycle` and `Inference`) — zero string matching in dispatch; `birdsong.schema` introspection; `normalize_json_rpc_method_name()` absorbs `discovery.find_by_capability`, `net.discovery.find_by_capability`, `model.*`, `ai.*` aliases; Wave 60: `mesh.discover_remotes`, `mesh.mirror`, `mesh.publish`; Wave 70: `mesh.probe_latency`; Wave 74: `ipc.relay_stats`; Wave 75: `mesh.capabilities_announce`; Wave 155n: `mesh.connectivity_check`, `mesh.throughput` |
-| Clippy Pedantic | All 31 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets`; Jul 21 2026 verified); **Windows cross-compile zero warnings** (`x86_64-pc-windows-gnu`) |
+| Clippy Pedantic | All 31 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets`; Aug 4 2026 verified); **Windows cross-compile zero warnings** (`x86_64-pc-windows-gnu`) |
 | Build | Clean (zero errors, zero warnings; cross-platform verified) |
-| Formatting | Clean (`cargo fmt --check`; Jul 21 verified) |
+| Formatting | Clean (`cargo fmt --check`; Aug 4 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
 | Files >800 lines | **0** (max 782L) — Wave 155i: `service_tests.rs` (1,018→5 focused modules), `mesh_handler/tests.rs` (998→5 focused modules). Largest: drawbridge.rs 782L. Previous: Wave 151b: `mesh_handler/mod.rs` (795L). Wave 152: `security.rs` (761→mod tree). Wave 150t: `mesh_handler/mod.rs` (841→746L); Wave 149b: `drawbridge.rs` (1,019→578L) |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
