@@ -92,6 +92,7 @@ pub mod discovery;
 pub mod federated_capability_adapter;
 pub mod jsonrpc_client;
 pub mod load_balancer;
+pub mod protocol_negotiation;
 pub mod sovereignty;
 pub mod tarpc_client;
 pub mod tarpc_types;
@@ -128,6 +129,12 @@ pub use types::DiscoveredCapability;
 // Re-export JSON-RPC clients for protocol-agnostic communication
 pub use jsonrpc_client::JsonRpcClient;
 pub use unix_rpc_client::UnixRpcClient; // Pure Rust Unix socket RPC!
+
+// Re-export G65 protocol negotiation for primal-to-primal connection setup (Wave 156p)
+pub use protocol_negotiation::{
+    IpcProtocol, NegotiationError, NegotiationRequest, NegotiationResponse,
+    negotiate_client as negotiate_protocol, negotiate_server_from_line, select_protocol,
+};
 
 // Re-export tarpc types and client for high-performance primal-to-primal RPC (v3.12.0)
 pub use tarpc_client::TarpcClient;

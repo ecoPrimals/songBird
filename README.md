@@ -1,10 +1,10 @@
 # Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v0.2.1-wave156h  
+**Version**: v0.2.1-wave156p  
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: August 5, 2026
+**Last Updated**: August 6, 2026
 
 Songbird is the universal network orchestrator and **inner membrane port solver** for the ecoPrimals ecosystem. It manages service discovery, connection management, inter-primal communication across multiple protocols, and drawbridge capability→port resolution for production routing. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
@@ -82,7 +82,7 @@ Security Provider (capability discovery: security.sock / SECURITY_PROVIDER_SOCKE
 6. **Safe Rust** - `#![forbid(unsafe_code)]` everywhere
 7. **Event-Driven** - Zero polling anti-patterns (`tokio::sync::Notify`)
 8. **Concurrent Testing** - Injectable `_with` env readers for fully concurrent tests
-9. **JSON-RPC + tarpc First** - Dual-protocol: JSON-RPC on `.sock` (discovery/diagnostics), tarpc on `.tarpc.sock` (high-frequency binary RPC)
+9. **JSON-RPC + tarpc First** - Dual-protocol: JSON-RPC on `.sock` (discovery/diagnostics), tarpc on `.tarpc.sock` (high-frequency binary RPC). **G65 Protocol Negotiation**: primary UDS auto-detects `PROTOCOLS:` request and negotiates tarpc or jsonrpc at connection time (Phase 3 cephalization)
 10. **Canonical Naming** - `normalize_json_rpc_method_name()` absorbs all ecosystem aliases to canonical `domain.verb`
 
 ## Quick Start

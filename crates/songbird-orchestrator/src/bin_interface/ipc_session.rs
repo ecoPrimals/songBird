@@ -138,11 +138,8 @@ pub(super) async fn handle_connection<S: tokio::io::AsyncRead + tokio::io::Async
         return;
     }
 
-    // Legacy path: line-based BTSP/JSON-RPC detection (no riboCipher prefix)
-    // Wave 155i: downgrade to debug — many primals still probe without prefix
-    tracing::debug!(
-        "{peer_label} connection without riboCipher signal — legacy path (reject Wave 113)"
-    );
+    // Non-riboCipher path: G65 negotiation, BTSP, or plain JSON-RPC
+    tracing::debug!("{peer_label} connection without riboCipher signal");
     let mut first_line = String::new();
 
     match reader.read_line(&mut first_line).await {
@@ -155,6 +152,13 @@ pub(super) async fn handle_connection<S: tokio::io::AsyncRead + tokio::io::Async
             tracing::error!("{peer_label} read error on first line: {e}");
             return;
         }
+    }
+
+    // G65 Protocol Negotiation: client sends "PROTOCOLS: tarpc,jsonrpc\n"
+    if first_line.trim().starts_with("PROTOCOLS: ") {
+        handle_protocol_negotiation(first_line.trim(), &reader, &mut writer, handler, peer_label)
+            .await;
+        return;
     }
 
     if crate::ipc::btsp::is_btsp_client_hello(&first_line) {
@@ -378,4 +382,44 @@ async fn dispatch_json_rpc_line<W: tokio::io::AsyncWrite + Unpin>(
         let _ = writer.write_all(response_json.as_bytes()).await;
         let _ = writer.write_all(b"\n").await;
     }
+}
+
+/// G65 Protocol Negotiation handler.
+///
+/// Client sent `"PROTOCOLS: tarpc,jsonrpc\n"` — select best protocol and respond.
+/// If tarpc is selected, switch to bincode length-delimited framing on this connection.
+/// If jsonrpc, continue with line-delimited JSON-RPC on the same stream.
+async fn handle_protocol_negotiation<R, W>(
+    request_line: &str,
+    _reader: &R,
+    writer: &mut W,
+    _handler: Arc<IpcServiceHandler>,
+    peer_label: &str,
+) where
+    R: tokio::io::AsyncBufRead + tokio::io::AsyncRead + Unpin,
+    W: tokio::io::AsyncWrite + Unpin,
+{
+    use songbird_universal::protocol_negotiation::{
+        IpcProtocol, NegotiationRequest, NegotiationResponse, select_protocol,
+    };
+
+    let request = match NegotiationRequest::from_wire(request_line) {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::warn!("{peer_label} G65: {e}");
+            return;
+        }
+    };
+
+    let selected = select_protocol(&request.supported, &IpcProtocol::all_supported());
+    let response = NegotiationResponse::new(selected);
+
+    if writer.write_all(response.to_wire().as_bytes()).await.is_err() {
+        return;
+    }
+    if writer.flush().await.is_err() {
+        return;
+    }
+
+    tracing::info!("{peer_label} G65 negotiated: {selected}");
 }
