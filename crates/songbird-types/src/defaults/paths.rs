@@ -269,6 +269,17 @@ pub fn primary_ipc_socket_path() -> PathBuf {
     candidates.iter().find(|p| p.exists()).cloned().unwrap_or_else(|| candidates[0].clone())
 }
 
+/// tarpc UDS socket path (G64 cephalization dual-socket pattern).
+///
+/// Lives alongside the JSON-RPC socket: `{socket_dir}/songbird.tarpc.sock`.
+/// JSON-RPC on `.sock` handles discovery/diagnostics; tarpc on `.tarpc.sock`
+/// carries high-frequency binary RPC for intra-gate primal-to-primal calls.
+#[must_use]
+pub fn tarpc_uds_socket_path() -> PathBuf {
+    let dir = biomeos_socket_dir_tmp();
+    dir.join(format!("{}.tarpc.sock", crate::primal_names::SELF_NAME))
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, reason = "test assertions")]
 #[allow(deprecated, reason = "tests intentionally verify deprecated constants for backward-compat")]

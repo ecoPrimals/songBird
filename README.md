@@ -1,10 +1,10 @@
 # Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v0.2.1-wave156d  
+**Version**: v0.2.1-wave156h  
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: August 4, 2026
+**Last Updated**: August 5, 2026
 
 Songbird is the universal network orchestrator and **inner membrane port solver** for the ecoPrimals ecosystem. It manages service discovery, connection management, inter-primal communication across multiple protocols, and drawbridge capability→port resolution for production routing. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
@@ -28,7 +28,7 @@ Songbird is one third of **Tower Atomic** (bearDog + songBird + skunkBat) — th
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all dispatch handlers |
 | JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (60+ methods, 34 domain sub-enums including `Btsp`, `Lifecycle` and `Inference`) — zero string matching in dispatch; `birdsong.schema` introspection; `normalize_json_rpc_method_name()` absorbs `discovery.find_by_capability`, `net.discovery.find_by_capability`, `model.*`, `ai.*` aliases; Wave 60: `mesh.discover_remotes`, `mesh.mirror`, `mesh.publish`; Wave 70: `mesh.probe_latency`; Wave 74: `ipc.relay_stats`; Wave 75: `mesh.capabilities_announce`; Wave 155n: `mesh.connectivity_check`, `mesh.throughput` |
-| Clippy Pedantic | All 31 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets`; Aug 4 2026 verified); **Windows cross-compile zero warnings** (`x86_64-pc-windows-gnu`) |
+| Clippy Pedantic | All 31 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets`; Aug 5 2026 verified); **Windows cross-compile zero warnings** (`x86_64-pc-windows-gnu`) |
 | Build | Clean (zero errors, zero warnings; cross-platform verified) |
 | Formatting | Clean (`cargo fmt --check`; Aug 4 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
@@ -82,7 +82,7 @@ Security Provider (capability discovery: security.sock / SECURITY_PROVIDER_SOCKE
 6. **Safe Rust** - `#![forbid(unsafe_code)]` everywhere
 7. **Event-Driven** - Zero polling anti-patterns (`tokio::sync::Notify`)
 8. **Concurrent Testing** - Injectable `_with` env readers for fully concurrent tests
-9. **JSON-RPC + tarpc First** - Primary IPC protocols
+9. **JSON-RPC + tarpc First** - Dual-protocol: JSON-RPC on `.sock` (discovery/diagnostics), tarpc on `.tarpc.sock` (high-frequency binary RPC)
 10. **Canonical Naming** - `normalize_json_rpc_method_name()` absorbs all ecosystem aliases to canonical `domain.verb`
 
 ## Quick Start

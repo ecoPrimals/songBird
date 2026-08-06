@@ -205,10 +205,10 @@ mod tests {
                 let server = server.clone();
                 tokio::spawn(async move {
                     let transport = tarpc::serde_transport::new(
-                        tokio_util::codec::LengthDelimitedCodec::builder()
+                        tarpc::tokio_util::codec::LengthDelimitedCodec::builder()
                             .max_frame_length(16 * 1024 * 1024)
                             .new_framed(stream),
-                        tokio_serde::formats::Bincode::default(),
+                        tarpc::tokio_serde::formats::Bincode::default(),
                     );
                     let channel = tarpc::server::BaseChannel::with_defaults(transport);
                     channel

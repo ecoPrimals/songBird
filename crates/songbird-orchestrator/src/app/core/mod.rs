@@ -597,6 +597,8 @@ impl SongbirdOrchestrator {
     /// Binds on the port from `SONGBIRD_TARPC_PORT` (default 8091). Opt-out by setting
     /// `SONGBIRD_TARPC_ENABLED=false`. JSON-RPC over IPC remains the primary transport;
     /// tarpc provides a low-latency binary hot path for Rust-to-Rust calls.
+    ///
+    /// On Unix, also spawns a UDS tarpc listener at `songbird.tarpc.sock` (G64 dual-socket).
     pub(crate) async fn start_tarpc_server(&self) -> Result<()> {
         let enabled = songbird_process_env::var("SONGBIRD_TARPC_ENABLED")
             .map(|v| songbird_types::error_helpers::parse_bool_relaxed(&v).unwrap_or(true))
@@ -619,6 +621,25 @@ impl SongbirdOrchestrator {
         .await?;
 
         info!("tarpc binary RPC listening on {bind_host}:{port}");
+
+        #[cfg(unix)]
+        {
+            let socket_path = songbird_types::defaults::paths::tarpc_uds_socket_path();
+            let registry = Arc::clone(&self.federated_service_registry);
+            tokio::spawn(async move {
+                if let Err(e) =
+                    crate::rpc::tarpc_server::start_tarpc_uds_server(registry, socket_path.clone())
+                        .await
+                {
+                    tracing::warn!("tarpc UDS server exited: {e}");
+                }
+            });
+            info!(
+                "tarpc UDS listening on {}",
+                songbird_types::defaults::paths::tarpc_uds_socket_path().display()
+            );
+        }
+
         Ok(())
     }
 

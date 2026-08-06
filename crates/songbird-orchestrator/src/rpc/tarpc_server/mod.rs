@@ -191,6 +191,26 @@ pub async fn start_tarpc_server(
     run_tarpc_accept_loop!(addr, server, startup_log).await
 }
 
+/// Start tarpc UDS server on a Unix domain socket (G64 cephalization dual-socket pattern).
+///
+/// Binds to `{biomeOS socket dir}/songbird.tarpc.sock` for sub-ms intra-gate binary RPC.
+/// JSON-RPC continues on `songbird.sock`; tarpc lives alongside on `.tarpc.sock`.
+/// # Errors
+///
+/// Returns an error if the socket cannot be bound.
+#[cfg(unix)]
+pub async fn start_tarpc_uds_server(
+    service_registry: Arc<FederatedServiceRegistry>,
+    socket_path: std::path::PathBuf,
+) -> Result<()> {
+    let server = TarpcServerSimple::new(service_registry);
+    let startup_log = format!(
+        "🚀 Starting tarpc UDS server (cephalization dual-socket) on {}",
+        socket_path.display()
+    );
+    run_tarpc_uds_accept_loop!(socket_path, server, startup_log).await
+}
+
 /// tarpc server configuration
 #[derive(Debug, Clone)]
 pub struct TarpcConfig {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-//! Lazy TCP connection and bincode-framed tarpc transport setup.
+//! Lazy TCP and UDS connection with bincode-framed tarpc transport.
 
 use tracing::{debug, info};
 
@@ -25,7 +25,7 @@ impl TarpcClient {
             return Ok(client.clone());
         }
 
-        info!("🔌 Establishing tarpc connection to {}", self.addr);
+        info!("Establishing tarpc connection to {}", self.addr);
         let client = self.connect().await?;
         *conn = Some(client.clone());
 
@@ -42,18 +42,58 @@ impl TarpcClient {
                 SongbirdError::network(format!("Failed to connect to {}: {}", self.addr, e))
             })?;
 
-        debug!("✅ TCP connection established to {}", self.addr);
+        debug!("TCP connection established to {}", self.addr);
 
         let transport = tarpc::serde_transport::new(
-            tokio_util::codec::LengthDelimitedCodec::builder()
+            tarpc::tokio_util::codec::LengthDelimitedCodec::builder()
                 .max_frame_length(16 * 1024 * 1024)
                 .new_framed(stream),
-            tokio_serde::formats::Bincode::default(),
+            tarpc::tokio_serde::formats::Bincode::default(),
         );
 
         let client = SongbirdRpcClient::new(tarpc::client::Config::default(), transport).spawn();
 
-        info!("🚀 tarpc client ready for {}", self.endpoint);
+        info!("tarpc client ready for {}", self.endpoint);
+
+        Ok(client)
+    }
+
+    /// Connect to a tarpc server via Unix domain socket (G64 dual-socket pattern).
+    ///
+    /// Prefer this over TCP for intra-gate calls — eliminates TCP overhead.
+    #[cfg(unix)]
+    pub async fn connect_uds(
+        socket_path: &std::path::Path,
+        timeout: std::time::Duration,
+    ) -> SongbirdResult<SongbirdRpcClient> {
+        debug!("Connecting to tarpc UDS at {}", socket_path.display());
+
+        let stream = tokio::time::timeout(timeout, tokio::net::UnixStream::connect(socket_path))
+            .await
+            .map_err(|_| {
+                SongbirdError::network(format!(
+                    "UDS connection timeout to {}",
+                    socket_path.display()
+                ))
+            })?
+            .map_err(|e| {
+                SongbirdError::network(format!(
+                    "Failed to connect UDS {}: {}",
+                    socket_path.display(),
+                    e
+                ))
+            })?;
+
+        let transport = tarpc::serde_transport::new(
+            tarpc::tokio_util::codec::LengthDelimitedCodec::builder()
+                .max_frame_length(16 * 1024 * 1024)
+                .new_framed(stream),
+            tarpc::tokio_serde::formats::Bincode::default(),
+        );
+
+        let client = SongbirdRpcClient::new(tarpc::client::Config::default(), transport).spawn();
+
+        info!("tarpc UDS client ready for {}", socket_path.display());
 
         Ok(client)
     }

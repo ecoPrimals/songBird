@@ -11,12 +11,11 @@
 pub mod tarpc_server;
 
 pub use self::tarpc_server::{
-    TarpcConfig,
-    TarpcServer,
-    TarpcServerSimple, // v3.12.0 - modern Rust, zero unsafe
-    start_tarpc_server,
-    start_tarpc_server_simple, // v3.12.0 - simplified version without Arc<Orchestrator>
+    TarpcConfig, TarpcServer, TarpcServerSimple, start_tarpc_server, start_tarpc_server_simple,
 };
+
+#[cfg(unix)]
+pub use self::tarpc_server::start_tarpc_uds_server;
 
 // Re-export SongbirdRpc from songbird-universal (v3.12.0)
 pub use songbird_universal::tarpc_types::SongbirdRpc;
