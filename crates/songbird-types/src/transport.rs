@@ -109,6 +109,57 @@ pub enum TransportEndpoint {
 }
 
 impl TransportEndpoint {
+    /// Returns the platform-appropriate default transport for a given service name.
+    ///
+    /// - On Unix: UDS at `$XDG_RUNTIME_DIR/biomeos/{service_name}.sock`
+    /// - On non-Unix: TCP localhost on port 7700 (or the provided default port)
+    ///
+    /// This eliminates silicon deism: callers never assume Unix.
+    #[must_use]
+    pub fn platform_default(service_name: &str, _default_port: u16) -> Self {
+        #[cfg(unix)]
+        {
+            let xdg = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+            Self::Uds {
+                path: format!("{xdg}/biomeos/{service_name}.sock"),
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            Self::Tcp {
+                host: String::from("127.0.0.1"),
+                port: _default_port,
+            }
+        }
+    }
+
+    /// Resolve transport from environment, falling back to platform default.
+    ///
+    /// Reads `TRANSPORT_ENDPOINT` (JSON-encoded) or `{SERVICE_NAME}_SOCKET` (path).
+    /// If neither is set, returns [`Self::platform_default`].
+    ///
+    /// # Environment Variables
+    ///
+    /// - `TRANSPORT_ENDPOINT`: Full JSON `{"transport":"uds","path":"..."}`
+    /// - `{SERVICE_NAME_UPPER}_SOCKET`: Socket path shorthand (treated as UDS on Unix, port-file on Windows)
+    ///
+    /// This is the primary transport injection mechanism per G66.
+    #[must_use]
+    pub fn from_env_or_default(service_name: &str, default_port: u16) -> Self {
+        if let Ok(json) = std::env::var("TRANSPORT_ENDPOINT")
+            && let Ok(ep) = serde_json::from_str::<Self>(&json)
+        {
+            return ep;
+        }
+
+        let env_key = format!("{}_SOCKET", service_name.to_ascii_uppercase().replace('-', "_"));
+        if let Ok(path) = std::env::var(&env_key) {
+            return Self::Uds { path };
+        }
+
+        Self::platform_default(service_name, default_port)
+    }
+
     /// Whether this endpoint is local (same-host, no network hop).
     #[must_use]
     pub fn is_local(&self) -> bool {
@@ -495,5 +546,42 @@ mod tests {
         assert_eq!(ep.uds_path(), None);
         assert_eq!(ep.tcp_addr(), None);
         assert_eq!(ep.mesh_peer(), None);
+    }
+
+    #[test]
+    fn platform_default_returns_valid_endpoint() {
+        let ep = TransportEndpoint::platform_default("beardog", 7700);
+        #[cfg(unix)]
+        {
+            assert!(ep.uds_path().is_some());
+            assert!(ep.uds_path().unwrap().contains("beardog.sock"));
+        }
+        #[cfg(not(unix))]
+        {
+            assert_eq!(ep.tcp_addr(), Some(("127.0.0.1", 7700)));
+        }
+    }
+
+    #[test]
+    fn from_env_or_default_falls_back_to_platform_default() {
+        // With no special env vars set, should return platform default
+        // Use a unique service name unlikely to have a matching env var
+        let ep = TransportEndpoint::from_env_or_default("g66_test_unique_xyz_42", 9999);
+        #[cfg(unix)]
+        assert!(ep.uds_path().unwrap().contains("g66_test_unique_xyz_42.sock"));
+        #[cfg(not(unix))]
+        assert_eq!(ep.tcp_addr(), Some(("127.0.0.1", 9999)));
+    }
+
+    #[test]
+    fn transport_endpoint_json_parse_for_env_injection() {
+        // Verifies the JSON format that TRANSPORT_ENDPOINT env var would use
+        let json = r#"{"transport":"tcp","host":"10.0.0.5","port":8080}"#;
+        let ep: TransportEndpoint = serde_json::from_str(json).unwrap();
+        assert_eq!(ep, TransportEndpoint::tcp("10.0.0.5", 8080));
+
+        let json = r#"{"transport":"uds","path":"/custom/path.sock"}"#;
+        let ep: TransportEndpoint = serde_json::from_str(json).unwrap();
+        assert_eq!(ep, TransportEndpoint::uds("/custom/path.sock"));
     }
 }

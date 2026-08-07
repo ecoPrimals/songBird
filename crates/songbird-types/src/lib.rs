@@ -86,9 +86,10 @@ pub use traits::{
 // Re-export all canonical constants
 pub use constants::*;
 
-// Canonical transport endpoint (ecosystem standard for ipc.resolve/capability.resolve)
+// G66 Transport Abstraction (ecosystem standard — silicon-agnostic IPC)
 pub use ipc_stream::IpcStream;
 pub use transport::TransportEndpoint;
+pub use transport_listener::TransportListener;
 
 // Module declarations
 pub mod adapters;
@@ -105,7 +106,8 @@ pub mod primal;
 pub mod response;
 pub mod service;
 pub mod traits;
-pub mod transport; // Canonical transport endpoint type (sourdough standard)
+pub mod transport; // G66: TransportEndpoint (platform-neutral where-to-connect)
+pub mod transport_listener; // G66: TransportListener (platform-abstracted accept loop)
 pub mod trust;
 pub mod trust_tests; // Progressive trust model types
 pub mod types;
