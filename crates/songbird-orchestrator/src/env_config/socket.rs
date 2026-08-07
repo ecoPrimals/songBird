@@ -146,7 +146,7 @@ pub fn create_domain_socket_symlink(bound_socket: &std::path::Path) {
     let domain_name = socket_name();
     let domain_path = parent.join(&domain_name);
     let _ = std::fs::remove_file(&domain_path);
-    if let Err(e) = std::os::unix::fs::symlink(bound_socket, &domain_path) {
+    if let Err(e) = songbird_types::platform_link(bound_socket, &domain_path) {
         tracing::warn!(
             domain = %domain_path.display(),
             bound = %bound_socket.display(),

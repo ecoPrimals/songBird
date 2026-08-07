@@ -179,14 +179,8 @@ impl UnixPlatformIPC {
                     ))
                 })?;
 
-                // Restrict socket permissions to owner-only (0o600)
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    let perms = std::fs::Permissions::from_mode(0o600);
-                    if let Err(e) = std::fs::set_permissions(path, perms) {
-                        tracing::warn!(error = %e, "Failed to chmod socket to 0600");
-                    }
+                if let Err(e) = songbird_types::PlatformAccess::OwnerReadWrite.apply(path) {
+                    tracing::warn!(error = %e, "Failed to set socket permissions");
                 }
 
                 info!("Unix listener created: {}", path.display());

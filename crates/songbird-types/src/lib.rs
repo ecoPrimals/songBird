@@ -91,6 +91,9 @@ pub use ipc_stream::IpcStream;
 pub use transport::TransportEndpoint;
 pub use transport_listener::TransportListener;
 
+// G68 Platform Substrate (eliminate silicon deism beyond transport)
+pub use platform_substrate::{PlatformAccess, is_symlink, is_unix_socket, platform_link};
+
 // Module declarations
 pub mod adapters;
 pub mod config;
@@ -106,6 +109,7 @@ pub mod primal;
 pub mod response;
 pub mod service;
 pub mod traits;
+pub mod platform_substrate; // G68: PlatformAccess, platform_link — eliminate silicon deism
 pub mod transport; // G66: TransportEndpoint (platform-neutral where-to-connect)
 pub mod transport_listener; // G66: TransportListener (platform-abstracted accept loop)
 pub mod trust;

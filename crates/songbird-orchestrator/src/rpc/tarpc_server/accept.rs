@@ -91,8 +91,7 @@ macro_rules! run_tarpc_uds_accept_loop {
             let listener = tokio::net::UnixListener::bind(&path)?;
             #[cfg(unix)]
             {
-                use std::os::unix::fs::PermissionsExt;
-                let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o660));
+                let _ = songbird_types::PlatformAccess::GroupReadWrite.apply(&path);
             }
             info!("✅ tarpc UDS server listening on {}", path.display());
 

@@ -124,18 +124,11 @@ impl UnixSocketServer {
         let listener = UnixListener::bind(&*self.socket_path)
             .context(format!("Failed to bind Unix socket: {}", self.socket_path.display()))?;
 
-        // Restrict socket permissions to owner-only (0o600).
-        // Prevents other users on multi-user systems from connecting.
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let perms = std::fs::Permissions::from_mode(0o600);
-            if let Err(e) = std::fs::set_permissions(&*self.socket_path, perms) {
-                tracing::warn!(
-                    error = %e,
-                    "Failed to set socket permissions to 0600 — other users may be able to connect"
-                );
-            }
+        if let Err(e) = songbird_types::PlatformAccess::OwnerReadWrite.apply(&self.socket_path) {
+            tracing::warn!(
+                error = %e,
+                "Failed to set socket permissions — other users may be able to connect"
+            );
         }
 
         crate::env_config::create_domain_socket_symlink(&self.socket_path);

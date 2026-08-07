@@ -183,15 +183,7 @@ pub(crate) async fn hot_swap_deployment(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Binary write failed: {e}")))?;
 
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        if let Ok(meta) = tokio::fs::metadata(&binary_path).await {
-            let mut perms = meta.permissions();
-            perms.set_mode(0o755);
-            let _ = tokio::fs::set_permissions(&binary_path, perms).await;
-        }
-    }
+    let _ = songbird_types::PlatformAccess::PublicExecute.apply(binary_path.as_ref());
 
     match start_service(&deployment.binary_path, &deployment.env_vars).await {
         Ok(pid) => {

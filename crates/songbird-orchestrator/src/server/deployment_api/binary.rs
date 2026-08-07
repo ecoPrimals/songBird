@@ -131,18 +131,9 @@ pub async fn deploy_binary_bytes(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Binary write failed: {e}")))?;
 
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(&binary_path)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Metadata read failed: {e}")))?
-            .permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(&binary_path, perms)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Chmod failed: {e}")))?;
-    }
+    songbird_types::PlatformAccess::PublicExecute
+        .apply(binary_path.as_ref())
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Chmod failed: {e}")))?;
 
     info!("✅ Binary deployed to: {}", binary_path.display());
 

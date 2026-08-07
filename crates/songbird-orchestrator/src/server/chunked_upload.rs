@@ -243,19 +243,9 @@ pub async fn finalize_chunked_upload(
 
     info!("✓ Binary assembled at {}", binary_path);
 
-    // Make executable
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(&binary_path)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Metadata read failed: {e}")))?
-            .permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(&binary_path, perms)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Chmod failed: {e}")))?;
-    }
+    songbird_types::PlatformAccess::PublicExecute
+        .apply(binary_path.as_ref())
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Chmod failed: {e}")))?;
 
     // Clean up chunks
     if let Err(e) = fs::remove_dir_all(&negotiation.temp_dir).await {
