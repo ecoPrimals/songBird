@@ -31,6 +31,9 @@ pub async fn start_http_server(
     bind_addr: SocketAddr,
     shared_ipc_handler: Option<Arc<songbird_universal_ipc::service::IpcServiceHandler>>,
 ) -> Result<u16> {
+    // Retain a reference for direct riboCipher dispatch on the federation port.
+    let federation_ipc_handler = shared_ipc_handler.as_ref().map(Arc::clone);
+
     // Build the app with all API routes
     let app = build_router(
         Arc::clone(&federation_state),
@@ -57,7 +60,7 @@ pub async fn start_http_server(
 
     if tls_enabled {
         info!("🔐 TLS enabled - configuring HTTPS server (fail-secure by default)");
-        match start_https_server(app.clone(), listener, actual_addr).await {
+        match start_https_server(app.clone(), federation_ipc_handler, listener, actual_addr).await {
             Ok(()) => {
                 info!("✅ HTTPS server started successfully");
             }
@@ -233,6 +236,7 @@ async fn get_local_ip() -> Result<String> {
 #[expect(clippy::too_many_lines, reason = "HTTPS server startup with TLS and route registration")]
 async fn start_https_server(
     app: Router,
+    federation_ipc_handler: Option<Arc<songbird_universal_ipc::service::IpcServiceHandler>>,
     listener: tokio::net::TcpListener,
     addr: SocketAddr,
 ) -> Result<()> {
@@ -337,6 +341,7 @@ async fn start_https_server(
 
             let tls_acceptor = Arc::clone(&tls_acceptor);
             let app = app.clone();
+            let ipc_handler = federation_ipc_handler.clone();
 
             // Handle each connection in its own task
             tokio::spawn(async move {
@@ -370,7 +375,6 @@ async fn start_https_server(
                         remote_addr
                     );
 
-                    // Consume signal + version bytes, then serve as NDJSON JSON-RPC
                     let (reader, mut writer) = tcp_stream.into_split();
                     let mut reader = BufReader::new(reader);
 
@@ -394,7 +398,7 @@ async fn start_https_server(
                         return;
                     }
 
-                    // After signal prefix: NDJSON JSON-RPC session (federation)
+                    // Tier 2: full IpcServiceHandler dispatch for mito-framed federation
                     let mut line = String::new();
                     while let Ok(n) = reader.read_line(&mut line).await {
                         if n == 0 {
@@ -409,12 +413,17 @@ async fn start_https_server(
                             Ok(req) => {
                                 let method = req["method"].as_str().unwrap_or("").to_string();
                                 let id = req["id"].clone();
+                                let params = req.get("params").cloned()
+                                    .unwrap_or(serde_json::Value::Null);
                                 tracing::debug!(
                                     "riboCipher {tier} RPC from {}: {}",
                                     remote_addr,
                                     method
                                 );
-                                dispatch_federation_rpc(&method, id, tier)
+                                dispatch_ribocipher_rpc(
+                                    &method, params, id, tier,
+                                    ipc_handler.as_deref(),
+                                ).await
                             }
                             Err(e) => serde_json::json!({
                                 "jsonrpc": "2.0",
@@ -502,11 +511,22 @@ async fn start_https_server(
 
 /// Dispatch a JSON-RPC method received over a riboCipher-signalled federation connection.
 ///
-/// Handles health/liveness probes natively; other methods get a generic ack.
-fn dispatch_federation_rpc(method: &str, id: serde_json::Value, tier: &str) -> serde_json::Value {
+/// Routes through the full `IpcServiceHandler` when available (Tier 2 acceptance).
+/// Falls back to inline health/capabilities responses when no handler is wired
+/// (graceful degradation for early bootstrap).
+async fn dispatch_ribocipher_rpc(
+    method: &str,
+    params: serde_json::Value,
+    id: serde_json::Value,
+    tier: &str,
+    handler: Option<&songbird_universal_ipc::service::IpcServiceHandler>,
+) -> serde_json::Value {
+    use songbird_universal_ipc::tower_atomic::JsonRpcHandler;
+
+    // Fast-path intrinsics that must always work (even without handler)
     match method {
         "health.liveness" | "health" | "ping" => {
-            serde_json::json!({
+            return serde_json::json!({
                 "jsonrpc": "2.0",
                 "result": {
                     "status": "healthy",
@@ -519,10 +539,10 @@ fn dispatch_federation_rpc(method: &str, id: serde_json::Value, tier: &str) -> s
                         .unwrap_or(0),
                 },
                 "id": id
-            })
+            });
         }
         "system.capabilities" | "capabilities" => {
-            serde_json::json!({
+            return serde_json::json!({
                 "jsonrpc": "2.0",
                 "result": {
                     "capabilities": [
@@ -530,20 +550,41 @@ fn dispatch_federation_rpc(method: &str, id: serde_json::Value, tier: &str) -> s
                         "federation.peer",
                         "health.liveness",
                         "birdsong.broadcast",
+                        "capability.call",
+                        "capability.resolve",
                     ],
                     "primal": songbird_types::primal_names::SELF_NAME,
                     "tier": tier,
                 },
                 "id": id
-            })
+            });
         }
-        _ => {
-            serde_json::json!({
+        _ => {}
+    }
+
+    // Tier 2: full dispatch through IpcServiceHandler
+    if let Some(h) = handler {
+        match h.handle(method, params).await {
+            Ok(result) => serde_json::json!({
                 "jsonrpc": "2.0",
-                "result": {"status": "ok", "tier": tier, "method": method},
+                "result": result,
                 "id": id
-            })
+            }),
+            Err(msg) => serde_json::json!({
+                "jsonrpc": "2.0",
+                "error": {"code": -32603, "message": msg},
+                "id": id
+            }),
         }
+    } else {
+        tracing::warn!(
+            "riboCipher {tier}: no IpcServiceHandler wired — cannot dispatch '{method}'"
+        );
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "error": {"code": -32601, "message": format!("Method not available: {method}")},
+            "id": id
+        })
     }
 }
 
@@ -690,9 +731,16 @@ pub async fn start_tarpc_server(
 mod tests {
     use super::*;
 
-    #[test]
-    fn dispatch_health_liveness_returns_healthy() {
-        let resp = dispatch_federation_rpc("health.liveness", serde_json::json!(1), "clear");
+    #[tokio::test]
+    async fn dispatch_health_liveness_returns_healthy() {
+        let resp = dispatch_ribocipher_rpc(
+            "health.liveness",
+            serde_json::Value::Null,
+            serde_json::json!(1),
+            "clear",
+            None,
+        )
+        .await;
         assert_eq!(resp["jsonrpc"], "2.0");
         assert_eq!(resp["id"], 1);
         assert_eq!(resp["result"]["status"], "healthy");
@@ -701,35 +749,106 @@ mod tests {
         assert!(resp["result"]["version"].as_str().is_some());
     }
 
-    #[test]
-    fn dispatch_health_alias_returns_healthy() {
-        let resp = dispatch_federation_rpc("health", serde_json::json!("abc"), "mito");
+    #[tokio::test]
+    async fn dispatch_health_alias_returns_healthy() {
+        let resp = dispatch_ribocipher_rpc(
+            "health",
+            serde_json::Value::Null,
+            serde_json::json!("abc"),
+            "mito",
+            None,
+        )
+        .await;
         assert_eq!(resp["result"]["status"], "healthy");
         assert_eq!(resp["result"]["tier"], "mito");
     }
 
-    #[test]
-    fn dispatch_ping_returns_healthy() {
-        let resp = dispatch_federation_rpc("ping", serde_json::json!(42), "clear");
+    #[tokio::test]
+    async fn dispatch_ping_returns_healthy() {
+        let resp = dispatch_ribocipher_rpc(
+            "ping",
+            serde_json::Value::Null,
+            serde_json::json!(42),
+            "clear",
+            None,
+        )
+        .await;
         assert_eq!(resp["result"]["status"], "healthy");
         assert_eq!(resp["id"], 42);
     }
 
-    #[test]
-    fn dispatch_capabilities_returns_list() {
-        let resp = dispatch_federation_rpc("system.capabilities", serde_json::json!(2), "clear");
+    #[tokio::test]
+    async fn dispatch_capabilities_returns_list() {
+        let resp = dispatch_ribocipher_rpc(
+            "system.capabilities",
+            serde_json::Value::Null,
+            serde_json::json!(2),
+            "clear",
+            None,
+        )
+        .await;
         let caps = resp["result"]["capabilities"].as_array().unwrap();
         assert!(caps.iter().any(|c| c == "health.liveness"));
         assert!(caps.iter().any(|c| c == "mesh.relay"));
+        assert!(caps.iter().any(|c| c == "capability.call"));
         assert_eq!(resp["result"]["primal"], "songbird");
     }
 
-    #[test]
-    fn dispatch_unknown_method_returns_generic_ok() {
-        let resp = dispatch_federation_rpc("custom.method", serde_json::json!(99), "nuclear");
-        assert_eq!(resp["result"]["status"], "ok");
-        assert_eq!(resp["result"]["method"], "custom.method");
-        assert_eq!(resp["result"]["tier"], "nuclear");
+    #[tokio::test]
+    async fn dispatch_unknown_method_without_handler_returns_error() {
+        let resp = dispatch_ribocipher_rpc(
+            "custom.method",
+            serde_json::json!({"key": "value"}),
+            serde_json::json!(99),
+            "nuclear",
+            None,
+        )
+        .await;
+        assert_eq!(resp["error"]["code"], -32601);
+        assert!(resp["error"]["message"].as_str().unwrap().contains("custom.method"));
         assert_eq!(resp["id"], 99);
+    }
+
+    #[tokio::test]
+    async fn dispatch_with_handler_routes_ipc_list() {
+        let registry = Arc::new(tokio::sync::RwLock::new(
+            songbird_universal_ipc::registry::ServiceRegistry::new(),
+        ));
+        let handler = songbird_universal_ipc::service::IpcServiceHandler::new(registry);
+        let resp = dispatch_ribocipher_rpc(
+            "ipc.list",
+            serde_json::Value::Null,
+            serde_json::json!(7),
+            "mito",
+            Some(&handler),
+        )
+        .await;
+        assert_eq!(resp["jsonrpc"], "2.0");
+        assert_eq!(resp["id"], 7);
+        assert!(
+            resp["result"].is_object() || resp["result"].is_array(),
+            "expected structured result from ipc.list, got: {}",
+            resp
+        );
+        assert!(resp.get("error").is_none());
+    }
+
+    #[tokio::test]
+    async fn dispatch_mito_tier_health_via_handler() {
+        let registry = Arc::new(tokio::sync::RwLock::new(
+            songbird_universal_ipc::registry::ServiceRegistry::new(),
+        ));
+        let handler = songbird_universal_ipc::service::IpcServiceHandler::new(registry);
+        let resp = dispatch_ribocipher_rpc(
+            "health",
+            serde_json::Value::Null,
+            serde_json::json!(100),
+            "mito",
+            Some(&handler),
+        )
+        .await;
+        assert_eq!(resp["result"]["status"], "healthy");
+        assert_eq!(resp["result"]["tier"], "mito");
+        assert_eq!(resp["id"], 100);
     }
 }
