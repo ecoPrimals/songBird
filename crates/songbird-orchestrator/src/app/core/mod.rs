@@ -60,6 +60,7 @@ pub struct SongbirdOrchestrator {
     pub(crate) shared_ipc_handler: Option<Arc<songbird_universal_ipc::service::IpcServiceHandler>>,
     pub(super) shutdown_signal: tokio::sync::broadcast::Receiver<()>,
     pub(super) shutdown_sender: tokio::sync::broadcast::Sender<()>,
+    pub(crate) transport_registry: Arc<crate::app::transport_registry::TransportRegistry>,
 }
 
 // Implementation of SongbirdOrchestrator
@@ -200,6 +201,7 @@ impl SongbirdOrchestrator {
             broker_registry: None,     // Set in stage_2 when broker starts
             broker_mesh_handler: None, // Set in stage_2 when broker starts
             shared_ipc_handler: None,  // Set in stage_2 before start_ipc_server
+            transport_registry: Arc::new(crate::app::transport_registry::TransportRegistry::new()),
             shutdown_signal,
             shutdown_sender,
         })

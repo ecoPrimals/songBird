@@ -818,9 +818,13 @@ async fn inject_to_swarmvine(_node_id: &str, _primal_id: &str, _capabilities: &[
 /// Discover swarmVine socket via NUCLEUS membrane paths, then biomeOS fallback.
 /// Post-vertebrate: socket may live under /run/membrane/biomeos/ subdirectory.
 #[cfg(unix)]
-fn discover_swarmvine_socket() -> Option<std::path::PathBuf> {
+pub(super) fn discover_swarmvine_socket() -> Option<std::path::PathBuf> {
     let is_swarmvine_sock = |name: &str| -> bool {
-        name.starts_with("swarmvine-") && name.ends_with(".sock") && !name.contains("tarpc")
+        name.starts_with("swarmvine-")
+            && std::path::Path::new(name)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("sock"))
+            && !name.contains("tarpc")
     };
 
     // Vertebrate layout: /run/membrane/biomeos/swarmvine-*.sock
@@ -849,5 +853,10 @@ fn discover_swarmvine_socket() -> Option<std::path::PathBuf> {
     if p.exists() {
         return Some(p);
     }
+    None
+}
+
+#[cfg(not(unix))]
+pub(super) fn discover_swarmvine_socket() -> Option<std::path::PathBuf> {
     None
 }

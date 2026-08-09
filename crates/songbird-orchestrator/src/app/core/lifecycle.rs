@@ -41,6 +41,9 @@ impl SongbirdOrchestrator {
             warn!("Failed to send shutdown signal: {}", e);
         }
 
+        // Gracefully shut down all registered transports
+        self.transport_registry.shutdown_all().await;
+
         // Federation manager doesn't have a stop method, so we'll just log
         info!("✅ Federation manager will stop gracefully");
 

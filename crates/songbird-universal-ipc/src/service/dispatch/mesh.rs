@@ -36,11 +36,11 @@ pub(super) async fn dispatch_mesh(
             handler.mesh_handler.handle_probe_latency(params).await
         }
         JsonRpcMethod::Mesh(MeshMethod::CapabilitiesAnnounce) => {
-            debug!(target: "songbird::delegation", "mesh.capabilities_announce → swarmVine delegation target (fallback: local handler)");
+            dispatch_gossip_delegated(handler, "mesh.capabilities_announce", &params).await;
             handler.mesh_handler.handle_capabilities_announce(params).await
         }
         JsonRpcMethod::Mesh(MeshMethod::CapabilitiesRevoke) => {
-            debug!(target: "songbird::delegation", "mesh.capabilities_revoke → swarmVine delegation target (fallback: local handler)");
+            dispatch_gossip_delegated(handler, "mesh.capabilities_revoke", &params).await;
             handler.mesh_handler.handle_capabilities_revoke(params).await
         }
         JsonRpcMethod::Mesh(MeshMethod::DiscoverRemotes) => {
@@ -67,5 +67,56 @@ pub(super) async fn dispatch_mesh(
             handler.mesh_handler.handle_throughput(params).await
         }
         other => Err(format!("Unknown method: {other}")),
+    }
+}
+
+/// Forward gossip-concern methods to swarmVine when available (fire-and-forget).
+///
+/// Vertebrate evolution (Wave 157d): gossip propagation belongs to swarmVine.
+/// songBird still runs its local handler (for backward compat and fallback),
+/// but also injects the payload into swarmVine's gossip engine when reachable.
+async fn dispatch_gossip_delegated(_handler: &IpcServiceHandler, method: &str, params: &Value) {
+    #[cfg(unix)]
+    {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        use tokio::net::UnixStream;
+
+        let socket = super::super::ipc_registry::discover_swarmvine_socket();
+        let Some(socket_path) = socket else {
+            debug!(target: "songbird::delegation", method, "swarmVine not available — gossip handled locally");
+            return;
+        };
+
+        let payload = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "gossip.forward",
+            "params": {
+                "original_method": method,
+                "payload": params,
+            },
+            "id": 1
+        });
+
+        match UnixStream::connect(&socket_path).await {
+            Ok(stream) => {
+                let (reader, mut writer) = stream.into_split();
+                let msg = format!("{payload}\n");
+                if writer.write_all(msg.as_bytes()).await.is_ok() {
+                    let mut response = String::new();
+                    let mut buf_reader = BufReader::new(reader);
+                    let _ = buf_reader.read_line(&mut response).await;
+                    debug!(target: "songbird::delegation", method, "forwarded to swarmVine");
+                }
+            }
+            Err(e) => {
+                debug!(target: "songbird::delegation", method, error = %e, "swarmVine unreachable — local fallback");
+            }
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        let _ = params;
+        debug!(target: "songbird::delegation", method, "swarmVine delegation not available on this platform");
     }
 }

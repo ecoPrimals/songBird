@@ -14,6 +14,7 @@ pub mod canonical;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
+use std::future::Future;
 
 use crate::errors::SongbirdResult;
 
@@ -182,22 +183,22 @@ pub trait CanonicalTransport: Send + Sync {
     fn transport_name(&self) -> &'static str;
 
     /// Whether this transport is currently operational and ready to serve.
-    async fn is_ready(&self) -> bool;
+    fn is_ready(&self) -> impl Future<Output = bool> + Send;
 
     /// Start the transport layer (bind, listen, allocate resources).
     ///
     /// # Errors
     /// Returns error if the transport fails to initialize.
-    async fn start(&self) -> SongbirdResult<()>;
+    fn start(&self) -> impl Future<Output = SongbirdResult<()>> + Send;
 
     /// Gracefully shut down the transport (close connections, release resources).
     ///
     /// # Errors
     /// Returns error if shutdown encounters issues (connections still draining, etc.).
-    async fn shutdown(&self) -> SongbirdResult<()>;
+    fn shutdown(&self) -> impl Future<Output = SongbirdResult<()>> + Send;
 
     /// Transport-specific health information.
-    async fn health(&self) -> TransportHealth;
+    fn health(&self) -> impl Future<Output = TransportHealth> + Send;
 
     /// The transport endpoint(s) this service is reachable on (if started).
     fn endpoints(&self) -> Vec<crate::TransportEndpoint>;

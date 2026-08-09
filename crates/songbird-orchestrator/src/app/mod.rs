@@ -19,6 +19,7 @@ pub mod network;
 pub mod security_setup; // v3.10.3 (Jan 6): Smart refactoring - capability-based security discovery
 pub mod startup;
 pub mod startup_orchestration; // v4.0.0 (Feb 6): Deep Debt - 7-stage startup extraction (275→20 lines per stage)
+pub mod transport_registry; // v0.2.1-wave157d: Unified transport lifecycle (vertebrate evolution)
 
 // Test modules (v3.3 - Jan 2026)
 #[cfg(test)]
@@ -44,3 +45,4 @@ pub use core::SongbirdOrchestrator;
 pub use health::{HealthCheckReport, OrchestratorStatus};
 pub use network::{detect_primary_ip, get_local_ip_for_connectivity_test, parse_bind_address};
 pub use startup::{Orchestrator, start_orchestrator};
+pub use transport_registry::TransportRegistry;

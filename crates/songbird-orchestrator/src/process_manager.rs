@@ -36,7 +36,7 @@
 
 use anyhow::{Context, Result, bail};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 use tracing::{debug, error, info, warn};
 
@@ -58,12 +58,18 @@ impl ProcessManager {
     ///
     /// This automatically reads `SONGBIRD_FAMILY_ID` and `SONGBIRD_NODE_ID` from the environment
     /// to create a unique PID file per instance, enabling multi-instance deployments.
+    ///
+    /// Also cleans up stale PID files from deprecated locations (Wave 157d — P2 fix).
     /// # Errors
     ///
     /// Returns an error if the operation fails.
     pub fn new() -> Result<Self> {
         let pid_file = Self::default_pid_file()?;
         let node_identity = Self::get_node_identity();
+
+        // Wave 157d: Clean stale PID files from deprecated legacy paths.
+        // PID location changed 3 times (Wave 155→156→157). Remove orphans.
+        Self::cleanup_legacy_pid_files(&pid_file);
 
         Ok(Self {
             pid_file,
@@ -250,6 +256,57 @@ impl ProcessManager {
             fs::remove_file(&self.pid_file).context("Failed to remove PID file")?;
         }
         Ok(())
+    }
+
+    /// Clean up stale PID files from deprecated locations (Wave 157d P2 fix).
+    ///
+    /// The PID file path changed across waves 155→156→157:
+    /// - Legacy: `/tmp/songbird.pid`
+    /// - Wave 155: `/var/run/songbird.pid` (no identity scope)
+    /// - Wave 156+: scoped by FAMILY_ID + NODE_ID
+    ///
+    /// This removes orphan PID files at deprecated paths if they reference a
+    /// process that is no longer running. Avoids blocking startup when a stale
+    /// file from a previous wave layout persists.
+    fn cleanup_legacy_pid_files(current_path: &Path) {
+        let legacy_paths: &[&str] = &[
+            "/tmp/songbird.pid",
+            "/var/run/songbird.pid",
+            "/var/run/songbird/songbird.pid",
+        ];
+
+        for path_str in legacy_paths {
+            let path = Path::new(path_str);
+            if path == current_path || !path.exists() {
+                continue;
+            }
+            Self::try_remove_stale_pid(path, path_str);
+        }
+
+        if let Some(home) = dirs::home_dir() {
+            let user_legacy = home.join(".local/share/songbird/songbird.pid");
+            if user_legacy != current_path && user_legacy.exists() {
+                Self::try_remove_stale_pid(&user_legacy, &user_legacy.display().to_string());
+            }
+        }
+    }
+
+    /// Attempt to remove a PID file if the referenced process is no longer running.
+    fn try_remove_stale_pid(path: &Path, label: &str) {
+        let Ok(contents) = fs::read_to_string(path) else {
+            return;
+        };
+        let Ok(pid) = contents.trim().parse::<u32>() else {
+            // Corrupt PID file — remove unconditionally
+            if fs::remove_file(path).is_ok() {
+                info!("🧹 Removed corrupt legacy PID file: {label}");
+            }
+            return;
+        };
+        let proc_stat = format!("/proc/{pid}/stat");
+        if !Path::new(&proc_stat).exists() && fs::remove_file(path).is_ok() {
+            info!("🧹 Removed stale legacy PID file: {label} (PID {pid} not running)");
+        }
     }
 
     /// Check if a process is running and healthy (v3.17.0)
