@@ -42,12 +42,14 @@ pub mod onion_service;
 pub mod protocol;
 pub mod storage;
 pub mod stream;
+pub mod transport_impl;
 
 // Re-export main types
 pub use connection::TorConnection;
 pub use crypto::{CryptoProvider, TorProtocolCrypto};
 pub use directory::Consensus;
 pub use error::{Error, Result};
+pub use transport_impl::TorTransport;
 
 /// Tor client for connecting to .onion addresses
 pub struct TorClient {

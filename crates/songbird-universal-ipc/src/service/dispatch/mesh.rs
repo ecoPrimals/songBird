@@ -6,6 +6,7 @@
 use super::super::IpcServiceHandler;
 use serde_json::Value;
 use songbird_types::json_rpc_method::{JsonRpcMethod, MeshMethod};
+use tracing::debug;
 
 pub(super) async fn dispatch_mesh(
     handler: &IpcServiceHandler,
@@ -35,9 +36,11 @@ pub(super) async fn dispatch_mesh(
             handler.mesh_handler.handle_probe_latency(params).await
         }
         JsonRpcMethod::Mesh(MeshMethod::CapabilitiesAnnounce) => {
+            debug!(target: "songbird::delegation", "mesh.capabilities_announce → swarmVine delegation target (fallback: local handler)");
             handler.mesh_handler.handle_capabilities_announce(params).await
         }
         JsonRpcMethod::Mesh(MeshMethod::CapabilitiesRevoke) => {
+            debug!(target: "songbird::delegation", "mesh.capabilities_revoke → swarmVine delegation target (fallback: local handler)");
             handler.mesh_handler.handle_capabilities_revoke(params).await
         }
         JsonRpcMethod::Mesh(MeshMethod::DiscoverRemotes) => {

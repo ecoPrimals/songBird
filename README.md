@@ -4,7 +4,7 @@
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: August 7, 2026
+**Last Updated**: August 9, 2026
 
 Songbird is the universal network orchestrator and **inner membrane port solver** for the ecoPrimals ecosystem. It manages service discovery, connection management, inter-primal communication across multiple protocols, and drawbridge capability→port resolution for production routing. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
@@ -84,6 +84,7 @@ Security Provider (capability discovery: security.sock / SECURITY_PROVIDER_SOCKE
 8. **Concurrent Testing** - Injectable `_with` env readers for fully concurrent tests
 9. **JSON-RPC + tarpc First** - Dual-protocol: JSON-RPC on `.sock` (discovery/diagnostics), tarpc on `.tarpc.sock` (high-frequency binary RPC). **G65 Protocol Negotiation**: primary UDS auto-detects `PROTOCOLS:` request and negotiates tarpc or jsonrpc at connection time (Phase 3 cephalization)
 10. **Canonical Naming** - `normalize_json_rpc_method_name()` absorbs all ecosystem aliases to canonical `domain.verb`
+11. **Vertebrate Evolution** (Wave 157a) - Shared `CanonicalTransport` trait abstracts 9 transport crates (STUN, QUIC, TLS, IGD, OnionRelay, TURN, Tor, LineageRelay, Federation) behind uniform lifecycle. Gossip (`mesh.capabilities_announce`) delegated to swarmVine. Self-audit: `capability_registry.toml` now matches actual RPC surface.
 
 ## Quick Start
 

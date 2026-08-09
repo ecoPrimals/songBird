@@ -136,7 +136,6 @@ impl IpcServiceHandler {
             // Phase 3 seam: inject into local swarmVine for epidemic gossip propagation.
             // Resolve gate identity from environment (same as swarmVine itself does).
             let gate_id = std::env::var("GATE_ID")
-                .or_else(|_| std::env::var("MEMBRANE_GATE_NAME"))
                 .or_else(|_| std::env::var("HOSTNAME"))
                 .unwrap_or_default();
             if !gate_id.is_empty() {
@@ -815,19 +814,9 @@ async fn inject_to_swarmvine(_node_id: &str, _primal_id: &str, _capabilities: &[
     debug!("swarmVine gossip inject not available on this platform (UDS-only)");
 }
 
-/// Discover swarmVine socket via NUCLEUS membrane paths, then biomeOS fallback.
+/// Discover swarmVine socket via standard biomeOS resolution.
 #[cfg(unix)]
 fn discover_swarmvine_socket() -> Option<std::path::PathBuf> {
-    // NUCLEUS membrane runtime: glob for swarmvine-*.sock (hash-suffixed)
-    if let Ok(entries) = std::fs::read_dir("/run/membrane") {
-        for entry in entries.flatten() {
-            let name = entry.file_name();
-            let name_str = name.to_string_lossy();
-            if name_str.starts_with("swarmvine-") && name_str.ends_with(".sock") && !name_str.contains("tarpc") {
-                return Some(entry.path());
-            }
-        }
-    }
     if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
         let p = std::path::PathBuf::from(format!("{runtime_dir}/biomeos/swarmvine.sock"));
         if p.exists() {

@@ -27,6 +27,7 @@ must_use_candidate = "allow"
 
 [dependencies]
 songbird-stun = { path = "../songbird-stun" }
+songbird-types = { path = "../songbird-types" }
 songbird-process-env = { path = "../songbird-process-env" }
 tokio = { workspace = true, features = ["net", "time", "sync"] }
 bytes = { workspace = true }

@@ -43,6 +43,7 @@ bytes = { workspace = true }
 # TLS for relay connections (pure Rust, security provider crypto delegation)
 # songbird-tls delegates all crypto to the security provider — ZERO ring, ZERO C
 songbird-tls = { path = "../songbird-tls" }
+songbird-types = { path = "../songbird-types" }
 
 # Crypto delegation (NO direct crypto!)
 # All crypto via security provider IPC / Neural API (`songbird-crypto-provider`)

@@ -74,6 +74,7 @@ pub mod messages;
 pub mod record_layer;
 pub mod server; // NEW: High-level server API
 pub mod socket_discovery; // NEW: XDG-compliant socket discovery
+pub mod transport_impl;
 
 /// Re-export of [`crate::crypto::SecurityTlsCryptoClient`].
 pub use crypto::SecurityTlsCryptoClient;
@@ -86,6 +87,7 @@ pub use handshake::{HandshakeState, HandshakeStateMachine};
 pub use messages::{Certificate, ClientHello, Finished, ServerHello};
 pub use record_layer::RecordLayer;
 pub use server::{TlsAcceptor, TlsServerConfig, TlsStream};
+pub use transport_impl::TlsTransport;
 
 // Certificate generation (hybrid standalone + security provider)
 pub use cert::generator::{CertGenerationMode, CertificateGenerator};

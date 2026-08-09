@@ -8,6 +8,13 @@
 //! gates store these announcements so `discovery.peers` returns correct capability
 //! lists without requiring polling.
 //!
+//! ## Vertebrate Evolution — Delegation Target: swarmVine
+//!
+//! This module implements gossip-protocol capability propagation, which is a
+//! cross-focus concern. The vertebrate evolution plan (Wave 157a) delegates this
+//! to swarmVine when available. songBird retains the handler as a fallback and
+//! for backward compatibility until swarmVine is fully integrated.
+//!
 //! ## Retry Resilience
 //!
 //! Failed announcements are queued with exponential backoff (skip cycles based on
@@ -196,6 +203,11 @@ impl MeshHandler {
     ///
     /// Called by remote gates when their primals register capabilities.
     /// Stores the announced capabilities so `discovery.peers` can return them.
+    ///
+    /// **Vertebrate evolution (Wave 157a)**: This method is a gossip-protocol concern
+    /// that belongs in swarmVine. songBird retains the handler for backward compatibility
+    /// and as a fallback when swarmVine is unavailable. When the ecosystem completes
+    /// swarmVine integration, this handler becomes a thin forwarding shim.
     ///
     /// Validation:
     /// - Rejects announcements from unknown peers (mesh-poison prevention)

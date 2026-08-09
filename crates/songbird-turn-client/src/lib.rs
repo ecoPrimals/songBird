@@ -45,8 +45,10 @@
 
 mod error;
 mod session;
+pub mod transport_impl;
 
 pub use error::TurnSessionError;
 pub use session::{TurnSession, TurnSessionConfig};
+pub use transport_impl::TurnClientTransport;
 
 pub use songbird_stun::{StunCredentials, TurnAllocation, TurnClient};

@@ -164,6 +164,66 @@ pub trait CanonicalCapabilityProvider: Send + Sync {
     ) -> SongbirdResult<serde_json::Value>;
 }
 
+/// **CANONICAL**: Transport trait — shared abstraction for all network transport crates.
+///
+/// Vertebrate evolution (Wave 157a): unifies the interface across 9 transport crates
+/// (stun, quic, tls, igd, onion-relay, turn-client, tor-protocol, lineage-relay,
+/// network-federation). Each transport implements this trait to provide a consistent
+/// lifecycle: configure → start → health → stop.
+///
+/// This trait does NOT replace transport-specific methods. Each crate retains its
+/// domain-specific API. This trait provides the shared skeletal structure for:
+/// - Service lifecycle management
+/// - Health/readiness signaling
+/// - Configuration injection
+/// - Graceful shutdown
+pub trait CanonicalTransport: Send + Sync {
+    /// Human-readable transport name (e.g. "STUN", "QUIC", "TLS", "IGD").
+    fn transport_name(&self) -> &'static str;
+
+    /// Whether this transport is currently operational and ready to serve.
+    async fn is_ready(&self) -> bool;
+
+    /// Start the transport layer (bind, listen, allocate resources).
+    ///
+    /// # Errors
+    /// Returns error if the transport fails to initialize.
+    async fn start(&self) -> SongbirdResult<()>;
+
+    /// Gracefully shut down the transport (close connections, release resources).
+    ///
+    /// # Errors
+    /// Returns error if shutdown encounters issues (connections still draining, etc.).
+    async fn shutdown(&self) -> SongbirdResult<()>;
+
+    /// Transport-specific health information.
+    async fn health(&self) -> TransportHealth;
+
+    /// The transport endpoint(s) this service is reachable on (if started).
+    fn endpoints(&self) -> Vec<crate::TransportEndpoint>;
+}
+
+/// Health status for a transport layer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransportHealth {
+    /// Transport is operational.
+    pub ready: bool,
+    /// Number of active connections/sessions.
+    pub active_connections: u64,
+    /// Transport-specific diagnostic message.
+    pub message: String,
+}
+
+impl Default for TransportHealth {
+    fn default() -> Self {
+        Self {
+            ready: false,
+            active_connections: 0,
+            message: String::from("not started"),
+        }
+    }
+}
+
 impl Default for HealthStatus {
     fn default() -> Self {
         Self {

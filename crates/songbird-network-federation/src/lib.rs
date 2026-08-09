@@ -129,6 +129,7 @@ pub mod state;
 /// Zero-copy friendly registry for hot federation paths.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod zero_copy_registry;
+pub mod transport_impl;
 
 // Re-export core types for convenience
 /// `security provider` Secure Tunnel Protocol configuration and provider traits.
@@ -144,5 +145,8 @@ pub use network::{NetworkConfig, NetworkManager, NetworkProvider};
 pub use protocol_capability::{
     Protocol, ProtocolCapability, ProtocolCapabilityManager, TowerCapabilities,
 };
+
+/// Transport adapter for network federation lifecycle.
+pub use transport_impl::FederationTransport;
 
 // Legacy compatibility removed - use canonical APIs directly

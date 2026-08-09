@@ -79,8 +79,8 @@ pub use zero_copy::{Shareable, Shared, SharedBytes, arc, share, smart_cow};
 // Re-export traits
 pub use traits::{
     CanonicalConfigProvider, CanonicalHealthCheck as HealthCheckTrait, CanonicalLoadBalancer,
-    CanonicalObservabilityProvider, CanonicalServiceDiscovery, DetailedHealthInfo, HealthStatus,
-    ServiceInstanceStatus,
+    CanonicalObservabilityProvider, CanonicalServiceDiscovery, CanonicalTransport, DetailedHealthInfo,
+    HealthStatus, ServiceInstanceStatus, TransportHealth,
 };
 
 // Re-export all canonical constants

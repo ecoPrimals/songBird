@@ -62,6 +62,7 @@ pub mod signaling;
 #[cfg(feature = "onion")]
 /// Optional `.onion` transport built on `songbird-sovereign-onion`.
 pub mod onion_transport;
+pub mod transport_impl;
 
 // DEPRECATED: Arti-based transport (removed Feb 6, 2026)
 // Code removed, keeping this comment for historical reference
@@ -72,6 +73,7 @@ pub use coordinator::{HolePunchConfig, HolePunchCoordinator, PunchResult};
 pub use error::{OnionRelayError, Result};
 pub use mesh::{BeaconMesh, EndpointType, RelayEndpoint};
 pub use signaling::{NatType, PeerInfo, SignalingMessage};
+pub use transport_impl::OnionRelayTransport;
 
 // ✅ Sovereign Onion Transport (Phase 1 complete - Feb 6, 2026)
 #[cfg(feature = "onion")]

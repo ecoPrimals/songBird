@@ -87,6 +87,7 @@ mod server;
 mod stream;
 pub mod tls;
 pub mod transport;
+pub mod transport_impl;
 pub mod varint;
 
 pub use client::QuicClient;
@@ -95,6 +96,7 @@ pub use connection::QuicConnection;
 pub use error::{QuicError, Result};
 pub use server::QuicServer;
 pub use stream::QuicStream;
+pub use transport_impl::QuicTransport;
 
 /// QUIC protocol version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

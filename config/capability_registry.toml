@@ -39,6 +39,21 @@ methods = [
     "mesh.mirror",
     "mesh.publish",
     "mesh.subscribe",
+    "mesh.probe_latency",
+    "mesh.enroll",
+    "mesh.gate_enroll",
+    "mesh.prune_stale",
+    "mesh.connectivity_check",
+    "mesh.throughput",
+]
+
+[capabilities.mesh_gossip]
+owner = "swarmVine"
+stability = "delegated"
+description = "Capability gossip — delegated to swarmVine (Wave 157a vertebrate evolution)"
+methods = [
+    "mesh.capabilities_announce",
+    "mesh.capabilities_revoke",
 ]
 
 [capabilities.relay]

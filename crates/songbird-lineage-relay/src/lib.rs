@@ -163,6 +163,7 @@ pub mod relay_protocol;
 pub mod relay_server;
 pub mod session;
 pub mod shadow_comparator;
+pub mod transport_impl;
 pub mod types;
 pub mod udp_hole_punch;
 pub mod universal_coordinator_adapter;
@@ -190,4 +191,5 @@ pub use types::*;
 pub use udp_hole_punch::{
     HolePunchConfig, coordinated_hole_punch, create_hole_punch_socket, udp_hole_punch,
 };
+pub use transport_impl::LineageRelayTransport;
 pub use universal_coordinator_adapter::{LineageRelayAdapter, LineageRelayPrimalConnection};
