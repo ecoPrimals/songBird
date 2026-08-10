@@ -54,7 +54,7 @@ impl CanonicalTransport for StunTransport {
     async fn start(&self) -> SongbirdResult<()> {
         let mut running = self.running.write().await;
         if *running {
-            return Err(SongbirdError::not_implemented("stun_transport_already_running"));
+            return Err(SongbirdError::service("stun", "transport already running"));
         }
         *running = true;
         Ok(())

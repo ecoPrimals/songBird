@@ -30,7 +30,7 @@ pub struct VirtualRelayManager {
     base_dir: PathBuf,
     /// Shared relay metrics (request count, total overhead in microseconds).
     metrics: Arc<RelayMetrics>,
-    /// Signature verifier for Phase 3.5 (defaults to noop — accepts all).
+    /// Signature verifier for Phase 3.5 (defaults to `UnavailableVerifier` — rejects signed requests until provider available).
     signature_verifier: Arc<dyn BtspSignatureVerifier>,
 }
 
