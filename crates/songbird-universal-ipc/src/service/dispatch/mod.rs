@@ -4,6 +4,7 @@
 #![forbid(unsafe_code)]
 
 mod capability;
+mod gossip;
 mod introspection;
 mod mesh;
 mod network;
@@ -15,6 +16,7 @@ mod tests;
 use super::IpcServiceHandler;
 use crate::tower_atomic::JsonRpcHandler;
 use capability::dispatch_capability;
+use gossip::dispatch_gossip;
 use introspection::dispatch_introspection;
 use mesh::dispatch_mesh;
 use network::dispatch_network;
@@ -74,6 +76,7 @@ impl IpcServiceDispatch for IpcServiceHandler {
             | JsonRpcMethod::Peer(_) => dispatch_capability(self, method, params).await,
 
             JsonRpcMethod::Mesh(_) => dispatch_mesh(self, method, params).await,
+            JsonRpcMethod::Gossip(_) => dispatch_gossip(self, method, params).await,
 
             JsonRpcMethod::Stun(_)
             | JsonRpcMethod::Igd(_)

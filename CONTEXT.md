@@ -3,9 +3,9 @@
 **Primal**: Songbird  
 **Role**: Network Orchestration & Discovery Primal — Inner Membrane Port Solver  
 **Phase**: Stadial (S1-S4 graduated, 11-gate mesh collective LIVE, zero-config mesh init)  
-**Version**: 0.2.1-wave157d  
+**Version**: 0.2.1-wave157e  
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)  
-**Last Updated**: August 9, 2026
+**Last Updated**: August 10, 2026
 
 ## What It Does
 
@@ -16,7 +16,7 @@ Songbird is the network spine of the ecoPrimals ecosystem. It provides:
 - **Discovery**: Capability-based runtime discovery — mDNS, SSDP, UDP broadcast, DNS-SD, BirdSong encrypted beacons
 - **NAT Traversal**: STUN, IGD/UPnP, NAT-PMP, UDP hole punching, relay mesh, TURN client (RFC 5766), cloudflared emergency tunnels, shadow dual-path comparator
 - **Cross-Gate Dispatch**: `capability.call` routes RPCs to local or remote capabilities via mesh TCP, TURN relay fallback, and UDS
-- **Federation**: Multi-node mesh networking with capability-based routing
+- **Federation**: Multi-node mesh networking with capability-based routing; **MeshRelay gossip transport (Wave 157e)**: `gossip.relay` + `gossip.inject` methods enable cross-gate gossip propagation through `:7700` federation mesh when swarmVine's direct TCP 7800 is unreachable — songBird resolves target gate via `BeaconMesh::get_best_path()`, POSTs to remote songBird which injects into local swarmVine via UDS
 - **Onion Routing**: Pure Rust Tor protocol + sovereign .onion services
 - **Relay**: Lineage-gated relay for symmetric NAT traversal
 

@@ -21,6 +21,7 @@ pub const SONGBIRD_CAPABILITY_STRINGS: &[&str] = &[
     "network.tor",
     "network.onion",
     "network.btsp",
+    "network.gossip",
     "ipc.jsonrpc",
     "ipc.tarpc",
     "crypto.delegate",
@@ -102,6 +103,9 @@ const CALLABLE_METHODS: &[&str] = &[
     "relay.status",
     "relay.allocate",
     "relay.forward",
+    // ── Gossip (MeshRelay transport) ──
+    "gossip.relay",
+    "gossip.inject",
     // ── Discovery / rendezvous / peers ──
     "discovery.peers",
     "discovery.announce",
@@ -239,6 +243,7 @@ pub const CAPABILITY_METHOD_MAP: &[(&str, &[&str])] = &[
         "network.relay",
         &["relay.serve", "relay.stop", "relay.status", "relay.allocate", "relay.forward"],
     ),
+    ("network.gossip", &["gossip.relay", "gossip.inject"]),
     (
         "network.stun",
         &["stun.serve", "stun.stop", "stun.status", "stun.get_public_address", "stun.bind"],

@@ -250,6 +250,17 @@ pub enum MeshMethod {
     Throughput,
 }
 
+/// `gossip.*` — swarmVine-owned gossip methods relayed by songBird across gates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GossipMethod {
+    /// `gossip.relay` — relay a gossip payload to a target gate's swarmVine via
+    /// songBird's `:7700` federation mesh. Accepts `{target_gate, topic, payload}`.
+    /// When `target_gate` is `"local"` or absent, injects into the local swarmVine.
+    Relay,
+    /// `gossip.inject` — inject a gossip payload directly into local swarmVine.
+    Inject,
+}
+
 /// `punch.*`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PunchMethod {

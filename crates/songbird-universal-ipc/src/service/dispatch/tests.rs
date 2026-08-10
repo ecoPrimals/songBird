@@ -417,6 +417,84 @@ async fn dispatch_covers_remaining_json_rpc_arms() {
         .ok();
 }
 
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn gossip_relay_local_injects_without_error() {
+    let h = ipc_handler();
+
+    // gossip.inject — will timeout quickly with paused time if live socket found
+    let result = h
+        .handle(
+            "gossip.inject",
+            json!({
+                "topic": "tower",
+                "key": "test.capability:gate-1:songbird",
+                "payload": { "capabilities": ["mesh.relay"], "primal": "songbird" }
+            }),
+        )
+        .await
+        .expect("gossip.inject should succeed even without swarmVine");
+    assert_eq!(result["status"], "injected");
+    assert_eq!(result["topic"], "tower");
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn gossip_relay_to_local_target() {
+    let h = ipc_handler();
+
+    // gossip.relay with target_gate="local" — should inject locally
+    let result = h
+        .handle(
+            "gossip.relay",
+            json!({
+                "target_gate": "local",
+                "topic": "capability",
+                "key": "cap.announce:test",
+                "payload": { "event": "register" }
+            }),
+        )
+        .await
+        .expect("gossip.relay local should succeed");
+    assert_eq!(result["relayed_to"], "local");
+    assert_eq!(result["status"], "injected");
+}
+
+#[tokio::test]
+async fn gossip_relay_missing_topic_errors() {
+    let h = ipc_handler();
+
+    let err = h
+        .handle("gossip.relay", json!({ "payload": {} }))
+        .await
+        .expect_err("should require topic");
+    assert!(err.contains("topic"), "expected topic error, got: {err}");
+}
+
+#[tokio::test]
+async fn gossip_relay_to_unknown_gate_errors() {
+    let h = ipc_handler();
+
+    // Initialize mesh so we have a mesh reference (but no peers)
+    h.handle("mesh.init", json!({ "node_id": "gossip-relay-test" }))
+        .await
+        .expect("mesh.init");
+
+    let err = h
+        .handle(
+            "gossip.relay",
+            json!({
+                "target_gate": "nonexistent-gate",
+                "topic": "tower",
+                "payload": {}
+            }),
+        )
+        .await
+        .expect_err("should fail for unknown gate");
+    assert!(
+        err.contains("No path to gate") || err.contains("nonexistent-gate"),
+        "unexpected error: {err}"
+    );
+}
+
 /// Spawn a mock UDS JSON-RPC server that echoes back the operation.
 ///
 /// Handles multiple sequential connections (registration identity probe +

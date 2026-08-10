@@ -56,6 +56,15 @@ methods = [
     "mesh.capabilities_revoke",
 ]
 
+[capabilities.gossip]
+owner = "songbird"
+stability = "stable"
+description = "MeshRelay gossip transport — relays swarmVine gossip across gates via :7700 federation mesh when direct TCP 7800 is unreachable (Wave 157e)"
+methods = [
+    "gossip.relay",
+    "gossip.inject",
+]
+
 [capabilities.relay]
 owner = "songbird"
 stability = "stable"

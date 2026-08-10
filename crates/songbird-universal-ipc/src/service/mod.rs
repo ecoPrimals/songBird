@@ -52,6 +52,7 @@ mod construction;
 mod dispatch;
 pub mod drawbridge;
 pub mod drawbridge_auth;
+mod gossip_relay;
 mod http;
 mod http_proxy;
 pub mod ipc_pool;
