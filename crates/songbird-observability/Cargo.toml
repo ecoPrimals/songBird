@@ -20,7 +20,7 @@ tempfile = { workspace = true }
 [dependencies]
 songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }

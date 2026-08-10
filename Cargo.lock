@@ -4705,7 +4705,6 @@ dependencies = [
  "songbird-test-utils",
  "songbird-types",
  "tempfile",
- "thiserror 2.0.18",
  "tokio",
  "tokio-test",
  "tracing",
@@ -4716,7 +4715,6 @@ dependencies = [
 name = "songbird-cli"
 version = "0.2.1"
 dependencies = [
- "anyhow",
  "chrono",
  "clap",
  "colored",
@@ -4778,7 +4776,6 @@ dependencies = [
  "anyhow",
  "chrono",
  "dirs",
- "futures-util",
  "gethostname",
  "hickory-resolver",
  "mdns-sd",
@@ -4970,7 +4967,6 @@ dependencies = [
  "anyhow",
  "base64 0.22.1",
  "chrono",
- "futures-util",
  "hex",
  "hmac",
  "rand 0.8.6",
@@ -4996,7 +4992,6 @@ dependencies = [
 name = "songbird-nfc"
 version = "0.2.1"
 dependencies = [
- "anyhow",
  "rand 0.8.6",
  "serde",
  "serde_json",
@@ -5045,7 +5040,6 @@ dependencies = [
  "tokio",
  "tokio-test",
  "tracing",
- "uuid",
 ]
 
 [[package]]
@@ -5156,7 +5150,6 @@ dependencies = [
 name = "songbird-registry"
 version = "0.2.1"
 dependencies = [
- "anyhow",
  "chrono",
  "serde",
  "serde_json",

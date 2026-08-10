@@ -15,7 +15,7 @@ songbird-process-env.workspace = true
 songbird-crypto-provider = { path = "../songbird-crypto-provider" }
 songbird-types = { path = "../songbird-types" }
 getrandom = { workspace = true }
-tokio = { workspace = true, features = ["full", "net"] }
+tokio = { workspace = true }
 tracing = { workspace = true }
 anyhow = { workspace = true }
 

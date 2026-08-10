@@ -11,7 +11,7 @@ description = "Genetic lineage-based relay system - evolution beyond NAT/STUN/TU
 authors = ["ecoPrimals Team"]
 
 [dependencies]
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

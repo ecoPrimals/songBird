@@ -13,7 +13,7 @@ categories = ["asynchronous", "network-programming"]
 
 [dependencies]
 # Core async runtime
-tokio = { workspace = true, features = ["full", "process"] }
+tokio = { workspace = true }
 
 # HTTP server
 axum = { workspace = true }

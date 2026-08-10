@@ -58,7 +58,6 @@ tracing-subscriber = { workspace = true }
 # SB-02 RESOLVED: ring-crypto opt-in feature removed (Wave 135). rustls_rustcrypto is
 # sufficient for both production (Tower Atomic delegation) and standalone bootstrap.
 rustls-rustcrypto = "0.0.2-alpha"
-anyhow = { workspace = true }
 
 [features]
 default = []

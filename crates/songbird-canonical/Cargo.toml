@@ -15,16 +15,11 @@ categories = ["data-structures", "development-tools", "network-programming"]
 workspace = true
 
 [dependencies]
-# Core async runtime
-tokio = { workspace = true }
-
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true }
 
-# Error handling
-thiserror = { workspace = true }
 songbird-types = { path = "../songbird-types" }
 
 # Logging and tracing

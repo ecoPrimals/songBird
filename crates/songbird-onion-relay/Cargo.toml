@@ -30,7 +30,7 @@ onion = ["songbird-sovereign-onion", "songbird-sovereign-onion/standalone"]
 
 [dependencies]
 # Async runtime
-tokio = { workspace = true, features = ["full", "sync"] }
+tokio = { workspace = true }
 
 # Serialization
 serde = { workspace = true }
@@ -42,9 +42,6 @@ tracing = { workspace = true }
 # Error handling
 thiserror = { workspace = true }
 anyhow = { workspace = true }
-
-# UUID
-uuid = { workspace = true }
 
 # Sovereign Onion Service (optional - Pure Rust, delegates crypto to security provider)
 # Unlike Arti, this is lightweight (~200KB) and starts instantly

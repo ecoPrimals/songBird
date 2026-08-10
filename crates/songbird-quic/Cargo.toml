@@ -12,7 +12,7 @@ categories = ["network-programming", "asynchronous"]
 
 [dependencies]
 # Async runtime
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true }
 tokio-util = { version = "0.7", features = ["codec"] }
 
 # Crypto - security provider delegation only via IPC (no ring, no rustls)
