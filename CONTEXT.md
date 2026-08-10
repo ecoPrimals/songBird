@@ -35,7 +35,7 @@ transport stack targeting WireGuard replacement. Every other primal and spring u
 | Metric | Value |
 |--------|-------|
 | Crates | 31 workspace members |
-| Tests | 14,840+ total (685+ in universal-ipc; integration suites) |
+| Tests | 14,840+ total (689+ in universal-ipc; integration suites) |
 | Coverage | Line coverage **73.41%** (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | Edition | Rust 2024 |
 | Clippy | pedantic + nursery, zero warnings (`-D warnings`; Aug 4 verified); Windows cross-compile zero warnings |

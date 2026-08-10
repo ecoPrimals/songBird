@@ -130,6 +130,8 @@ impl SecurityRelayAuthority {
         method: &str,
         params: serde_json::Value,
     ) -> Result<serde_json::Value> {
+        use std::time::Duration;
+
         let mut stream = Self::connect_ipc_relay(&self.socket_path).await?;
 
         let request = serde_json::json!({
@@ -148,11 +150,19 @@ impl SecurityRelayAuthority {
         stream.write_all(b"\n").await.ok();
 
         let mut response_bytes = Vec::new();
-        stream.read_to_end(&mut response_bytes).await.map_err(|e| {
-            crate::error::LineageRelayError::BirdSongError(format!(
-                "Failed to read from security provider: {e}"
-            ))
-        })?;
+        tokio::time::timeout(Duration::from_secs(5), stream.read_to_end(&mut response_bytes))
+            .await
+            .map_err(|_| {
+                crate::error::LineageRelayError::BirdSongError(format!(
+                    "Timeout reading from security provider at {}",
+                    self.socket_path.display()
+                ))
+            })?
+            .map_err(|e| {
+                crate::error::LineageRelayError::BirdSongError(format!(
+                    "Failed to read from security provider: {e}"
+                ))
+            })?;
 
         let response: serde_json::Value = serde_json::from_slice(&response_bytes)?;
 
