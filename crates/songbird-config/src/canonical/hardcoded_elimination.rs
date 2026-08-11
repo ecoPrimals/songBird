@@ -529,7 +529,7 @@ mod tests {
 
     #[test]
     fn test_port_config_to_capability_registry() {
-        let reg = PortConfig::default().to_capability_registry().expect("registry");
+        let reg = PortConfig::default().to_capability_registry();
         assert!(reg.get_port(&CapabilityId::new("orchestrator")).is_ok());
     }
 

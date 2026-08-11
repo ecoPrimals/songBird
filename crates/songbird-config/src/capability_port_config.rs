@@ -29,6 +29,7 @@
 //! ```
 
 use serde::{Deserialize, Serialize};
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::net::TcpListener;
 use std::sync::{Arc, RwLock};
@@ -114,20 +115,16 @@ impl CapabilityPortRegistry {
     }
 
     /// Register a port for a capability
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the registry lock is poisoned.
     pub fn register(
         &self,
         capability: CapabilityId,
         port: u16,
         source: PortSource,
         description: Option<String>,
-    ) -> anyhow::Result<()> {
+    ) {
         self.ports
             .write()
-            .map_err(|e| anyhow::anyhow!("Failed to acquire write lock: {e}"))?
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .insert(
                 capability,
                 PortConfig {
@@ -136,39 +133,37 @@ impl CapabilityPortRegistry {
                     description,
                 },
             );
-        Ok(())
     }
 
     /// Get the port for a capability
     ///
     /// # Errors
     ///
-    /// Returns an error if:
-    /// - The capability is not registered
-    /// - The registry lock is poisoned
-    pub fn get_port(&self, capability: &CapabilityId) -> anyhow::Result<u16> {
-        let ports =
-            self.ports.read().map_err(|e| anyhow::anyhow!("Failed to acquire read lock: {e}"))?;
+    /// Returns an error if the capability is not registered.
+    pub fn get_port(&self, capability: &CapabilityId) -> SongbirdResult<u16> {
+        let ports = self.ports.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         ports
             .get(capability)
             .map(|config| config.port)
-            .ok_or_else(|| anyhow::anyhow!("Capability '{}' not registered", capability.as_str()))
+            .ok_or_else(|| SongbirdError::Configuration {
+                message: format!("Capability '{}' not registered", capability.as_str()),
+                field: Some(String::from("capability")),
+                suggestion: Some(String::from("Register the capability before querying its port")),
+            })
     }
 
     /// Get the full port configuration for a capability
     ///
     /// # Errors
     ///
-    /// Returns an error if:
-    /// - The capability is not registered
-    /// - The registry lock is poisoned
-    pub fn get_config(&self, capability: &CapabilityId) -> anyhow::Result<PortConfig> {
-        let ports =
-            self.ports.read().map_err(|e| anyhow::anyhow!("Failed to acquire read lock: {e}"))?;
-        ports
-            .get(capability)
-            .cloned()
-            .ok_or_else(|| anyhow::anyhow!("Capability '{}' not registered", capability.as_str()))
+    /// Returns an error if the capability is not registered.
+    pub fn get_config(&self, capability: &CapabilityId) -> SongbirdResult<PortConfig> {
+        let ports = self.ports.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+        ports.get(capability).cloned().ok_or_else(|| SongbirdError::Configuration {
+            message: format!("Capability '{}' not registered", capability.as_str()),
+            field: Some(String::from("capability")),
+            suggestion: Some(String::from("Register the capability before querying its config")),
+        })
     }
 
     /// Register a capability with an ephemeral (OS-assigned) port
@@ -177,57 +172,51 @@ impl CapabilityPortRegistry {
     ///
     /// # Errors
     ///
-    /// Returns an error if:
-    /// - Cannot bind to an ephemeral port
-    /// - The registry lock is poisoned
+    /// Returns an error if the OS cannot bind an ephemeral port.
     pub fn register_ephemeral(
         &self,
         capability: CapabilityId,
         description: Option<String>,
-    ) -> anyhow::Result<u16> {
-        use anyhow::Context as _;
-
+    ) -> SongbirdResult<u16> {
         let listener = TcpListener::bind(songbird_types::defaults::ports::EPHEMERAL_BIND_ADDR)
-            .context("Failed to bind ephemeral port")?;
-        let port = listener.local_addr().context("Failed to get local address")?.port();
+            .map_err(|e| SongbirdError::Configuration {
+                message: format!("Failed to bind ephemeral port: {e}"),
+                field: None,
+                suggestion: Some(String::from("Check that port range is available")),
+            })?;
+        let port = listener
+            .local_addr()
+            .map_err(|e| SongbirdError::Configuration {
+                message: format!("Failed to get local address: {e}"),
+                field: None,
+                suggestion: None,
+            })?
+            .port();
         drop(listener);
-        self.register(capability, port, PortSource::Ephemeral, description)?;
+        self.register(capability, port, PortSource::Ephemeral, description);
         Ok(port)
     }
 
     /// Check if a capability is registered
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the registry lock is poisoned.
-    pub fn has_capability(&self, capability: &CapabilityId) -> anyhow::Result<bool> {
-        let ports =
-            self.ports.read().map_err(|e| anyhow::anyhow!("Failed to acquire read lock: {e}"))?;
-        Ok(ports.contains_key(capability))
+    #[must_use]
+    pub fn has_capability(&self, capability: &CapabilityId) -> bool {
+        let ports = self.ports.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+        ports.contains_key(capability)
     }
 
     /// List all registered capabilities
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the registry lock is poisoned.
-    pub fn list_capabilities(&self) -> anyhow::Result<Vec<CapabilityId>> {
-        let ports =
-            self.ports.read().map_err(|e| anyhow::anyhow!("Failed to acquire read lock: {e}"))?;
-        Ok(ports.keys().cloned().collect())
+    #[must_use]
+    pub fn list_capabilities(&self) -> Vec<CapabilityId> {
+        let ports = self.ports.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+        ports.keys().cloned().collect()
     }
 
     /// Clear all registrations
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the registry lock is poisoned.
-    pub fn clear(&self) -> anyhow::Result<()> {
+    pub fn clear(&self) {
         self.ports
             .write()
-            .map_err(|e| anyhow::anyhow!("Failed to acquire write lock: {e}"))?
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clear();
-        Ok(())
     }
 }
 
@@ -270,18 +259,15 @@ impl RegistryBuilder {
     }
 
     /// Build the registry
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if registration fails.
-    pub fn build(self) -> anyhow::Result<CapabilityPortRegistry> {
+    #[must_use]
+    pub fn build(self) -> CapabilityPortRegistry {
         let registry = CapabilityPortRegistry::new();
 
         for (capability, (port, source, description)) in self.ports {
-            registry.register(capability, port, source, description)?;
+            registry.register(capability, port, source, description);
         }
 
-        Ok(registry)
+        registry
     }
 }
 
@@ -294,9 +280,7 @@ mod tests {
         let registry = CapabilityPortRegistry::new();
         let cap = CapabilityId::new("test.service");
 
-        registry
-            .register(cap.clone(), 8080, PortSource::ConfigFile, None)
-            .expect("registration should succeed");
+        registry.register(cap.clone(), 8080, PortSource::ConfigFile, None);
 
         assert_eq!(registry.get_port(&cap).expect("port should exist"), 8080);
     }
@@ -329,8 +313,7 @@ mod tests {
                 PortSource::Discovery,
                 String::from("Discovered service"),
             )
-            .build()
-            .expect("build should succeed");
+            .build();
 
         assert_eq!(
             registry.get_port(&CapabilityId::new("service.a")).expect("port should exist"),
@@ -351,10 +334,9 @@ mod tests {
         let registry = RegistryBuilder::new()
             .with_port("service.a", 8080, PortSource::ConfigFile)
             .with_port("service.b", 8081, PortSource::Environment)
-            .build()
-            .expect("build should succeed");
+            .build();
 
-        let caps = registry.list_capabilities().expect("list should succeed");
+        let caps = registry.list_capabilities();
         assert_eq!(caps.len(), 2);
         assert!(caps.contains(&CapabilityId::new("service.a")));
         assert!(caps.contains(&CapabilityId::new("service.b")));
@@ -364,19 +346,12 @@ mod tests {
     fn test_clear() {
         let registry = RegistryBuilder::new()
             .with_port("service.a", 8080, PortSource::ConfigFile)
-            .build()
-            .expect("build should succeed");
+            .build();
 
-        assert!(
-            registry.has_capability(&CapabilityId::new("service.a")).expect("check should succeed")
-        );
+        assert!(registry.has_capability(&CapabilityId::new("service.a")));
 
-        registry.clear().expect("clear should succeed");
+        registry.clear();
 
-        assert!(
-            !registry
-                .has_capability(&CapabilityId::new("service.a"))
-                .expect("check should succeed")
-        );
+        assert!(!registry.has_capability(&CapabilityId::new("service.a")));
     }
 }

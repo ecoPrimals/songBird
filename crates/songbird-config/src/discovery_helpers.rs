@@ -6,7 +6,7 @@
 //! High-level utilities for capability-based primal discovery with fallbacks.
 
 use crate::capability_discovery::{CapabilityDiscovery, ServiceEndpoint};
-use anyhow::{Context, Result};
+use songbird_types::{SongbirdError, SongbirdResult};
 use tracing::{debug, info, warn};
 
 /// Discover a primal by capability with intelligent fallbacks
@@ -21,10 +21,9 @@ use tracing::{debug, info, warn};
 ///
 /// ```rust,ignore
 /// use songbird_config::discovery_helpers::discover_primal;
-/// use songbird_types::CanonicalPrimalType;
+/// use songbird_types::{CanonicalPrimalType, SongbirdResult};
 ///
-/// async fn example() -> anyhow::Result<()> {
-///     // Discover security primal (security provider)
+/// async fn example() -> SongbirdResult<()> {
 ///     let endpoint = discover_primal(CanonicalPrimalType::Security).await?;
 ///     println!("Found security primal at: {}", endpoint.url);
 ///     Ok(())
@@ -37,7 +36,7 @@ use tracing::{debug, info, warn};
 /// (capability registry, environment variables, mDNS, or DNS-SD).
 pub async fn discover_primal(
     primal_type: songbird_types::CanonicalPrimalType,
-) -> Result<ServiceEndpoint> {
+) -> SongbirdResult<ServiceEndpoint> {
     let capability = primal_type_to_capability(&primal_type);
 
     info!("Discovering primal: {} (capability: {})", primal_type, capability);
@@ -96,9 +95,13 @@ pub async fn discover_primal(
     }
 
     // Production: No fallback
-    anyhow::bail!(
-        "No {primal_type} primal found. Set {env_var} or {alt_env_var} environment variable, or register via capability discovery"
-    )
+    Err(SongbirdError::Configuration {
+        message: format!("No {primal_type} primal found"),
+        field: Some(String::from("primal_type")),
+        suggestion: Some(format!(
+            "Set {env_var} or {alt_env_var} environment variable, or register via capability discovery"
+        )),
+    })
 }
 
 /// Discover multiple primals by capability type
@@ -108,14 +111,11 @@ pub async fn discover_primal(
 /// Returns an error if the primals cannot be discovered via the capability discovery system.
 pub async fn discover_all_primals(
     primal_type: songbird_types::CanonicalPrimalType,
-) -> Result<Vec<ServiceEndpoint>> {
+) -> SongbirdResult<Vec<ServiceEndpoint>> {
     let capability = primal_type_to_capability(&primal_type);
     let discovery = CapabilityDiscovery::new();
 
-    discovery
-        .find_providers_by_capability(&capability)
-        .await
-        .context(format!("Failed to discover {primal_type} primals"))
+    discovery.find_providers_by_capability(&capability).await
 }
 
 /// Try to discover a primal, returning None if not found (non-failing)

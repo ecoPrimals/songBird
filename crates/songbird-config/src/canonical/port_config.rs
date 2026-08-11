@@ -250,10 +250,9 @@ impl PortConfig {
 
     /// Convert to capability-based port registry
     ///
-    /// # Errors
-    ///
-    /// Returns an error if registry construction fails.
-    pub fn to_capability_registry(&self) -> anyhow::Result<CapabilityPortRegistry> {
+    /// Build a [`CapabilityPortRegistry`] from this config's port assignments.
+    #[must_use]
+    pub fn to_capability_registry(&self) -> CapabilityPortRegistry {
         RegistryBuilder::new()
             .with_port_and_description(
                 "orchestrator",
@@ -467,7 +466,7 @@ mod tests {
     fn to_capability_registry_builds_all_services() {
         use crate::capability_port_config::CapabilityId;
         let config = PortConfig::default();
-        let registry = config.to_capability_registry().unwrap();
+        let registry = config.to_capability_registry();
         assert!(registry.get_port(&CapabilityId::new("orchestrator")).is_ok());
         assert!(registry.get_port(&CapabilityId::new("discovery")).is_ok());
         assert!(registry.get_port(&CapabilityId::new("security")).is_ok());
