@@ -20,7 +20,7 @@ pub use types::{
 use songbird_types::errors::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing;
 use uuid::Uuid;
 
@@ -68,7 +68,7 @@ impl DynamicPluginRegistry {
 
     /// List all registered plugins
     pub async fn list_plugins(&self) -> Vec<String> {
-        self.plugins.read().await.keys().cloned().collect()
+        self.plugins.read().unwrap_or_else(std::sync::PoisonError::into_inner).keys().cloned().collect()
     }
 
     /// Get plugin capabilities
@@ -76,7 +76,7 @@ impl DynamicPluginRegistry {
         &self,
         plugin_id: &str,
     ) -> SongbirdResult<Vec<PluginCapability>> {
-        let plugins = self.plugins.read().await;
+        let plugins = self.plugins.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(plugins.get(plugin_id).map_or_else(Vec::new, |p| p.capabilities.clone()))
     }
 
@@ -121,7 +121,7 @@ impl DynamicPluginRegistry {
         capabilities: &[PluginCapability],
     ) -> SongbirdResult<Vec<String>> {
         let mut plugins = Vec::new();
-        let caps = self.capabilities.read().await;
+        let caps = self.capabilities.read().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         for capability in capabilities {
             for (plugin_id, cap) in caps.iter() {
@@ -201,18 +201,18 @@ impl DynamicPluginRegistry {
         capabilities: Vec<PluginCapability>,
         requirements: Vec<PluginRequirement>,
     ) -> SongbirdResult<String> {
-        let mut caps = self.capabilities.write().await;
+        let mut caps = self.capabilities.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         let current_len = caps.len();
         for (i, capability) in capabilities.iter().enumerate() {
             caps.insert(format!("{}_{}", plugin_id, current_len + i), capability.clone());
         }
         drop(caps);
 
-        let mut reqs = self.requirements.write().await;
+        let mut reqs = self.requirements.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         reqs.insert(plugin_id.clone(), requirements);
         drop(reqs);
 
-        let mut graph = self.requirement_graph.write().await;
+        let mut graph = self.requirement_graph.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         graph.entry(plugin_id.clone()).or_default();
         drop(graph);
 
@@ -252,14 +252,16 @@ impl DynamicPluginRegistry {
     ) -> SongbirdResult<ComposedSystem> {
         let system_id = Uuid::new_v4().to_string();
 
-        let mut plugin_health = HashMap::new();
-        let plugins_read = self.plugins.read().await;
-        for plugin_id in &plan.plugins {
-            let healthy = plugins_read.get(plugin_id).is_some_and(|p| p.healthy);
-            plugin_health.insert(plugin_id.clone(), healthy);
-        }
-        let all_healthy = !plan.plugins.is_empty() && plugin_health.values().all(|&h| h);
-        drop(plugins_read);
+        let (plugin_health, all_healthy) = {
+            let mut plugin_health = HashMap::new();
+            let plugins_read = self.plugins.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+            for plugin_id in &plan.plugins {
+                let healthy = plugins_read.get(plugin_id).is_some_and(|p| p.healthy);
+                plugin_health.insert(plugin_id.clone(), healthy);
+            }
+            let all_healthy = !plan.plugins.is_empty() && plugin_health.values().all(|&h| h);
+            (plugin_health, all_healthy)
+        };
 
         let system_capabilities = self.collect_capabilities_for(&plan.plugins).await;
 
@@ -279,7 +281,7 @@ impl DynamicPluginRegistry {
     }
 
     async fn collect_capabilities_for(&self, plugin_ids: &[String]) -> Vec<PluginCapability> {
-        let caps = self.capabilities.read().await;
+        let caps = self.capabilities.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         let mut result = Vec::new();
         for plugin_id in plugin_ids {
             for (key, cap) in caps.iter() {

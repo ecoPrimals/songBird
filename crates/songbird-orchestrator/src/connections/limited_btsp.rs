@@ -37,7 +37,6 @@ use super::check_operation_allowed;
 use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
 use anyhow::{Context, Result};
 use serde_json::Value;
-use songbird_types::SongbirdError;
 use songbird_types::TrustLevel;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -172,42 +171,10 @@ impl LimitedBtspConnection {
     ///
     /// Serializes JSON-RPC 2.0 request and sends over encrypted tunnel.
     /// This is the core communication method for all operations.
+    /// Send RPC call over BTSP tunnel (delegates to shared `btsp_rpc` module).
     async fn send_rpc(&self, operation: &str, request: Value) -> Result<Value> {
         let tunnel_id = self.tunnel_id.read().await.clone();
-
-        // Create JSON-RPC 2.0 request
-        let rpc_request = serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": operation,
-            "params": request,
-            "id": uuid::Uuid::new_v4().to_string(),
-        });
-
-        debug!("📡 Sending RPC over BTSP tunnel {}: {}", tunnel_id, operation);
-
-        // Serialize request
-        let _request_bytes =
-            serde_json::to_vec(&rpc_request).context("Failed to serialize RPC request")?;
-
-        // Send over tunnel
-        // NOTE: In v3.18.0, send_data_over_tunnel is not yet implemented in BtspClient
-        // This requires security provider v0.16.0+ for bidirectional tunnel support.
-        //
-        // ROADMAP (Phase 2): Bidirectional BTSP Communication
-        // - Implement BtspClient.send_data_over_tunnel()
-        // - Add request/response correlation
-        // - Support streaming data transfer
-        // - See: BTSP_CONNECTION_EVOLUTION_V3_18_0.md
-        //
-        // self.btsp_client.send_data_over_tunnel(&tunnel_id, &request_bytes).await?;
-
-        // For v3.18.0, return error indicating Phase 2 feature
-        Err(SongbirdError::not_implemented_with_detail(
-            "btsp_bidirectional_rpc",
-            "Requires security provider v0.16.0+ and BtspClient.send_data_over_tunnel(); \
-             current code establishes tunnels only. See BTSP_CONNECTION_EVOLUTION_V3_18_0.md.",
-        )
-        .into())
+        super::btsp_rpc::send_btsp_jsonrpc(&self.btsp_client, &tunnel_id, operation, request).await
     }
 
     /// Get connection uptime

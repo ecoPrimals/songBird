@@ -19,6 +19,7 @@ pub mod full_trust;
 pub mod http_remote;
 pub mod limited;
 
+pub mod btsp_rpc;
 pub mod federated_btsp;
 pub mod full_trust_btsp;
 pub mod limited_btsp;

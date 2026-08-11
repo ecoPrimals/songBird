@@ -30,7 +30,7 @@
 use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
 use anyhow::{Context, Result};
 use serde_json::Value;
-use songbird_types::{SongbirdError, TrustLevel};
+use songbird_types::TrustLevel;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::RwLock;
@@ -112,29 +112,10 @@ impl FullTrustBtspConnection {
         })
     }
 
-    /// Send RPC call over BTSP tunnel
+    /// Send RPC call over BTSP tunnel (delegates to shared `btsp_rpc` module).
     async fn send_rpc(&self, operation: &str, request: Value) -> Result<Value> {
         let tunnel_id = self.tunnel_id.read().await.clone();
-
-        // Create JSON-RPC 2.0 request (serialized path reserved for Phase 2 tunnel I/O)
-        let _rpc_request = serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": operation,
-            "params": request,
-            "id": uuid::Uuid::new_v4().to_string(),
-        });
-
-        debug!("📡 Sending RPC over BTSP tunnel {}: {}", tunnel_id, operation);
-
-        // ROADMAP (Phase 2): Bidirectional BTSP Communication
-        // Requires security provider v0.16.0+ and BtspClient.send_data_over_tunnel()
-        // See: BTSP_CONNECTION_EVOLUTION_V3_18_0.md for implementation plan
-        Err(SongbirdError::not_implemented_with_detail(
-            "btsp_bidirectional_rpc",
-            "Requires security provider v0.16.0+ and BtspClient.send_data_over_tunnel(); \
-             current implementation establishes tunnels only.",
-        )
-        .into())
+        super::btsp_rpc::send_btsp_jsonrpc(&self.btsp_client, &tunnel_id, operation, request).await
     }
 
     /// Get connection uptime

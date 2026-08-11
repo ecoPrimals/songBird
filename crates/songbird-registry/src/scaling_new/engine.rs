@@ -9,7 +9,7 @@ use super::policy::ScalingPolicy;
 use crate::types::PluginId;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// Auto-scaling engine
 pub struct ScalingEngine {
@@ -32,19 +32,19 @@ impl ScalingEngine {
 
     /// Add a scaling policy for a plugin
     pub async fn add_policy(&self, plugin_id: PluginId, policy: ScalingPolicy) {
-        let mut policies = self.policies.write().await;
+        let mut policies = self.policies.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         policies.insert(plugin_id, policy);
     }
 
     /// Remove a scaling policy for a plugin
     pub async fn remove_policy(&self, plugin_id: &PluginId) {
-        self.policies.write().await.remove(plugin_id);
-        self.instances.write().await.remove(plugin_id);
+        self.policies.write().unwrap_or_else(std::sync::PoisonError::into_inner).remove(plugin_id);
+        self.instances.write().unwrap_or_else(std::sync::PoisonError::into_inner).remove(plugin_id);
     }
 
     /// Get current instance count for a plugin
     pub async fn get_instance_count(&self, plugin_id: &PluginId) -> u32 {
-        let instances = self.instances.read().await;
+        let instances = self.instances.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         instances.get(plugin_id).copied().unwrap_or(1)
     }
 }

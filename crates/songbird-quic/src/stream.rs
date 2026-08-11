@@ -4,8 +4,7 @@
 //! QUIC stream handling (pure Rust, native engine).
 
 use crate::error::{QuicError, Result};
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tracing::debug;
 
 // Re-use the ConnectionInner from connection.rs.
@@ -51,8 +50,9 @@ impl QuicStream {
     /// # Errors
     ///
     /// Returns error if the stream is not writable or the connection is closed.
+    #[expect(clippy::unused_async, reason = "async for API stability; future packet I/O")]
     pub async fn write(&mut self, data: &[u8]) -> Result<()> {
-        let mut inner = self.conn.lock().await;
+        let mut inner = self.conn.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let entry = inner
             .streams
             .get_mut(self.stream_id)
@@ -77,8 +77,9 @@ impl QuicStream {
     /// # Errors
     ///
     /// Returns error if the stream is not writable.
+    #[expect(clippy::unused_async, reason = "async for API stability; future packet I/O")]
     pub async fn finish(&mut self) -> Result<()> {
-        let mut inner = self.conn.lock().await;
+        let mut inner = self.conn.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let entry = inner
             .streams
             .get_mut(self.stream_id)
@@ -95,8 +96,9 @@ impl QuicStream {
     /// # Errors
     ///
     /// Returns error if the stream is not readable.
+    #[expect(clippy::unused_async, reason = "async for API stability; future packet I/O")]
     pub async fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        let mut inner = self.conn.lock().await;
+        let mut inner = self.conn.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let entry = inner
             .streams
             .get_mut(self.stream_id)
@@ -113,8 +115,9 @@ impl QuicStream {
     /// # Errors
     ///
     /// Returns error if the stream is not readable or data exceeds `max_size`.
+    #[expect(clippy::unused_async, reason = "async for API stability; future packet I/O")]
     pub async fn read_to_end(&mut self, max_size: usize) -> Result<Vec<u8>> {
-        let mut inner = self.conn.lock().await;
+        let mut inner = self.conn.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let entry = inner
             .streams
             .get_mut(self.stream_id)
@@ -136,8 +139,9 @@ impl QuicStream {
     }
 
     /// Check if stream has data to read.
+    #[expect(clippy::unused_async, reason = "async for API stability; future packet I/O")]
     pub async fn is_readable(&self) -> bool {
-        let inner = self.conn.lock().await;
+        let inner = self.conn.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         inner
             .streams
             .get(self.stream_id)
@@ -145,9 +149,10 @@ impl QuicStream {
     }
 
     /// Check if stream is writable.
+    #[expect(clippy::unused_async, reason = "async for API stability; future packet I/O")]
     pub async fn is_writable(&self) -> bool {
         use crate::transport::streams::StreamState;
-        let inner = self.conn.lock().await;
+        let inner = self.conn.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         inner
             .streams
             .get(self.stream_id)
@@ -181,7 +186,7 @@ mod tests {
 
         // Simulate data arriving on the stream (in a real impl, this comes from packets)
         {
-            let mut inner = stream.conn.lock().await;
+            let mut inner = stream.conn.lock().unwrap();
             let entry = inner.streams.get_mut(stream.id()).unwrap();
             entry.receive(b"world").unwrap();
         }

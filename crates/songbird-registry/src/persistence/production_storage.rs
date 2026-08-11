@@ -14,7 +14,7 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, error, info, warn};
 
 use crate::persistence::service_data::{RegistryServiceEntry, ServiceInfo};
@@ -207,7 +207,7 @@ impl ProductionServicePersistence {
         service_id: &str,
         entry: &RegistryServiceEntry,
     ) -> SongbirdResult<()> {
-        let mut cache = self.cache.write().await;
+        let mut cache = self.cache.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         cache.services.insert(service_id.to_string(), entry.clone());
         cache.registration_times.insert(service_id.to_string(), Utc::now());
         drop(cache);
@@ -222,7 +222,7 @@ impl ProductionServicePersistence {
         service_id: &str,
         info: &ServiceInfo,
     ) -> SongbirdResult<()> {
-        let mut cache = self.cache.write().await;
+        let mut cache = self.cache.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         cache.service_info.insert(service_id.to_string(), info.clone());
         drop(cache);
 
@@ -235,19 +235,19 @@ impl ProductionServicePersistence {
         &self,
         service_id: &str,
     ) -> SongbirdResult<Option<RegistryServiceEntry>> {
-        let cache = self.cache.read().await;
+        let cache = self.cache.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(cache.services.get(service_id).cloned())
     }
 
     /// Load service info
     pub async fn load_service_info(&self, service_id: &str) -> SongbirdResult<Option<ServiceInfo>> {
-        let cache = self.cache.read().await;
+        let cache = self.cache.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(cache.service_info.get(service_id).cloned())
     }
 
     /// Remove service from persistence
     pub async fn remove_service(&self, service_id: &str) -> SongbirdResult<()> {
-        let mut cache = self.cache.write().await;
+        let mut cache = self.cache.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         cache.services.remove(service_id);
         cache.service_info.remove(service_id);
         cache.registration_times.remove(service_id);
@@ -259,7 +259,7 @@ impl ProductionServicePersistence {
 
     /// Get all service IDs
     pub async fn get_all_service_ids(&self) -> SongbirdResult<Vec<String>> {
-        let cache = self.cache.read().await;
+        let cache = self.cache.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(cache.services.keys().cloned().collect())
     }
 
@@ -287,9 +287,10 @@ impl ProductionServicePersistence {
             }
         }
 
-        let mut cache = self.cache.write().await;
-        cache.last_saved = Utc::now();
-        drop(cache);
+        {
+            let mut cache = self.cache.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+            cache.last_saved = Utc::now();
+        }
 
         let duration_ms = u64::try_from(save_start.elapsed().as_millis()).unwrap_or(u64::MAX);
         self.update_save_stats(true, duration_ms).await;
@@ -304,9 +305,10 @@ impl ProductionServicePersistence {
             SongbirdError::service("persistence", format!("Failed to create data directory: {e}"))
         })?;
 
-        let cache = self.cache.read().await;
-        let data = cache.clone();
-        drop(cache);
+        let data = {
+            let cache = self.cache.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+            cache.clone()
+        };
 
         let json_data = serde_json::to_string_pretty(&data).map_err(|e| {
             SongbirdError::service("persistence", format!("Serialization failed: {e}"))
@@ -390,7 +392,7 @@ impl ProductionServicePersistence {
             SongbirdError::service("persistence", format!("Deserialization failed: {e}"))
         })?;
 
-        let mut cache = self.cache.write().await;
+        let mut cache = self.cache.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         *cache = data;
         let loaded_count = cache.services.len();
         drop(cache);
@@ -430,7 +432,7 @@ impl ProductionServicePersistence {
             }
         });
 
-        let mut auto_save_task = self.auto_save_task.write().await;
+        let mut auto_save_task = self.auto_save_task.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         *auto_save_task = Some(task);
         drop(auto_save_task);
 
@@ -472,7 +474,7 @@ impl ProductionServicePersistence {
 
     /// Update save statistics
     async fn update_save_stats(&self, success: bool, duration_ms: u64) {
-        let mut stats = self.stats.write().await;
+        let mut stats = self.stats.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         stats.total_saves += 1;
         stats.last_save_duration_ms = duration_ms;
 
@@ -485,7 +487,7 @@ impl ProductionServicePersistence {
 
     /// Update load statistics
     async fn update_load_stats(&self, success: bool, duration_ms: u64) {
-        let mut stats = self.stats.write().await;
+        let mut stats = self.stats.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         stats.total_loads += 1;
         stats.last_load_duration_ms = duration_ms;
 
@@ -498,14 +500,14 @@ impl ProductionServicePersistence {
 
     /// Get persistence statistics
     pub async fn get_statistics(&self) -> PersistenceStatistics {
-        let stats = self.stats.read().await;
+        let stats = self.stats.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         stats.clone()
     }
 
     /// Stop persistence (cleanup auto-save)
     pub async fn stop(&self) -> SongbirdResult<()> {
         let handle = {
-            let mut task = self.auto_save_task.write().await;
+            let mut task = self.auto_save_task.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             task.take()
         };
         if let Some(h) = handle {

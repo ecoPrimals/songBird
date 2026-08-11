@@ -10,8 +10,7 @@ use crate::transport::flow_control::ConnectionFlowControl;
 use crate::transport::state::{CloseReason, Connection as TransportConnection};
 use crate::transport::streams::StreamManager;
 use std::net::SocketAddr;
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tracing::debug;
 
 /// QUIC connection.
@@ -70,8 +69,9 @@ impl QuicConnection {
     /// # Errors
     ///
     /// Returns error if the stream limit is exceeded or the connection is closed.
+    #[expect(clippy::unused_async, reason = "async for API stability; future packet I/O")]
     pub async fn open_bi(&self) -> Result<QuicStream> {
-        let mut inner = self.inner.lock().await;
+        let mut inner = self.inner.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         if !inner.transport.is_established() {
             return Err(QuicError::NotConnected);
         }
@@ -85,8 +85,9 @@ impl QuicConnection {
     /// # Errors
     ///
     /// Returns error if the stream limit is exceeded or the connection is closed.
+    #[expect(clippy::unused_async, reason = "async for API stability; future packet I/O")]
     pub async fn open_uni(&self) -> Result<QuicStream> {
-        let mut inner = self.inner.lock().await;
+        let mut inner = self.inner.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         if !inner.transport.is_established() {
             return Err(QuicError::NotConnected);
         }
@@ -114,20 +115,23 @@ impl QuicConnection {
     }
 
     /// Get remote address.
+    #[expect(clippy::unused_async, reason = "async for API stability; future packet I/O")]
     pub async fn remote_address(&self) -> SocketAddr {
-        let inner = self.inner.lock().await;
+        let inner = self.inner.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         inner.transport.remote_addr()
     }
 
     /// Check if connection is closed.
+    #[expect(clippy::unused_async, reason = "async for API stability; future packet I/O")]
     pub async fn is_closed(&self) -> bool {
-        let inner = self.inner.lock().await;
+        let inner = self.inner.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         inner.transport.is_closed()
     }
 
     /// Close connection gracefully.
+    #[expect(clippy::unused_async, reason = "async for API stability; future packet I/O")]
     pub async fn close(&self, error_code: u64, reason: &[u8]) {
-        let mut inner = self.inner.lock().await;
+        let mut inner = self.inner.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let _ = inner.transport.initiate_close(CloseReason::Application {
             error_code,
             reason: reason.to_vec(),
@@ -139,15 +143,17 @@ impl QuicConnection {
     /// # Errors
     ///
     /// Currently infallible; `Result` returned for API compatibility.
+    #[expect(clippy::unused_async, reason = "async for API stability; future packet I/O")]
     pub async fn closed(&self) -> Result<()> {
-        let mut inner = self.inner.lock().await;
+        let mut inner = self.inner.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         inner.transport.finish_close();
         Ok(())
     }
 
     /// Mark the connection as established (called after handshake completion).
+    #[expect(clippy::unused_async, reason = "async for API stability; future packet I/O")]
     pub(crate) async fn set_established(&self) -> Result<()> {
-        let mut inner = self.inner.lock().await;
+        let mut inner = self.inner.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         inner.transport.start_handshake()?;
         inner.transport.handshake_complete()?;
         Ok(())

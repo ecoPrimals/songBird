@@ -8,7 +8,7 @@
 use crate::types::{HealthCheckConfig, HealthStatus, PluginId};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// Health monitor for plugins
 pub struct HealthMonitor {
@@ -31,25 +31,25 @@ impl HealthMonitor {
 
     /// Add a health check for a plugin
     pub async fn add_check(&self, plugin_id: PluginId, config: HealthCheckConfig) {
-        let mut checks = self.checks.write().await;
+        let mut checks = self.checks.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         checks.insert(plugin_id, config);
     }
 
     /// Remove a health check for a plugin
     pub async fn remove_check(&self, plugin_id: &PluginId) {
-        self.checks.write().await.remove(plugin_id);
-        self.statuses.write().await.remove(plugin_id);
+        self.checks.write().unwrap_or_else(std::sync::PoisonError::into_inner).remove(plugin_id);
+        self.statuses.write().unwrap_or_else(std::sync::PoisonError::into_inner).remove(plugin_id);
     }
 
     /// Get current health status for a plugin
     pub async fn get_status(&self, plugin_id: &PluginId) -> Option<HealthStatus> {
-        let statuses = self.statuses.read().await;
+        let statuses = self.statuses.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         statuses.get(plugin_id).cloned()
     }
 
     /// Get all health statuses
     pub async fn get_all_statuses(&self) -> HashMap<PluginId, HealthStatus> {
-        let statuses = self.statuses.read().await;
+        let statuses = self.statuses.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         statuses.clone()
     }
 }

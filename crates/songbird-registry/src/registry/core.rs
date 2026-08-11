@@ -13,7 +13,7 @@
 use songbird_types::errors::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use crate::registry::query::Query;
 use crate::registry::traits::PluginRegistry;
@@ -58,7 +58,7 @@ impl PluginRegistry for Registry {
         let plugin_id = plugin.id.clone();
 
         // Check if plugin already exists
-        let mut plugins = self.plugins.write().await;
+        let mut plugins = self.plugins.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         if plugins.contains_key(&plugin_id) {
             return Err(SongbirdError::service(
                 "registry",
@@ -91,7 +91,7 @@ impl PluginRegistry for Registry {
     }
 
     async fn unregister(&mut self, id: &PluginId) -> SongbirdResult<()> {
-        let mut plugins = self.plugins.write().await;
+        let mut plugins = self.plugins.write().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         // Check if plugin exists
         if !plugins.contains_key(id) {
@@ -122,7 +122,7 @@ impl PluginRegistry for Registry {
     }
 
     async fn get(&self, id: &PluginId) -> SongbirdResult<Plugin> {
-        let plugins = self.plugins.read().await;
+        let plugins = self.plugins.read().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         plugins
             .get(id)
@@ -131,7 +131,7 @@ impl PluginRegistry for Registry {
     }
 
     async fn list(&self) -> Vec<Plugin> {
-        let plugins = self.plugins.read().await;
+        let plugins = self.plugins.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         plugins.values().cloned().collect()
     }
 
@@ -139,7 +139,7 @@ impl PluginRegistry for Registry {
         let mut results: Vec<Plugin> = self
             .plugins
             .read()
-            .await
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .values()
             .filter(|plugin| {
                 // Filter by ID (exact match)
@@ -201,7 +201,7 @@ impl PluginRegistry for Registry {
     }
 
     async fn exists(&self, id: &PluginId) -> bool {
-        let plugins = self.plugins.read().await;
+        let plugins = self.plugins.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         plugins.contains_key(id)
     }
 

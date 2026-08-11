@@ -130,7 +130,7 @@ impl GenesisWitness {
 pub struct WitnessVerifier {
     /// Trusted witness public keys
     trusted_witnesses:
-        std::sync::Arc<tokio::sync::RwLock<std::collections::HashMap<String, Vec<u8>>>>,
+        std::sync::Arc<std::sync::RwLock<std::collections::HashMap<String, Vec<u8>>>>,
 }
 
 impl WitnessVerifier {
@@ -138,20 +138,22 @@ impl WitnessVerifier {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            trusted_witnesses: std::sync::Arc::new(tokio::sync::RwLock::new(
+            trusted_witnesses: std::sync::Arc::new(std::sync::RwLock::new(
                 std::collections::HashMap::new(),
             )),
         }
     }
 
     /// Add trusted witness
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn add_trusted_witness(&self, device_id: String, public_key: Vec<u8>) {
-        self.trusted_witnesses.write().await.insert(device_id, public_key);
+        self.trusted_witnesses.write().unwrap_or_else(std::sync::PoisonError::into_inner).insert(device_id, public_key);
     }
 
     /// Check if witness is trusted
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn is_trusted(&self, witness: &GenesisWitness) -> bool {
-        let witnesses = self.trusted_witnesses.read().await;
+        let witnesses = self.trusted_witnesses.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         witnesses.contains_key(&witness.device_id)
     }
 
