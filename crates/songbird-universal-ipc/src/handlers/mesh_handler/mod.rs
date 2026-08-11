@@ -135,10 +135,15 @@ impl MeshHandler {
         self.peer_capabilities.blocking_read().len()
     }
 
-    /// The local node ID.
+    /// The local node ID (blocking — panics inside async single-thread runtimes).
     #[must_use]
     pub fn node_id(&self) -> String {
         self.node_id.blocking_read().to_string()
+    }
+
+    /// The local node ID (async-safe).
+    pub async fn node_id_async(&self) -> String {
+        self.node_id.read().await.to_string()
     }
 
     /// Initialize the mesh with node ID, bootstrap onions, and/or bootstrap peers.

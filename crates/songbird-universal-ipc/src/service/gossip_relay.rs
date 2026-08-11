@@ -84,7 +84,7 @@ impl IpcServiceHandler {
 
         let url = songbird_types::constants::jsonrpc_endpoint_url(&addr);
 
-        // Forward as gossip.inject to remote songBird (it will inject locally)
+        let our_node_id = self.mesh_handler.node_id_async().await;
         let request = json!({
             "jsonrpc": "2.0",
             "method": "gossip.inject",
@@ -92,7 +92,7 @@ impl IpcServiceHandler {
                 "topic": topic,
                 "key": key,
                 "payload": payload,
-                "origin_gate": self.mesh_handler.node_id(),
+                "origin_gate": our_node_id,
             },
             "id": 1
         });
@@ -155,7 +155,163 @@ impl IpcServiceHandler {
         }))
     }
 
-    /// Inject a gossip payload into the local swarmVine via `gossip.inject` on UDS.
+    /// Handle `gossip.spread` — broadcast gossip to ALL reachable mesh peers.
+    ///
+    /// Epidemic fan-out: injects locally AND relays to every reachable federation
+    /// peer. Prevents relay loops via `origin_gate` — peers that originated the
+    /// gossip or already received it (tracked by `seen_gates`) are skipped.
+    ///
+    /// Params:
+    /// - `topic` (string): gossip topic
+    /// - `key` (string, optional): dedup key
+    /// - `payload` (object): gossip payload
+    /// - `origin_gate` (string, optional): originator gate (loop prevention)
+    /// - `seen_gates` (array of strings, optional): gates that already have this entry
+    pub(super) async fn handle_gossip_spread(&self, params: Value) -> Result<Value, String> {
+        let topic = params
+            .get("topic")
+            .and_then(Value::as_str)
+            .ok_or("Missing required field: topic")?;
+
+        let key = params
+            .get("key")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+
+        let payload = params
+            .get("payload")
+            .cloned()
+            .unwrap_or(Value::Null);
+
+        let origin = params
+            .get("origin_gate")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+
+        let seen_gates: Vec<String> = params
+            .get("seen_gates")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(Value::as_str)
+                    .map(String::from)
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        self.inject_gossip_locally(topic, key, &payload).await?;
+
+        let mesh_guard = self.mesh_handler.mesh().await;
+        let Some(mesh) = mesh_guard.as_ref() else {
+            return Ok(json!({
+                "status": "local_only",
+                "reason": "mesh not initialized",
+                "spread_to": 0
+            }));
+        };
+
+        let our_node_id = self.mesh_handler.node_id_async().await;
+        let reachable = mesh.get_reachable_nodes().await;
+        drop(mesh_guard);
+
+        let inject_request = json!({
+            "topic": topic,
+            "key": key,
+            "payload": payload,
+            "origin_gate": our_node_id,
+        });
+
+        let (spread_count, failures) =
+            self.fan_out_gossip(&reachable, origin, &seen_gates, &our_node_id, &inject_request)
+                .await;
+
+        let mut result = json!({
+            "status": "spread",
+            "topic": topic,
+            "spread_to": spread_count,
+            "local_injected": true,
+        });
+
+        if !failures.is_empty() {
+            result["unreachable_peers"] = json!(failures);
+        }
+
+        Ok(result)
+    }
+
+    /// Fan-out a gossip payload to reachable peers, skipping origin and seen gates.
+    async fn fan_out_gossip(
+        &self,
+        reachable: &[String],
+        origin: &str,
+        seen_gates: &[String],
+        our_node_id: &str,
+        inject_params: &Value,
+    ) -> (u32, Vec<String>) {
+        use songbird_onion_relay::mesh::EndpointType;
+
+        let mut spread_count: u32 = 0;
+        let mut failures: Vec<String> = Vec::new();
+
+        let mut seen: std::collections::HashSet<&str> =
+            seen_gates.iter().map(String::as_str).collect();
+        if !origin.is_empty() {
+            seen.insert(origin);
+        }
+        seen.insert(our_node_id);
+
+        for peer_id in reachable {
+            if seen.contains(peer_id.as_str()) {
+                continue;
+            }
+
+            let mesh_guard = self.mesh_handler.mesh().await;
+            let Some(mesh) = mesh_guard.as_ref() else {
+                break;
+            };
+            let path = mesh.get_best_path(peer_id).await;
+            drop(mesh_guard);
+
+            let Some(path) = path else {
+                continue;
+            };
+
+            let (EndpointType::Direct { addr }
+            | EndpointType::Local { addr }
+            | EndpointType::Overlay { addr, .. }) = path.endpoint_type
+            else {
+                continue;
+            };
+
+            let url = songbird_types::constants::jsonrpc_endpoint_url(&addr);
+
+            let request = json!({
+                "jsonrpc": "2.0",
+                "method": "gossip.inject",
+                "params": inject_params,
+                "id": 1
+            });
+
+            match post_gossip_relay(&url, &request).await {
+                Ok(()) => spread_count += 1,
+                Err(e) => {
+                    debug!(
+                        target: "songbird::gossip_relay",
+                        peer = %peer_id,
+                        error = %e,
+                        "spread failed to peer"
+                    );
+                    failures.push(peer_id.clone());
+                }
+            }
+        }
+
+        (spread_count, failures)
+    }
+
+    /// Inject a gossip payload into the local swarmVine via UDS.
+    ///
+    /// Uses swarmVine's expected `0xEC 0x01` preamble followed by JSON-RPC.
     async fn inject_gossip_locally(
         &self,
         topic: &str,
@@ -192,6 +348,10 @@ impl IpcServiceHandler {
             match tokio::time::timeout(inject_timeout, UnixStream::connect(&socket_path)).await {
                 Ok(Ok(stream)) => {
                     let (reader, mut writer) = stream.into_split();
+                    // swarmVine expects local injection preamble: 0xEC 0x01
+                    if writer.write_all(&[0xEC, 0x01]).await.is_err() {
+                        return Ok(());
+                    }
                     let msg = format!("{rpc}\n");
                     if writer.write_all(msg.as_bytes()).await.is_ok() {
                         let mut response = String::new();

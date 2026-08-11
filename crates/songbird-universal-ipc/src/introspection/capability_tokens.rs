@@ -106,6 +106,7 @@ const CALLABLE_METHODS: &[&str] = &[
     // ── Gossip (MeshRelay transport) ──
     "gossip.relay",
     "gossip.inject",
+    "gossip.spread",
     // ── Discovery / rendezvous / peers ──
     "discovery.peers",
     "discovery.announce",
@@ -243,7 +244,7 @@ pub const CAPABILITY_METHOD_MAP: &[(&str, &[&str])] = &[
         "network.relay",
         &["relay.serve", "relay.stop", "relay.status", "relay.allocate", "relay.forward"],
     ),
-    ("network.gossip", &["gossip.relay", "gossip.inject"]),
+    ("network.gossip", &["gossip.relay", "gossip.inject", "gossip.spread"]),
     (
         "network.stun",
         &["stun.serve", "stun.stop", "stun.status", "stun.get_public_address", "stun.bind"],

@@ -259,6 +259,10 @@ pub enum GossipMethod {
     Relay,
     /// `gossip.inject` — inject a gossip payload directly into local swarmVine.
     Inject,
+    /// `gossip.spread` — broadcast gossip to ALL reachable mesh peers (epidemic fan-out).
+    /// Unlike `gossip.relay` (targeted), this enables full cross-gate propagation when
+    /// swarmVine's direct TCP 7800 path is unreachable between gates.
+    Spread,
 }
 
 /// `punch.*`

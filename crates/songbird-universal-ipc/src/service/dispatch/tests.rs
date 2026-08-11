@@ -688,3 +688,103 @@ async fn capability_call_rejects_empty_operation() {
 
     assert!(err.contains("Invalid operation name"), "unexpected error: {err}");
 }
+
+// ── gossip.spread tests ──
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn gossip_spread_without_mesh_returns_local_only() {
+    let h = ipc_handler();
+
+    let result = h
+        .handle(
+            "gossip.spread",
+            json!({
+                "topic": "capability",
+                "key": "test-spread",
+                "payload": { "data": 42 }
+            }),
+        )
+        .await
+        .expect("gossip.spread without mesh should succeed locally");
+    assert_eq!(result["status"], "local_only");
+    assert_eq!(result["spread_to"], 0);
+}
+
+#[tokio::test]
+async fn gossip_spread_with_empty_mesh_returns_zero_spread() {
+    let h = ipc_handler();
+
+    h.handle("mesh.init", json!({ "node_id": "spread-test-gate" }))
+        .await
+        .expect("mesh.init");
+
+    let result = h
+        .handle(
+            "gossip.spread",
+            json!({
+                "topic": "tower",
+                "key": "cap.announce:spread-test",
+                "payload": { "capabilities": ["test.cap"] }
+            }),
+        )
+        .await
+        .expect("gossip.spread with empty mesh should succeed");
+    assert_eq!(result["status"], "spread");
+    assert_eq!(result["spread_to"], 0);
+    assert_eq!(result["local_injected"], true);
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn gossip_spread_missing_topic_errors() {
+    let h = ipc_handler();
+
+    let err = h
+        .handle("gossip.spread", json!({ "payload": {} }))
+        .await
+        .expect_err("should require topic");
+    assert!(err.contains("topic"), "expected topic error, got: {err}");
+}
+
+#[tokio::test]
+async fn gossip_spread_skips_origin_gate() {
+    let h = ipc_handler();
+
+    h.handle("mesh.init", json!({ "node_id": "local-gate" }))
+        .await
+        .expect("mesh.init");
+
+    let result = h
+        .handle(
+            "gossip.spread",
+            json!({
+                "topic": "tower",
+                "payload": { "test": true },
+                "origin_gate": "some-remote-gate",
+                "seen_gates": ["already-seen-gate"]
+            }),
+        )
+        .await
+        .expect("gossip.spread with origin should succeed");
+    assert_eq!(result["status"], "spread");
+    assert_eq!(result["local_injected"], true);
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn gossip_inject_accepts_origin_gate_field() {
+    let h = ipc_handler();
+
+    let result = h
+        .handle(
+            "gossip.inject",
+            json!({
+                "topic": "tower",
+                "key": "remote-inject",
+                "payload": { "from": "remote" },
+                "origin_gate": "blue-gate"
+            }),
+        )
+        .await
+        .expect("gossip.inject with origin_gate");
+    assert_eq!(result["status"], "injected");
+    assert_eq!(result["origin_gate"], "blue-gate");
+}

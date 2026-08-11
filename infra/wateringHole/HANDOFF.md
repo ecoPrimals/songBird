@@ -1,7 +1,7 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave157i  
+**Version**: v0.2.1-wave157j  
 **Date**: August 11, 2026  
 **Gate**: eastGate
 
@@ -21,7 +21,29 @@
 | Typed errors | `songbird-config` + `songbird-http-client` fully typed (no `anyhow` in public API) |
 | Total Rust | ~471,500 lines across 31 crates |
 
-## Recent Evolution (Wave 157g–157i)
+## Recent Evolution (Wave 157g–157j)
+
+### Wave 157j — MeshRelay Cross-Gate Federation Forwarding (Aug 11 2026)
+
+**GOSSIP.SPREAD EPIDEMIC FAN-OUT** — critical cross-gate gossip blocker resolved:
+- `gossip.spread` method: broadcasts gossip to ALL reachable mesh peers via `:7700` federation port
+- Prevents relay loops via `origin_gate` + `seen_gates` parameters
+- Sends `gossip.inject` (not `gossip.spread`) to peers — single-hop propagation, no recursive fan-out storms
+- Federation intrinsics updated: remote peers now discover `gossip.relay`, `gossip.inject`, `gossip.spread`
+
+**UDS INJECTION FRAMING FIX** — `inject_gossip_locally` now sends `0xEC 0x01` preamble:
+- SwarmVine expects local injection preamble before JSON-RPC payload
+- Previously sent raw JSON which swarmVine would reject on preamble-mandatory sockets
+- Aligned with `swarmvine_gossip.rs` injection behavior
+
+**ASYNC SAFETY** — `node_id_async()` accessor added to `MeshHandler`:
+- `node_id()` uses `blocking_read()` (panics in single-thread async runtimes)
+- Gossip relay/spread paths now use `node_id_async()` for runtime safety
+- Existing synchronous callers unaffected
+
+**Native capability surface**: 19 callable gossip methods (`gossip.relay`, `gossip.inject`, `gossip.spread`)
+
+---
 
 ### Wave 157i — G72 Tier 2 Completion + Typed Errors + Decomposition (Aug 11 2026)
 
