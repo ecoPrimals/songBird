@@ -29,31 +29,40 @@ fi
 # --- Discover or fetch security provider binary ---------------------------
 PROVIDER="${SECURITY_PROVIDER_BIN:-${BEARDOG_BIN:-""}}"
 if [ -z "$PROVIDER" ] && [ -n "$PLASMID_BIN" ]; then
-    # Try capability-based name first, then legacy
-    if [ -f "$PLASMID_BIN/primals/security-provider" ]; then
+    # Detect host triple for plasmidBin triple-scoped layout
+    HOST_TRIPLE="${CARGO_BUILD_TARGET:-$(rustc -vV 2>/dev/null | awk '/^host:/{print $2}')}"
+    HOST_TRIPLE="${HOST_TRIPLE:-x86_64-unknown-linux-gnu}"
+
+    # Triple-scoped discovery (current layout)
+    if [ -f "$PLASMID_BIN/primals/$HOST_TRIPLE/beardog" ]; then
+        PROVIDER="$PLASMID_BIN/primals/$HOST_TRIPLE/beardog"
+    elif [ -f "$PLASMID_BIN/primals/$HOST_TRIPLE/security-provider" ]; then
+        PROVIDER="$PLASMID_BIN/primals/$HOST_TRIPLE/security-provider"
+    # Legacy flat layout fallback
+    elif [ -f "$PLASMID_BIN/primals/security-provider" ]; then
         PROVIDER="$PLASMID_BIN/primals/security-provider"
     elif [ -f "$PLASMID_BIN/primals/beardog" ]; then
-        echo "WARN: using legacy binary name 'beardog' — migrate to 'security-provider'"
+        echo "WARN: using legacy flat binary name 'beardog' — migrate to triple-scoped layout"
         PROVIDER="$PLASMID_BIN/primals/beardog"
     fi
 fi
 
 if [ -z "$PROVIDER" ] || [ ! -f "$PROVIDER" ]; then
-    if [ -n "$PLASMID_BIN" ] && [ -f "$PLASMID_BIN/fetch.sh" ]; then
-        echo "--- Fetching security provider via plasmidBin/fetch.sh ---"
-        bash "$PLASMID_BIN/fetch.sh" --capability crypto.delegate
-        PROVIDER="$PLASMID_BIN/primals/security-provider"
-        # Fallback to legacy name if capability-based fetch not yet supported
-        if [ ! -f "$PROVIDER" ]; then
-            PROVIDER="$PLASMID_BIN/primals/beardog"
+    if command -v membrane >/dev/null 2>&1; then
+        echo "--- Fetching security provider via membrane plasmid.fetch ---"
+        membrane plasmid.fetch --capability crypto.delegate 2>/dev/null || true
+        # Re-discover after fetch
+        if [ -n "$PLASMID_BIN" ] && [ -f "$PLASMID_BIN/primals/${HOST_TRIPLE:-unknown}/beardog" ]; then
+            PROVIDER="$PLASMID_BIN/primals/${HOST_TRIPLE:-unknown}/beardog"
         fi
     fi
 fi
 
 if [ -z "$PROVIDER" ] || [ ! -f "$PROVIDER" ]; then
     echo "ERROR: security provider binary not found."
-    echo "  Set \$SECURITY_PROVIDER_BIN, place it in infra/plasmidBin/primals/security-provider,"
-    echo "  or ensure plasmidBin/fetch.sh can retrieve it."
+    echo "  Set \$SECURITY_PROVIDER_BIN, or place it in:"
+    echo "    infra/plasmidBin/primals/<triple>/beardog"
+    echo "  Or install 'membrane' CLI and run: membrane plasmid.fetch --capability crypto.delegate"
     exit 1
 fi
 

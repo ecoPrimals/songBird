@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+> **Note**: Waves 114–157j (Jun 13 – Aug 11 2026) are tracked in `REMAINING_WORK.md`
+> and `infra/wateringHole/HANDOFF.md`. This file serves as the fossil record for
+> waves ≤113. Full per-wave detail is preserved in the live tracker above.
+
+---
+
 ## [v0.2.1-wave113] - 2026-06-13 - Stream 7: riboCipher Transport Signal + Deep Debt
 
 ### Added

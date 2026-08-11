@@ -13,7 +13,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 14,964+ total (689 in universal-ipc; integration suites) |
+| **Tests** | 15,167+ total (694 in universal-ipc; integration suites) |
 | **Line Coverage** | **73.41%** measured (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 31 crates compile clean (~10s incremental); Windows cross-compile (`x86_64-pc-windows-gnu`) zero warnings |

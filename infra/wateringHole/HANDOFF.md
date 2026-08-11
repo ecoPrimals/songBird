@@ -10,7 +10,7 @@
 | Metric | Status |
 |--------|--------|
 | Clippy | Zero warnings (pedantic + nursery, `-D warnings`); workspace-wide clean Aug 11 |
-| Tests | 14,964+ pass, 0 failures |
+| Tests | 15,167+ pass, 0 failures |
 | Unsafe | 0 (`forbid(unsafe_code)` all 31 crates) |
 | Production unwraps | 0 |
 | Production stubs | 0 (external-blocked items documented) |
