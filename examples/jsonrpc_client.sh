@@ -47,20 +47,20 @@ echo "6. Capabilities Methods:"
 call_jsonrpc "capabilities.methods"
 echo ""
 
-echo "7. Songbird Version:"
-call_jsonrpc "songbird.version"
+echo "7. Primal Info:"
+call_jsonrpc "primal.info"
 echo ""
 
 echo "8. Discover Services by Capability:"
-call_jsonrpc "ipc.find_capability" '{"capability": "compute"}'
+call_jsonrpc "ipc.discover" '{"capability": "compute"}'
 echo ""
 
 echo "9. List Registered Services:"
-call_jsonrpc "songbird.services.list"
+call_jsonrpc "ipc.list"
 echo ""
 
-echo "10. Protocol Negotiation:"
-call_jsonrpc "protocol.negotiate" '{"desired_protocol": "tarpc", "peer_id": "tower-2"}'
+echo "10. RPC Methods:"
+call_jsonrpc "rpc.methods"
 echo ""
 
 echo "All examples complete!"

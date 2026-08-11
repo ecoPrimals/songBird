@@ -1,24 +1,53 @@
 # songBird — Upstream Handoff
 
 **Primal**: songBird  
-**Version**: v0.2.1-wave155f  
-**Date**: July 28, 2026  
+**Version**: v0.2.1-wave157i  
+**Date**: August 11, 2026  
 **Gate**: eastGate
 
 ## Current State
 
 | Metric | Status |
 |--------|--------|
-| Clippy | Zero warnings (pedantic + nursery, `-D warnings`); `doc_markdown` + `uninlined_format_args` now enforced |
-| Tests | 14,835+ pass, 0 failures (Wave 155b audit) |
+| Clippy | Zero warnings (pedantic + nursery, `-D warnings`); workspace-wide clean Aug 11 |
+| Tests | 14,964+ pass, 0 failures |
 | Unsafe | 0 (`forbid(unsafe_code)` all 31 crates) |
-| Production unwraps | 0 (config.rs refactored to `fmt::Result`, RwLock sites `#[expect]`-annotated) |
-| Production stubs | 0 (Wave 137: last fake-data stub evolved to real probes) |
-| Files >800L | 1 (gate_enrollment.rs: 809L production — 9L security-critical input validation) |
+| Production unwraps | 0 |
+| Production stubs | 0 (external-blocked items documented) |
+| Files >800L | 0 (max 767L) |
 | Hardcoding | 0 in production (all env-driven, capability-based) |
 | Mocks in prod | 0 (all `#[cfg(test)]` gated) |
+| `tokio::sync` Tier 2 | COMPLETE — 312 conversions, 161 legitimate remaining |
+| Typed errors | `songbird-config` + `songbird-http-client` fully typed (no `anyhow` in public API) |
+| Total Rust | ~471,500 lines across 31 crates |
 
-## Recent Evolution (Wave 151b–155f)
+## Recent Evolution (Wave 157g–157i)
+
+### Wave 157i — G72 Tier 2 Completion + Typed Errors + Decomposition (Aug 11 2026)
+
+**G72 TIER 2 COMPLETE** — `tokio::sync` → `std::sync` where guards never cross `.await`:
+- 312 total `PoisonError::into_inner` conversions across 10 crates
+- Remaining 161 `tokio::sync` sites verified as legitimate (held across awaits)
+- Pattern: explicit scope blocks drop guards before any `.await`; public async signatures retained
+
+**TYPED ERROR EVOLUTION** — `songbird-http-client` public API no longer exposes `anyhow::Result`:
+- All public methods return `crate::error::Result<T>` with typed `Error` enum
+- `Base64Decode`, `InvalidResponse`, `Connection`, `HttpProtocol` variants enable match-based handling
+- Downstream crates (`songbird-genesis`, `songbird-primal-coordination`) adapted
+- `anyhow` retained as `From<anyhow::Error>` interop bridge only
+
+**STRUCTURAL DECOMPOSITION** — `drawbridge.rs` (782→442L):
+- Extracted `drawbridge_proxy.rs` (335L): HTTP/HTTPS/TLS outbound proxy + IPC JSON-RPC roundtrip
+- Deduplicated `ipc_jsonrpc_roundtrip()` (was copy-pasted between two functions)
+- `resolve_external_url()` extracted as pure function
+
+**HOUSEKEEPING**:
+- Pre-existing introspection test fixed (capability count 17→18)
+- `songbird-config` `anyhow` fully removed (typed `SongbirdError::Configuration` errors)
+
+---
+
+## Previous Evolution (Wave 151b–155f)
 
 ### Wave 155f — ACME Challenge Responder + rustls-rustcrypto Elimination Path (Jul 28 2026)
 
@@ -335,12 +364,12 @@ Then enroll live gates: `mesh.enroll` with BTSP HMAC proofs for sporeGate, eastG
 | `security.*` (Ed25519, X25519, ChaCha20) | bearDog | LIVE via IPC |
 | `primal.announce` | biomeOS Neural API | LIVE (optional) |
 
-## Provided Capabilities (17 native + runtime drawbridge)
+## Provided Capabilities (18 native + runtime drawbridge)
 
 **Native** (always): `network.discovery`, `network.federation`, `network.relay`, `network.stun`,
 `network.igd`, `network.quic`, `network.tls`, `network.tor`, `network.onion`,
-`network.btsp`, `ipc.jsonrpc`, `ipc.tarpc`, `crypto.delegate`, `nfc.genesis`, `bluetooth.pair`,
-`compute.gpu`, `access.remote`
+`network.btsp`, `network.gossip`, `ipc.jsonrpc`, `ipc.tarpc`, `crypto.delegate`, `nfc.genesis`,
+`bluetooth.pair`, `compute.gpu`, `access.remote`
 
 **Runtime** (from `SONGBIRD_PROXY_ROUTES` + `SONGBIRD_DRAWBRIDGE_ROUTES`): dynamically merged
 into `capabilities.list` response. Example: `jupyter`, `inference`, etc.
