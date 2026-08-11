@@ -10,7 +10,7 @@
 //! - LRU (Least Recently Used) eviction policy
 //! - TTL (Time-To-Live) support for cache entries
 //! - Size-based eviction (memory limit)
-//! - Non-blocking async operations
+//! - Synchronous state access (`std::sync::RwLock`) — guards never cross awaits
 //!
 //! ## Performance
 //!
@@ -22,9 +22,8 @@
 
 use serde_json::Value;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
-use tokio::sync::RwLock;
 use tokio::time::Instant;
 use tracing::debug;
 
@@ -110,19 +109,23 @@ impl ResponseCache {
     /// * `None` if not cached or expired
     ///
     /// # Philosophy
-    /// - Non-blocking: Uses `tokio::sync::RwLock`
     /// - Automatic cleanup: Removes expired entries
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn get(&self, key: &str) -> Option<Value> {
-        let mut entries = self.entries.write().await;
+        let mut entries = self
+            .entries
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
-        // Check if entry exists and is not expired
         if let Some(entry) = entries.get(key) {
             if entry.is_expired() {
                 debug!("Cache entry expired: {}", key);
 
-                // Remove expired entry
                 if let Some(removed) = entries.remove(key) {
-                    let mut size = self.current_size.write().await;
+                    let mut size = self
+                        .current_size
+                        .write()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
                     *size = size.saturating_sub(removed.size);
                 }
 
@@ -146,13 +149,19 @@ impl ResponseCache {
     ///
     /// # Philosophy
     /// - Smart eviction: LRU + size-based
-    /// - Non-blocking: Async operations
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn set(&self, key: &str, value: &Value, ttl: Duration) {
         let entry = CacheEntry::new(value.clone(), ttl);
         let entry_size = entry.size;
 
-        let mut entries = self.entries.write().await;
-        let mut size = self.current_size.write().await;
+        let mut entries = self
+            .entries
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut size = self
+            .current_size
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         // Check if we need to evict entries to make space
         while *size + entry_size > self.max_size && !entries.is_empty() {
@@ -180,9 +189,16 @@ impl ResponseCache {
     }
 
     /// Clear all cached entries
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn clear(&self) {
-        let mut entries = self.entries.write().await;
-        let mut size = self.current_size.write().await;
+        let mut entries = self
+            .entries
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut size = self
+            .current_size
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         entries.clear();
         *size = 0;
@@ -191,18 +207,30 @@ impl ResponseCache {
     }
 
     /// Get current cache size
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn size(&self) -> usize {
-        *self.current_size.read().await
+        *self
+            .current_size
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Get number of cached entries
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn len(&self) -> usize {
-        self.entries.read().await.len()
+        self.entries
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .len()
     }
 
     /// Check if cache is empty
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn is_empty(&self) -> bool {
-        self.entries.read().await.is_empty()
+        self.entries
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .is_empty()
     }
 }
 

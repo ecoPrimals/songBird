@@ -247,7 +247,7 @@ fn songbird_capability_strings_count_matches_network_ipc_crypto() {
     assert!(SONGBIRD_CAPABILITY_STRINGS.contains(&"network.btsp"));
     assert!(SONGBIRD_CAPABILITY_STRINGS.contains(&"compute.gpu"));
     assert!(SONGBIRD_CAPABILITY_STRINGS.contains(&"access.remote"));
-    assert_eq!(SONGBIRD_CAPABILITY_STRINGS.len(), 17);
+    assert_eq!(SONGBIRD_CAPABILITY_STRINGS.len(), 18);
 }
 
 #[test]

@@ -245,17 +245,24 @@ impl TlsAlert {
     /// # Errors
     ///
     /// Returns an error if the data is too short or contains unknown level/description codes.
-    pub fn parse(data: &[u8]) -> anyhow::Result<Self> {
-        anyhow::ensure!(data.len() >= 2, "Alert too short: {} bytes (need 2)", data.len());
+    pub fn parse(data: &[u8]) -> crate::error::Result<Self> {
+        if data.len() < 2 {
+            return Err(crate::error::Error::TlsAlert(format!(
+                "Alert too short: {} bytes (need 2)",
+                data.len()
+            )));
+        }
 
         let raw_level = data[0];
         let raw_description = data[1];
 
-        let level = AlertLevel::from_u8(raw_level)
-            .ok_or_else(|| anyhow::anyhow!("Unknown alert level: {raw_level}"))?;
+        let level = AlertLevel::from_u8(raw_level).ok_or_else(|| {
+            crate::error::Error::TlsAlert(format!("Unknown alert level: {raw_level}"))
+        })?;
 
-        let description = AlertDescription::from_u8(raw_description)
-            .ok_or_else(|| anyhow::anyhow!("Unknown alert description: {raw_description}"))?;
+        let description = AlertDescription::from_u8(raw_description).ok_or_else(|| {
+            crate::error::Error::TlsAlert(format!("Unknown alert description: {raw_description}"))
+        })?;
 
         Ok(Self {
             level,

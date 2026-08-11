@@ -90,6 +90,12 @@ impl From<anyhow::Error> for GenesisError {
     }
 }
 
+impl From<songbird_http_client::Error> for GenesisError {
+    fn from(err: songbird_http_client::Error) -> Self {
+        Self::Other(err.to_string())
+    }
+}
+
 impl From<String> for GenesisError {
     fn from(msg: String) -> Self {
         Self::Other(msg)

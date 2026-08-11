@@ -9,12 +9,12 @@
 //!
 //! - Token bucket algorithm (industry standard)
 //! - Per-client rate limiting (fair resource allocation)
-//! - Non-blocking async (`tokio::sync::RwLock`)
+//! - Synchronous state access (`std::sync::RwLock`) — guards never cross awaits
 //! - Automatic token refill (time-based)
 //!
 //! ## Performance
 //!
-//! - Lock-free reads for token availability check
+//! - Minimal lock contention per-client
 //! - Minimal contention (per-client buckets)
 //! - Zero-copy where possible
 //!
@@ -22,9 +22,8 @@
 
 use anyhow::{Result, anyhow};
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
-use tokio::sync::RwLock;
 use tokio::time::Instant;
 use tracing::debug;
 
@@ -142,22 +141,23 @@ impl RateLimiter {
     /// * `Err(...)` if rate limit exceeded
     ///
     /// # Philosophy
-    /// - Non-blocking: Uses `tokio::sync::RwLock`
     /// - Fair: Per-client limits
     /// - Automatic: Token refill
     /// # Errors
     ///
-    /// Returns an error if the operation fails.
+    /// Returns an error if the rate limit is exceeded.
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn check(&self, client_id: &str) -> Result<()> {
-        let mut buckets = self.buckets.write().await;
+        let mut buckets = self
+            .buckets
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
-        // Get or create bucket for this client
         let bucket = buckets.entry(client_id.to_string()).or_insert_with(|| {
             debug!("Creating new token bucket for client: {}", client_id);
             TokenBucket::new(self.default_capacity, self.default_duration)
         });
 
-        // Try to consume a token
         if bucket.try_consume() {
             Ok(())
         } else {
@@ -175,8 +175,12 @@ impl RateLimiter {
     ///
     /// # Returns
     /// * Number of available tokens (can be fractional due to refill)
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn available_tokens(&self, client_id: &str) -> f64 {
-        let mut buckets = self.buckets.write().await;
+        let mut buckets = self
+            .buckets
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         buckets
             .entry(client_id.to_string())
@@ -184,10 +188,13 @@ impl RateLimiter {
             .available_tokens()
     }
 
-    /// Reset rate limit for a client (for testing)
     #[cfg(test)]
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn reset(&self, client_id: &str) {
-        let mut buckets = self.buckets.write().await;
+        let mut buckets = self
+            .buckets
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         buckets.remove(client_id);
     }
 }

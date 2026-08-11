@@ -130,10 +130,20 @@ impl PoolConfig {
     /// # Errors
     ///
     /// Returns an error if `max_size` is 0, `min_idle` > `max_size`, or `max_idle_time` is zero.
-    pub fn validate(&self) -> anyhow::Result<()> {
-        anyhow::ensure!(self.max_size > 0, "max_size must be greater than 0");
-        anyhow::ensure!(self.min_idle <= self.max_size, "min_idle cannot be greater than max_size");
-        anyhow::ensure!(!self.max_idle_time.is_zero(), "max_idle_time cannot be zero");
+    pub fn validate(&self) -> crate::error::Result<()> {
+        if self.max_size == 0 {
+            return Err(crate::error::Error::Connection("max_size must be greater than 0".into()));
+        }
+        if self.min_idle > self.max_size {
+            return Err(crate::error::Error::Connection(
+                "min_idle cannot be greater than max_size".into(),
+            ));
+        }
+        if self.max_idle_time.is_zero() {
+            return Err(crate::error::Error::Connection(
+                "max_idle_time cannot be zero".into(),
+            ));
+        }
         Ok(())
     }
 }

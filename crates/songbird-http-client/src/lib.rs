@@ -42,7 +42,7 @@
 //! use songbird_http_client::SongbirdHttpClient;
 //! use std::collections::HashMap;
 //!
-//! # async fn example() -> anyhow::Result<()> {
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Create client with automatic crypto discovery
 //! let client = SongbirdHttpClient::new("/tmp/security-provider.sock");
 //!

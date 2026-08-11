@@ -67,6 +67,10 @@ pub enum Error {
     #[error("Invalid response: {0}")]
     InvalidResponse(String),
 
+    /// Base64 decode error
+    #[error("Base64 decode error: {0}")]
+    Base64Decode(#[from] base64::DecodeError),
+
     /// Other error
     #[error("Other error: {0}")]
     Other(String),
@@ -121,5 +125,11 @@ mod tests {
     fn anyhow_converts_to_other() {
         let e: Error = anyhow::anyhow!("wrapped").into();
         assert!(matches!(e, Error::Other(s) if s.contains("wrapped")));
+    }
+
+    #[test]
+    fn base64_error_converts() {
+        let e: Error = base64::DecodeError::InvalidByte(0, b'!').into();
+        assert!(matches!(e, Error::Base64Decode(_)));
     }
 }

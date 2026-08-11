@@ -51,6 +51,10 @@ pub enum PrimalCoordinationError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 
+    /// HTTP client error
+    #[error("HTTP client error: {0}")]
+    HttpClient(#[from] songbird_http_client::Error),
+
     /// Generic error
     #[error("Error: {0}")]
     Other(#[from] anyhow::Error),

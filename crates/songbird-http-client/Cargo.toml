@@ -32,6 +32,7 @@ tracing = { workspace = true }
 thiserror = { workspace = true }
 base64 = { workspace = true }
 bytes = { workspace = true }
+# Interop — From<anyhow::Error> convenience conversion for downstream consumers
 anyhow = { workspace = true }
 # Cryptography (Pure Rust)
 sha2 = { workspace = true }

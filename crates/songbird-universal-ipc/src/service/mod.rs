@@ -52,6 +52,7 @@ mod construction;
 mod dispatch;
 pub mod drawbridge;
 pub mod drawbridge_auth;
+mod drawbridge_proxy;
 mod gossip_relay;
 mod http;
 mod swarmvine_gossip;

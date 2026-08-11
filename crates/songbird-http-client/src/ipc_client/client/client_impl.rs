@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-use anyhow::{Context, Result};
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
+use crate::error::{Error, Result};
 use serde_json::{Value, json};
 use songbird_types::defaults::timeouts::{
     DEFAULT_IPC_JSON_READ_TIMEOUT, DEFAULT_POOL_ACQUIRE_TIMEOUT, DEFAULT_POOL_MAX_IDLE_TIME,
@@ -287,11 +287,12 @@ impl IpcHttpClient {
                 Err(e) => {
                     // Pool exhausted or unhealthy, create new connection and add to pool
                     tracing::debug!("Pool acquisition failed ({}), creating new connection", e);
-                    let new_conn =
-                        Self::connect_platform(&self.socket_path).await.context(format!(
-                            "Failed to connect to Songbird IPC: {}",
+                    let new_conn = Self::connect_platform(&self.socket_path)
+                        .await
+                        .map_err(|e| Error::Connection(format!(
+                            "Failed to connect to Songbird IPC ({}): {e}",
                             self.socket_path.display()
-                        ))?;
+                        )))?;
 
                     // Try to add to pool for future reuse (best effort)
                     let _ = pool.add_connection(new_conn).await;
@@ -308,10 +309,12 @@ impl IpcHttpClient {
             Connection::Pooled(pooled)
         } else {
             // No pooling or pool failed, create standalone connection
-            Connection::Direct(Self::connect_platform(&self.socket_path).await.context(format!(
-                "Failed to connect to Songbird IPC: {}",
-                self.socket_path.display()
-            ))?)
+            Connection::Direct(Self::connect_platform(&self.socket_path).await.map_err(|e| {
+                Error::Connection(format!(
+                    "Failed to connect to Songbird IPC ({}): {e}",
+                    self.socket_path.display()
+                ))
+            })?)
         };
 
         // Get mutable reference to the underlying stream
@@ -346,29 +349,25 @@ impl IpcHttpClient {
         // JSON-aware chunked read — IPC server may keep socket open (no EOF).
         let buffer = crate::io_util::read_json_response(stream, DEFAULT_IPC_JSON_READ_TIMEOUT)
             .await
-            .map_err(|e| anyhow::anyhow!("IPC read: {e}"))?;
+            .map_err(|e| Error::Connection(format!("IPC read: {e}")))?;
 
-        // Parse JSON-RPC response
-        let response: Value =
-            serde_json::from_slice(&buffer).context("Failed to parse JSON-RPC response")?;
+        let response: Value = serde_json::from_slice(&buffer)?;
 
-        // Extract result or error
         if let Some(error) = response.get("error") {
-            return Err(anyhow::anyhow!("HTTP request failed: {error:?}"));
+            return Err(Error::HttpProtocol(format!("JSON-RPC error: {error:?}")));
         }
 
         let result = response
             .get("result")
-            .ok_or_else(|| anyhow::anyhow!("Missing result in JSON-RPC response"))?;
+            .ok_or_else(|| Error::InvalidResponse("Missing result in JSON-RPC response".into()))?;
 
-        // Parse HTTP response
         let status = u16::try_from(
             result
                 .get("status")
                 .and_then(serde_json::Value::as_u64)
-                .ok_or_else(|| anyhow::anyhow!("Missing status in response"))?,
+                .ok_or_else(|| Error::InvalidResponse("Missing status in response".into()))?,
         )
-        .map_err(|_| anyhow::anyhow!("HTTP status code out of range"))?;
+        .map_err(|_| Error::InvalidResponse("HTTP status code out of range".into()))?;
 
         let headers: HashMap<String, String> = result
             .get("headers")
@@ -430,7 +429,8 @@ impl Response {
     /// Returns error if body is not valid UTF-8.
     pub async fn text(self) -> Result<String> {
         tokio::task::yield_now().await;
-        String::from_utf8(self.body).context("Response body is not valid UTF-8")
+        String::from_utf8(self.body)
+            .map_err(|e| Error::InvalidResponse(format!("Response body is not valid UTF-8: {e}")))
     }
 
     /// Consume response and get body as JSON
@@ -440,7 +440,7 @@ impl Response {
     /// Returns error if body is not valid JSON.
     pub async fn json<T: serde::de::DeserializeOwned>(self) -> Result<T> {
         tokio::task::yield_now().await;
-        serde_json::from_slice(&self.body).context("Failed to parse JSON response")
+        Ok(serde_json::from_slice(&self.body)?)
     }
 
     /// Consume response and get raw bytes
@@ -529,7 +529,7 @@ impl IpcHttpClientBuilder {
                 .acquire_timeout(DEFAULT_POOL_ACQUIRE_TIMEOUT)
                 .build()
                 .await
-                .map_err(|e| anyhow::anyhow!("Failed to create connection pool: {e}"))?;
+                .map_err(|e| Error::Connection(format!("Failed to create connection pool: {e}")))?;
 
             // Pre-populate pool with initial connections
             for _ in 0..2 {
