@@ -263,6 +263,9 @@ pub enum GossipMethod {
     /// Unlike `gossip.relay` (targeted), this enables full cross-gate propagation when
     /// swarmVine's direct TCP 7800 path is unreachable between gates.
     Spread,
+    /// `gossip.subscribe` — register interest in a gossip topic. When gossip arrives
+    /// on the subscribed topic, songBird delivers it to the subscriber's endpoint.
+    Subscribe,
 }
 
 /// `punch.*`

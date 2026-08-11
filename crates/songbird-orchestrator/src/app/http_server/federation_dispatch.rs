@@ -54,6 +54,7 @@ pub(super) async fn dispatch_ribocipher_rpc(
                         "gossip.relay",
                         "gossip.inject",
                         "gossip.spread",
+                        "gossip.subscribe",
                     ],
                     "primal": songbird_types::primal_names::SELF_NAME,
                     "tier": tier,

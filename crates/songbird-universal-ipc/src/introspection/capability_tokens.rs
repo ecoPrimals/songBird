@@ -107,6 +107,7 @@ const CALLABLE_METHODS: &[&str] = &[
     "gossip.relay",
     "gossip.inject",
     "gossip.spread",
+    "gossip.subscribe",
     // ── Discovery / rendezvous / peers ──
     "discovery.peers",
     "discovery.announce",
@@ -244,7 +245,7 @@ pub const CAPABILITY_METHOD_MAP: &[(&str, &[&str])] = &[
         "network.relay",
         &["relay.serve", "relay.stop", "relay.status", "relay.allocate", "relay.forward"],
     ),
-    ("network.gossip", &["gossip.relay", "gossip.inject", "gossip.spread"]),
+    ("network.gossip", &["gossip.relay", "gossip.inject", "gossip.spread", "gossip.subscribe"]),
     (
         "network.stun",
         &["stun.serve", "stun.stop", "stun.status", "stun.get_public_address", "stun.bind"],

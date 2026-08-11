@@ -788,3 +788,104 @@ async fn gossip_inject_accepts_origin_gate_field() {
     assert_eq!(result["status"], "injected");
     assert_eq!(result["origin_gate"], "blue-gate");
 }
+
+// ── gossip.subscribe tests ──
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn gossip_subscribe_registers_and_returns_id() {
+    let h = ipc_handler();
+
+    let result = h
+        .handle(
+            "gossip.subscribe",
+            json!({
+                "topic": "tower",
+                "primal_id": "lithoSpore",
+                "endpoint": "/tmp/biomeos/lithospore.sock"
+            }),
+        )
+        .await
+        .expect("gossip.subscribe should succeed");
+    assert_eq!(result["status"], "subscribed");
+    assert_eq!(result["topic"], "tower");
+    assert_eq!(result["primal_id"], "lithoSpore");
+    assert!(
+        result["subscription_id"].as_str().unwrap().starts_with("gsub-lithoSpore-tower-"),
+        "unexpected subscription_id: {}",
+        result["subscription_id"]
+    );
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn gossip_subscribe_missing_topic_errors() {
+    let h = ipc_handler();
+
+    let err = h
+        .handle(
+            "gossip.subscribe",
+            json!({ "primal_id": "test", "endpoint": "/tmp/test.sock" }),
+        )
+        .await
+        .expect_err("should require topic");
+    assert!(err.contains("topic"), "expected topic error, got: {err}");
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn gossip_subscribe_missing_primal_id_errors() {
+    let h = ipc_handler();
+
+    let err = h
+        .handle(
+            "gossip.subscribe",
+            json!({ "topic": "tower", "endpoint": "/tmp/test.sock" }),
+        )
+        .await
+        .expect_err("should require primal_id");
+    assert!(err.contains("primal_id"), "expected primal_id error, got: {err}");
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn gossip_subscribe_missing_endpoint_errors() {
+    let h = ipc_handler();
+
+    let err = h
+        .handle(
+            "gossip.subscribe",
+            json!({ "topic": "tower", "primal_id": "test" }),
+        )
+        .await
+        .expect_err("should require endpoint");
+    assert!(err.contains("endpoint"), "expected endpoint error, got: {err}");
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn gossip_inject_reports_subscriber_count() {
+    let h = ipc_handler();
+
+    // Subscribe first
+    h.handle(
+        "gossip.subscribe",
+        json!({
+            "topic": "capability",
+            "primal_id": "testPrimal",
+            "endpoint": "/tmp/nonexistent-test.sock"
+        }),
+    )
+    .await
+    .expect("subscribe");
+
+    // Inject — subscriber exists but socket unreachable (delivers 0)
+    let result = h
+        .handle(
+            "gossip.inject",
+            json!({
+                "topic": "capability",
+                "key": "test",
+                "payload": { "data": 1 }
+            }),
+        )
+        .await
+        .expect("inject with subscriber");
+    assert_eq!(result["status"], "injected");
+    assert_eq!(result["subscribers_notified"], 0);
+}

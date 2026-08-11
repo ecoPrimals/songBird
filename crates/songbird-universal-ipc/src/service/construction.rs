@@ -161,6 +161,9 @@ impl IpcServiceHandler {
             )),
             capability_router: Arc::new(CapabilityProxyRouter::default()),
             ipc_pool: Arc::new(super::ipc_pool::IpcConnectionPool::new()),
+            gossip_subscriptions: Arc::new(std::sync::RwLock::new(
+                super::GossipSubscriptionRegistry::default(),
+            )),
         }
     }
 

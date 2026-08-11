@@ -3,16 +3,19 @@
 
 #![forbid(unsafe_code)]
 
-//! `gossip.relay` + `gossip.inject` — `MeshRelay` transport for swarmVine gossip.
+//! `gossip.*` — `MeshRelay` transport for swarmVine cross-gate gossip.
+//!
+//! Methods: `gossip.relay`, `gossip.inject`, `gossip.spread`, `gossip.subscribe`
 //!
 //! Enables cross-gate gossip propagation through songBird's `:7700` federation
 //! mesh when swarmVine's direct TCP 7800 path is unreachable between gates.
 //!
 //! Flow:
-//! 1. Local swarmVine → songBird `gossip.relay {target_gate, topic, payload}`
-//! 2. songBird resolves best path to target gate via `MeshHandler::mesh()`
-//! 3. songBird POSTs `gossip.inject` to remote songBird on `:7700`
-//! 4. Remote songBird injects into its local swarmVine via `gossip.forward` UDS
+//! 1. Local primal → songBird `gossip.subscribe {topic, endpoint}` (registers interest)
+//! 2. Local swarmVine → songBird `gossip.relay {target_gate, topic, payload}`
+//! 3. songBird resolves best path to target gate via `MeshHandler::mesh()`
+//! 4. songBird POSTs `gossip.inject` to remote songBird on `:7700`
+//! 5. Remote songBird injects into local swarmVine + delivers to subscribers
 
 use super::IpcServiceHandler;
 use serde_json::{Value, json};
@@ -114,7 +117,8 @@ impl IpcServiceHandler {
         }))
     }
 
-    /// Handle `gossip.inject` — inject a gossip payload into local swarmVine.
+    /// Handle `gossip.inject` — inject a gossip payload into local swarmVine
+    /// AND deliver to all local topic subscribers.
     ///
     /// Called by remote songBird peers (via `:7700` federation) or directly by
     /// local primals that want to inject gossip without specifying a target gate.
@@ -143,16 +147,189 @@ impl IpcServiceHandler {
             target: "songbird::gossip_relay",
             topic,
             origin,
-            "injecting gossip into local swarmVine"
+            "injecting gossip into local swarmVine + delivering to subscribers"
         );
 
         self.inject_gossip_locally(topic, key, &payload).await?;
+
+        let delivered = self.deliver_to_subscribers(topic, key, &payload, origin).await;
 
         Ok(json!({
             "status": "injected",
             "topic": topic,
             "origin_gate": origin,
+            "subscribers_notified": delivered,
         }))
+    }
+
+    /// Handle `gossip.subscribe` — register a local primal's interest in a gossip topic.
+    ///
+    /// Params:
+    /// - `topic` (string): gossip topic to subscribe to
+    /// - `primal_id` (string): subscriber's primal identifier
+    /// - `endpoint` (string): UDS path where gossip payloads will be delivered
+    ///
+    /// Returns `{subscription_id, topic, status}`.
+    pub(super) async fn handle_gossip_subscribe(&self, params: Value) -> Result<Value, String> {
+        let topic = params
+            .get("topic")
+            .and_then(Value::as_str)
+            .ok_or("Missing required field: topic")?
+            .to_string();
+
+        let primal_id = params
+            .get("primal_id")
+            .and_then(Value::as_str)
+            .ok_or("Missing required field: primal_id")?
+            .to_string();
+
+        let endpoint = params
+            .get("endpoint")
+            .and_then(Value::as_str)
+            .ok_or("Missing required field: endpoint")?;
+
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.subsec_nanos())
+            .unwrap_or(0);
+        let subscription_id = format!("gsub-{primal_id}-{topic}-{nonce:08x}");
+
+        let sub = super::GossipSubscription {
+            id: subscription_id.clone(),
+            primal_id: primal_id.clone(),
+            endpoint: std::path::PathBuf::from(endpoint),
+            created: std::time::Instant::now(),
+        };
+
+        {
+            let mut registry = self
+                .gossip_subscriptions
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            registry.subscribe(topic.clone(), sub);
+        }
+
+        debug!(
+            target: "songbird::gossip_relay",
+            topic = %topic,
+            primal_id = %primal_id,
+            subscription_id = %subscription_id,
+            "gossip subscription registered"
+        );
+
+        Ok(json!({
+            "subscription_id": subscription_id,
+            "topic": topic,
+            "primal_id": primal_id,
+            "status": "subscribed"
+        }))
+    }
+
+    /// Deliver a gossip payload to all local subscribers of a topic.
+    async fn deliver_to_subscribers(
+        &self,
+        topic: &str,
+        key: &str,
+        payload: &Value,
+        origin: &str,
+    ) -> u32 {
+        let subscribers = {
+            let registry = self
+                .gossip_subscriptions
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            registry.subscribers_for(topic)
+        };
+
+        if subscribers.is_empty() {
+            return 0;
+        }
+
+        let mut delivered: u32 = 0;
+
+        for sub in &subscribers {
+            if self.deliver_single(sub, topic, key, payload, origin).await {
+                delivered += 1;
+            }
+        }
+
+        delivered
+    }
+
+    /// Deliver gossip to a single subscriber via their UDS endpoint.
+    #[cfg(unix)]
+    async fn deliver_single(
+        &self,
+        sub: &super::GossipSubscription,
+        topic: &str,
+        key: &str,
+        payload: &Value,
+        origin: &str,
+    ) -> bool {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        use tokio::net::UnixStream;
+
+        let rpc = json!({
+            "jsonrpc": "2.0",
+            "method": "gossip.deliver",
+            "params": {
+                "topic": topic,
+                "key": key,
+                "payload": payload,
+                "origin_gate": origin,
+                "subscription_id": sub.id,
+            },
+            "id": null
+        });
+
+        let timeout = Duration::from_secs(2);
+        match tokio::time::timeout(timeout, UnixStream::connect(&sub.endpoint)).await {
+            Ok(Ok(stream)) => {
+                let (reader, mut writer) = stream.into_split();
+                let msg = format!("{rpc}\n");
+                if writer.write_all(msg.as_bytes()).await.is_ok() {
+                    let mut response = String::new();
+                    let mut buf_reader = BufReader::new(reader);
+                    let _ = tokio::time::timeout(
+                        Duration::from_secs(1),
+                        buf_reader.read_line(&mut response),
+                    )
+                    .await;
+                    true
+                } else {
+                    false
+                }
+            }
+            Ok(Err(e)) => {
+                debug!(
+                    target: "songbird::gossip_relay",
+                    primal = %sub.primal_id,
+                    error = %e,
+                    "failed to deliver gossip to subscriber"
+                );
+                false
+            }
+            Err(_) => {
+                debug!(
+                    target: "songbird::gossip_relay",
+                    primal = %sub.primal_id,
+                    "timeout delivering gossip to subscriber"
+                );
+                false
+            }
+        }
+    }
+
+    #[cfg(not(unix))]
+    async fn deliver_single(
+        &self,
+        _sub: &super::GossipSubscription,
+        _topic: &str,
+        _key: &str,
+        _payload: &Value,
+        _origin: &str,
+    ) -> bool {
+        false
     }
 
     /// Handle `gossip.spread` — broadcast gossip to ALL reachable mesh peers.

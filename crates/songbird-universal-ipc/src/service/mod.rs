@@ -78,6 +78,50 @@ pub use drawbridge::{DrawbridgeConfig, serve_drawbridge};
 pub use drawbridge_auth::DrawbridgeRoute;
 pub use http_proxy::{CapabilityProxyRouter, ProxyRoute};
 
+/// A single gossip topic subscription — a local primal registered interest in a topic.
+#[derive(Debug, Clone)]
+pub struct GossipSubscription {
+    /// Unique subscription ID (for unsubscribe).
+    pub id: String,
+    /// Subscriber's primal identifier.
+    pub primal_id: String,
+    /// UDS endpoint to deliver gossip payloads to.
+    pub endpoint: std::path::PathBuf,
+    /// Created timestamp for staleness detection.
+    pub created: std::time::Instant,
+}
+
+/// Registry of topic-based gossip subscriptions.
+#[derive(Debug, Default)]
+pub struct GossipSubscriptionRegistry {
+    /// topic → list of subscriptions
+    pub subscriptions: std::collections::HashMap<String, Vec<GossipSubscription>>,
+}
+
+impl GossipSubscriptionRegistry {
+    /// Register a subscription for a topic.
+    pub fn subscribe(&mut self, topic: String, sub: GossipSubscription) {
+        self.subscriptions.entry(topic).or_default().push(sub);
+    }
+
+    /// Remove a subscription by ID.
+    pub fn unsubscribe(&mut self, subscription_id: &str) -> bool {
+        for subs in self.subscriptions.values_mut() {
+            if let Some(pos) = subs.iter().position(|s| s.id == subscription_id) {
+                subs.remove(pos);
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Get all subscribers for a given topic.
+    #[must_use]
+    pub fn subscribers_for(&self, topic: &str) -> Vec<GossipSubscription> {
+        self.subscriptions.get(topic).cloned().unwrap_or_default()
+    }
+}
+
 /// Songbird IPC Service Handler
 ///
 /// This handler provides IPC brokering as a JSON-RPC service,
@@ -113,6 +157,8 @@ pub struct IpcServiceHandler {
     capability_router: Arc<CapabilityProxyRouter>,
     /// UDS connection pool for `capability.call` dispatch (avoids per-request connect/disconnect).
     ipc_pool: Arc<ipc_pool::IpcConnectionPool>,
+    /// Topic-based gossip subscriptions — local primals register interest and receive proactive delivery.
+    gossip_subscriptions: Arc<std::sync::RwLock<GossipSubscriptionRegistry>>,
 }
 
 impl IpcServiceHandler {
