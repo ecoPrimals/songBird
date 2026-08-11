@@ -54,6 +54,7 @@ pub mod drawbridge;
 pub mod drawbridge_auth;
 mod gossip_relay;
 mod http;
+mod swarmvine_gossip;
 mod http_proxy;
 pub mod ipc_pool;
 mod ipc_registry;

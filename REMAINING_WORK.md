@@ -20,7 +20,7 @@
 | **Clippy Pedantic** | 31/31 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Aug 3 verified) |
 | **Format** | Clean (`cargo fmt --check` passes; Aug 3 verified) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
-| **Files >800 lines** | **0** — all code below 800L. Wave 155i: `service_tests.rs` (1,018→5 modules), `mesh_handler/tests.rs` (998→5 modules). Largest: drawbridge.rs 782L. |
+| **Files >800 lines** | **0** — all code below 800L (max 782L drawbridge.rs). Wave 157i: `ipc_registry.rs` (831→759L, swarmVine gossip extracted to sibling module). Wave 157g: `http_server.rs` (854L→4 modules). Wave 155i: `service_tests.rs` (1,018→5 modules), `mesh_handler/tests.rs` (998→5 modules). |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 31 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 unguarded — `.unwrap()` in production only under `#[expect(clippy::unwrap_used, reason = "...")]` for provably infallible operations (e.g. `write!` to `String`); all others in `#[cfg(test)]` or doc examples |

@@ -81,7 +81,7 @@ async fn dispatch_gossip_delegated(_handler: &IpcServiceHandler, method: &str, p
         use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
         use tokio::net::UnixStream;
 
-        let socket = super::super::ipc_registry::discover_swarmvine_socket();
+        let socket = super::super::swarmvine_gossip::discover_swarmvine_socket();
         let Some(socket_path) = socket else {
             debug!(target: "songbird::delegation", method, "swarmVine not available — gossip handled locally");
             return;

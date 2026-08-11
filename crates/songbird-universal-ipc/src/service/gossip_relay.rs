@@ -167,7 +167,7 @@ impl IpcServiceHandler {
             use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
             use tokio::net::UnixStream;
 
-            let socket_path = super::ipc_registry::discover_swarmvine_socket();
+            let socket_path = super::swarmvine_gossip::discover_swarmvine_socket();
             let Some(socket_path) = socket_path else {
                 warn!(
                     target: "songbird::gossip_relay",
