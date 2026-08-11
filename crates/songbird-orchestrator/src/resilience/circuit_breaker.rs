@@ -79,7 +79,7 @@ use std::time::Duration;
 use tokio::time::Instant;
 
 use songbird_types::{SongbirdError, SongbirdResult};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info, warn};
 
 /// Circuit breaker error types
@@ -245,7 +245,7 @@ impl CircuitBreaker {
 
     /// Get the current state of the circuit breaker
     pub async fn state(&self) -> CircuitState {
-        self.state.read().await.clone()
+        self.state.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone()
     }
 
     /// Execute an async operation with circuit breaker protection
@@ -275,7 +275,7 @@ impl CircuitBreaker {
     {
         // Check current state and transition if needed
         let current_state = {
-            let mut state = self.state.write().await;
+            let mut state = self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             match *state {
                 CircuitState::Open {
                     opened_at,
@@ -284,7 +284,7 @@ impl CircuitBreaker {
                     if opened_at.elapsed() >= self.config.timeout {
                         debug!("Circuit breaker transitioning from Open to Half-Open");
                         *state = CircuitState::HalfOpen;
-                        *self.successes_in_half_open.write().await = 0;
+                        *self.successes_in_half_open.write().unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
                         CircuitState::HalfOpen
                     } else {
                         // Still open, reject request
@@ -325,19 +325,19 @@ impl CircuitBreaker {
                 ..
             } => {
                 // Reset failure count on success
-                *self.state.write().await = CircuitState::Closed {
+                *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Closed {
                     failures: 0,
                 };
             }
             CircuitState::HalfOpen => {
                 // Increment success count
-                let mut successes = self.successes_in_half_open.write().await;
+                let mut successes = self.successes_in_half_open.write().unwrap_or_else(std::sync::PoisonError::into_inner);
                 *successes += 1;
 
                 // If enough successes, close the circuit
                 if *successes >= self.config.success_threshold {
                     info!("Circuit breaker transitioning from Half-Open to Closed (recovered)");
-                    *self.state.write().await = CircuitState::Closed {
+                    *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Closed {
                         failures: 0,
                     };
                 }
@@ -364,12 +364,12 @@ impl CircuitBreaker {
                         "Circuit breaker opening (failures: {} >= threshold: {})",
                         new_failures, self.config.failure_threshold
                     );
-                    *self.state.write().await = CircuitState::Open {
+                    *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Open {
                         opened_at: Instant::now(),
                     };
                 } else {
                     // Increment failure count
-                    *self.state.write().await = CircuitState::Closed {
+                    *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Closed {
                         failures: new_failures,
                     };
                 }
@@ -377,7 +377,7 @@ impl CircuitBreaker {
             CircuitState::HalfOpen => {
                 // Failure in half-open state, reopen circuit
                 warn!("Circuit breaker reopening (failed in Half-Open state)");
-                *self.state.write().await = CircuitState::Open {
+                *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Open {
                     opened_at: Instant::now(),
                 };
             }
@@ -394,15 +394,15 @@ impl CircuitBreaker {
     /// Use with caution - typically you want automatic recovery via Half-Open state.
     pub async fn reset(&self) {
         info!("Circuit breaker manually reset to Closed state");
-        *self.state.write().await = CircuitState::Closed {
+        *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Closed {
             failures: 0,
         };
-        *self.successes_in_half_open.write().await = 0;
+        *self.successes_in_half_open.write().unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
     }
 
     /// Get circuit breaker statistics
     pub async fn stats(&self) -> CircuitBreakerStats {
-        let state = self.state.read().await.clone();
+        let state = self.state.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
         let current_failures = match &state {
             CircuitState::Closed {
                 failures,
@@ -415,7 +415,7 @@ impl CircuitBreaker {
             success_threshold: self.config.success_threshold,
             timeout: self.config.timeout,
             current_failures,
-            current_successes: *self.successes_in_half_open.read().await,
+            current_successes: *self.successes_in_half_open.read().unwrap_or_else(std::sync::PoisonError::into_inner),
         }
     }
 }

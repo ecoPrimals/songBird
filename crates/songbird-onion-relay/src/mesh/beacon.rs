@@ -8,7 +8,7 @@ use crate::signaling::{NatType, PeerInfo, SignalingMessage};
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::time::{Duration, Instant, SystemTime};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info, warn};
 
 use super::types::{EndpointType, RelayEndpoint};
@@ -55,9 +55,10 @@ impl BeaconMesh {
     }
 
     /// Set our onion address (when we create one)
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn set_my_onion(&self, onion_addr: String) {
         info!("🧅 Beacon mesh: my onion = {}", &onion_addr[..16.min(onion_addr.len())]);
-        *self.my_onion.write().await = Some(onion_addr);
+        *self.my_onion.write().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(onion_addr);
     }
 
     /// Add a relay endpoint for a peer
@@ -70,7 +71,7 @@ impl BeaconMesh {
         );
 
         {
-            let mut endpoints = self.endpoints.write().await;
+            let mut endpoints = self.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             endpoints.entry(node_id.clone()).or_default().push(endpoint.clone());
         }
         self.update_best_path(&node_id).await;
@@ -136,13 +137,15 @@ impl BeaconMesh {
     }
 
     /// Get best path to a peer
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn get_best_path(&self, node_id: &str) -> Option<RelayEndpoint> {
-        self.best_paths.read().await.get(node_id).cloned()
+        self.best_paths.read().unwrap_or_else(std::sync::PoisonError::into_inner).get(node_id).cloned()
     }
 
     /// Get all known paths to a peer (for fallback)
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn get_all_paths(&self, node_id: &str) -> Vec<RelayEndpoint> {
-        self.endpoints.read().await.get(node_id).cloned().unwrap_or_default()
+        self.endpoints.read().unwrap_or_else(std::sync::PoisonError::into_inner).get(node_id).cloned().unwrap_or_default()
     }
 
     /// Find best relay to connect to a new peer
@@ -152,7 +155,7 @@ impl BeaconMesh {
         }
 
         let endpoints_snapshot = {
-            let guard = self.endpoints.read().await;
+            let guard = self.endpoints.read().unwrap_or_else(std::sync::PoisonError::into_inner);
             guard.clone()
         };
         let relay_node_id = {
@@ -214,10 +217,11 @@ impl BeaconMesh {
     }
 
     /// Get list of nodes we can relay for others
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn get_reachable_nodes(&self) -> Vec<String> {
         self.endpoints
             .read()
-            .await
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .iter()
             .filter(|(_, eps)| eps.iter().any(|e| e.reachable))
             .map(|(node_id, _)| node_id.clone())
@@ -225,16 +229,18 @@ impl BeaconMesh {
     }
 
     /// Get all known node IDs (reachable and unreachable).
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn get_known_nodes(&self) -> Vec<String> {
-        self.endpoints.read().await.keys().cloned().collect()
+        self.endpoints.read().unwrap_or_else(std::sync::PoisonError::into_inner).keys().cloned().collect()
     }
 
     /// Remove a peer from the mesh (all endpoints and best-path cache).
     ///
     /// Returns `true` if the peer existed and was removed.
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn remove_peer(&self, node_id: &str) -> bool {
-        let removed_endpoints = self.endpoints.write().await.remove(node_id).is_some();
-        let removed_best = self.best_paths.write().await.remove(node_id).is_some();
+        let removed_endpoints = self.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner).remove(node_id).is_some();
+        let removed_best = self.best_paths.write().unwrap_or_else(std::sync::PoisonError::into_inner).remove(node_id).is_some();
         if removed_endpoints || removed_best {
             info!(peer = node_id, "Removed peer from mesh");
         }
@@ -242,8 +248,9 @@ impl BeaconMesh {
     }
 
     /// Backdate `last_seen` for health-check simulation and integration tests.
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn backdate_endpoint_last_seen(&self, node_id: &str, age: Duration) {
-        let mut endpoints = self.endpoints.write().await;
+        let mut endpoints = self.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         if let Some(eps) = endpoints.get_mut(node_id) {
             for ep in eps.iter_mut() {
                 if let Some(stale) = ep.last_seen.checked_sub(age) {
@@ -256,7 +263,7 @@ impl BeaconMesh {
     /// Announce ourselves as relay to the mesh
     pub async fn announce_as_relay(&self) -> SignalingMessage {
         let reachable = self.get_reachable_nodes().await;
-        let my_onion = self.my_onion.read().await.clone();
+        let my_onion = self.my_onion.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
 
         info!(
             "📢 Announcing as relay: can reach {} nodes, onion: {:?}",
@@ -306,7 +313,7 @@ impl BeaconMesh {
         let mut affected = Vec::new();
 
         {
-            let mut endpoints = self.endpoints.write().await;
+            let mut endpoints = self.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
 
             for (node_id, eps) in endpoints.iter_mut() {
                 for ep in eps.iter_mut() {
@@ -327,8 +334,9 @@ impl BeaconMesh {
         }
     }
 
+    #[expect(clippy::unused_async, reason = "async for API stability with callers")]
     async fn update_best_path(&self, node_id: &str) {
-        let endpoints = self.endpoints.read().await;
+        let endpoints = self.endpoints.read().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         if let Some(eps) = endpoints.get(node_id) {
             let best = eps
@@ -344,7 +352,7 @@ impl BeaconMesh {
 
             drop(endpoints);
 
-            let mut best_paths = self.best_paths.write().await;
+            let mut best_paths = self.best_paths.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(ep) = best {
                 best_paths.insert(node_id.to_string(), ep);
             } else {

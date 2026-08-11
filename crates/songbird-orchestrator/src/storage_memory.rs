@@ -7,8 +7,7 @@ use crate::consent_management::{ConsentRecord, ConsentStatus};
 use crate::task_lifecycle::{Checkpoint, TaskFilter, TaskId, TaskLifecycle};
 use chrono::Utc;
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 fn matches_task_filter(task: &TaskLifecycle, filter: &TaskFilter) -> bool {
     if let Some(owner) = &filter.owner
@@ -61,14 +60,14 @@ impl Default for InMemoryStorage {
 impl InMemoryStorage {
     /// Persist a consent record.
     pub async fn consent_save(&self, record: &ConsentRecord) -> anyhow::Result<()> {
-        let mut m = self.consents.write().await;
+        let mut m = self.consents.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         m.insert(record.id.to_string(), record.clone());
         Ok(())
     }
 
     /// Retrieve a consent record by ID.
     pub async fn consent_get(&self, id: &str) -> anyhow::Result<Option<ConsentRecord>> {
-        let m = self.consents.read().await;
+        let m = self.consents.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(m.get(id).cloned())
     }
 
@@ -77,7 +76,7 @@ impl InMemoryStorage {
         &self,
         user_id: &crate::task_lifecycle::UserId,
     ) -> anyhow::Result<Vec<ConsentRecord>> {
-        let m = self.consents.read().await;
+        let m = self.consents.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(m.values().filter(|r| &r.user_id == user_id).cloned().collect())
     }
 
@@ -86,19 +85,19 @@ impl InMemoryStorage {
         &self,
         task_id: &TaskId,
     ) -> anyhow::Result<Vec<ConsentRecord>> {
-        let m = self.consents.read().await;
+        let m = self.consents.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(m.values().filter(|r| &r.task_id == task_id).cloned().collect())
     }
 
     /// List consent records with pending status.
     pub async fn consent_list_pending(&self) -> anyhow::Result<Vec<ConsentRecord>> {
-        let m = self.consents.read().await;
+        let m = self.consents.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(m.values().filter(|r| matches!(r.status, ConsentStatus::Pending)).cloned().collect())
     }
 
     /// Delete a consent record.
     pub async fn consent_delete(&self, id: &str) -> anyhow::Result<()> {
-        let mut m = self.consents.write().await;
+        let mut m = self.consents.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         m.remove(id);
         Ok(())
     }
@@ -111,20 +110,20 @@ impl InMemoryStorage {
 
     /// Persist or update a task.
     pub async fn save_task(&self, task: &TaskLifecycle) -> anyhow::Result<()> {
-        let mut m = self.tasks.write().await;
+        let mut m = self.tasks.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         m.insert(task.id, task.clone());
         Ok(())
     }
 
     /// Retrieve a task by ID.
     pub async fn get_task(&self, id: TaskId) -> anyhow::Result<Option<TaskLifecycle>> {
-        let m = self.tasks.read().await;
+        let m = self.tasks.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(m.get(&id).cloned())
     }
 
     /// List tasks matching a filter.
     pub async fn list_tasks(&self, filter: &TaskFilter) -> anyhow::Result<Vec<TaskLifecycle>> {
-        let m = self.tasks.read().await;
+        let m = self.tasks.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         let mut out: Vec<TaskLifecycle> =
             m.values().filter(|t| matches_task_filter(t, filter)).cloned().collect();
         if let Some(limit) = filter.limit {
@@ -135,30 +134,30 @@ impl InMemoryStorage {
 
     /// Delete a task by ID.
     pub async fn delete_task(&self, id: TaskId) -> anyhow::Result<()> {
-        let mut tasks = self.tasks.write().await;
+        let mut tasks = self.tasks.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         tasks.remove(&id);
 
-        let mut cps = self.checkpoints.write().await;
+        let mut cps = self.checkpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         cps.retain(|_, cp| cp.task_id != id);
         Ok(())
     }
 
     /// Persist a checkpoint.
     pub async fn save_checkpoint(&self, checkpoint: &Checkpoint) -> anyhow::Result<()> {
-        let mut m = self.checkpoints.write().await;
+        let mut m = self.checkpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         m.insert(checkpoint.id.to_string(), checkpoint.clone());
         Ok(())
     }
 
     /// Retrieve a checkpoint by ID.
     pub async fn get_checkpoint(&self, id: &str) -> anyhow::Result<Option<Checkpoint>> {
-        let m = self.checkpoints.read().await;
+        let m = self.checkpoints.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(m.get(id).cloned())
     }
 
     /// List checkpoints for a task (most recent first).
     pub async fn list_checkpoints(&self, task_id: TaskId) -> anyhow::Result<Vec<Checkpoint>> {
-        let m = self.checkpoints.read().await;
+        let m = self.checkpoints.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         let mut v: Vec<Checkpoint> = m.values().filter(|c| c.task_id == task_id).cloned().collect();
         v.sort_by(|a, b| b.created_at.cmp(&a.created_at));
         Ok(v)
@@ -166,7 +165,7 @@ impl InMemoryStorage {
 
     /// Delete a checkpoint by ID.
     pub async fn delete_checkpoint(&self, id: &str) -> anyhow::Result<()> {
-        let mut m = self.checkpoints.write().await;
+        let mut m = self.checkpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         m.remove(id);
         Ok(())
     }
@@ -180,7 +179,7 @@ impl InMemoryStorage {
     /// Remove checkpoints older than `max_age_seconds`.
     pub async fn cleanup_old_checkpoints(&self, max_age_seconds: u64) -> anyhow::Result<u64> {
         let cutoff = Utc::now().timestamp() - max_age_seconds as i64;
-        let mut m = self.checkpoints.write().await;
+        let mut m = self.checkpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         let before = m.len();
         m.retain(|_, cp| cp.created_at.timestamp() >= cutoff);
         let deleted = before.saturating_sub(m.len());
@@ -193,7 +192,7 @@ impl InMemoryStorage {
         task_id: TaskId,
         keep_count: usize,
     ) -> anyhow::Result<()> {
-        let mut m = self.checkpoints.write().await;
+        let mut m = self.checkpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         let mut for_task: Vec<Checkpoint> =
             m.values().filter(|c| c.task_id == task_id).cloned().collect();
         for_task.sort_by(|a, b| b.created_at.cmp(&a.created_at));

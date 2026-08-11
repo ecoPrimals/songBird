@@ -8,7 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 #[cfg(test)]
 use songbird_types::SongbirdResult;
@@ -118,8 +118,9 @@ impl LoadBalancer {
     /// # Errors
     ///
     /// Returns an error if no endpoints are available.
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn get_next_endpoint(&self) -> anyhow::Result<String> {
-        let endpoints = self.endpoints.read().await;
+        let endpoints = self.endpoints.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         anyhow::ensure!(!endpoints.is_empty(), "No endpoints configured");
 
         let available: Vec<&LoadBalancedEndpoint> =
@@ -127,7 +128,7 @@ impl LoadBalancer {
         anyhow::ensure!(!available.is_empty(), "No available endpoints");
 
         let selected = match self.strategy {
-            LoadBalancingStrategy::RoundRobin => self.select_round_robin(&available).await,
+            LoadBalancingStrategy::RoundRobin => self.select_round_robin(&available),
             LoadBalancingStrategy::LeastLoaded => Self::select_least_loaded(&available),
             LoadBalancingStrategy::HealthBased => Self::select_healthiest(&available),
             LoadBalancingStrategy::Random => Self::select_random(&available),
@@ -137,11 +138,11 @@ impl LoadBalancer {
     }
 
     /// Select endpoint using round-robin
-    async fn select_round_robin<'a>(
+    fn select_round_robin<'a>(
         &self,
         available: &[&'a LoadBalancedEndpoint],
     ) -> &'a LoadBalancedEndpoint {
-        let mut counter = self.round_robin_counter.write().await;
+        let mut counter = self.round_robin_counter.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         let index = *counter % available.len();
         *counter = counter.wrapping_add(1);
         available[index]
@@ -171,24 +172,27 @@ impl LoadBalancer {
     }
 
     /// Mark an endpoint as unavailable
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn mark_endpoint_unavailable(&self, url: &str) {
-        let mut endpoints = self.endpoints.write().await;
+        let mut endpoints = self.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         if let Some(endpoint) = endpoints.iter_mut().find(|e| e.url == url) {
             endpoint.mark_unavailable();
         }
     }
 
     /// Mark an endpoint as available
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn mark_endpoint_available(&self, url: &str) {
-        let mut endpoints = self.endpoints.write().await;
+        let mut endpoints = self.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         if let Some(endpoint) = endpoints.iter_mut().find(|e| e.url == url) {
             endpoint.mark_available();
         }
     }
 
     /// Update health score for an endpoint
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn update_endpoint_health(&self, url: &str, health_score: f64) {
-        let mut endpoints = self.endpoints.write().await;
+        let mut endpoints = self.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         if let Some(endpoint) = endpoints.iter_mut().find(|e| e.url == url) {
             endpoint.update_health(health_score);
         }
@@ -198,18 +202,21 @@ impl LoadBalancer {
     ///
     /// **Note**: This method clones the entire endpoints vec. For read-only access
     /// in hot paths, consider adding a method that provides a read lock guard instead.
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn get_endpoints(&self) -> Vec<LoadBalancedEndpoint> {
-        self.endpoints.read().await.clone()
+        self.endpoints.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone()
     }
 
     /// Get count of healthy endpoints (zero-clone)
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn healthy_count(&self) -> usize {
-        self.endpoints.read().await.iter().filter(|e| e.available && e.health_score > 0.5).count()
+        self.endpoints.read().unwrap_or_else(std::sync::PoisonError::into_inner).iter().filter(|e| e.available && e.health_score > 0.5).count()
     }
 
     /// Get count of available endpoints
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn available_count(&self) -> usize {
-        self.endpoints.read().await.iter().filter(|e| e.available).count()
+        self.endpoints.read().unwrap_or_else(std::sync::PoisonError::into_inner).iter().filter(|e| e.available).count()
     }
 }
 
@@ -266,7 +273,7 @@ mod tests {
 
         // Manually set load on first endpoint
         {
-            let mut eps = lb.endpoints.write().await;
+            let mut eps = lb.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             eps[0].active_connections = 10;
             eps[1].active_connections = 2;
         }
@@ -288,7 +295,7 @@ mod tests {
 
         // Set different health scores
         {
-            let mut eps = lb.endpoints.write().await;
+            let mut eps = lb.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             eps[0].health_score = 0.5;
             eps[1].health_score = 0.9;
         }

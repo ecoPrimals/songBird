@@ -303,7 +303,7 @@ async fn health_check_marks_stale_unreachable() {
         reachable: true,
     };
     {
-        let mut map = mesh.endpoints.write().await;
+        let mut map = mesh.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         map.insert("p".into(), vec![ep.clone()]);
     }
 
@@ -327,7 +327,7 @@ async fn get_reachable_nodes_filters_unreachable() {
         reachable: true,
     };
     {
-        let mut map = mesh.endpoints.write().await;
+        let mut map = mesh.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         map.insert("up".into(), vec![ep.clone()]);
         ep.reachable = false;
         map.insert("down".into(), vec![ep]);

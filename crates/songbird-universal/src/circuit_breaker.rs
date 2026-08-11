@@ -7,7 +7,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tokio::time::Instant;
 
 /// Circuit breaker state
@@ -64,20 +64,19 @@ impl CircuitBreaker {
     /// Check if a request is allowed
     ///
     /// Returns `true` if the circuit allows the request, `false` if it's open.
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn is_request_allowed(&self) -> bool {
-        let state = *self.state.read().await;
+        let state = *self.state.read().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         match state {
             CircuitState::Closed | CircuitState::HalfOpen => true,
             CircuitState::Open => {
-                // Check if timeout has elapsed
-                let last_failure = self.last_failure_time.read().await;
-                if let Some(last) = *last_failure
-                    && last.elapsed() >= self.config.timeout
-                {
-                    // Transition to half-open
-                    drop(last_failure);
-                    self.transition_to_half_open().await;
+                let should_transition = {
+                    let last_failure = self.last_failure_time.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+                    last_failure.is_some_and(|last| last.elapsed() >= self.config.timeout)
+                };
+                if should_transition {
+                    self.transition_to_half_open();
                     return true;
                 }
                 false
@@ -86,88 +85,83 @@ impl CircuitBreaker {
     }
 
     /// Record a successful request
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn record_success(&self) {
-        let state = *self.state.read().await;
+        let state = *self.state.read().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         match state {
             CircuitState::Closed => {
-                // Reset failure count
-                *self.failure_count.write().await = 0;
+                *self.failure_count.write().unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
             }
             CircuitState::HalfOpen => {
-                // Increment success count
-                let mut success = self.success_count.write().await;
-                *success += 1;
-
-                // Check if we should close the circuit
-                if *success >= self.config.success_threshold {
-                    drop(success);
-                    self.transition_to_closed().await;
+                let should_close = {
+                    let mut success = self.success_count.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+                    *success += 1;
+                    *success >= self.config.success_threshold
+                };
+                if should_close {
+                    self.transition_to_closed();
                 }
             }
             CircuitState::Open => {
-                // Should not happen, but reset if it does
-                self.transition_to_closed().await;
+                self.transition_to_closed();
             }
         }
     }
 
     /// Record a failed request
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn record_failure(&self) {
-        let state = *self.state.read().await;
+        let state = *self.state.read().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         match state {
             CircuitState::Closed => {
-                // Increment failure count
-                let mut failures = self.failure_count.write().await;
-                *failures += 1;
-
-                // Check if we should open the circuit
-                if *failures >= self.config.failure_threshold {
-                    drop(failures);
-                    self.transition_to_open().await;
+                let should_open = {
+                    let mut failures = self.failure_count.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+                    *failures += 1;
+                    *failures >= self.config.failure_threshold
+                };
+                if should_open {
+                    self.transition_to_open();
                 }
             }
             CircuitState::HalfOpen => {
-                // Any failure in half-open state reopens the circuit
-                self.transition_to_open().await;
+                self.transition_to_open();
             }
             CircuitState::Open => {
-                // Update last failure time
-                *self.last_failure_time.write().await = Some(Instant::now());
+                *self.last_failure_time.write().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Instant::now());
             }
         }
     }
 
     /// Get current state
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn get_state(&self) -> CircuitState {
-        *self.state.read().await
+        *self.state.read().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
-    /// Transition to open state
-    async fn transition_to_open(&self) {
-        *self.state.write().await = CircuitState::Open;
-        *self.last_failure_time.write().await = Some(Instant::now());
-        *self.failure_count.write().await = 0;
-        *self.success_count.write().await = 0;
+    fn transition_to_open(&self) {
+        *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Open;
+        *self.last_failure_time.write().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Instant::now());
+        *self.failure_count.write().unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
+        *self.success_count.write().unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
     }
 
-    /// Transition to half-open state
-    async fn transition_to_half_open(&self) {
-        *self.state.write().await = CircuitState::HalfOpen;
-        *self.success_count.write().await = 0;
+    fn transition_to_half_open(&self) {
+        *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::HalfOpen;
+        *self.success_count.write().unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
     }
 
-    /// Transition to closed state
-    async fn transition_to_closed(&self) {
-        *self.state.write().await = CircuitState::Closed;
-        *self.failure_count.write().await = 0;
-        *self.success_count.write().await = 0;
+    fn transition_to_closed(&self) {
+        *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Closed;
+        *self.failure_count.write().unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
+        *self.success_count.write().unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
     }
 
     /// Reset the circuit breaker to closed state
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn reset(&self) {
-        self.transition_to_closed().await;
+        self.transition_to_closed();
     }
 }
 

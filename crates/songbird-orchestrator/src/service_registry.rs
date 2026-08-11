@@ -41,7 +41,7 @@ use songbird_types::defaults::ports::{DEFAULT_PORT_RANGE_END, DEFAULT_PORT_RANGE
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
@@ -355,7 +355,7 @@ impl ServiceRegistry {
 
         // Allocate port
         let port = {
-            let mut allocator = self.port_allocator.write().await;
+            let mut allocator = self.port_allocator.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             allocator.allocate(&service_id)?
         };
 
@@ -375,7 +375,7 @@ impl ServiceRegistry {
                 .map_or("https", std::string::String::as_str);
 
             let fallback_port = {
-                let mut allocator = self.port_allocator.write().await;
+                let mut allocator = self.port_allocator.write().unwrap_or_else(std::sync::PoisonError::into_inner);
                 allocator.allocate(&service_id).ok()
             };
 
@@ -412,7 +412,7 @@ impl ServiceRegistry {
 
         // Store service
         {
-            let mut services = self.services.write().await;
+            let mut services = self.services.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             services.insert(service_id.clone(), service);
         }
 
@@ -436,7 +436,7 @@ impl ServiceRegistry {
     pub async fn heartbeat(&self, request: HeartbeatRequest) -> Result<HeartbeatResponse> {
         debug!("💓 Heartbeat from service {}", request.service_id);
 
-        let mut services = self.services.write().await;
+        let mut services = self.services.write().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         let service = services
             .get_mut(&request.service_id)
@@ -473,7 +473,7 @@ impl ServiceRegistry {
         info!("🛑 Deregistering service {}", request.service_id);
 
         let service = {
-            let mut services = self.services.write().await;
+            let mut services = self.services.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             services.remove(&request.service_id)
         };
 
@@ -485,7 +485,7 @@ impl ServiceRegistry {
 
             // Release ports
             {
-                let mut allocator = self.port_allocator.write().await;
+                let mut allocator = self.port_allocator.write().unwrap_or_else(std::sync::PoisonError::into_inner);
                 allocator.release(service.assigned_endpoint.port);
                 if let Some(fallback) = service.fallback_endpoint {
                     allocator.release(fallback.port);
@@ -501,19 +501,19 @@ impl ServiceRegistry {
 
     /// Get a service by ID
     pub async fn get_service(&self, service_id: &str) -> Option<RegisteredService> {
-        let services = self.services.read().await;
+        let services = self.services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         services.get(service_id).cloned()
     }
 
     /// List all services
     pub async fn list_services(&self) -> Vec<RegisteredService> {
-        let services = self.services.read().await;
+        let services = self.services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         services.values().cloned().collect()
     }
 
     /// Query services by capability
     pub async fn query_by_capability(&self, capability: &str) -> Vec<RegisteredService> {
-        let services = self.services.read().await;
+        let services = self.services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         services
             .values()
             .filter(|s| s.capabilities.iter().any(|c| c.name == capability))
@@ -528,7 +528,7 @@ impl ServiceRegistry {
     pub async fn cleanup_stale_services(&self) -> usize {
         let ttl = Duration::from_secs(self.config.service_ttl_sec);
 
-        let mut services = self.services.write().await;
+        let mut services = self.services.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         let mut to_remove = Vec::new();
 
         for (id, service) in services.iter_mut() {
@@ -561,7 +561,7 @@ impl ServiceRegistry {
         for id in to_remove {
             if let Some(service) = services.remove(&id) {
                 // Release ports
-                let mut allocator = self.port_allocator.write().await;
+                let mut allocator = self.port_allocator.write().unwrap_or_else(std::sync::PoisonError::into_inner);
                 allocator.release(service.assigned_endpoint.port);
                 if let Some(fallback) = service.fallback_endpoint {
                     allocator.release(fallback.port);
@@ -578,14 +578,14 @@ impl ServiceRegistry {
 
     /// Get registry statistics
     pub async fn get_stats(&self) -> RegistryStats {
-        let services = self.services.read().await;
+        let services = self.services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         let total = services.len();
         let active = services.values().filter(|s| s.status == ServiceStatus::Active).count();
         let degraded = services.values().filter(|s| s.status == ServiceStatus::Degraded).count();
         let inactive = services.values().filter(|s| s.status == ServiceStatus::Inactive).count();
 
-        let allocator = self.port_allocator.read().await;
+        let allocator = self.port_allocator.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         let allocated_ports = allocator.allocated.len();
 
         RegistryStats {
