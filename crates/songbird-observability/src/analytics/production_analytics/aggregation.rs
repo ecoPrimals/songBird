@@ -16,12 +16,13 @@ impl ProductionAnalyticsEngine {
     /// # Errors
     ///
     /// Returns an error when the metric is unknown or there are too few data points for the window.
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn analyze_trends(
         &self,
         metric_name: &str,
         window_size: usize,
     ) -> SongbirdResult<TrendAnalysis> {
-        let series_map = self.time_series.read().await;
+        let series_map = self.time_series.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         let series = series_map
             .get(metric_name)
             .ok_or_else(|| SongbirdError::service("analytics_engine", "Unknown metric"))?;
@@ -63,10 +64,10 @@ impl ProductionAnalyticsEngine {
             analyzed_at: Utc::now(),
         };
 
-        let mut cache = self.trend_cache.write().await;
+        let mut cache = self.trend_cache.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         cache.insert(metric_name.to_string(), trend_analysis.clone());
 
-        let mut stats = self.stats.write().await;
+        let mut stats = self.stats.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         stats.trends_analyzed += 1;
 
         info!(
@@ -82,12 +83,13 @@ impl ProductionAnalyticsEngine {
     /// # Errors
     ///
     /// Returns an error when the metric is unknown or there is insufficient history for a forecast.
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn predict_metric(
         &self,
         metric_name: &str,
         horizon: Duration,
     ) -> SongbirdResult<PredictionResult> {
-        let series_map = self.time_series.read().await;
+        let series_map = self.time_series.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         let series = series_map
             .get(metric_name)
             .ok_or_else(|| SongbirdError::service("analytics_engine", "Unknown metric"))?;
@@ -116,7 +118,7 @@ impl ProductionAnalyticsEngine {
             method: PredictionMethod::LinearRegression,
         };
 
-        let mut stats = self.stats.write().await;
+        let mut stats = self.stats.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         stats.predictions_made += 1;
 
         info!(
@@ -191,8 +193,9 @@ impl ProductionAnalyticsEngine {
         clippy::cast_precision_loss,
         reason = "Analytics: sample count cast to f64 for mean and variance"
     )]
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn train_anomaly_model(&self, metric_name: &str) -> SongbirdResult<()> {
-        let series_map = self.time_series.read().await;
+        let series_map = self.time_series.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         let series = series_map
             .get(metric_name)
             .ok_or_else(|| SongbirdError::service("analytics_engine", "Unknown metric"))?;
@@ -219,10 +222,10 @@ impl ProductionAnalyticsEngine {
             last_updated: Utc::now(),
         };
 
-        let mut models = self.anomaly_models.write().await;
+        let mut models = self.anomaly_models.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         models.insert(metric_name.to_string(), model);
 
-        let mut stats = self.stats.write().await;
+        let mut stats = self.stats.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         stats.models_trained += 1;
 
         info!("Trained anomaly model for {}: mean={:.2}, std={:.2}", metric_name, mean, std_dev);

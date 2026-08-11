@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::debug;
 
 use super::{HealthStatus, NodeHealth, ServiceHealth};
@@ -45,7 +45,7 @@ impl HealthMonitor {
             error_message: None,
         };
 
-        self.services.write().await.insert(service_id, health);
+        self.services.write().unwrap_or_else(std::sync::PoisonError::into_inner).insert(service_id, health);
         Ok(())
     }
 
@@ -59,7 +59,7 @@ impl HealthMonitor {
         service_id: &str,
         status: HealthStatus,
     ) -> Result<()> {
-        if let Some(health) = self.services.write().await.get_mut(service_id) {
+        if let Some(health) = self.services.write().unwrap_or_else(std::sync::PoisonError::into_inner).get_mut(service_id) {
             health.status = status;
             health.last_check = Utc::now();
         }
@@ -72,7 +72,7 @@ impl HealthMonitor {
     ///
     /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_service_health(&self, service_id: &str) -> Result<Option<ServiceHealth>> {
-        let services = self.services.read().await;
+        let services = self.services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(services.get(service_id).cloned())
     }
 
@@ -82,7 +82,7 @@ impl HealthMonitor {
     ///
     /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_all_service_health(&self) -> Result<Vec<ServiceHealth>> {
-        let services = self.services.read().await;
+        let services = self.services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(services.values().cloned().collect())
     }
 
@@ -99,7 +99,7 @@ impl HealthMonitor {
 
     /// Get health statistics
     pub async fn get_health_stats(&self) -> HealthStats {
-        let services = self.services.read().await;
+        let services = self.services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         let healthy_count =
             services.values().filter(|s| matches!(s.status, HealthStatus::Healthy)).count();
 
@@ -124,7 +124,7 @@ impl HealthMonitor {
             memory_usage: 0.0,
             disk_usage: 0.0,
         };
-        self.nodes.write().await.insert(node_id, health);
+        self.nodes.write().unwrap_or_else(std::sync::PoisonError::into_inner).insert(node_id, health);
         Ok(())
     }
 
@@ -141,7 +141,7 @@ impl HealthMonitor {
         memory_usage: f64,
         disk_usage: f64,
     ) -> Result<()> {
-        if let Some(node) = self.nodes.write().await.get_mut(node_id) {
+        if let Some(node) = self.nodes.write().unwrap_or_else(std::sync::PoisonError::into_inner).get_mut(node_id) {
             node.status = status;
             node.last_heartbeat = Utc::now();
             node.cpu_usage = cpu_usage;
@@ -157,7 +157,7 @@ impl HealthMonitor {
     ///
     /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_all_node_health(&self) -> Result<Vec<NodeHealth>> {
-        let nodes = self.nodes.read().await;
+        let nodes = self.nodes.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(nodes.values().cloned().collect())
     }
 }

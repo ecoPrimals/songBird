@@ -13,7 +13,7 @@ pub use super::types::*;
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 mod aggregation;
 mod collection;

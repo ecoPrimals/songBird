@@ -23,7 +23,7 @@ use super::{
 use anyhow::{Result, anyhow};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 /// Mock `security provider` provider for testing
 ///
@@ -52,7 +52,7 @@ impl MockSecurityProvider {
 
     /// Add a fake lineage for testing
     pub async fn add_test_lineage(&self, root: String, descendants: Vec<String>) {
-        self.lineages.write().await.insert(root, descendants);
+        self.lineages.write().unwrap_or_else(std::sync::PoisonError::into_inner).insert(root, descendants);
     }
 
     /// Generate lineage for a new node
@@ -80,7 +80,7 @@ impl MockSecurityProvider {
 
     /// Get all descendants of a root
     pub async fn get_descendants(&self, root_id: &str) -> Result<Vec<String>> {
-        let lineages = self.lineages.read().await;
+        let lineages = self.lineages.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(lineages.get(root_id).cloned().unwrap_or_default())
     }
 
@@ -90,7 +90,7 @@ impl MockSecurityProvider {
         ancestor_id: &str,
         descendant_id: &str,
     ) -> Result<Option<usize>> {
-        let lineages = self.lineages.read().await;
+        let lineages = self.lineages.read().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         if let Some(descendants) = lineages.get(ancestor_id)
             && descendants.contains(&descendant_id.to_string())
@@ -152,7 +152,7 @@ impl MockSecurityProvider {
             valid_until: chrono::Utc::now() + chrono::Duration::days(30),
         };
 
-        self.keys.write().await.insert(key_id, key.clone());
+        self.keys.write().unwrap_or_else(std::sync::PoisonError::into_inner).insert(key_id, key.clone());
         Ok(key)
     }
 
@@ -187,7 +187,7 @@ impl MockSecurityProvider {
             expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
         };
 
-        self.sessions.write().await.insert(session.session_id.clone(), session.clone());
+        self.sessions.write().unwrap_or_else(std::sync::PoisonError::into_inner).insert(session.session_id.clone(), session.clone());
         Ok(session)
     }
 
@@ -209,7 +209,7 @@ impl MockSecurityProvider {
 
     /// Revoke relay for a session
     pub async fn revoke_relay(&self, session_id: &str) -> Result<()> {
-        self.sessions.write().await.remove(session_id);
+        self.sessions.write().unwrap_or_else(std::sync::PoisonError::into_inner).remove(session_id);
         tracing::warn!("🐻 MOCK: Revoked relay session");
         Ok(())
     }

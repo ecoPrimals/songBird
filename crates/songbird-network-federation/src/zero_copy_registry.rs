@@ -21,7 +21,7 @@ use songbird_types::zero_copy_service::ServiceHealthStatus;
 use songbird_types::zero_copy_service::ZeroCopyServiceRegistration;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use tracing::{debug, info};
 
 /// Type alias for capability index map (reduces complexity warnings)
@@ -76,20 +76,20 @@ impl ZeroCopyFederatedRegistry {
         let service_arc = Arc::new(service);
 
         // Store service
-        let mut local = self.local_services.write().await;
+        let mut local = self.local_services.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         local.insert(Arc::clone(&service_id), Arc::clone(&service_arc));
         drop(local);
 
         // Update capability index (Arc clones only)
-        let mut cap_index = self.capability_index.write().await;
+        let mut cap_index = self.capability_index.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         for capability in capabilities {
-            cap_index.entry(capability).or_insert_with(Vec::new).push(Arc::clone(&service_id));
+            cap_index.entry(capability).or_default().push(Arc::clone(&service_id));
         }
         drop(cap_index);
 
         // Update type index (Arc clones only)
-        let mut type_idx = self.type_index.write().await;
-        type_idx.entry(service_type).or_insert_with(Vec::new).push(service_id);
+        let mut type_idx = self.type_index.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        type_idx.entry(service_type).or_default().push(service_id);
     }
 
     /// Deregister a local service
@@ -97,13 +97,13 @@ impl ZeroCopyFederatedRegistry {
         info!("🗑️  Deregistering local service: {}", service_id.as_ref());
 
         // Remove from main storage
-        let mut local = self.local_services.write().await;
+        let mut local = self.local_services.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         let service = local.remove(service_id);
         drop(local);
 
         if let Some(service) = service {
             // Remove from capability index
-            let mut cap_index = self.capability_index.write().await;
+            let mut cap_index = self.capability_index.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             for capability in &service.capabilities {
                 if let Some(services) = cap_index.get_mut(capability) {
                     services.retain(|id| !Arc::ptr_eq(id, service_id));
@@ -115,7 +115,7 @@ impl ZeroCopyFederatedRegistry {
             drop(cap_index);
 
             // Remove from type index
-            let mut type_idx = self.type_index.write().await;
+            let mut type_idx = self.type_index.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(services) = type_idx.get_mut(&service.service_type) {
                 services.retain(|id| !Arc::ptr_eq(id, service_id));
                 if services.is_empty() {
@@ -139,19 +139,19 @@ impl ZeroCopyFederatedRegistry {
         let service_arc = Arc::new(service);
 
         // Store service
-        let mut remote = self.remote_services.write().await;
+        let mut remote = self.remote_services.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         remote.insert(Arc::clone(&service_id), Arc::clone(&service_arc));
         drop(remote);
 
         // Update indexes
-        let mut cap_index = self.capability_index.write().await;
+        let mut cap_index = self.capability_index.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         for capability in capabilities {
-            cap_index.entry(capability).or_insert_with(Vec::new).push(Arc::clone(&service_id));
+            cap_index.entry(capability).or_default().push(Arc::clone(&service_id));
         }
         drop(cap_index);
 
-        let mut type_idx = self.type_index.write().await;
-        type_idx.entry(service_type).or_insert_with(Vec::new).push(service_id);
+        let mut type_idx = self.type_index.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        type_idx.entry(service_type).or_default().push(service_id);
     }
 
     /// Find service by ID (zero-copy Arc clone)
@@ -163,14 +163,14 @@ impl ZeroCopyFederatedRegistry {
     ) -> Option<Arc<ZeroCopyServiceRegistration>> {
         // Check local first
         {
-            let local = self.local_services.read().await;
+            let local = self.local_services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(service) = local.get(service_id) {
                 return Some(Arc::clone(service)); // ✅ Zero-copy clone
             }
         }
 
         // Then check remote
-        let remote = self.remote_services.read().await;
+        let remote = self.remote_services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         remote.get(service_id).map(Arc::clone) // ✅ Zero-copy clone
     }
 
@@ -179,14 +179,14 @@ impl ZeroCopyFederatedRegistry {
         &self,
         service_type: &Arc<str>,
     ) -> Vec<Arc<ZeroCopyServiceRegistration>> {
-        let type_idx = self.type_index.read().await;
+        let type_idx = self.type_index.read().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         if let Some(service_ids) = type_idx.get(service_type) {
             let mut results = Vec::with_capacity(service_ids.len());
 
             // Get services from both local and remote
-            let local = self.local_services.read().await;
-            let remote = self.remote_services.read().await;
+            let local = self.local_services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let remote = self.remote_services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
 
             for service_id in service_ids {
                 if let Some(service) = local.get(service_id).or_else(|| remote.get(service_id)) {
@@ -205,14 +205,14 @@ impl ZeroCopyFederatedRegistry {
         &self,
         capability: &Arc<str>,
     ) -> Vec<Arc<ZeroCopyServiceRegistration>> {
-        let cap_index = self.capability_index.read().await;
+        let cap_index = self.capability_index.read().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         if let Some(service_ids) = cap_index.get(capability) {
             let mut results = Vec::with_capacity(service_ids.len());
 
             // Get services from both local and remote
-            let local = self.local_services.read().await;
-            let remote = self.remote_services.read().await;
+            let local = self.local_services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let remote = self.remote_services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
 
             for service_id in service_ids {
                 if let Some(service) = local.get(service_id).or_else(|| remote.get(service_id)) {
@@ -228,8 +228,8 @@ impl ZeroCopyFederatedRegistry {
 
     /// Get all services (zero-copy clones)
     pub async fn get_all_services(&self) -> Vec<Arc<ZeroCopyServiceRegistration>> {
-        let local = self.local_services.read().await;
-        let remote = self.remote_services.read().await;
+        let local = self.local_services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let remote = self.remote_services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         local
             .values()
@@ -240,13 +240,13 @@ impl ZeroCopyFederatedRegistry {
 
     /// Get all local services (zero-copy clones)
     pub async fn get_local_services(&self) -> Vec<Arc<ZeroCopyServiceRegistration>> {
-        let local = self.local_services.read().await;
+        let local = self.local_services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         local.values().map(Arc::clone).collect() // ✅ Zero-copy clones
     }
 
     /// Get all remote services (zero-copy clones)
     pub async fn get_remote_services(&self) -> Vec<Arc<ZeroCopyServiceRegistration>> {
-        let remote = self.remote_services.read().await;
+        let remote = self.remote_services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         remote.values().map(Arc::clone).collect() // ✅ Zero-copy clones
     }
 
@@ -258,7 +258,7 @@ impl ZeroCopyFederatedRegistry {
     ) {
         debug!("🔄 Syncing {} services from tower {}", services.len(), tower_id.as_ref());
 
-        let mut remote = self.remote_services.write().await;
+        let mut remote = self.remote_services.write().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         // Remove old services from this tower (efficient Arc comparison)
         let to_remove: Vec<Arc<str>> = remote
@@ -282,7 +282,7 @@ impl ZeroCopyFederatedRegistry {
     pub async fn cleanup_stale_services(&self, timeout_secs: i64) {
         let now = Utc::now();
         let removed = {
-            let mut remote = self.remote_services.write().await;
+            let mut remote = self.remote_services.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             let before_count = remote.len();
             remote.retain(|_, svc| {
                 let elapsed = (now - svc.last_seen).num_seconds();
@@ -298,9 +298,9 @@ impl ZeroCopyFederatedRegistry {
 
     /// Get registry statistics
     pub async fn get_stats(&self) -> ZeroCopyRegistryStats {
-        let local = self.local_services.read().await;
-        let remote = self.remote_services.read().await;
-        let type_idx = self.type_index.read().await;
+        let local = self.local_services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let remote = self.remote_services.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let type_idx = self.type_index.read().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         ZeroCopyRegistryStats {
             total_services: local.len() + remote.len(),

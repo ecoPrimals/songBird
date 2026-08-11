@@ -9,8 +9,9 @@ use tracing::{debug, error, info, warn};
 
 impl ProductionAnalyticsEngine {
     /// Get analytics statistics
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn get_analytics_statistics(&self) -> AnalyticsStatistics {
-        let stats = self.stats.read().await;
+        let stats = self.stats.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         stats.clone()
     }
 
@@ -44,9 +45,10 @@ impl ProductionAnalyticsEngine {
     }
 
     async fn retrain_all_models(&self) -> SongbirdResult<()> {
-        let series_map = self.time_series.read().await;
-        let metric_names: Vec<String> = series_map.keys().cloned().collect();
-        drop(series_map);
+        let metric_names: Vec<String> = {
+            let series_map = self.time_series.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+            series_map.keys().cloned().collect()
+        };
 
         for metric_name in metric_names {
             if let Err(e) = self.train_anomaly_model(&metric_name).await {
@@ -58,8 +60,9 @@ impl ProductionAnalyticsEngine {
         Ok(())
     }
 
+    #[expect(clippy::unused_async, reason = "async for API stability")]
     async fn cleanup_old_data(&self) -> SongbirdResult<()> {
-        let mut series_map = self.time_series.write().await;
+        let mut series_map = self.time_series.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         let cutoff_time = Utc::now() - chrono::Duration::hours(24);
 
         for series in series_map.values_mut() {

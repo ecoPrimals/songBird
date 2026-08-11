@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use super::SystemMetrics;
 use songbird_types::SongbirdResult;
@@ -58,7 +58,7 @@ impl MetricsCollector {
         };
 
         // Update stored metrics
-        *self.current_metrics.write().await = Some(metrics.clone());
+        *self.current_metrics.write().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(metrics.clone());
 
         // Increment collection count
         self.collection_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -72,9 +72,10 @@ impl MetricsCollector {
     ///
     /// Returns an error if metrics collection fails when no snapshot exists
     pub async fn get_current_snapshot(&self) -> Result<MetricsSnapshot> {
-        let current = self.current_metrics.read().await;
-        let metrics_copy = current.as_ref().cloned();
-        drop(current); // Explicitly drop the read lock before potentially acquiring write lock
+        let metrics_copy = {
+            let current = self.current_metrics.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+            current.as_ref().cloned()
+        };
 
         match metrics_copy {
             Some(metrics) => Ok(metrics),

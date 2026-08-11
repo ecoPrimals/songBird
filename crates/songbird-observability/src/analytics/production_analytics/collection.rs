@@ -18,32 +18,30 @@ impl ProductionAnalyticsEngine {
     /// Returns an error if internal storage or real-time anomaly checks fail.
     pub async fn add_data_point(&self, data_point: DataPoint) -> SongbirdResult<()> {
         let metric_name = data_point.metric_name.clone();
+        let check_real_time = self.config.enable_real_time;
 
-        let mut series_map = self.time_series.write().await;
-        let series = series_map.entry(metric_name.clone()).or_insert_with(|| TimeSeries {
-            name: metric_name.clone(),
-            data_points: VecDeque::new(),
-            max_points: self.config.max_data_points,
-        });
+        {
+            let mut series_map = self.time_series.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let series = series_map.entry(metric_name.clone()).or_insert_with(|| TimeSeries {
+                name: metric_name.clone(),
+                data_points: VecDeque::new(),
+                max_points: self.config.max_data_points,
+            });
 
-        series.data_points.push_back(data_point.clone());
+            series.data_points.push_back(data_point.clone());
 
-        if series.data_points.len() > series.max_points {
-            series.data_points.pop_front();
+            if series.data_points.len() > series.max_points {
+                series.data_points.pop_front();
+            }
         }
 
-        let mut stats = self.stats.write().await;
-        stats.total_data_points += 1;
+        self.stats.write().unwrap_or_else(std::sync::PoisonError::into_inner).total_data_points += 1;
 
-        if self.config.enable_real_time {
-            drop(series_map);
-            drop(stats);
-
-            if let Ok(anomaly) = self.detect_anomaly(&metric_name, data_point.value).await
-                && anomaly.severity != AnomalySeverity::Low
-            {
-                info!("Anomaly detected: {:?} - {}", anomaly.anomaly_type, anomaly.description);
-            }
+        if check_real_time
+            && let Ok(anomaly) = self.detect_anomaly(&metric_name, data_point.value).await
+            && anomaly.severity != AnomalySeverity::Low
+        {
+            info!("Anomaly detected: {:?} - {}", anomaly.anomaly_type, anomaly.description);
         }
 
         debug!("Added data point for metric: {} (value: {})", metric_name, data_point.value);
@@ -55,19 +53,20 @@ impl ProductionAnalyticsEngine {
     /// # Errors
     ///
     /// Returns an error if concurrent access to internal state fails.
+    #[expect(clippy::unused_async, reason = "async for API stability; future I/O-backed models")]
     pub async fn detect_anomaly(
         &self,
         metric_name: &str,
         value: f64,
     ) -> SongbirdResult<AnomalyResult> {
         let model = {
-            let models = self.anomaly_models.read().await;
+            let models = self.anomaly_models.read().unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(model) = models.get(metric_name) {
                 model.clone()
             } else {
                 drop(models);
                 let new_model = self.create_anomaly_model(metric_name, value);
-                let mut models = self.anomaly_models.write().await;
+                let mut models = self.anomaly_models.write().unwrap_or_else(std::sync::PoisonError::into_inner);
                 models.insert(metric_name.to_string(), new_model.clone());
                 new_model
             }
@@ -118,7 +117,7 @@ impl ProductionAnalyticsEngine {
         };
 
         if severity != AnomalySeverity::Low {
-            let mut stats = self.stats.write().await;
+            let mut stats = self.stats.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             stats.anomalies_detected += 1;
         }
 
