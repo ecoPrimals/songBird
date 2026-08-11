@@ -32,7 +32,7 @@ Songbird is one third of **Tower Atomic** (bearDog + songBird + skunkBat) — th
 | Build | Clean (zero errors, zero warnings; cross-platform verified) |
 | Formatting | Clean (`cargo fmt --check`; Aug 4 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >800 lines | **0** (max 782L) — Wave 155i: `service_tests.rs` (1,018→5 focused modules), `mesh_handler/tests.rs` (998→5 focused modules). Largest: drawbridge.rs 782L. Previous: Wave 151b: `mesh_handler/mod.rs` (795L). Wave 152: `security.rs` (761→mod tree). Wave 150t: `mesh_handler/mod.rs` (841→746L); Wave 149b: `drawbridge.rs` (1,019→578L) |
+| Files >800 lines | **0** (max 831L ipc_registry.rs marginal) — Wave 157g: `http_server.rs` (854L→4 focused modules: mod.rs + federation_dispatch + tls_server + port_binding). Wave 155i: `service_tests.rs` (1,018→5 modules), `mesh_handler/tests.rs` (998→5 modules). Previous: drawbridge.rs 782L. Wave 152: `security.rs` (761→mod tree). Wave 150t: `mesh_handler/mod.rs` (841→746L) |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 33 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, lifecycle, inference, etc.) |
