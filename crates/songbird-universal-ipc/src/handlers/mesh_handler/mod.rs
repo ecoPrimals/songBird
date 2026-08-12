@@ -137,13 +137,13 @@ impl MeshHandler {
 
     /// The local node ID (blocking — panics inside async single-thread runtimes).
     #[must_use]
-    pub fn node_id(&self) -> String {
-        self.node_id.blocking_read().to_string()
+    pub fn node_id(&self) -> Arc<str> {
+        Arc::clone(&self.node_id.blocking_read())
     }
 
     /// The local node ID (async-safe).
-    pub async fn node_id_async(&self) -> String {
-        self.node_id.read().await.to_string()
+    pub async fn node_id_async(&self) -> Arc<str> {
+        Arc::clone(&*self.node_id.read().await)
     }
 
     /// Initialize the mesh with node ID, bootstrap onions, and/or bootstrap peers.
@@ -202,70 +202,79 @@ impl MeshHandler {
             .unwrap_or_default();
 
         let bootstrap_peers = parse_peer_list(&params, &["bootstrap_peers", "peers"], false);
+        let bootstrap_peer_count = bootstrap_peers.len();
+        let bootstrap_peers_for_tasks = bootstrap_peers.clone();
 
         info!(
             "🌐 Initializing mesh for node {} with {} bootstrap onions, {} bootstrap peers",
             &node_id.as_ref()[..8.min(node_id.len())],
             bootstrap_onions.len(),
-            bootstrap_peers.len()
+            bootstrap_peer_count
         );
 
         let mesh = BeaconMesh::new(node_id.as_ref().to_string(), bootstrap_onions);
         let mesh = Arc::new(mesh);
 
-        for (peer_id, addr) in &bootstrap_peers {
+        for (peer_id, addr) in bootstrap_peers {
             let endpoint = RelayEndpoint {
                 node_id: peer_id.clone(),
                 endpoint_type: EndpointType::Direct {
-                    addr: *addr,
+                    addr,
                 },
                 latency: None,
                 last_seen: std::time::Instant::now(),
                 reachable: true,
             };
-            mesh.add_endpoint(peer_id.clone(), endpoint).await;
+            mesh.add_endpoint(peer_id, endpoint).await;
         }
 
         // Register LAN endpoints (same-subnet — priority 0, always preferred)
         let lan_peers = parse_peer_list(&params, &["lan_peers"], true);
+        let lan_peer_ids: std::collections::HashSet<String> =
+            lan_peers.iter().map(|(id, _)| id.clone()).collect();
+        let lan_peers_added = lan_peers.len();
 
-        for (peer_id, addr) in &lan_peers {
+        for (peer_id, addr) in lan_peers {
             let endpoint = RelayEndpoint {
                 node_id: peer_id.clone(),
                 endpoint_type: EndpointType::Local {
-                    addr: *addr,
+                    addr,
                 },
                 latency: None,
                 last_seen: std::time::Instant::now(),
                 reachable: true,
             };
-            mesh.add_endpoint(peer_id.clone(), endpoint).await;
+            mesh.add_endpoint(peer_id, endpoint).await;
         }
 
         // Register overlay endpoints (WireGuard/VPN — priority 1, fallback when no LAN)
         let overlay_name =
             params.get("overlay_name").and_then(Value::as_str).unwrap_or("wireguard");
         let overlay_peers = parse_peer_list(&params, &["overlay_peers"], true);
+        let overlay_for_health: Vec<(String, std::net::SocketAddr, String)> = overlay_peers
+            .iter()
+            .map(|(id, addr)| (id.clone(), *addr, String::from(overlay_name)))
+            .collect();
 
-        for (peer_id, addr) in &overlay_peers {
+        for (peer_id, addr) in overlay_peers {
             let endpoint = RelayEndpoint {
                 node_id: peer_id.clone(),
                 endpoint_type: EndpointType::Overlay {
-                    addr: *addr,
+                    addr,
                     overlay_name: String::from(overlay_name),
                 },
                 latency: None,
                 last_seen: std::time::Instant::now(),
                 reachable: true,
             };
-            mesh.add_endpoint(peer_id.clone(), endpoint).await;
+            mesh.add_endpoint(peer_id, endpoint).await;
         }
 
         // Load persisted peers — restore LAN endpoints from prior enrollment
         if let Some((_, persisted)) = persistence::load_persisted_peers_full() {
             for peer in &persisted {
                 if let Some(lan) = peer.lan_addr {
-                    let already_has_local = lan_peers.iter().any(|(id, _)| id == &peer.node_id);
+                    let already_has_local = lan_peer_ids.contains(&peer.node_id);
                     if !already_has_local {
                         let endpoint = RelayEndpoint {
                             node_id: peer.node_id.clone(),
@@ -284,27 +293,20 @@ impl MeshHandler {
 
         let mesh_ref = Arc::clone(&mesh);
         *self.mesh.write().await = Some(mesh);
-        *self.node_id.write().await = node_id.clone();
+        *self.node_id.write().await = Arc::clone(&node_id);
 
-        let peers_added = bootstrap_peers.len();
-        let lan_peers_added = lan_peers.len();
-        let overlay_for_health: Vec<(String, std::net::SocketAddr, String)> = overlay_peers
-            .iter()
-            .map(|(id, addr)| (id.clone(), *addr, String::from(overlay_name)))
-            .collect();
-
-        if !bootstrap_peers.is_empty() || !overlay_for_health.is_empty() {
+        if bootstrap_peer_count > 0 || !overlay_for_health.is_empty() {
             Self::spawn_peer_health_loop(
                 mesh_ref,
-                bootstrap_peers.clone(),
+                bootstrap_peers_for_tasks.clone(),
                 overlay_for_health,
                 Arc::clone(&self.peer_metadata),
             );
 
-            if !bootstrap_peers.is_empty() {
+            if bootstrap_peer_count > 0 {
                 let node_id_owned = node_id.as_ref().to_string();
                 tokio::task::spawn_blocking(move || {
-                    persistence::save_peers(&node_id_owned, &bootstrap_peers);
+                    persistence::save_peers(&node_id_owned, &bootstrap_peers_for_tasks);
                 });
             }
         }
@@ -312,7 +314,7 @@ impl MeshHandler {
         Ok(json!({
             "initialized": true,
             "node_id": node_id.as_ref(),
-            "bootstrap_peers_added": peers_added,
+            "bootstrap_peers_added": bootstrap_peer_count,
             "lan_peers_added": lan_peers_added
         }))
     }
@@ -544,7 +546,7 @@ impl MeshHandler {
                     let latency_ms =
                         path.latency.map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
 
-                    peers.push((node_id.clone(), json!({
+                    peers.push(json!({
                         "node_id": node_id,
                         "path_type": path_type,
                         "priority": path.endpoint_type.priority(),
@@ -553,7 +555,7 @@ impl MeshHandler {
                         "is_relay": is_relay,
                         "latency_ms": latency_ms,
                         "reachable": path.reachable
-                    })));
+                    }));
                 }
             }
 
@@ -564,8 +566,9 @@ impl MeshHandler {
         let our_version = env!("CARGO_PKG_VERSION");
         let enriched_peers: Vec<Value> = peers
             .into_iter()
-            .map(|(node_id, mut peer_json)| {
-                if let Some(pm) = meta.get(&node_id)
+            .map(|mut peer_json| {
+                if let Some(node_id) = peer_json.get("node_id").and_then(Value::as_str)
+                    && let Some(pm) = meta.get(node_id)
                     && let Some(ref v) = pm.version
                 {
                     peer_json["version"] = json!(v);
@@ -603,7 +606,7 @@ impl MeshHandler {
             .cloned()
             .ok_or("Mesh not initialized (call mesh.init first)")?;
 
-        let node_id = self.node_id.read().await.clone();
+        let node_id = Arc::clone(&*self.node_id.read().await);
         let reachable = mesh.get_reachable_nodes().await;
 
         let include_gossip = params.get("include_gossip").and_then(Value::as_bool).unwrap_or(true);
@@ -642,9 +645,8 @@ impl MeshHandler {
         let mut nodes = Vec::new();
         let mut edges = Vec::new();
 
-        let self_id = node_id.clone();
         nodes.push(json!({
-            "id": self_id.as_ref(),
+            "id": node_id.as_ref(),
             "role": "self",
             "reachable": true
         }));
@@ -666,7 +668,7 @@ impl MeshHandler {
             for path in &paths {
                 let (path_type, address) = json::endpoint_to_strings(&path.endpoint_type);
                 edges.push(json!({
-                    "from": self_id.as_ref(),
+                    "from": node_id.as_ref(),
                     "to": peer_id,
                     "path_type": path_type,
                     "priority": path.endpoint_type.priority(),

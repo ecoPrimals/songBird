@@ -3,24 +3,21 @@
 
 //! Local route detection without hardcoded public resolver IPs.
 //!
-//! Uses [`netdev::get_default_interface`] first, then a UDP “route probe” to
-//! [`SONGBIRD_ROUTE_DETECT_ADDR`] (default [RFC 5737] `192.0.2.1:80`). IPv6 probes use
-//! [RFC 3849] documentation space unless overridden via `SONGBIRD_ROUTE_DETECT_ADDR_V6`.
+//! Delegates to [`songbird_types::network_info`] for `/proc`-based detection and
+//! UDP route probes. Retains optional `netdev` enrichment for IPv6.
 
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, UdpSocket};
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 /// Linux `ip route get` target — documentation IPv4 ([RFC 5737] TEST-NET-1).
 #[cfg(target_os = "linux")]
 pub const ROUTE_GET_TARGET_V4: &str = "192.0.2.1";
 
-const DEFAULT_ROUTE_DETECT_V4: &str = "192.0.2.1:80";
 const DEFAULT_ROUTE_DETECT_V6: &str = "[2001:db8::1]:80";
 
 /// `SONGBIRD_ROUTE_DETECT_ADDR` or documentation IPv4 `192.0.2.1:80`.
 #[must_use]
 pub fn route_detect_addr_v4() -> String {
-    songbird_process_env::var("SONGBIRD_ROUTE_DETECT_ADDR")
-        .unwrap_or_else(|_| DEFAULT_ROUTE_DETECT_V4.to_string())
+    songbird_types::network_info::route_detect_addr_v4()
 }
 
 /// Optional override for IPv6 UDP route probe (default `[2001:db8::1]:80`).
@@ -57,24 +54,37 @@ pub fn primary_ipv6_from_default_interface() -> Option<Ipv6Addr> {
 
 /// Resolve a non-loopback local IPv4 for connectivity / binding hints.
 ///
-/// Order: default interface addresses → UDP route probe to [`route_detect_addr_v4`].
+/// Order: netdev default interface → [`songbird_types::network_info::resolve_local_ipv4`].
 pub fn resolve_local_ipv4() -> anyhow::Result<String> {
     if let Some(ip) = primary_ipv4_from_default_interface() {
         return Ok(ip.to_string());
     }
 
-    let socket = UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR)?;
-    socket.connect(route_detect_addr_v4().as_str())?;
+    songbird_types::network_info::resolve_local_ipv4()
+        .map(|ip| ip.to_string())
+        .map_err(|e| anyhow::anyhow!("{e}"))
+}
 
-    if let Ok(local_addr) = socket.local_addr() {
-        let ip = local_addr.ip();
-        if let IpAddr::V4(ipv4) = ip
-            && ipv4 != Ipv4Addr::LOCALHOST
-            && !ipv4.is_unspecified()
-        {
-            return Ok(ip.to_string());
-        }
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
+    use super::*;
+
+    #[test]
+    fn route_detect_addr_v4_uses_documentation_space_by_default() {
+        songbird_process_env::remove_var("SONGBIRD_ROUTE_DETECT_ADDR");
+        assert!(route_detect_addr_v4().contains("192.0.2.1"));
     }
 
-    anyhow::bail!("Could not determine local IPv4")
+    #[test]
+    fn resolve_local_ipv4_returns_parseable_ip_or_err() {
+        match resolve_local_ipv4() {
+            Ok(ip) => {
+                let parsed: std::net::IpAddr = ip.parse().expect("must parse as IP");
+                assert!(!parsed.is_loopback());
+            }
+            Err(_) => {}
+        }
+    }
 }

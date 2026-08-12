@@ -29,53 +29,30 @@ impl ResourceDetector {
 
     /// Detect total system memory in GB
     fn detect_total_memory_gb() -> u64 {
-        #[cfg(target_os = "linux")]
-        {
-            if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
-                for line in meminfo.lines() {
-                    if line.starts_with("MemTotal:") {
-                        if let Some(kb) = line.split_whitespace().nth(1) {
-                            if let Ok(kb_val) = kb.parse::<u64>() {
-                                return kb_val / 1024 / 1024;
+        songbird_types::sys_metrics::memory_info().map_or_else(
+            || {
+                #[cfg(target_os = "macos")]
+                {
+                    if let Ok(output) = Command::new("sysctl").args(["-n", "hw.memsize"]).output() {
+                        if let Ok(bytes_str) = str::from_utf8(&output.stdout) {
+                            if let Ok(bytes) = bytes_str.trim().parse::<u64>() {
+                                return bytes / 1024 / 1024 / 1024;
                             }
                         }
                     }
                 }
-            }
-        }
-
-        #[cfg(target_os = "macos")]
-        {
-            if let Ok(output) = Command::new("sysctl").args(["-n", "hw.memsize"]).output() {
-                if let Ok(bytes_str) = str::from_utf8(&output.stdout) {
-                    if let Ok(bytes) = bytes_str.trim().parse::<u64>() {
-                        return bytes / 1024 / 1024 / 1024;
-                    }
-                }
-            }
-        }
-
-        16
+                16
+            },
+            |m| m.total_gb(),
+        )
     }
 
     /// Detect available system memory in GB
     fn detect_available_memory_gb() -> u64 {
-        #[cfg(target_os = "linux")]
-        {
-            if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
-                for line in meminfo.lines() {
-                    if line.starts_with("MemAvailable:") {
-                        if let Some(kb) = line.split_whitespace().nth(1) {
-                            if let Ok(kb_val) = kb.parse::<u64>() {
-                                return kb_val / 1024 / 1024;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        Self::detect_total_memory_gb() / 2
+        songbird_types::sys_metrics::memory_info().map_or_else(
+            || Self::detect_total_memory_gb() / 2,
+            |m| m.available / (1024 * 1024 * 1024),
+        )
     }
 
     /// Detect GPU information
@@ -282,28 +259,24 @@ impl ResourceDetector {
 
     /// Get CPU utilization percentage
     fn get_cpu_utilization() -> f32 {
-        #[cfg(target_os = "linux")]
-        {
-            if let Ok(loadavg) = std::fs::read_to_string("/proc/loadavg") {
-                if let Some(load_str) = loadavg.split_whitespace().next() {
-                    if let Ok(load) = load_str.parse::<f32>() {
-                        let cpu_count = std::thread::available_parallelism()
-                            .map_or(1, std::num::NonZero::get)
-                            as f32;
-                        return ((load / cpu_count) * 100.0).min(100.0);
-                    }
-                }
-            }
+        let load = songbird_types::sys_metrics::load_percent();
+        if load > 0.0 {
+            load
+        } else {
+            25.0
         }
-
-        25.0
     }
 
     /// Get memory usage in GB
     fn get_memory_usage() -> u64 {
-        let total = Self::detect_total_memory_gb();
-        let available = Self::detect_available_memory_gb();
-        total.saturating_sub(available)
+        songbird_types::sys_metrics::memory_info().map_or_else(
+            || {
+                let total = Self::detect_total_memory_gb();
+                let available = Self::detect_available_memory_gb();
+                total.saturating_sub(available)
+            },
+            |m| m.used() / (1024 * 1024 * 1024),
+        )
     }
 
     /// Get GPU utilization

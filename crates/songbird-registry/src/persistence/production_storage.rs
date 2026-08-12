@@ -13,8 +13,8 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tokio::fs;
 use std::sync::RwLock;
+use tokio::fs;
 use tracing::{debug, error, info, warn};
 
 use crate::persistence::service_data::{RegistryServiceEntry, ServiceInfo};
@@ -432,7 +432,8 @@ impl ProductionServicePersistence {
             }
         });
 
-        let mut auto_save_task = self.auto_save_task.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut auto_save_task =
+            self.auto_save_task.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         *auto_save_task = Some(task);
         drop(auto_save_task);
 
@@ -507,7 +508,8 @@ impl ProductionServicePersistence {
     /// Stop persistence (cleanup auto-save)
     pub async fn stop(&self) -> SongbirdResult<()> {
         let handle = {
-            let mut task = self.auto_save_task.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let mut task =
+                self.auto_save_task.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             task.take()
         };
         if let Some(h) = handle {

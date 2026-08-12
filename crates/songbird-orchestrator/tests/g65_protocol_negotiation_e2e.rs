@@ -117,10 +117,8 @@ fn g65_types_unit_tests() {
     let resp = NegotiationResponse::new(IpcProtocol::Tarpc);
     assert_eq!(resp.to_wire(), "PROTOCOL: tarpc\n");
 
-    let selected = select_protocol(
-        &[IpcProtocol::Tarpc, IpcProtocol::JsonRpc],
-        &IpcProtocol::all_supported(),
-    );
+    let selected =
+        select_protocol(&[IpcProtocol::Tarpc, IpcProtocol::JsonRpc], &IpcProtocol::all_supported());
     assert_eq!(selected, IpcProtocol::Tarpc);
 }
 
@@ -139,21 +137,13 @@ async fn g65_negotiate_full_duplex() {
         let request = NegotiationRequest::from_wire(&line).unwrap();
         let selected = select_protocol(&request.supported, &IpcProtocol::all_supported());
         let response = NegotiationResponse::new(selected);
-        reader
-            .get_mut()
-            .write_all(response.to_wire().as_bytes())
-            .await
-            .unwrap();
+        reader.get_mut().write_all(response.to_wire().as_bytes()).await.unwrap();
         reader.get_mut().flush().await.unwrap();
         selected
     });
 
-    let result = negotiate_client(
-        &mut client,
-        &[IpcProtocol::Tarpc, IpcProtocol::JsonRpc],
-    )
-    .await
-    .unwrap();
+    let result =
+        negotiate_client(&mut client, &[IpcProtocol::Tarpc, IpcProtocol::JsonRpc]).await.unwrap();
 
     assert_eq!(result, IpcProtocol::Tarpc);
     assert_eq!(server_handle.await.unwrap(), IpcProtocol::Tarpc);

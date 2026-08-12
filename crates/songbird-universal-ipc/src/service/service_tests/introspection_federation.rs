@@ -101,6 +101,9 @@ async fn identity_get_returns_wire_standard_response() {
     assert_eq!(v["primal"].as_str().unwrap(), "songbird");
     assert_eq!(v["domain"].as_str().unwrap(), "network");
     assert_eq!(v["license"].as_str().unwrap(), "AGPL-3.0-or-later");
+    let methods = v["methods"].as_array().expect("methods must be present");
+    assert!(!methods.is_empty());
+    assert!(methods.iter().any(|m| m == "identity.get"));
 }
 
 #[test]

@@ -68,7 +68,12 @@ impl DynamicPluginRegistry {
 
     /// List all registered plugins
     pub async fn list_plugins(&self) -> Vec<String> {
-        self.plugins.read().unwrap_or_else(std::sync::PoisonError::into_inner).keys().cloned().collect()
+        self.plugins
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .keys()
+            .cloned()
+            .collect()
     }
 
     /// Get plugin capabilities
@@ -212,7 +217,8 @@ impl DynamicPluginRegistry {
         reqs.insert(plugin_id.clone(), requirements);
         drop(reqs);
 
-        let mut graph = self.requirement_graph.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut graph =
+            self.requirement_graph.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         graph.entry(plugin_id.clone()).or_default();
         drop(graph);
 
@@ -254,7 +260,8 @@ impl DynamicPluginRegistry {
 
         let (plugin_health, all_healthy) = {
             let mut plugin_health = HashMap::new();
-            let plugins_read = self.plugins.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let plugins_read =
+                self.plugins.read().unwrap_or_else(std::sync::PoisonError::into_inner);
             for plugin_id in &plan.plugins {
                 let healthy = plugins_read.get(plugin_id).is_some_and(|p| p.healthy);
                 plugin_health.insert(plugin_id.clone(), healthy);

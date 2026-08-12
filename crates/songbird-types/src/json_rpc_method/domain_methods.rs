@@ -48,6 +48,8 @@ pub enum HealthMethod {
     Check,
     /// `health.ping` — RTT probe for latency measurement.
     Ping,
+    /// `health.service` — check registered service/primal health by ID
+    Service,
 }
 
 /// `tower.*` — Tower Atomic stack health facade for biomeOS signal graphs.
@@ -69,13 +71,17 @@ pub enum AcmeMethod {
     ChallengeCleanup,
 }
 
-/// `capabilities.*`
+/// `capabilities.*` / `capability.*`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CapabilitiesMethod {
-    /// `capabilities.list`
+    /// `capability.list` — list callable methods and capability envelope (alias: `capabilities.list`)
     List,
-    /// `capabilities.methods` — map of capability token → callable JSON-RPC methods
+    /// `capability.methods` — map of capability token → callable JSON-RPC methods
     Methods,
+    /// `capabilities.discover` — cross-primal capability scan (biomeOS)
+    Discover,
+    /// `capabilities.announce` — announce capabilities to federation/mesh peers
+    Announce,
     /// `capability.resolve` — single-step routing: returns the best provider endpoint
     /// for a given capability (the IPC equivalent of DNS resolution).
     Resolve,
@@ -101,7 +107,7 @@ pub enum LifecycleMethod {
 /// `identity.*` — Wire Standard Level 2 self-identification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IdentityMethod {
-    /// `identity.get` — returns `{primal, version, domain, license}`
+    /// `identity.get` — returns `{primal, version, domain, license, methods}`
     Get,
 }
 
@@ -189,6 +195,14 @@ pub enum DiscoveryMethod {
     Health,
     Query,
     Bonds,
+    /// `discovery.by_family` — filter discovered peers by genetic family tags
+    ByFamily,
+    /// `discovery.by_capability` — find peers providing a given capability
+    ByCapability,
+    /// `discovery.encrypt` — encrypt discovery/birdsong payload (legacy: `encrypt_discovery`)
+    Encrypt,
+    /// `discovery.decrypt` — decrypt discovery/birdsong payload (legacy: `decrypt_discovery`)
+    Decrypt,
 }
 
 /// `rendezvous.*`
@@ -418,16 +432,11 @@ pub enum InferenceMethod {
     Load,
 }
 
-/// Legacy flat-namespace methods from the orchestrator's original IPC surface.
-///
-/// These predate the `domain.verb` convention and are retained for backward compatibility.
+/// `tunnel.*` — genetic and transport tunnel operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum LegacyMethod {
-    DiscoverByFamily,
-    CreateGeneticTunnel,
-    AnnounceCapabilities,
-    DiscoverByCapability,
-    GetServiceHealth,
+pub enum TunnelMethod {
+    /// `tunnel.create_genetic` — establish BTSP tunnel with genetic lineage proof
+    CreateGenetic,
 }
 
 /// `graph.*` — dependency graph operations.
@@ -444,9 +453,13 @@ pub enum CoordinationMethod {
     ValidatePattern,
 }
 
-/// Unix discovery encryption helpers (legacy names).
+/// `content.*` — content-addressable storage (CAS) location and verification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum EncryptionDiscoveryMethod {
-    Encrypt,
-    Decrypt,
+pub enum ContentMethod {
+    /// `content.locate` — find endpoint(s) where content by hash can be fetched.
+    Locate,
+    /// `content.verify` — verify content hash at a known endpoint.
+    Verify,
+    /// `content.availability` — check whether content is available locally or on mesh peers.
+    Availability,
 }

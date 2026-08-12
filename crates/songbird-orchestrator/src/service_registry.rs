@@ -40,8 +40,8 @@ use serde::{Deserialize, Serialize};
 use songbird_types::defaults::ports::{DEFAULT_PORT_RANGE_END, DEFAULT_PORT_RANGE_START};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime};
 use std::sync::RwLock;
+use std::time::{Duration, SystemTime};
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
@@ -355,7 +355,8 @@ impl ServiceRegistry {
 
         // Allocate port
         let port = {
-            let mut allocator = self.port_allocator.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let mut allocator =
+                self.port_allocator.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             allocator.allocate(&service_id)?
         };
 
@@ -375,7 +376,8 @@ impl ServiceRegistry {
                 .map_or("https", std::string::String::as_str);
 
             let fallback_port = {
-                let mut allocator = self.port_allocator.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+                let mut allocator =
+                    self.port_allocator.write().unwrap_or_else(std::sync::PoisonError::into_inner);
                 allocator.allocate(&service_id).ok()
             };
 
@@ -412,7 +414,8 @@ impl ServiceRegistry {
 
         // Store service
         {
-            let mut services = self.services.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let mut services =
+                self.services.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             services.insert(service_id.clone(), service);
         }
 
@@ -473,7 +476,8 @@ impl ServiceRegistry {
         info!("🛑 Deregistering service {}", request.service_id);
 
         let service = {
-            let mut services = self.services.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let mut services =
+                self.services.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             services.remove(&request.service_id)
         };
 
@@ -485,7 +489,8 @@ impl ServiceRegistry {
 
             // Release ports
             {
-                let mut allocator = self.port_allocator.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+                let mut allocator =
+                    self.port_allocator.write().unwrap_or_else(std::sync::PoisonError::into_inner);
                 allocator.release(service.assigned_endpoint.port);
                 if let Some(fallback) = service.fallback_endpoint {
                     allocator.release(fallback.port);
@@ -561,7 +566,8 @@ impl ServiceRegistry {
         for id in to_remove {
             if let Some(service) = services.remove(&id) {
                 // Release ports
-                let mut allocator = self.port_allocator.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+                let mut allocator =
+                    self.port_allocator.write().unwrap_or_else(std::sync::PoisonError::into_inner);
                 allocator.release(service.assigned_endpoint.port);
                 if let Some(fallback) = service.fallback_endpoint {
                     allocator.release(fallback.port);
@@ -585,7 +591,8 @@ impl ServiceRegistry {
         let degraded = services.values().filter(|s| s.status == ServiceStatus::Degraded).count();
         let inactive = services.values().filter(|s| s.status == ServiceStatus::Inactive).count();
 
-        let allocator = self.port_allocator.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let allocator =
+            self.port_allocator.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         let allocated_ports = allocator.allocated.len();
 
         RegistryStats {

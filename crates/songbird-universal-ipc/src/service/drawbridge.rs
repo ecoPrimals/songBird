@@ -128,7 +128,10 @@ pub async fn serve_drawbridge(
     }
 }
 
-#[expect(clippy::too_many_lines, reason = "connection lifecycle is cohesive — splitting would scatter related stream-ownership logic")]
+#[expect(
+    clippy::too_many_lines,
+    reason = "connection lifecycle is cohesive — splitting would scatter related stream-ownership logic"
+)]
 async fn handle_drawbridge_connection(
     stream: tokio::net::TcpStream,
     peer: SocketAddr,
@@ -182,8 +185,12 @@ async fn handle_drawbridge_connection(
     };
 
     if path == "/jsonrpc" && method == "POST" {
-        return drawbridge_proxy::handle_jsonrpc_forward(reader.into_inner(), body.as_deref(), peer)
-            .await;
+        return drawbridge_proxy::handle_jsonrpc_forward(
+            reader.into_inner(),
+            body.as_deref(),
+            peer,
+        )
+        .await;
     }
 
     if let Some(token) = path.strip_prefix("/.well-known/acme-challenge/") {
@@ -305,10 +312,7 @@ async fn handle_drawbridge_connection(
 }
 
 /// Resolve and forward a request to an allowlisted external service.
-fn resolve_external_url(
-    config: &DrawbridgeConfig,
-    path_after_prefix: &str,
-) -> Option<String> {
+fn resolve_external_url(config: &DrawbridgeConfig, path_after_prefix: &str) -> Option<String> {
     let resolved = config
         .external_allowlist
         .parse_and_validate(path_after_prefix)
@@ -334,12 +338,8 @@ async fn send_no_route_error(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     use std::fmt::Write;
     warn!(peer = %peer, path, "drawbridge: no capability route for path — check SONGBIRD_DRAWBRIDGE_ROUTES and SONGBIRD_PROXY_ROUTES env");
-    let avail = router
-        .list_capabilities()
-        .iter()
-        .map(|c| format!("\"{c}\""))
-        .collect::<Vec<_>>()
-        .join(",");
+    let avail =
+        router.list_capabilities().iter().map(|c| format!("\"{c}\"")).collect::<Vec<_>>().join(",");
     let cap = capability.map_or_else(|| "null".to_string(), |c| format!("\"{c}\""));
     let mut err_body = String::new();
     let _ = write!(

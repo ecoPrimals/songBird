@@ -82,7 +82,9 @@ impl NegotiationRequest {
     /// Create a request listing the given protocols.
     #[must_use]
     pub const fn new(supported: Vec<IpcProtocol>) -> Self {
-        Self { supported }
+        Self {
+            supported,
+        }
     }
 
     /// Request preferring tarpc, falling back to JSON-RPC.
@@ -107,20 +109,18 @@ impl NegotiationRequest {
     /// Returns an error if the line doesn't start with `PROTOCOLS: ` or has no valid protocols.
     pub fn from_wire(line: &str) -> Result<Self, NegotiationError> {
         let trimmed = line.trim();
-        let body = trimmed
-            .strip_prefix("PROTOCOLS: ")
-            .ok_or(NegotiationError::InvalidRequest)?;
+        let body = trimmed.strip_prefix("PROTOCOLS: ").ok_or(NegotiationError::InvalidRequest)?;
 
-        let supported: Vec<IpcProtocol> = body
-            .split(',')
-            .filter_map(|s| IpcProtocol::parse(s.trim()))
-            .collect();
+        let supported: Vec<IpcProtocol> =
+            body.split(',').filter_map(|s| IpcProtocol::parse(s.trim())).collect();
 
         if supported.is_empty() {
             return Err(NegotiationError::NoValidProtocols);
         }
 
-        Ok(Self { supported })
+        Ok(Self {
+            supported,
+        })
     }
 }
 
@@ -135,7 +135,9 @@ impl NegotiationResponse {
     /// Create a response selecting the given protocol.
     #[must_use]
     pub const fn new(selected: IpcProtocol) -> Self {
-        Self { selected }
+        Self {
+            selected,
+        }
     }
 
     /// Serialize to wire format: `"PROTOCOL: tarpc\n"`
@@ -151,13 +153,13 @@ impl NegotiationResponse {
     /// Returns an error if the line doesn't match the expected format.
     pub fn from_wire(line: &str) -> Result<Self, NegotiationError> {
         let trimmed = line.trim();
-        let name = trimmed
-            .strip_prefix("PROTOCOL: ")
-            .ok_or(NegotiationError::InvalidResponse)?;
+        let name = trimmed.strip_prefix("PROTOCOL: ").ok_or(NegotiationError::InvalidResponse)?;
 
         let selected = IpcProtocol::parse(name).ok_or(NegotiationError::UnknownProtocol)?;
 
-        Ok(Self { selected })
+        Ok(Self {
+            selected,
+        })
     }
 }
 
@@ -216,21 +218,12 @@ where
     let wire = request.to_wire();
 
     tracing::debug!("G65 client sending: {:?}", wire.trim());
-    transport
-        .write_all(wire.as_bytes())
-        .await
-        .map_err(|e| NegotiationError::Io(e.to_string()))?;
-    transport
-        .flush()
-        .await
-        .map_err(|e| NegotiationError::Io(e.to_string()))?;
+    transport.write_all(wire.as_bytes()).await.map_err(|e| NegotiationError::Io(e.to_string()))?;
+    transport.flush().await.map_err(|e| NegotiationError::Io(e.to_string()))?;
 
     let mut reader = BufReader::new(transport);
     let mut line = String::new();
-    reader
-        .read_line(&mut line)
-        .await
-        .map_err(|e| NegotiationError::Io(e.to_string()))?;
+    reader.read_line(&mut line).await.map_err(|e| NegotiationError::Io(e.to_string()))?;
 
     if line.is_empty() {
         return Err(NegotiationError::Io("server closed connection".into()));
@@ -264,10 +257,7 @@ where
         .write_all(response.to_wire().as_bytes())
         .await
         .map_err(|e| NegotiationError::Io(e.to_string()))?;
-    writer
-        .flush()
-        .await
-        .map_err(|e| NegotiationError::Io(e.to_string()))?;
+    writer.flush().await.map_err(|e| NegotiationError::Io(e.to_string()))?;
 
     tracing::info!("G65 server selected: {selected}");
     Ok(selected)
@@ -372,21 +362,15 @@ mod tests {
             let request = NegotiationRequest::from_wire(&line).unwrap();
             let selected = select_protocol(&request.supported, &IpcProtocol::all_supported());
             let response = NegotiationResponse::new(selected);
-            reader
-                .get_mut()
-                .write_all(response.to_wire().as_bytes())
-                .await
-                .unwrap();
+            reader.get_mut().write_all(response.to_wire().as_bytes()).await.unwrap();
             reader.get_mut().flush().await.unwrap();
             selected
         });
 
-        let client_result = negotiate_client(
-            &mut client_stream,
-            &[IpcProtocol::Tarpc, IpcProtocol::JsonRpc],
-        )
-        .await
-        .unwrap();
+        let client_result =
+            negotiate_client(&mut client_stream, &[IpcProtocol::Tarpc, IpcProtocol::JsonRpc])
+                .await
+                .unwrap();
 
         let server_result = server_handle.await.unwrap();
 
@@ -405,11 +389,7 @@ mod tests {
             let request = NegotiationRequest::from_wire(&line).unwrap();
             let selected = select_protocol(&request.supported, &[IpcProtocol::JsonRpc]);
             let response = NegotiationResponse::new(selected);
-            reader
-                .get_mut()
-                .write_all(response.to_wire().as_bytes())
-                .await
-                .unwrap();
+            reader.get_mut().write_all(response.to_wire().as_bytes()).await.unwrap();
             reader.get_mut().flush().await.unwrap();
             selected
         });
@@ -469,5 +449,42 @@ mod tests {
         let all = IpcProtocol::all_supported();
         assert!(all.contains(&IpcProtocol::Tarpc));
         assert!(all.contains(&IpcProtocol::JsonRpc));
+    }
+
+    #[test]
+    fn negotiation_request_new_preserves_order() {
+        let req = NegotiationRequest::new(vec![IpcProtocol::JsonRpc, IpcProtocol::Tarpc]);
+        assert_eq!(req.supported, vec![IpcProtocol::JsonRpc, IpcProtocol::Tarpc]);
+    }
+
+    #[test]
+    fn select_protocol_respects_client_preference_order() {
+        let client = [IpcProtocol::JsonRpc, IpcProtocol::Tarpc];
+        let server = [IpcProtocol::Tarpc, IpcProtocol::JsonRpc];
+        assert_eq!(select_protocol(&client, &server), IpcProtocol::JsonRpc);
+    }
+
+    #[test]
+    fn negotiation_error_equality_and_clone() {
+        let e1 = NegotiationError::NoValidProtocols;
+        let e2 = e1.clone();
+        assert_eq!(e1, e2);
+        assert!(e1.to_string().contains("no valid protocols"));
+    }
+
+    #[test]
+    fn negotiation_response_to_wire_trailing_newline() {
+        let wire = NegotiationResponse::new(IpcProtocol::JsonRpc).to_wire();
+        assert!(wire.ends_with('\n'));
+        assert!(wire.starts_with("PROTOCOL:"));
+    }
+
+    #[test]
+    fn ipc_protocol_serde_roundtrip() {
+        for p in [IpcProtocol::JsonRpc, IpcProtocol::Tarpc] {
+            let json = serde_json::to_string(&p).unwrap();
+            let back: IpcProtocol = serde_json::from_str(&json).unwrap();
+            assert_eq!(p, back);
+        }
     }
 }

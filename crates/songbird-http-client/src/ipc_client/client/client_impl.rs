@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024-2026 ecoPrimals
 
-use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use crate::error::{Error, Result};
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use serde_json::{Value, json};
 use songbird_types::defaults::timeouts::{
     DEFAULT_IPC_JSON_READ_TIMEOUT, DEFAULT_POOL_ACQUIRE_TIMEOUT, DEFAULT_POOL_MAX_IDLE_TIME,
@@ -287,12 +287,13 @@ impl IpcHttpClient {
                 Err(e) => {
                     // Pool exhausted or unhealthy, create new connection and add to pool
                     tracing::debug!("Pool acquisition failed ({}), creating new connection", e);
-                    let new_conn = Self::connect_platform(&self.socket_path)
-                        .await
-                        .map_err(|e| Error::Connection(format!(
-                            "Failed to connect to Songbird IPC ({}): {e}",
-                            self.socket_path.display()
-                        )))?;
+                    let new_conn =
+                        Self::connect_platform(&self.socket_path).await.map_err(|e| {
+                            Error::Connection(format!(
+                                "Failed to connect to Songbird IPC ({}): {e}",
+                                self.socket_path.display()
+                            ))
+                        })?;
 
                     // Try to add to pool for future reuse (best effort)
                     let _ = pool.add_connection(new_conn).await;

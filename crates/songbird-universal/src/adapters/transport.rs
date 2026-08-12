@@ -63,8 +63,8 @@ pub enum CapabilityTransport {
     Tarpc(TarpcTransport),
     /// Unix-socket JSON-RPC transport
     JsonRpc(JsonRpcTransport),
-    /// HTTP(S) transport
-    Http(HttpTransport),
+    /// HTTP(S) transport (boxed to reduce enum size — `HttpTransport` contains a connection pool)
+    Http(Box<HttpTransport>),
     /// Test helper: delay then delegate.
     #[cfg(test)]
     Delay(DelayTransport),
@@ -377,9 +377,8 @@ pub fn build_default_transport(endpoint: &str) -> SongbirdResult<Arc<CapabilityT
             })?;
             Arc::new(CapabilityTransport::JsonRpc(JsonRpcTransport(client)))
         }
-        AdapterTransportKind::Http => Arc::new(CapabilityTransport::Http(HttpTransport::new(
-            endpoint.to_string(),
-            SongbirdHttpClient::from_env(),
+        AdapterTransportKind::Http => Arc::new(CapabilityTransport::Http(Box::new(
+            HttpTransport::new(endpoint.to_string(), SongbirdHttpClient::from_env()),
         ))),
     })
 }
@@ -517,10 +516,10 @@ mod tests {
             .with_body(r#"{"ok":true}"#)
             .create_async()
             .await;
-        let transport = CapabilityTransport::Http(HttpTransport::new(
+        let transport = CapabilityTransport::Http(Box::new(HttpTransport::new(
             base.clone(),
             SongbirdHttpClient::from_env(),
-        ));
+        )));
         let v = transport.get("metrics/security").await?;
         assert_eq!(v, json!({"ok": true}));
 
@@ -532,24 +531,30 @@ mod tests {
             .with_body("no")
             .create_async()
             .await;
-        let t2 =
-            CapabilityTransport::Http(HttpTransport::new(base2, SongbirdHttpClient::from_env()));
+        let t2 = CapabilityTransport::Http(Box::new(HttpTransport::new(
+            base2,
+            SongbirdHttpClient::from_env(),
+        )));
         let e = t2.get("metrics/security").await.expect_err("503");
         assert!(e.to_string().contains("503") || e.to_string().contains("Security"));
 
         let mut server3 = mockito::Server::new_async().await;
         let base3 = server3.url();
         let _m_comp = server3.mock("GET", "/metrics/compute").with_status(502).create_async().await;
-        let t3 =
-            CapabilityTransport::Http(HttpTransport::new(base3, SongbirdHttpClient::from_env()));
+        let t3 = CapabilityTransport::Http(Box::new(HttpTransport::new(
+            base3,
+            SongbirdHttpClient::from_env(),
+        )));
         let e3 = t3.get("metrics/compute").await.expect_err("502");
         assert!(e3.to_string().contains("compute") || e3.to_string().contains("502"));
 
         let mut server4 = mockito::Server::new_async().await;
         let base4 = server4.url();
         let _m_ai = server4.mock("GET", "/metrics/ai").with_status(500).create_async().await;
-        let t4 =
-            CapabilityTransport::Http(HttpTransport::new(base4, SongbirdHttpClient::from_env()));
+        let t4 = CapabilityTransport::Http(Box::new(HttpTransport::new(
+            base4,
+            SongbirdHttpClient::from_env(),
+        )));
         let e4 = t4.get("metrics/ai").await.expect_err("500");
         assert!(e4.to_string().contains("ai") || e4.to_string().contains("500"));
 
@@ -561,16 +566,20 @@ mod tests {
             .with_body(r#"{"err":"no"}"#)
             .create_async()
             .await;
-        let t5 =
-            CapabilityTransport::Http(HttpTransport::new(base5, SongbirdHttpClient::from_env()));
+        let t5 = CapabilityTransport::Http(Box::new(HttpTransport::new(
+            base5,
+            SongbirdHttpClient::from_env(),
+        )));
         let e5 = t5.get("api/v1/identity").await.expect_err("401");
         assert!(e5.to_string().contains("401") || e5.to_string().contains("Identity"));
 
         let mut server6 = mockito::Server::new_async().await;
         let base6 = server6.url();
         let _m_misc = server6.mock("GET", "/other").with_status(404).create_async().await;
-        let t6 =
-            CapabilityTransport::Http(HttpTransport::new(base6, SongbirdHttpClient::from_env()));
+        let t6 = CapabilityTransport::Http(Box::new(HttpTransport::new(
+            base6,
+            SongbirdHttpClient::from_env(),
+        )));
         let e6 = t6.get("other").await.expect_err("404");
         assert!(e6.to_string().contains("404") || e6.to_string().contains("HTTP"));
 
@@ -588,10 +597,10 @@ mod tests {
             .create_async()
             .await;
 
-        let t = CapabilityTransport::Http(HttpTransport::new(
+        let t = CapabilityTransport::Http(Box::new(HttpTransport::new(
             server.url(),
             SongbirdHttpClient::from_env(),
-        ));
+        )));
         let v = t.post("auth/verify", json!({"token":"x"})).await?;
         assert_eq!(v, json!("Unauthorized"));
         Ok(())
@@ -607,10 +616,10 @@ mod tests {
             .create_async()
             .await;
 
-        let t = CapabilityTransport::Http(HttpTransport::new(
+        let t = CapabilityTransport::Http(Box::new(HttpTransport::new(
             server.url(),
             SongbirdHttpClient::from_env(),
-        ));
+        )));
         let err = t.post("api/v1/trust/evaluate", json!({})).await.expect_err("403");
         assert!(err.to_string().contains("Trust") || err.to_string().contains("403"), "{}", err);
     }
@@ -627,10 +636,10 @@ mod tests {
             .create_async()
             .await;
 
-        let t = CapabilityTransport::Http(HttpTransport::new(
+        let t = CapabilityTransport::Http(Box::new(HttpTransport::new(
             server.url(),
             SongbirdHttpClient::from_env(),
-        ));
+        )));
         let v = t.call_method("some_method", None).await?;
         assert_eq!(v, json!({"r": 1}));
         Ok(())
@@ -638,10 +647,10 @@ mod tests {
 
     #[tokio::test]
     async fn http_transport_debug_smoke() {
-        let t = CapabilityTransport::Http(HttpTransport::new(
+        let t = CapabilityTransport::Http(Box::new(HttpTransport::new(
             "http://localhost:1",
             SongbirdHttpClient::from_env(),
-        ));
+        )));
         let s = format!("{t:?}");
         assert!(s.contains("Http"));
         assert!(s.contains("http://localhost:1"));

@@ -148,6 +148,15 @@ pub struct ServerArgs {
     /// `SONGBIRD_PID_DIR` takes precedence over this for PID placement.
     #[arg(long, env = "SONGBIRD_STATE_DIR")]
     pub state_dir: Option<String>,
+
+    /// Gate/node identity for mesh federation and swarmVine gossip
+    ///
+    /// Identifies this gate in the mesh. When set via CLI, sets the `GATE_ID`
+    /// environment variable for downstream components (swarmVine, IPC registry).
+    /// When not provided, runtime code falls back to `GATE_ID`, `HOSTNAME`, or
+    /// hostname-derived identity.
+    #[arg(long, alias = "gate-id")]
+    pub node_id: Option<String>,
 }
 
 /// Doctor mode arguments

@@ -33,7 +33,18 @@ pub use domain_methods::*;
 #[must_use]
 pub fn normalize_json_rpc_method_name(method: &str) -> &str {
     match method {
-        "capability.list" => "capabilities.list",
+        "capabilities.list" => "capability.list",
+        "capabilities.methods" => "capability.methods",
+
+        // Legacy flat-namespace methods → canonical domain.verb (Wave migration)
+        "discover_capabilities" => "capabilities.discover",
+        "discover_by_family" => "discovery.by_family",
+        "discover_by_capability" => "discovery.by_capability",
+        "announce_capabilities" => "capabilities.announce",
+        "create_genetic_tunnel" => "tunnel.create_genetic",
+        "get_service_health" => "health.service",
+        "encrypt_discovery" => "discovery.encrypt",
+        "decrypt_discovery" => "discovery.decrypt",
 
         // healthSpring §3: canonical name is `ipc.discover` — absorbs all aliases
         "capability.discover"
@@ -47,6 +58,12 @@ pub fn normalize_json_rpc_method_name(method: &str) -> &str {
 
         // Tower Atomic aliases — biomeOS signal graph compatibility
         "tower.enroll" => "mesh.enroll",
+
+        // swarmVine gossip namespace — mesh.* wire names alias to gossip.* handlers
+        "mesh.relay" => "gossip.relay",
+        "mesh.inject" => "gossip.inject",
+        "mesh.spread" => "gossip.spread",
+        "mesh.subscribe" => "gossip.subscribe",
 
         // Canonical inference namespace (inference.* is canonical; model.*/ai.* are aliases)
         "model.infer" | "ai.infer" | "ai.inference" => "inference.infer",
@@ -76,7 +93,6 @@ pub fn normalize_json_rpc_method_name(method: &str) -> &str {
 pub enum JsonRpcMethod {
     Primal(PrimalMethod),
     Rpc(RpcMethod),
-    DiscoverCapabilities,
     Identity,
     IdentityGet(IdentityMethod),
     /// Raw `health` on the orchestrator Unix socket (biomeOS); not `health.check`.
@@ -117,8 +133,8 @@ pub enum JsonRpcMethod {
     Inference(InferenceMethod),
     Graph(GraphMethod),
     Coordination(CoordinationMethod),
-    Legacy(LegacyMethod),
-    EncryptionDiscovery(EncryptionDiscoveryMethod),
+    Tunnel(TunnelMethod),
+    Content(ContentMethod),
 }
 
 /// Failed to map a wire string to [`JsonRpcMethod`].
@@ -155,7 +171,6 @@ impl JsonRpcMethod {
             Self::Primal(PrimalMethod::Announce) => "primal.announce",
             Self::Rpc(RpcMethod::Methods) => "rpc.methods",
             Self::Rpc(RpcMethod::Discover) => "rpc.discover",
-            Self::DiscoverCapabilities => "discover_capabilities",
             Self::Identity => "identity",
             Self::IdentityGet(IdentityMethod::Get) => "identity.get",
             Self::BiomeOsHealth => "health",
@@ -163,12 +178,15 @@ impl JsonRpcMethod {
             Self::Health(HealthMethod::Readiness) => "health.readiness",
             Self::Health(HealthMethod::Check) => "health.check",
             Self::Health(HealthMethod::Ping) => "health.ping",
+            Self::Health(HealthMethod::Service) => "health.service",
             Self::Tower(TowerMethod::Health) => "tower.health",
             Self::Tower(TowerMethod::MeshStatus) => "tower.mesh_status",
             Self::Acme(AcmeMethod::ChallengeReady) => "acme.challenge_ready",
             Self::Acme(AcmeMethod::ChallengeCleanup) => "acme.challenge_cleanup",
-            Self::Capabilities(CapabilitiesMethod::List) => "capabilities.list",
-            Self::Capabilities(CapabilitiesMethod::Methods) => "capabilities.methods",
+            Self::Capabilities(CapabilitiesMethod::List) => "capability.list",
+            Self::Capabilities(CapabilitiesMethod::Methods) => "capability.methods",
+            Self::Capabilities(CapabilitiesMethod::Discover) => "capabilities.discover",
+            Self::Capabilities(CapabilitiesMethod::Announce) => "capabilities.announce",
             Self::Capabilities(CapabilitiesMethod::Resolve) => "capability.resolve",
             Self::Capabilities(CapabilitiesMethod::Call) => "capability.call",
             Self::Capabilities(CapabilitiesMethod::Health) => "capability.health",
@@ -215,6 +233,10 @@ impl JsonRpcMethod {
             Self::Discovery(DiscoveryMethod::Health) => "discovery.health",
             Self::Discovery(DiscoveryMethod::Query) => "discovery.query",
             Self::Discovery(DiscoveryMethod::Bonds) => "discovery.bonds",
+            Self::Discovery(DiscoveryMethod::ByFamily) => "discovery.by_family",
+            Self::Discovery(DiscoveryMethod::ByCapability) => "discovery.by_capability",
+            Self::Discovery(DiscoveryMethod::Encrypt) => "discovery.encrypt",
+            Self::Discovery(DiscoveryMethod::Decrypt) => "discovery.decrypt",
             Self::Rendezvous(RendezvousMethod::Register) => "rendezvous.register",
             Self::Rendezvous(RendezvousMethod::Lookup) => "rendezvous.lookup",
             Self::Peer(PeerMethod::Connect) => "peer.connect",
@@ -318,13 +340,10 @@ impl JsonRpcMethod {
             Self::Coordination(CoordinationMethod::ValidatePattern) => {
                 "coordination.validate_pattern"
             }
-            Self::Legacy(LegacyMethod::DiscoverByFamily) => "discover_by_family",
-            Self::Legacy(LegacyMethod::CreateGeneticTunnel) => "create_genetic_tunnel",
-            Self::Legacy(LegacyMethod::AnnounceCapabilities) => "announce_capabilities",
-            Self::Legacy(LegacyMethod::DiscoverByCapability) => "discover_by_capability",
-            Self::Legacy(LegacyMethod::GetServiceHealth) => "get_service_health",
-            Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Encrypt) => "encrypt_discovery",
-            Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Decrypt) => "decrypt_discovery",
+            Self::Tunnel(TunnelMethod::CreateGenetic) => "tunnel.create_genetic",
+            Self::Content(ContentMethod::Locate) => "content.locate",
+            Self::Content(ContentMethod::Verify) => "content.verify",
+            Self::Content(ContentMethod::Availability) => "content.availability",
         }
     }
 
@@ -350,7 +369,9 @@ impl JsonRpcMethod {
             "primal.announce" => Self::Primal(PrimalMethod::Announce),
             "rpc.methods" => Self::Rpc(RpcMethod::Methods),
             "rpc.discover" => Self::Rpc(RpcMethod::Discover),
-            "discover_capabilities" => Self::DiscoverCapabilities,
+            "capabilities.discover" | "discover_capabilities" => {
+                Self::Capabilities(CapabilitiesMethod::Discover)
+            }
             "identity" => Self::Identity,
             "identity.get" => Self::IdentityGet(IdentityMethod::Get),
             "health" => Self::BiomeOsHealth,
@@ -358,12 +379,18 @@ impl JsonRpcMethod {
             "health.readiness" => Self::Health(HealthMethod::Readiness),
             "health.check" => Self::Health(HealthMethod::Check),
             "health.ping" => Self::Health(HealthMethod::Ping),
+            "health.service" | "get_service_health" => Self::Health(HealthMethod::Service),
             "tower.health" => Self::Tower(TowerMethod::Health),
             "tower.mesh_status" => Self::Tower(TowerMethod::MeshStatus),
             "acme.challenge_ready" => Self::Acme(AcmeMethod::ChallengeReady),
             "acme.challenge_cleanup" => Self::Acme(AcmeMethod::ChallengeCleanup),
-            "capabilities.list" => Self::Capabilities(CapabilitiesMethod::List),
-            "capabilities.methods" => Self::Capabilities(CapabilitiesMethod::Methods),
+            "capability.list" | "capabilities.list" => Self::Capabilities(CapabilitiesMethod::List),
+            "capability.methods" | "capabilities.methods" => {
+                Self::Capabilities(CapabilitiesMethod::Methods)
+            }
+            "capabilities.announce" | "announce_capabilities" => {
+                Self::Capabilities(CapabilitiesMethod::Announce)
+            }
             "capability.resolve" => Self::Capabilities(CapabilitiesMethod::Resolve),
             "capability.call" => Self::Capabilities(CapabilitiesMethod::Call),
             "capability.health" => Self::Capabilities(CapabilitiesMethod::Health),
@@ -414,6 +441,14 @@ impl JsonRpcMethod {
             "discovery.health" => Self::Discovery(DiscoveryMethod::Health),
             "discovery.query" => Self::Discovery(DiscoveryMethod::Query),
             "discovery.bonds" => Self::Discovery(DiscoveryMethod::Bonds),
+            "discovery.by_family" | "discover_by_family" => {
+                Self::Discovery(DiscoveryMethod::ByFamily)
+            }
+            "discovery.by_capability" | "discover_by_capability" => {
+                Self::Discovery(DiscoveryMethod::ByCapability)
+            }
+            "discovery.encrypt" | "encrypt_discovery" => Self::Discovery(DiscoveryMethod::Encrypt),
+            "discovery.decrypt" | "decrypt_discovery" => Self::Discovery(DiscoveryMethod::Decrypt),
             "rendezvous.register" => Self::Rendezvous(RendezvousMethod::Register),
             "rendezvous.lookup" => Self::Rendezvous(RendezvousMethod::Lookup),
             "peer.connect" => Self::Peer(PeerMethod::Connect),
@@ -437,8 +472,12 @@ impl JsonRpcMethod {
             "mesh.discover_remotes" => Self::Mesh(MeshMethod::DiscoverRemotes),
             "mesh.mirror" => Self::Mesh(MeshMethod::Mirror),
             "mesh.publish" => Self::Mesh(MeshMethod::Publish),
-            "mesh.subscribe" => Self::Mesh(MeshMethod::Subscribe),
+            "mesh.deliver" => Self::Mesh(MeshMethod::Subscribe),
             "mesh.probe_latency" => Self::Mesh(MeshMethod::ProbeLatency),
+            "mesh.relay" | "gossip.relay" => Self::Gossip(GossipMethod::Relay),
+            "mesh.inject" | "gossip.inject" => Self::Gossip(GossipMethod::Inject),
+            "mesh.spread" | "gossip.spread" => Self::Gossip(GossipMethod::Spread),
+            "mesh.subscribe" | "gossip.subscribe" => Self::Gossip(GossipMethod::Subscribe),
             "mesh.capabilities_announce" => Self::Mesh(MeshMethod::CapabilitiesAnnounce),
             "mesh.capabilities_revoke" => Self::Mesh(MeshMethod::CapabilitiesRevoke),
             "mesh.enroll" => Self::Mesh(MeshMethod::Enroll),
@@ -446,10 +485,6 @@ impl JsonRpcMethod {
             "mesh.prune_stale" => Self::Mesh(MeshMethod::PruneStale),
             "mesh.connectivity_check" => Self::Mesh(MeshMethod::ConnectivityCheck),
             "mesh.throughput" => Self::Mesh(MeshMethod::Throughput),
-            "gossip.relay" => Self::Gossip(GossipMethod::Relay),
-            "gossip.inject" => Self::Gossip(GossipMethod::Inject),
-            "gossip.spread" => Self::Gossip(GossipMethod::Spread),
-            "gossip.subscribe" => Self::Gossip(GossipMethod::Subscribe),
             "punch.request" => Self::Punch(PunchMethod::Request),
             "punch.coordinate" => Self::Punch(PunchMethod::Coordinate),
             "punch.status" => Self::Punch(PunchMethod::Status),
@@ -517,19 +552,18 @@ impl JsonRpcMethod {
             "inference.status" => Self::Inference(InferenceMethod::Status),
             "inference.list" => Self::Inference(InferenceMethod::List),
             "inference.load" => Self::Inference(InferenceMethod::Load),
-            "encrypt_discovery" => Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Encrypt),
-            "decrypt_discovery" => Self::EncryptionDiscovery(EncryptionDiscoveryMethod::Decrypt),
             "graph.validate" => Self::Graph(GraphMethod::Validate),
             "graph.check_availability" => Self::Graph(GraphMethod::CheckAvailability),
             "graph.suggest_alternatives" => Self::Graph(GraphMethod::SuggestAlternatives),
             "coordination.validate_pattern" => {
                 Self::Coordination(CoordinationMethod::ValidatePattern)
             }
-            "discover_by_family" => Self::Legacy(LegacyMethod::DiscoverByFamily),
-            "create_genetic_tunnel" => Self::Legacy(LegacyMethod::CreateGeneticTunnel),
-            "announce_capabilities" => Self::Legacy(LegacyMethod::AnnounceCapabilities),
-            "discover_by_capability" => Self::Legacy(LegacyMethod::DiscoverByCapability),
-            "get_service_health" => Self::Legacy(LegacyMethod::GetServiceHealth),
+            "tunnel.create_genetic" | "create_genetic_tunnel" => {
+                Self::Tunnel(TunnelMethod::CreateGenetic)
+            }
+            "content.locate" => Self::Content(ContentMethod::Locate),
+            "content.verify" => Self::Content(ContentMethod::Verify),
+            "content.availability" => Self::Content(ContentMethod::Availability),
             _ => {
                 return Err(JsonRpcMethodParseError(format!("unknown JSON-RPC method: {s}")));
             }
@@ -542,7 +576,15 @@ impl JsonRpcMethod {
     ///
     /// Returns [`JsonRpcMethodParseError`] when the name is not recognized.
     pub fn parse_ipc(method: &str) -> Result<Self, JsonRpcMethodParseError> {
-        Self::from_wire_str(normalize_json_rpc_method_name(method))
+        let normalized = normalize_json_rpc_method_name(method);
+        if normalized != method {
+            tracing::warn!(
+                legacy_method = method,
+                canonical_method = normalized,
+                "deprecated JSON-RPC method name; migrate to canonical domain.verb form"
+            );
+        }
+        Self::from_wire_str(normalized)
     }
 }
 

@@ -97,26 +97,13 @@ fn calculate_compatibility_score(network: &DiscoveredNetwork) -> f64 {
 
 /// Discover networks by probing the local subnet for Songbird TCP endpoints
 async fn discover_via_subnet_scan(timeout_ms: u64) -> SongbirdResult<Vec<DiscoveredNetwork>> {
-    use std::net::UdpSocket;
     use tokio::net::TcpStream;
 
     let port = discovery_http_port();
     let timeout = std::time::Duration::from_millis(timeout_ms.min(MAX_DISCOVERY_TIMEOUT_MS));
 
-    let local_ip = {
-        let probe =
-            UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR).map_err(|e| {
-                CliError::Network {
-                    message: format!("Failed to bind probe socket: {e}"),
-                    interface: None,
-                    suggestion: Some("Check network permissions".to_string()),
-                }
-            })?;
-        let route_target = songbird_process_env::var("SONGBIRD_ROUTE_DETECT_ADDR")
-            .unwrap_or_else(|_| "192.0.2.1:80".to_string());
-        let _ = probe.connect(route_target.as_str());
-        probe.local_addr().map_or_else(|_| IpAddr::from([127, 0, 0, 1]), |a| a.ip())
-    };
+    let local_ip = songbird_types::network_info::resolve_local_ipv4()
+        .map_or_else(|_| IpAddr::from([127, 0, 0, 1]), IpAddr::V4);
 
     let mut networks = Vec::new();
 

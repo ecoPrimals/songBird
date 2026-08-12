@@ -34,6 +34,3 @@ std = []
 
 [dev-dependencies]
 songbird-test-utils = { path = "../songbird-test-utils" }
-tokio = { workspace = true, features = ["full", "test-util"] }
-tokio-test = "0.4"
-tempfile = { workspace = true }

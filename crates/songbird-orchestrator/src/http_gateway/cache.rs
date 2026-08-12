@@ -112,10 +112,7 @@ impl ResponseCache {
     /// - Automatic cleanup: Removes expired entries
     #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn get(&self, key: &str) -> Option<Value> {
-        let mut entries = self
-            .entries
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut entries = self.entries.write().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         if let Some(entry) = entries.get(key) {
             if entry.is_expired() {
@@ -154,14 +151,8 @@ impl ResponseCache {
         let entry = CacheEntry::new(value.clone(), ttl);
         let entry_size = entry.size;
 
-        let mut entries = self
-            .entries
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let mut size = self
-            .current_size
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut entries = self.entries.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut size = self.current_size.write().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         // Check if we need to evict entries to make space
         while *size + entry_size > self.max_size && !entries.is_empty() {
@@ -191,14 +182,8 @@ impl ResponseCache {
     /// Clear all cached entries
     #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn clear(&self) {
-        let mut entries = self
-            .entries
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let mut size = self
-            .current_size
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut entries = self.entries.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut size = self.current_size.write().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         entries.clear();
         *size = 0;
@@ -209,33 +194,26 @@ impl ResponseCache {
     /// Get current cache size
     #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn size(&self) -> usize {
-        *self
-            .current_size
-            .read()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
+        *self.current_size.read().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Get number of cached entries
     #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn len(&self) -> usize {
-        self.entries
-            .read()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .len()
+        self.entries.read().unwrap_or_else(std::sync::PoisonError::into_inner).len()
     }
 
     /// Check if cache is empty
     #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn is_empty(&self) -> bool {
-        self.entries
-            .read()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .is_empty()
+        self.entries.read().unwrap_or_else(std::sync::PoisonError::into_inner).is_empty()
     }
 }
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+
     use super::*;
     use serde_json::json;
 
@@ -325,5 +303,54 @@ mod tests {
 
         assert!(cache.is_empty().await);
         assert_eq!(cache.size().await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_cache_overwrite_updates_value() {
+        let cache = ResponseCache::new(1024);
+        cache.set("key", &json!({"v": 1}), Duration::from_secs(60)).await;
+        cache.set("key", &json!({"v": 2}), Duration::from_secs(60)).await;
+        let got = cache.get("key").await.unwrap();
+        assert_eq!(got, json!({"v": 2}));
+        assert_eq!(cache.len().await, 1);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_expired_entry_removed_on_get_updates_size() {
+        let cache = ResponseCache::new(4096);
+        cache.set("k", &json!({"x": 1}), Duration::from_millis(10)).await;
+        assert!(cache.get("k").await.is_some());
+        assert_eq!(cache.len().await, 1);
+
+        tokio::time::advance(Duration::from_millis(20)).await;
+
+        assert!(cache.get("k").await.is_none());
+        assert_eq!(cache.len().await, 0);
+        assert_eq!(cache.size().await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_cache_len_tracks_entry_count() {
+        let cache = ResponseCache::new(4096);
+        assert_eq!(cache.len().await, 0);
+        cache.set("a", &json!(1), Duration::from_secs(60)).await;
+        cache.set("b", &json!(2), Duration::from_secs(60)).await;
+        assert_eq!(cache.len().await, 2);
+    }
+
+    #[tokio::test]
+    async fn test_cache_size_increases_with_entries() {
+        let cache = ResponseCache::new(8192);
+        assert_eq!(cache.size().await, 0);
+        cache.set("a", &json!({"payload": "abc"}), Duration::from_secs(60)).await;
+        assert!(cache.size().await > 0);
+    }
+
+    #[tokio::test]
+    async fn test_zero_max_size_rejects_all_entries() {
+        let cache = ResponseCache::new(0);
+        cache.set("k", &json!({"a": 1}), Duration::from_secs(60)).await;
+        assert!(cache.get("k").await.is_none());
+        assert!(cache.is_empty().await);
     }
 }

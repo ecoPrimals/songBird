@@ -75,6 +75,66 @@ fn storage_methods_roundtrip() {
 }
 
 #[test]
+fn capability_list_singular_is_canonical_wire_name() {
+    let m = JsonRpcMethod::Capabilities(CapabilitiesMethod::List);
+    assert_eq!(m.as_wire_str(), "capability.list");
+    assert_eq!(JsonRpcMethod::from_wire_str("capability.list").unwrap(), m);
+    assert_eq!(JsonRpcMethod::from_wire_str("capabilities.list").unwrap(), m);
+    assert_eq!(JsonRpcMethod::parse_ipc("capabilities.list").unwrap(), m);
+}
+
+#[test]
+fn legacy_snake_case_methods_resolve_to_canonical_domain_verb() {
+    let cases = [
+        (
+            "discover_capabilities",
+            JsonRpcMethod::Capabilities(CapabilitiesMethod::Discover),
+            "capabilities.discover",
+        ),
+        (
+            "discover_by_family",
+            JsonRpcMethod::Discovery(DiscoveryMethod::ByFamily),
+            "discovery.by_family",
+        ),
+        (
+            "discover_by_capability",
+            JsonRpcMethod::Discovery(DiscoveryMethod::ByCapability),
+            "discovery.by_capability",
+        ),
+        (
+            "announce_capabilities",
+            JsonRpcMethod::Capabilities(CapabilitiesMethod::Announce),
+            "capabilities.announce",
+        ),
+        (
+            "create_genetic_tunnel",
+            JsonRpcMethod::Tunnel(TunnelMethod::CreateGenetic),
+            "tunnel.create_genetic",
+        ),
+        ("get_service_health", JsonRpcMethod::Health(HealthMethod::Service), "health.service"),
+        (
+            "encrypt_discovery",
+            JsonRpcMethod::Discovery(DiscoveryMethod::Encrypt),
+            "discovery.encrypt",
+        ),
+        (
+            "decrypt_discovery",
+            JsonRpcMethod::Discovery(DiscoveryMethod::Decrypt),
+            "discovery.decrypt",
+        ),
+    ];
+    for (legacy, expected, canonical) in cases {
+        assert_eq!(JsonRpcMethod::parse_ipc(legacy).unwrap(), expected, "legacy alias {legacy}");
+        assert_eq!(expected.as_wire_str(), canonical, "canonical wire for {legacy}");
+        assert_eq!(
+            JsonRpcMethod::from_wire_str(canonical).unwrap(),
+            expected,
+            "canonical parse {canonical}"
+        );
+    }
+}
+
+#[test]
 fn capability_resolve_roundtrip() {
     let m = JsonRpcMethod::from_wire_str("capability.resolve").unwrap();
     assert_eq!(m, JsonRpcMethod::Capabilities(CapabilitiesMethod::Resolve));
@@ -196,5 +256,61 @@ fn acme_methods_roundtrip() {
         let json = serde_json::to_string(&parsed).unwrap();
         let back: JsonRpcMethod = serde_json::from_str(&json).unwrap();
         assert_eq!(back, expected);
+    }
+}
+
+#[test]
+fn identity_get_roundtrip() {
+    let wire = "identity.get";
+    let m = JsonRpcMethod::from_wire_str(wire).unwrap();
+    assert_eq!(m, JsonRpcMethod::IdentityGet(IdentityMethod::Get));
+    assert_eq!(m.as_wire_str(), wire);
+    assert_eq!(JsonRpcMethod::parse_ipc(wire).unwrap(), m);
+}
+
+#[test]
+fn mesh_gossip_aliases_resolve_to_gossip_methods() {
+    let cases = [
+        ("mesh.relay", JsonRpcMethod::Gossip(GossipMethod::Relay)),
+        ("mesh.inject", JsonRpcMethod::Gossip(GossipMethod::Inject)),
+        ("mesh.spread", JsonRpcMethod::Gossip(GossipMethod::Spread)),
+        ("mesh.subscribe", JsonRpcMethod::Gossip(GossipMethod::Subscribe)),
+    ];
+    for (alias, expected) in cases {
+        assert_eq!(
+            JsonRpcMethod::from_wire_str(alias).unwrap(),
+            expected,
+            "from_wire_str({alias})"
+        );
+        assert_eq!(JsonRpcMethod::parse_ipc(alias).unwrap(), expected, "parse_ipc({alias})");
+        assert_eq!(
+            normalize_json_rpc_method_name(alias),
+            expected.as_wire_str(),
+            "normalize({alias})"
+        );
+    }
+}
+
+#[test]
+fn mesh_deliver_resolves_to_mesh_subscribe_handler() {
+    let m = JsonRpcMethod::from_wire_str("mesh.deliver").unwrap();
+    assert_eq!(m, JsonRpcMethod::Mesh(MeshMethod::Subscribe));
+    assert_eq!(m.as_wire_str(), "mesh.subscribe");
+}
+
+#[test]
+fn content_methods_roundtrip() {
+    for (wire, expected) in [
+        ("content.locate", JsonRpcMethod::Content(ContentMethod::Locate)),
+        ("content.verify", JsonRpcMethod::Content(ContentMethod::Verify)),
+        ("content.availability", JsonRpcMethod::Content(ContentMethod::Availability)),
+    ] {
+        let m = JsonRpcMethod::from_wire_str(wire).unwrap();
+        assert_eq!(m, expected, "from_wire_str({wire})");
+        assert_eq!(m.as_wire_str(), wire, "as_wire_str({wire})");
+        assert_eq!(m.to_string(), wire, "Display({wire})");
+        let json = serde_json::to_string(&m).unwrap();
+        let back: JsonRpcMethod = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, m, "serde roundtrip({wire})");
     }
 }

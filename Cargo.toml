@@ -119,7 +119,7 @@ songbird-process-env = { path = "crates/songbird-process-env" }
 # Async
 tokio = { version = "1.48", features = [
     "rt-multi-thread", "net", "io-util", "macros",
-    "sync", "time", "fs", "signal", "process",
+    "sync", "time", "fs", "signal", "process", "test-util",
 ] }
 futures-util = "0.3.31"
 

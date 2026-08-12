@@ -126,10 +126,10 @@ pub mod service_registry;
 /// Federation and network shared runtime state.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod state;
+pub mod transport_impl;
 /// Zero-copy friendly registry for hot federation paths.
 #[allow(missing_docs, reason = "internal module; public items documented incrementally")]
 pub mod zero_copy_registry;
-pub mod transport_impl;
 
 // Re-export core types for convenience
 /// `security provider` Secure Tunnel Protocol configuration and provider traits.

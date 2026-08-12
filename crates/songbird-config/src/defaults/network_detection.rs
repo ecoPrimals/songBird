@@ -42,11 +42,12 @@ fn detect_from_network_interfaces() -> IpAddr {
         return ip;
     }
 
-    #[cfg(target_os = "linux")]
-    {
-        if let Some(ip) = detect_linux_default_interface() {
-            return ip;
-        }
+    if let Ok(ip) = songbird_types::network_info::resolve_local_ipv4() {
+        return IpAddr::V4(ip);
+    }
+
+    if let Some(ip) = songbird_types::network_info::default_gateway() {
+        return IpAddr::V4(ip);
     }
 
     if let Some(ip) = detect_via_hostname() {
@@ -74,21 +75,6 @@ fn check_cloud_metadata_with(
             return Some(ip);
         }
     }
-    None
-}
-
-/// Linux-specific: detect default route interface via `/proc/net/route`.
-#[cfg(target_os = "linux")]
-fn detect_linux_default_interface() -> Option<IpAddr> {
-    let route_content = std::fs::read_to_string("/proc/net/route").ok()?;
-
-    for line in route_content.lines().skip(1) {
-        let fields: Vec<&str> = line.split_whitespace().collect();
-        if fields.len() >= 2 && fields[1] == "00000000" {
-            return Some(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
-        }
-    }
-
     None
 }
 

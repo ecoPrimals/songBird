@@ -145,7 +145,7 @@ impl IpcStream {
     ///
     /// Returns an I/O error if the pipe doesn't exist or the platform doesn't
     /// support named pipes.
-    #[allow(clippy::unused_async)]
+    #[allow(clippy::unused_async, reason = "async signature matches other IpcStream connect paths")]
     pub async fn connect_named_pipe(name: &str) -> io::Result<Self> {
         #[cfg(windows)]
         {
@@ -243,5 +243,160 @@ impl AsyncWrite for IpcStream {
             #[cfg(windows)]
             Self::NamedPipe(s) => Pin::new(s).poll_shutdown(cx),
         }
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
+mod tests {
+    use super::*;
+    use crate::TransportEndpoint;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    #[tokio::test]
+    async fn connect_tcp_roundtrip_payload() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+
+        let client = tokio::spawn(async move {
+            let mut stream = IpcStream::connect_tcp("127.0.0.1", port).await.unwrap();
+            stream.write_all(b"ping").await.unwrap();
+            stream.flush().await.unwrap();
+        });
+
+        let (mut server, _) = listener.accept().await.unwrap();
+        let mut buf = [0u8; 4];
+        server.read_exact(&mut buf).await.unwrap();
+        assert_eq!(&buf, b"ping");
+        client.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn connect_endpoint_tcp_delegates_to_connect_tcp() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let ep = TransportEndpoint::tcp("127.0.0.1", port);
+
+        let client = tokio::spawn(async move {
+            let mut stream = IpcStream::connect_endpoint(&ep).await.unwrap();
+            stream.write_all(b"ok").await.unwrap();
+        });
+
+        let (mut server, _) = listener.accept().await.unwrap();
+        let mut buf = [0u8; 2];
+        server.read_exact(&mut buf).await.unwrap();
+        assert_eq!(&buf, b"ok");
+        client.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn connect_endpoint_mesh_relay_is_unsupported() {
+        let ep = TransportEndpoint::mesh_relay("peer-a", "security");
+        let err = IpcStream::connect_endpoint(&ep).await.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::Unsupported);
+        assert!(err.to_string().contains("MeshRelay"));
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn connect_endpoint_uds_on_unix() {
+        let dir = tempfile::tempdir().unwrap();
+        let sock_path = dir.path().join("ipc_stream_test.sock");
+        let path = sock_path.to_str().unwrap().to_string();
+
+        let listener = tokio::net::UnixListener::bind(&sock_path).unwrap();
+        let path_for_client = path.clone();
+        let client = tokio::spawn(async move {
+            let mut stream = IpcStream::connect_endpoint(&TransportEndpoint::uds(path_for_client))
+                .await
+                .unwrap();
+            stream.write_all(b"uds").await.unwrap();
+        });
+
+        let (mut server, _) = listener.accept().await.unwrap();
+        let mut buf = [0u8; 3];
+        server.read_exact(&mut buf).await.unwrap();
+        assert_eq!(&buf, b"uds");
+        client.await.unwrap();
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn connect_unix_direct_roundtrip() {
+        let dir = tempfile::tempdir().unwrap();
+        let sock_path = dir.path().join("direct.sock");
+        let path_owned = sock_path.to_str().unwrap().to_string();
+
+        let listener = tokio::net::UnixListener::bind(&sock_path).unwrap();
+        let client = tokio::spawn(async move {
+            let mut stream = IpcStream::connect(&path_owned).await.unwrap();
+            stream.write_all(b"hi").await.unwrap();
+        });
+
+        let (mut server, _) = listener.accept().await.unwrap();
+        let mut buf = [0u8; 2];
+        server.read_exact(&mut buf).await.unwrap();
+        assert_eq!(&buf, b"hi");
+        client.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn connect_tcp_refused_on_closed_port() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let err = IpcStream::connect_tcp("127.0.0.1", port).await.unwrap_err();
+        assert!(
+            matches!(err.kind(), io::ErrorKind::ConnectionRefused | io::ErrorKind::ConnectionReset),
+            "unexpected kind: {:?}",
+            err.kind()
+        );
+    }
+
+    #[tokio::test]
+    async fn debug_format_shows_variant_name() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let stream = IpcStream::connect_tcp("127.0.0.1", port).await.unwrap();
+        let debug = format!("{stream:?}");
+        assert!(debug.contains("Tcp"));
+    }
+
+    #[cfg(not(windows))]
+    #[tokio::test]
+    async fn connect_named_pipe_unsupported_off_windows() {
+        let err = IpcStream::connect_named_pipe(r"\\.\pipe\songbird_test").await.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::Unsupported);
+        assert!(err.to_string().contains("Windows"));
+    }
+
+    #[cfg(not(windows))]
+    #[tokio::test]
+    async fn connect_endpoint_named_pipe_unsupported_off_windows() {
+        let ep = TransportEndpoint::named_pipe(r"\\.\pipe\songbird_test");
+        let err = IpcStream::connect_endpoint(&ep).await.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::Unsupported);
+    }
+
+    #[tokio::test]
+    async fn async_write_read_through_ipc_stream_wrapper() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+
+        let client = tokio::spawn(async move {
+            let mut stream = IpcStream::connect_tcp("127.0.0.1", port).await.unwrap();
+            stream.write_all(b"echo").await.unwrap();
+            stream.flush().await.unwrap();
+            let mut buf = [0u8; 4];
+            stream.read_exact(&mut buf).await.unwrap();
+            assert_eq!(&buf, b"pong");
+        });
+
+        let (mut server, _) = listener.accept().await.unwrap();
+        let mut buf = [0u8; 4];
+        server.read_exact(&mut buf).await.unwrap();
+        assert_eq!(&buf, b"echo");
+        server.write_all(b"pong").await.unwrap();
+        client.await.unwrap();
     }
 }

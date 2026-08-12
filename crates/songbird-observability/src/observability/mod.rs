@@ -266,7 +266,10 @@ impl ObservabilityManager {
     ///
     /// This function is currently infallible but returns a Result for future extensibility
     pub async fn update_metrics(&self, source: String, metrics: SystemMetrics) -> Result<()> {
-        self.metrics_store.write().unwrap_or_else(std::sync::PoisonError::into_inner).insert(source, metrics);
+        self.metrics_store
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(source, metrics);
         Ok(())
     }
 
@@ -279,7 +282,12 @@ impl ObservabilityManager {
     ///
     /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_metrics(&self) -> Result<SystemMetrics> {
-        if let Some(m) = self.metrics_store.read().unwrap_or_else(std::sync::PoisonError::into_inner).get("system") {
+        if let Some(m) = self
+            .metrics_store
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get("system")
+        {
             return Ok(m.clone());
         }
         Ok(SystemMetrics {
@@ -311,7 +319,8 @@ impl ObservabilityManager {
     ///
     /// This function is currently infallible but returns a Result for future extensibility
     pub async fn get_service_health(&self, service_id: &str) -> Result<Option<ServiceHealth>> {
-        let health_store = self.health_store.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let health_store =
+            self.health_store.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(health_store.get(service_id).cloned())
     }
 
@@ -330,7 +339,8 @@ impl ObservabilityManager {
         &self,
     ) -> tokio::sync::mpsc::UnboundedReceiver<ObservabilityEvent> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let mut subscribers = self.event_subscribers.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut subscribers =
+            self.event_subscribers.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         subscribers.push(tx);
         rx
     }
@@ -354,7 +364,10 @@ impl ObservabilityManager {
             error_message: None,
         };
 
-        self.health_store.write().unwrap_or_else(std::sync::PoisonError::into_inner).insert(service_id.clone(), health);
+        self.health_store
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(service_id.clone(), health);
 
         // Send event to subscribers
         self.send_event(ObservabilityEvent::HealthCheckCompleted {
@@ -370,7 +383,8 @@ impl ObservabilityManager {
 
     /// Send event to all subscribers
     async fn send_event(&self, event: ObservabilityEvent) {
-        let subscribers = self.event_subscribers.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let subscribers =
+            self.event_subscribers.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         for subscriber in subscribers.iter() {
             let _ = subscriber.send(event.clone());
         }

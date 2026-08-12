@@ -398,32 +398,26 @@ impl SongbirdOrchestrator {
                                             };
 
                                         // Handle trust decision via connection manager (progressive trust)
-                                        match match maybe_discovered_peer {
-                                            Some(dp) => {
-                                                connection_manager
-                                                    .handle_trust_decision(
-                                                        dp.node_id,
-                                                        dp.endpoint,
-                                                        dp.capabilities,
-                                                        dp.tags,
-                                                        &auto_decision,
-                                                        String::from("udp_multicast"),
-                                                    )
-                                                    .await
-                                            }
-                                            None => {
-                                                connection_manager
-                                                    .handle_trust_decision(
-                                                        node_id.clone(),
-                                                        endpoint.clone(),
-                                                        peer.capabilities.clone(),
-                                                        peer.tags.clone().unwrap_or_default(), // v3.18.0: Pass tags for BTSP selection
-                                                        &auto_decision,
-                                                        String::from("udp_multicast"),
-                                                    )
-                                                    .await
-                                            }
-                                        } {
+                                        let trust_result = if let Some(dp) = maybe_discovered_peer {
+                                            connection_manager
+                                                .handle_trust_decision(
+                                                    dp.node_id,
+                                                    dp.endpoint,
+                                                    dp.capabilities,
+                                                    dp.tags,
+                                                    &auto_decision,
+                                                    "udp_multicast",
+                                                )
+                                                .await
+                                        } else {
+                                            warn!(
+                                                "⚠️  Trust accept missing discovered peer context for '{}'",
+                                                node_name
+                                            );
+                                            continue;
+                                        };
+
+                                        match trust_result {
                                             Ok(()) => {
                                                 // Get trust level for logging
                                                 if let Some(trust_level) = connection_manager
@@ -473,28 +467,30 @@ impl SongbirdOrchestrator {
 
                                                     // Create node registration
                                                     let node_registration = songbird_network_federation::state::NodeRegistration {
-                                                        node_id: node_id.clone(),
-                                                        node_name: node_name.clone(),
-                                                        node_address: endpoint.clone(),
+                                                        node_id,
+                                                        node_name,
+                                                        node_address: endpoint,
                                                         endpoints,
                                                         cpu_cores: 0,
                                                         memory_gb: 0,
                                                         gpu_model: None,
                                                         storage_gb: None,
-                                                        capabilities: peer.capabilities.clone(),
+                                                        capabilities: peer.capabilities,
                                                         status: songbird_network_federation::state::NodeStatus::Active,
                                                         joined_at: chrono::Utc::now(),
                                                         last_heartbeat: chrono::Utc::now(),
                                                     };
 
                                                     // Register node in federation
+                                                    let registered_name =
+                                                        node_registration.node_name.clone();
                                                     federation_state
                                                         .register_node(node_registration)
                                                         .await;
 
                                                     info!(
                                                         "🤝 Peer '{}' joined federation (progressive trust level {})",
-                                                        node_name, trust_level_num
+                                                        registered_name, trust_level_num
                                                     );
                                                 }
                                             }
@@ -553,31 +549,19 @@ impl SongbirdOrchestrator {
                                             };
 
                                         // Track rejection in connection manager for audit trail
-                                        let reject_res = match maybe_discovered_peer {
-                                            Some(dp) => {
-                                                connection_manager
-                                                    .handle_trust_decision(
-                                                        dp.node_id,
-                                                        dp.endpoint,
-                                                        dp.capabilities,
-                                                        dp.tags,
-                                                        &reject_decision,
-                                                        String::from("udp_multicast"),
-                                                    )
-                                                    .await
-                                            }
-                                            None => {
-                                                connection_manager
-                                                    .handle_trust_decision(
-                                                        node_id.clone(),
-                                                        endpoint.clone(),
-                                                        peer.capabilities.clone(),
-                                                        peer.tags.clone().unwrap_or_default(), // v3.18.0: Pass tags (unused for rejections)
-                                                        &reject_decision,
-                                                        String::from("udp_multicast"),
-                                                    )
-                                                    .await
-                                            }
+                                        let reject_res = if let Some(dp) = maybe_discovered_peer {
+                                            connection_manager
+                                                .handle_trust_decision(
+                                                    dp.node_id,
+                                                    dp.endpoint,
+                                                    dp.capabilities,
+                                                    dp.tags,
+                                                    &reject_decision,
+                                                    "udp_multicast",
+                                                )
+                                                .await
+                                        } else {
+                                            Ok(())
                                         };
                                         if let Err(e) = reject_res {
                                             warn!("⚠️  Failed to record rejection: {}", e);

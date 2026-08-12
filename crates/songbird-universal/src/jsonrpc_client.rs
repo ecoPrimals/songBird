@@ -172,8 +172,10 @@ impl JsonRpcClient {
     }
 
     async fn connect_platform(path: &std::path::Path) -> std::io::Result<PlatformStream> {
-        let path_str = path.to_string_lossy();
-        PlatformStream::connect(&path_str).await
+        let path_str = path.to_str().ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, "non-UTF-8 socket path")
+        })?;
+        PlatformStream::connect(path_str).await
     }
 
     /// Call a JSON-RPC method with automatic request ID generation

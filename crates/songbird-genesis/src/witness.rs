@@ -147,13 +147,17 @@ impl WitnessVerifier {
     /// Add trusted witness
     #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn add_trusted_witness(&self, device_id: String, public_key: Vec<u8>) {
-        self.trusted_witnesses.write().unwrap_or_else(std::sync::PoisonError::into_inner).insert(device_id, public_key);
+        self.trusted_witnesses
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(device_id, public_key);
     }
 
     /// Check if witness is trusted
     #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn is_trusted(&self, witness: &GenesisWitness) -> bool {
-        let witnesses = self.trusted_witnesses.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let witnesses =
+            self.trusted_witnesses.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         witnesses.contains_key(&witness.device_id)
     }
 

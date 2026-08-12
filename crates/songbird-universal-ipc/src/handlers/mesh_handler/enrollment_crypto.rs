@@ -101,42 +101,66 @@ pub async fn call_security_provider(method: &str, params: Value) -> Result<Value
     #[cfg(unix)]
     let stream = {
         if !std::path::Path::new(&socket_path).exists() {
-            return Err(format!("bearDog socket not found: {socket_path}"));
+            return Err(format!("security provider socket not found: {socket_path}"));
         }
         tokio::net::UnixStream::connect(&socket_path)
             .await
-            .map_err(|e| format!("connect to bearDog (UDS): {e}"))?
+            .map_err(|e| format!("connect to security provider (UDS): {e}"))?
     };
 
     #[cfg(not(unix))]
     let stream = {
-        let addr = if socket_path.contains(':') {
-            socket_path.clone()
+        use songbird_http_client::IpcEndpoint;
+
+        let endpoint = if socket_path.contains(':') {
+            socket_path
+                .parse::<std::net::SocketAddr>()
+                .map(IpcEndpoint::TcpLocal)
+                .map_err(|e| format!("invalid security provider TCP address {socket_path}: {e}"))?
         } else {
-            "127.0.0.1:9100".to_string()
+            let legacy = songbird_types::defaults::paths::security_socket_tmp_fallback_path();
+            songbird_http_client::discover_ipc_endpoint(
+                "SECURITY_PROVIDER_SOCKET",
+                "security",
+                &legacy.to_string_lossy(),
+            )
         };
-        tokio::net::TcpStream::connect(&addr)
-            .await
-            .map_err(|e| format!("connect to bearDog (TCP {addr}): {e}"))?
+
+        match endpoint {
+            IpcEndpoint::TcpLocal(addr) => tokio::net::TcpStream::connect(addr)
+                .await
+                .map_err(|e| format!("connect to security provider (TCP {addr}): {e}"))?,
+            IpcEndpoint::UnixSocket(path) => {
+                return Err(format!(
+                    "security provider socket {path} requires Unix on this platform; set SECURITY_PROVIDER_SOCKET to tcp://host:port"
+                ));
+            }
+        }
     };
 
     let (reader, mut writer) = stream.into_split();
-    writer.write_all(request.as_bytes()).await.map_err(|e| format!("write to bearDog: {e}"))?;
+    writer
+        .write_all(request.as_bytes())
+        .await
+        .map_err(|e| format!("write to security provider: {e}"))?;
     writer.write_all(b"\n").await.map_err(|e| format!("write newline: {e}"))?;
     writer.shutdown().await.map_err(|e| format!("shutdown write: {e}"))?;
 
     let mut response = String::new();
     let mut buf_reader = BufReader::new(reader);
-    buf_reader.read_line(&mut response).await.map_err(|e| format!("read from bearDog: {e}"))?;
+    buf_reader
+        .read_line(&mut response)
+        .await
+        .map_err(|e| format!("read from security provider: {e}"))?;
 
-    let parsed: Value =
-        serde_json::from_str(&response).map_err(|e| format!("parse bearDog response: {e}"))?;
+    let parsed: Value = serde_json::from_str(&response)
+        .map_err(|e| format!("parse security provider response: {e}"))?;
 
     if let Some(result) = parsed.get("result") {
         Ok(result.clone())
     } else if let Some(error) = parsed.get("error") {
         Err(format!(
-            "bearDog error: {}",
+            "security provider error: {}",
             error.get("message").and_then(Value::as_str).unwrap_or("unknown")
         ))
     } else {

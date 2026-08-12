@@ -58,7 +58,8 @@ impl MetricsCollector {
         };
 
         // Update stored metrics
-        *self.current_metrics.write().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(metrics.clone());
+        *self.current_metrics.write().unwrap_or_else(std::sync::PoisonError::into_inner) =
+            Some(metrics.clone());
 
         // Increment collection count
         self.collection_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -73,7 +74,8 @@ impl MetricsCollector {
     /// Returns an error if metrics collection fails when no snapshot exists
     pub async fn get_current_snapshot(&self) -> Result<MetricsSnapshot> {
         let metrics_copy = {
-            let current = self.current_metrics.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let current =
+                self.current_metrics.read().unwrap_or_else(std::sync::PoisonError::into_inner);
             current.as_ref().cloned()
         };
 

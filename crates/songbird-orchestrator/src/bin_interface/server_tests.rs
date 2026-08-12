@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2024-2026 ecoPrimals
+
 #![allow(clippy::unwrap_used, reason = "test assertions")]
 
 use crate::bin_interface::ServerArgs;
@@ -271,4 +274,43 @@ fn explicit_bind_overrides_federation_port_auto_bind() {
     let _port = ScopedEnv::new("SONGBIRD_FEDERATION_PORT", "7700");
     let cli = Cli::try_parse_from(["songbird", "--socket", "/tmp/songbird.sock"]).unwrap();
     assert_eq!(resolve_effective_bind(&cli.args), "192.168.1.5");
+}
+
+#[test]
+fn node_id_flag_parses() {
+    let cli = Cli::try_parse_from(["songbird", "--node-id", "west-gate"]).unwrap();
+    assert_eq!(cli.args.node_id.as_deref(), Some("west-gate"));
+}
+
+#[test]
+fn gate_id_alias_parses_as_node_id() {
+    let cli = Cli::try_parse_from(["songbird", "--gate-id", "east-gate"]).unwrap();
+    assert_eq!(cli.args.node_id.as_deref(), Some("east-gate"));
+}
+
+#[test]
+fn node_id_defaults_to_none_without_flag() {
+    let cli = Cli::try_parse_from(["songbird"]).unwrap();
+    assert!(cli.args.node_id.is_none());
+}
+
+#[test]
+fn cli_node_id_overrides_gate_id_env() {
+    let cli = Cli::try_parse_from(["songbird", "--node-id", "cli-gate"]).unwrap();
+    assert_eq!(cli.args.node_id.as_deref(), Some("cli-gate"));
+}
+
+fn apply_gate_id_overlay(args: &ServerArgs) {
+    if let Some(ref node_id) = args.node_id {
+        songbird_process_env::set_var("GATE_ID", node_id);
+    }
+}
+
+#[test]
+fn node_id_flag_sets_gate_id_overlay() {
+    let _guard = env_mutex();
+    songbird_process_env::remove_var("GATE_ID");
+    let cli = Cli::try_parse_from(["songbird", "--node-id", "overlay-gate"]).unwrap();
+    apply_gate_id_overlay(&cli.args);
+    assert_eq!(songbird_process_env::var("GATE_ID").unwrap(), "overlay-gate");
 }

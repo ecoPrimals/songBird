@@ -7,6 +7,8 @@
 //! for both Tower Atomic stack and `WireGuard` baseline. Outputs structured
 //! JSON for `primalSpring` consumption.
 
+#![allow(missing_docs, reason = "benchmark report fields mirror serialized JSON schema")]
+
 use anyhow::{Context, Result, anyhow};
 use clap::{Args, ValueEnum};
 use serde::Serialize;
@@ -76,7 +78,6 @@ pub enum OutputFormat {
 
 /// Full benchmark report.
 #[derive(Debug, Serialize)]
-#[allow(missing_docs)]
 pub struct BenchmarkReport {
     pub mode: String,
     pub peer: String,
@@ -90,7 +91,6 @@ pub struct BenchmarkReport {
 
 /// Sustained streaming throughput results (windowed measurement).
 #[derive(Debug, Serialize)]
-#[allow(missing_docs)]
 pub struct SustainedReport {
     pub total_duration_ms: f64,
     pub total_bytes: u64,
@@ -105,7 +105,6 @@ pub struct SustainedReport {
 
 /// Latency measurement results.
 #[derive(Debug, Serialize)]
-#[allow(missing_docs)]
 pub struct LatencyReport {
     pub probes_sent: u32,
     pub probes_ok: u32,
@@ -120,7 +119,6 @@ pub struct LatencyReport {
 
 /// Connection setup time results.
 #[derive(Debug, Serialize)]
-#[allow(missing_docs)]
 pub struct SetupReport {
     pub attempts: u32,
     pub min_ms: f64,
@@ -130,7 +128,6 @@ pub struct SetupReport {
 
 /// Throughput measurement results.
 #[derive(Debug, Serialize)]
-#[allow(missing_docs)]
 pub struct ThroughputReport {
     pub duration_us: u64,
     pub duration_ms: f64,

@@ -14,7 +14,6 @@ pub struct NetworkManager;
 
 impl NetworkManager {
     /// Measure ping latency to target
-    #[allow(unused_variables)]
     pub fn measure_ping_latency(target_address: &str) -> Result<f64> {
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         {
@@ -84,108 +83,7 @@ impl NetworkManager {
 
     #[must_use]
     pub fn get_local_ip_addresses() -> Vec<std::net::IpAddr> {
-        use std::net::{IpAddr, Ipv4Addr};
-
-        let mut addresses = Vec::new();
-
-        #[cfg(target_os = "linux")]
-        {
-            if let Ok(route_content) = std::fs::read_to_string("/proc/net/route") {
-                let mut default_iface = None;
-                for line in route_content.lines().skip(1) {
-                    let fields: Vec<&str> = line.split_whitespace().collect();
-                    if fields.len() >= 3 && fields[1] == "00000000" {
-                        default_iface = Some(fields[0].to_string());
-                        break;
-                    }
-                }
-
-                if let Some(iface_name) = default_iface {
-                    if let Ok(ip_result) =
-                        Command::new("ip").args(["addr", "show", &iface_name]).output()
-                    {
-                        if let Ok(output) = str::from_utf8(&ip_result.stdout) {
-                            for line in output.lines() {
-                                if line.trim().starts_with("inet ") {
-                                    if let Some(ip_str) = line.split_whitespace().nth(1) {
-                                        if let Some(ip_only) = ip_str.split('/').next() {
-                                            if let Ok(ip) = ip_only.parse::<IpAddr>() {
-                                                addresses.push(ip);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        #[cfg(target_os = "macos")]
-        {
-            if let Ok(ifconfig_result) = std::process::Command::new("ifconfig").output() {
-                if let Ok(output) = std::str::from_utf8(&ifconfig_result.stdout) {
-                    let mut current_interface = None;
-                    for line in output.lines() {
-                        if !line.starts_with(' ') && !line.starts_with('\t') {
-                            if let Some(iface_name) = line.split(':').next() {
-                                if !iface_name.starts_with("lo") && !iface_name.starts_with("veth")
-                                {
-                                    current_interface = Some(iface_name.to_string());
-                                } else {
-                                    current_interface = None;
-                                }
-                            }
-                        } else if current_interface.is_some() && line.contains("inet ") {
-                            if let Some(ip_str) = line.split_whitespace().nth(1) {
-                                if let Ok(ip) = ip_str.parse::<IpAddr>() {
-                                    addresses.push(ip);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            if let Ok(ipconfig_result) = std::process::Command::new("ipconfig").output() {
-                if let Ok(output) = std::str::from_utf8(&ipconfig_result.stdout) {
-                    for line in output.lines() {
-                        if line.contains("IPv4 Address") {
-                            if let Some(ip_part) = line.split(':').nth(1) {
-                                if let Ok(ip) = ip_part.trim().parse::<IpAddr>() {
-                                    addresses.push(ip);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if addresses.is_empty() {
-            // Connect to a non-routable target to discover which local interface the
-            // OS kernel selects as the default route. No packets are sent (UDP).
-            // Using RFC 5737 documentation address avoids any third-party dependency.
-            if let Ok(socket) =
-                std::net::UdpSocket::bind(songbird_types::constants::EPHEMERAL_BIND_ADDR)
-            {
-                if socket.connect("192.0.2.1:80").is_ok() {
-                    if let Ok(local_addr) = socket.local_addr() {
-                        addresses.push(local_addr.ip());
-                    }
-                }
-            }
-        }
-
-        if addresses.is_empty() {
-            addresses.push(IpAddr::V4(Ipv4Addr::LOCALHOST));
-        }
-
-        addresses
+        songbird_types::network_info::local_ip_addresses()
     }
 
     #[must_use]

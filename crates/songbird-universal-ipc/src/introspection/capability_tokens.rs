@@ -41,8 +41,8 @@ const CALLABLE_METHODS: &[&str] = &[
     "health.liveness",
     "health.readiness",
     "health.check",
-    "capabilities.list",
-    "capabilities.methods",
+    "capability.list",
+    "capability.methods",
     "identity",
     "identity.get",
     "lifecycle.status",
@@ -51,7 +51,7 @@ const CALLABLE_METHODS: &[&str] = &[
     "primal.announce",
     "rpc.methods",
     "rpc.discover",
-    "discover_capabilities",
+    "capabilities.discover",
     // ── BTSP transport security ──
     "btsp.negotiate",
     "btsp.capabilities",
@@ -133,6 +133,7 @@ const CALLABLE_METHODS: &[&str] = &[
     "mesh.discover_remotes",
     "mesh.mirror",
     "mesh.publish",
+    "mesh.deliver",
     // ── Hole punching ──
     "punch.request",
     "punch.coordinate",
@@ -143,6 +144,10 @@ const CALLABLE_METHODS: &[&str] = &[
     "onion.status",
     "onion.connect",
     "onion.address",
+    // ── Content-addressable storage (CAS) ──
+    "content.locate",
+    "content.verify",
+    "content.availability",
     // ── Federation ──
     "federation.peers",
     "federation.status",
@@ -232,6 +237,7 @@ pub const CONSUMED_CAPABILITIES: &[&str] = &[
     "storage.put",
     "storage.get",
     "storage.consent.store",
+    "mesh_gossip",
 ];
 
 /// Mapping from NEST capability tokens to their primary callable JSON-RPC methods.

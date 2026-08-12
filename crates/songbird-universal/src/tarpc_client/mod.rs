@@ -26,9 +26,9 @@ use crate::tarpc_types::SongbirdRpcClient;
 /// Modern async tarpc client for Songbird
 #[derive(Clone)]
 pub struct TarpcClient {
-    pub(super) endpoint: String,
+    pub(super) endpoint: Arc<str>,
     pub(super) addr: SocketAddr,
-    pub(super) connection: Arc<RwLock<Option<SongbirdRpcClient>>>,
+    pub(super) connection: Arc<RwLock<Option<Arc<SongbirdRpcClient>>>>,
     pub(super) timeout: Duration,
 }
 
@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn test_client_creation() {
         let client = TarpcClient::new("tarpc://localhost:9001").unwrap();
-        assert_eq!(client.endpoint, "tarpc://localhost:9001");
+        assert_eq!(&*client.endpoint, "tarpc://localhost:9001");
         assert_eq!(client.addr.port(), 9001);
     }
 

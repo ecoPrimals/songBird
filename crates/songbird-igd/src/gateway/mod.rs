@@ -367,33 +367,9 @@ impl Gateway {
 
     /// Get default gateway IP from /proc/net/route (Linux)
     fn get_default_gateway() -> Result<IpAddr> {
-        let contents = std::fs::read_to_string("/proc/net/route").map_err(|e| {
-            IgdError::Io(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("Cannot read /proc/net/route: {e}"),
-            ))
-        })?;
-
-        // Parse routing table: find default route (Destination == 00000000)
-        for line in contents.lines().skip(1) {
-            let fields: Vec<&str> = line.split_whitespace().collect();
-            if fields.len() >= 3 && fields[1] == "00000000" {
-                // Gateway is in hex, little-endian (on x86/ARM Linux)
-                let gw_hex = fields[2];
-                if let Ok(gw_int) = u32::from_str_radix(gw_hex, 16) {
-                    let ip = Ipv4Addr::new(
-                        (gw_int & 0xFF) as u8,
-                        ((gw_int >> 8) & 0xFF) as u8,
-                        ((gw_int >> 16) & 0xFF) as u8,
-                        ((gw_int >> 24) & 0xFF) as u8,
-                    );
-                    debug!("Default gateway from /proc/net/route: {}", ip);
-                    return Ok(IpAddr::V4(ip));
-                }
-            }
-        }
-
-        Err(IgdError::NoGatewayFound)
+        songbird_types::network_info::default_gateway()
+            .map(IpAddr::V4)
+            .ok_or(IgdError::NoGatewayFound)
     }
 
     /// Get local IP address (the one facing the gateway)
@@ -401,6 +377,10 @@ impl Gateway {
     /// Uses the discovered gateway IP as the routing target rather than a
     /// hardcoded external address, keeping the detection fully local.
     fn get_local_ip() -> Result<IpAddr> {
+        if let Ok(ip) = songbird_types::network_info::resolve_local_ipv4() {
+            return Ok(IpAddr::V4(ip));
+        }
+
         let gateway =
             Self::get_default_gateway().unwrap_or(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)));
 

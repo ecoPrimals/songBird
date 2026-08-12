@@ -55,17 +55,26 @@ impl TransportListener {
     /// Returns an I/O error if the bind fails.
     pub async fn bind(endpoint: &TransportEndpoint) -> io::Result<Self> {
         match endpoint {
-            TransportEndpoint::Uds { path } => Self::bind_uds(path).await,
-            TransportEndpoint::Tcp { host, port } => {
+            TransportEndpoint::Uds {
+                path,
+            } => Self::bind_uds(path).await,
+            TransportEndpoint::Tcp {
+                host,
+                port,
+            } => {
                 let addr = format!("{host}:{port}");
                 let listener = tokio::net::TcpListener::bind(&addr).await?;
                 Ok(Self::Tcp(listener))
             }
-            TransportEndpoint::NamedPipe { .. } => Err(io::Error::new(
+            TransportEndpoint::NamedPipe {
+                ..
+            } => Err(io::Error::new(
                 io::ErrorKind::Unsupported,
                 "Named pipe listener not yet implemented (Windows-only)",
             )),
-            TransportEndpoint::MeshRelay { .. } => Err(io::Error::new(
+            TransportEndpoint::MeshRelay {
+                ..
+            } => Err(io::Error::new(
                 io::ErrorKind::Unsupported,
                 "MeshRelay cannot be used as a listener endpoint",
             )),
@@ -74,7 +83,10 @@ impl TransportListener {
 
     /// Bind a UDS listener, handling the socket path lifecycle.
     #[cfg(unix)]
-    #[allow(clippy::unused_async)]
+    #[allow(
+        clippy::unused_async,
+        reason = "async signature matches TransportListener::bind for uniform call sites"
+    )]
     async fn bind_uds(path: &str) -> io::Result<Self> {
         let sock_path = std::path::Path::new(path);
         if sock_path.exists() {
@@ -89,7 +101,10 @@ impl TransportListener {
 
     /// On non-Unix, UDS endpoints are not supported.
     #[cfg(not(unix))]
-    #[allow(clippy::unused_async)]
+    #[allow(
+        clippy::unused_async,
+        reason = "async signature matches TransportListener::bind for uniform call sites"
+    )]
     async fn bind_uds(path: &str) -> io::Result<Self> {
         Err(io::Error::new(
             io::ErrorKind::Unsupported,
@@ -239,6 +254,39 @@ mod tests {
             let listener = TransportListener::bind(&ep).await.unwrap();
             let debug = format!("{listener:?}");
             assert!(debug.contains("Tcp"));
+        });
+    }
+
+    #[test]
+    fn named_pipe_bind_unsupported() {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let ep = TransportEndpoint::named_pipe(r"\\.\pipe\test");
+            let err = TransportListener::bind(&ep).await.unwrap_err();
+            assert_eq!(err.kind(), io::ErrorKind::Unsupported);
+        });
+    }
+
+    #[test]
+    fn listener_is_local() {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let ep = TransportEndpoint::tcp("127.0.0.1", 0);
+            let listener = TransportListener::bind(&ep).await.unwrap();
+            assert!(listener.is_local());
+        });
+    }
+
+    #[test]
+    fn local_addr_string_for_tcp_contains_port() {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let ep = TransportEndpoint::tcp("127.0.0.1", 0);
+            let listener = TransportListener::bind(&ep).await.unwrap();
+            let addr = listener.local_addr_string();
+            assert!(addr.contains(':'));
+            let port: u16 = addr.rsplit(':').next().unwrap().parse().unwrap();
+            assert!(port > 0);
         });
     }
 }

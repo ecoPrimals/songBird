@@ -222,7 +222,8 @@ impl ProductionAnalyticsEngine {
             last_updated: Utc::now(),
         };
 
-        let mut models = self.anomaly_models.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut models =
+            self.anomaly_models.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         models.insert(metric_name.to_string(), model);
 
         let mut stats = self.stats.write().unwrap_or_else(std::sync::PoisonError::into_inner);

@@ -76,25 +76,29 @@ pub async fn discover_primal(
         });
     }
 
-    // 4. Development fallback (debug builds only)
+    // 4. Development fallback (debug builds only): songBird self-knowledge for orchestration
     if cfg!(debug_assertions) {
-        let fallback_url = default_url_for_primal(&primal_type);
-        warn!(
-            "No {} primal found via discovery or environment. Using development fallback: {}",
-            primal_type, fallback_url
-        );
-        warn!("Set {} or {} to override", env_var, alt_env_var);
+        use songbird_types::CanonicalPrimalType;
 
-        return Ok(ServiceEndpoint {
-            id: format!("{capability}-fallback"),
-            url: fallback_url,
-            capabilities: vec![capability],
-            health_score: 0.5, // Lower score for fallback
-            last_seen: std::time::SystemTime::now(),
-        });
+        if matches!(primal_type, CanonicalPrimalType::Orchestration) {
+            let port = songbird_types::defaults::ports::DEFAULT_ORCHESTRATOR_PORT;
+            let fallback_url = format!("http://[::]:{port}");
+            warn!(
+                "No {primal_type} primal found via discovery or environment. Using songBird self default: {fallback_url}"
+            );
+            warn!("Set {env_var} or {alt_env_var} to override");
+
+            return Ok(ServiceEndpoint {
+                id: format!("{capability}-fallback"),
+                url: fallback_url,
+                capabilities: vec![capability],
+                health_score: 0.5,
+                last_seen: std::time::SystemTime::now(),
+            });
+        }
     }
 
-    // Production: No fallback
+    // Production (and non-orchestration debug builds): No fallback
     Err(SongbirdError::Configuration {
         message: format!("No {primal_type} primal found"),
         field: Some(String::from("primal_type")),
@@ -150,26 +154,6 @@ fn primal_type_to_capability(primal_type: &songbird_types::CanonicalPrimalType) 
     .to_string()
 }
 
-/// Get default development URL for a primal type
-fn default_url_for_primal(primal_type: &songbird_types::CanonicalPrimalType) -> String {
-    use songbird_types::CanonicalPrimalType;
-
-    let port = match primal_type {
-        CanonicalPrimalType::Security => 8200, // security provider
-        CanonicalPrimalType::Storage => 6000,  // storage capability domain
-        CanonicalPrimalType::Compute => 7000,  // compute capability
-        CanonicalPrimalType::Ai => 7100,       // AI services
-        CanonicalPrimalType::Orchestration => 8080, // Songbird
-        CanonicalPrimalType::Federation => 8090, // Federation
-        CanonicalPrimalType::Discovery => 5300, // Discovery
-        CanonicalPrimalType::Registry => 8081, // Registry
-        CanonicalPrimalType::Observability => 9090, // Observability
-        CanonicalPrimalType::Unknown(_) => 9999, // Unknown
-    };
-
-    format!("http://[::]:{port}")
-}
-
 /// Environment variable naming standards
 #[must_use]
 pub fn env_var_for_primal(primal_type: &songbird_types::CanonicalPrimalType) -> Vec<String> {
@@ -191,12 +175,6 @@ mod tests {
         assert_eq!(primal_type_to_capability(&CanonicalPrimalType::Security), "security");
         assert_eq!(primal_type_to_capability(&CanonicalPrimalType::Compute), "compute");
         assert_eq!(primal_type_to_capability(&CanonicalPrimalType::Storage), "storage");
-    }
-
-    #[test]
-    fn test_default_urls() {
-        assert_eq!(default_url_for_primal(&CanonicalPrimalType::Security), "http://[::]:8200");
-        assert_eq!(default_url_for_primal(&CanonicalPrimalType::Compute), "http://[::]:7000");
     }
 
     #[test]

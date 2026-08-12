@@ -201,20 +201,11 @@ pub(crate) async fn hot_swap_deployment(
 
 /// Gracefully terminate a process: SIGTERM → wait 5s → SIGKILL.
 async fn graceful_kill(pid: u32) {
-    #[cfg(unix)]
-    {
-        let _ = std::process::Command::new("kill").arg("-TERM").arg(pid.to_string()).output();
-        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-        let _ = std::process::Command::new("kill").arg("-9").arg(pid.to_string()).output();
-    }
-    #[cfg(windows)]
-    {
-        let _ = std::process::Command::new("taskkill")
-            .arg("/PID")
-            .arg(pid.to_string())
-            .arg("/T")
-            .output();
-    }
+    let _ = songbird_types::process_ops::stop_process_gracefully(
+        pid,
+        tokio::time::Duration::from_secs(5),
+    )
+    .await;
 }
 
 #[cfg(test)]

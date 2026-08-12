@@ -280,6 +280,25 @@ pub fn tarpc_uds_socket_path() -> PathBuf {
     dir.join(format!("{}.tarpc.sock", crate::primal_names::SELF_NAME))
 }
 
+// --- Mesh gossip capability provider (consumed at runtime; not a primal name) ---------------
+
+/// Mesh gossip capability socket filenames (domain-named, for filesystem discovery).
+///
+/// Consumers prefer `ipc.resolve({ "capability": "mesh_gossip" })` when a broker
+/// connection exists. Filesystem scanning is the bootstrap fallback.
+pub const MESH_GOSSIP_CAPABILITY_SOCKET_FILENAMES: &[&str] =
+    &["mesh-gossip.sock", "mesh_gossip.sock"];
+
+/// Mesh gossip provider socket candidates (capability domain names only).
+#[must_use]
+pub fn mesh_gossip_socket_candidates() -> [PathBuf; 2] {
+    let b = biomeos_socket_dir_tmp();
+    [
+        b.join(MESH_GOSSIP_CAPABILITY_SOCKET_FILENAMES[0]),
+        b.join(MESH_GOSSIP_CAPABILITY_SOCKET_FILENAMES[1]),
+    ]
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, reason = "test assertions")]
 #[allow(deprecated, reason = "tests intentionally verify deprecated constants for backward-compat")]

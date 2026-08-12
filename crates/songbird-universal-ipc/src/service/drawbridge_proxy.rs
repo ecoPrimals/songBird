@@ -197,9 +197,7 @@ pub(super) async fn ipc_jsonrpc_roundtrip(
         .await
         .map_err(|e| format!("IPC unavailable: {e}"))?;
 
-    ipc.write_all(request_bytes)
-        .await
-        .map_err(|e| format!("IPC write failed: {e}"))?;
+    ipc.write_all(request_bytes).await.map_err(|e| format!("IPC write failed: {e}"))?;
 
     let mut response = Vec::with_capacity(4096);
     let mut buf = [0u8; 4096];
@@ -276,9 +274,8 @@ pub(super) async fn proxy_to_jsonrpc_backend(
         }
         Err(e) => {
             debug!(peer = %peer, error = %e, method, "drawbridge jsonrpc: IPC error");
-            let err_body = format!(
-                r#"{{"jsonrpc":"2.0","error":{{"code":-32603,"message":"{e}"}},"id":1}}"#,
-            );
+            let err_body =
+                format!(r#"{{"jsonrpc":"2.0","error":{{"code":-32603,"message":"{e}"}},"id":1}}"#,);
             let resp = format!(
                 "HTTP/1.1 502 Bad Gateway\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{err_body}",
                 err_body.len()

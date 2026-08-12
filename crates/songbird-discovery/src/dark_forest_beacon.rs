@@ -707,4 +707,65 @@ mod tests {
         let b = DarkForestBeacon::new(vec![], [0u8; 12]);
         assert_eq!(b.version, DarkForestBeacon::VERSION);
     }
+
+    #[test]
+    fn from_bytes_rejects_empty_input() {
+        assert!(DarkForestBeacon::from_bytes(b"").is_err());
+    }
+
+    #[test]
+    fn to_bytes_from_bytes_preserves_nonce() {
+        let beacon = DarkForestBeacon::new(vec![9, 8, 7], [1u8; 12]);
+        let bytes = beacon.to_bytes().unwrap();
+        let decoded = DarkForestBeacon::from_bytes(&bytes).unwrap();
+        assert_eq!(decoded.nonce, [1u8; 12]);
+        assert_eq!(decoded.encrypted_payload, vec![9, 8, 7]);
+    }
+
+    #[test]
+    fn future_timestamp_is_still_recent() {
+        let future = DarkForestBeacon {
+            encrypted_payload: vec![],
+            nonce: [0u8; 12],
+            timestamp: DarkForestBeacon::current_timestamp() + 60,
+            version: DarkForestBeacon::VERSION,
+        };
+        assert!(future.is_recent());
+        assert_eq!(future.age_seconds(), 0);
+    }
+
+    #[test]
+    fn beacon_payload_from_bytes_rejects_truncated() {
+        assert!(BeaconPayload::from_bytes(b"{}").is_err());
+    }
+
+    #[test]
+    fn tunnel_type_wireguard_serializes() {
+        let t = TunnelType::WireGuard;
+        let json = serde_json::to_string(&t).unwrap();
+        let back: TunnelType = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, TunnelType::WireGuard);
+    }
+
+    #[test]
+    fn beacon_payload_new_sets_capabilities_hash() {
+        let payload = BeaconPayload::new(
+            vec![1],
+            "node".into(),
+            vec![],
+            &[String::from("compute"), String::from("storage")],
+            None,
+            "sess".into(),
+        );
+        let expected = BeaconPayload::hash_capabilities(&["compute".into(), "storage".into()]);
+        assert_eq!(payload.capabilities_hash, expected);
+    }
+
+    #[test]
+    fn dark_forest_beacon_serde_roundtrip() {
+        let b = DarkForestBeacon::new(vec![4, 5], [2u8; 12]);
+        let json = serde_json::to_string(&b).unwrap();
+        let back: DarkForestBeacon = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, b);
+    }
 }

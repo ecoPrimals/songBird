@@ -188,7 +188,7 @@ impl MeshHandler {
 
             let rpc_payload = json!({
                 "jsonrpc": "2.0",
-                "method": "mesh.subscribe",
+                "method": "mesh.deliver",
                 "params": {
                     "topic": &topic,
                     "payload": &payload,
@@ -227,7 +227,7 @@ impl MeshHandler {
         }))
     }
 
-    /// Handle `mesh.subscribe` — receive a published event from a peer.
+    /// Handle `mesh.deliver` (wire) / `mesh.subscribe` (enum) — receive a published event from a peer.
     ///
     /// When topic is `depot.updated`, spawns `membrane plasmid.auto_fetch`
     /// to pull the updated ecobins (fire-and-forget).

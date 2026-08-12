@@ -284,7 +284,10 @@ impl CircuitBreaker {
                     if opened_at.elapsed() >= self.config.timeout {
                         debug!("Circuit breaker transitioning from Open to Half-Open");
                         *state = CircuitState::HalfOpen;
-                        *self.successes_in_half_open.write().unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
+                        *self
+                            .successes_in_half_open
+                            .write()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
                         CircuitState::HalfOpen
                     } else {
                         // Still open, reject request
@@ -325,21 +328,26 @@ impl CircuitBreaker {
                 ..
             } => {
                 // Reset failure count on success
-                *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Closed {
-                    failures: 0,
-                };
+                *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) =
+                    CircuitState::Closed {
+                        failures: 0,
+                    };
             }
             CircuitState::HalfOpen => {
                 // Increment success count
-                let mut successes = self.successes_in_half_open.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+                let mut successes = self
+                    .successes_in_half_open
+                    .write()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 *successes += 1;
 
                 // If enough successes, close the circuit
                 if *successes >= self.config.success_threshold {
                     info!("Circuit breaker transitioning from Half-Open to Closed (recovered)");
-                    *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Closed {
-                        failures: 0,
-                    };
+                    *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) =
+                        CircuitState::Closed {
+                            failures: 0,
+                        };
                 }
             }
             CircuitState::Open {
@@ -364,22 +372,25 @@ impl CircuitBreaker {
                         "Circuit breaker opening (failures: {} >= threshold: {})",
                         new_failures, self.config.failure_threshold
                     );
-                    *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Open {
-                        opened_at: Instant::now(),
-                    };
+                    *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) =
+                        CircuitState::Open {
+                            opened_at: Instant::now(),
+                        };
                 } else {
                     // Increment failure count
-                    *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Closed {
-                        failures: new_failures,
-                    };
+                    *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) =
+                        CircuitState::Closed {
+                            failures: new_failures,
+                        };
                 }
             }
             CircuitState::HalfOpen => {
                 // Failure in half-open state, reopen circuit
                 warn!("Circuit breaker reopening (failed in Half-Open state)");
-                *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Open {
-                    opened_at: Instant::now(),
-                };
+                *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) =
+                    CircuitState::Open {
+                        opened_at: Instant::now(),
+                    };
             }
             CircuitState::Open {
                 ..
@@ -394,9 +405,10 @@ impl CircuitBreaker {
     /// Use with caution - typically you want automatic recovery via Half-Open state.
     pub async fn reset(&self) {
         info!("Circuit breaker manually reset to Closed state");
-        *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Closed {
-            failures: 0,
-        };
+        *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) =
+            CircuitState::Closed {
+                failures: 0,
+            };
         *self.successes_in_half_open.write().unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
     }
 
@@ -415,7 +427,10 @@ impl CircuitBreaker {
             success_threshold: self.config.success_threshold,
             timeout: self.config.timeout,
             current_failures,
-            current_successes: *self.successes_in_half_open.read().unwrap_or_else(std::sync::PoisonError::into_inner),
+            current_successes: *self
+                .successes_in_half_open
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
         }
     }
 }

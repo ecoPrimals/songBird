@@ -162,8 +162,7 @@ impl JobManager {
 
         #[cfg(unix)]
         {
-            use nix::sys::signal::{Signal, kill};
-            use nix::unistd::Pid;
+            use songbird_types::process_ops::{ProcessSignal, stop_process};
 
             let pid = job.pid.ok_or_else(|| SongbirdError::Runtime {
                 message: String::from("Job has no PID (not running?)"),
@@ -171,13 +170,7 @@ impl JobManager {
                 debug_info: None,
             })?;
 
-            let pid_nix =
-                Pid::from_raw(i32::try_from(pid).map_err(|_| SongbirdError::Runtime {
-                    message: format!("PID {pid} too large for conversion"),
-                    component: Some(String::from("job_manager")),
-                    debug_info: None,
-                })?);
-            kill(pid_nix, Signal::SIGTERM).map_err(|e| SongbirdError::Runtime {
+            stop_process(pid, ProcessSignal::Terminate).map_err(|e| SongbirdError::Runtime {
                 message: format!("Failed to send SIGTERM to process {pid}: {e}"),
                 component: Some(String::from("job_manager")),
                 debug_info: None,

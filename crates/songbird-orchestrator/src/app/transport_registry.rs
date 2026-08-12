@@ -95,7 +95,9 @@ impl TransportRegistry {
         for entry in transports.iter() {
             match (entry.start)().await {
                 Ok(()) => debug!(transport = entry.name, "transport started"),
-                Err(e) => warn!(transport = entry.name, error = %e, "transport failed to start (non-fatal)"),
+                Err(e) => {
+                    warn!(transport = entry.name, error = %e, "transport failed to start (non-fatal)");
+                }
             }
         }
         Ok(())
@@ -194,10 +196,14 @@ mod tests {
         assert_eq!(registry.count().await, 0);
 
         registry
-            .register(entry_from(Arc::new(MockTransport { name: "TestA" })))
+            .register(entry_from(Arc::new(MockTransport {
+                name: "TestA",
+            })))
             .await;
         registry
-            .register(entry_from(Arc::new(MockTransport { name: "TestB" })))
+            .register(entry_from(Arc::new(MockTransport {
+                name: "TestB",
+            })))
             .await;
 
         assert_eq!(registry.count().await, 2);

@@ -92,7 +92,7 @@ impl IpcServiceHandler {
     }
 
     /// Handle `route.list` — list all configured routes with details.
-    #[allow(clippy::unused_async)]
+    #[allow(clippy::unused_async, reason = "async signature matches JsonRpcHandler dispatch table")]
     pub(super) async fn handle_route_list(&self) -> Result<Value, String> {
         let routes = self.capability_router.list_routes();
 

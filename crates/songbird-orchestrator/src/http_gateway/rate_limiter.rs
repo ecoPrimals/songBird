@@ -148,10 +148,7 @@ impl RateLimiter {
     /// Returns an error if the rate limit is exceeded.
     #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn check(&self, client_id: &str) -> Result<()> {
-        let mut buckets = self
-            .buckets
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut buckets = self.buckets.write().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         let bucket = buckets.entry(client_id.to_string()).or_insert_with(|| {
             debug!("Creating new token bucket for client: {}", client_id);
@@ -177,10 +174,7 @@ impl RateLimiter {
     /// * Number of available tokens (can be fractional due to refill)
     #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn available_tokens(&self, client_id: &str) -> f64 {
-        let mut buckets = self
-            .buckets
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut buckets = self.buckets.write().unwrap_or_else(std::sync::PoisonError::into_inner);
 
         buckets
             .entry(client_id.to_string())
@@ -191,10 +185,7 @@ impl RateLimiter {
     #[cfg(test)]
     #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn reset(&self, client_id: &str) {
-        let mut buckets = self
-            .buckets
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut buckets = self.buckets.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         buckets.remove(client_id);
     }
 }
@@ -274,5 +265,53 @@ mod tests {
         // Should have ~5 tokens left
         let available = limiter.available_tokens("test_client").await;
         assert!((available - 5.0).abs() < 0.01);
+    }
+
+    #[tokio::test]
+    async fn test_rate_limiter_reset_restores_capacity() {
+        let limiter = RateLimiter::new(5, Duration::from_secs(1));
+        for _ in 0..5 {
+            limiter.check("client").await.unwrap();
+        }
+        assert!(limiter.check("client").await.is_err());
+        limiter.reset("client").await;
+        assert!(limiter.check("client").await.is_ok());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_rate_limiter_partial_refill() {
+        let limiter = RateLimiter::new(100, Duration::from_millis(1000));
+        for _ in 0..100 {
+            limiter.check("c").await.unwrap();
+        }
+        assert!(limiter.check("c").await.is_err());
+
+        tokio::time::advance(Duration::from_millis(500)).await;
+
+        let tokens = limiter.available_tokens("c").await;
+        assert!(tokens > 40.0 && tokens < 60.0, "expected ~50 tokens, got {tokens}");
+        assert!(limiter.check("c").await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_rate_limiter_error_message_includes_client_id() {
+        let limiter = RateLimiter::new(1, Duration::from_secs(60));
+        limiter.check("unique-client-xyz").await.unwrap();
+        let err = limiter.check("unique-client-xyz").await.unwrap_err();
+        assert!(err.to_string().contains("unique-client-xyz"));
+    }
+
+    #[tokio::test]
+    async fn test_rate_limiter_capacity_one_allows_single_request() {
+        let limiter = RateLimiter::new(1, Duration::from_secs(60));
+        assert!(limiter.check("solo").await.is_ok());
+        assert!(limiter.check("solo").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_available_tokens_creates_bucket_lazily() {
+        let limiter = RateLimiter::new(7, Duration::from_secs(1));
+        let tokens = limiter.available_tokens("new-client").await;
+        assert!((tokens - 7.0).abs() < 0.01);
     }
 }

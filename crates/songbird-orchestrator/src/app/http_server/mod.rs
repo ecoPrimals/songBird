@@ -52,11 +52,7 @@ pub async fn start_http_server(
     if actual_port == bind_addr.port() {
         info!("✅ Bound to configured port {}", bind_addr.port());
     } else {
-        warn!(
-            "⚠️  Configured port {} busy, using port {} instead",
-            bind_addr.port(),
-            actual_port
-        );
+        warn!("⚠️  Configured port {} busy, using port {} instead", bind_addr.port(), actual_port);
     }
 
     let tls_enabled = SafeEnv::get_bool("SONGBIRD_TLS_ENABLED", true);
@@ -183,20 +179,14 @@ async fn build_router(
         .nest("/api/protocol", protocol_router)
         .nest("/jsonrpc", jsonrpc_router)
         .nest("/api/ws", websocket_router)
-        .nest(
-            "/api/deployment",
-            crate::server::deployment_api::deployment_routes(deployment_state),
-        )
+        .nest("/api/deployment", crate::server::deployment_api::deployment_routes(deployment_state))
         .nest(
             "/api",
             crate::server::consent_api::consent_routes().with_state(
                 crate::server::consent_api::ConsentApiState::new(Arc::clone(&consent_manager)),
             ),
         )
-        .nest(
-            "/api/v1",
-            crate::server::task_api::task_lifecycle_router(Arc::clone(&task_manager)),
-        )
+        .nest("/api/v1", crate::server::task_api::task_lifecycle_router(Arc::clone(&task_manager)))
         .nest("/api/v1/services", service_registry_router)
         .merge(info_router)
         .route("/health", axum::routing::get(|| async { "OK" }))

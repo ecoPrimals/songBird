@@ -192,10 +192,7 @@ async fn mock_fixtures_used_for_peer_connect_target() {
     .await;
     match res {
         Ok(Ok(_)) => {}
-        Ok(Err(e)) => assert!(
-            e.contains("Peer connect failed"),
-            "unexpected: {e}"
-        ),
+        Ok(Err(e)) => assert!(e.contains("Peer connect failed"), "unexpected: {e}"),
         Err(_) => {} // timeout is acceptable — proves dispatch was entered
     }
 }
@@ -232,11 +229,8 @@ async fn dispatch_hits_each_json_rpc_arm() {
     // Timeout proves the dispatch arm was hit; the handler attempted real IO.
     macro_rules! dispatched {
         ($method:expr, $params:expr) => {
-            let _ = tokio::time::timeout(
-                Duration::from_millis(100),
-                h.handle($method, $params),
-            )
-            .await;
+            let _ =
+                tokio::time::timeout(Duration::from_millis(100), h.handle($method, $params)).await;
         };
     }
 
@@ -296,12 +290,15 @@ async fn dispatch_hits_each_json_rpc_arm() {
     h.handle("relay.serve", json!({ "bind_addr": "127.0.0.1:0" })).await.expect("relay.serve");
     ok!("relay.status", json!({}));
     // relay.allocate calls security-provider UDS — hangs on live socket without read timeout
-    dispatched!("relay.allocate", json!({
-        "relay_node": "a",
-        "requester": "b",
-        "target_addr": "127.0.0.1:1",
-        "lineage_proof": ""
-    }));
+    dispatched!(
+        "relay.allocate",
+        json!({
+            "relay_node": "a",
+            "requester": "b",
+            "target_addr": "127.0.0.1:1",
+            "lineage_proof": ""
+        })
+    );
     h.handle("relay.stop", json!({})).await.expect("relay.stop");
 
     ok!("discovery.peers", json!({}));
@@ -372,11 +369,8 @@ async fn dispatch_covers_remaining_json_rpc_arms() {
     // Short timeout for calls that do real network IO (STUN, UDS to security provider, etc.)
     macro_rules! dispatched {
         ($method:expr, $params:expr) => {
-            let _ = tokio::time::timeout(
-                Duration::from_millis(100),
-                h.handle($method, $params),
-            )
-            .await;
+            let _ =
+                tokio::time::timeout(Duration::from_millis(100), h.handle($method, $params)).await;
         };
     }
 
@@ -401,12 +395,15 @@ async fn dispatch_covers_remaining_json_rpc_arms() {
     assert!(tp_err.contains("target_address"), "unexpected: {tp_err}");
 
     // mesh.enroll contacts security provider UDS — may hang without timeout
-    dispatched!("mesh.enroll", json!({
-        "node_id": "new-gate",
-        "public_key": "test-wg-pubkey-base64",
-        "proof": "test-proof-placeholder",
-        "timestamp": 1700000000_u64
-    }));
+    dispatched!(
+        "mesh.enroll",
+        json!({
+            "node_id": "new-gate",
+            "public_key": "test-wg-pubkey-base64",
+            "proof": "test-proof-placeholder",
+            "timestamp": 1700000000_u64
+        })
+    );
 
     let b_err = h.handle("birdsong.decrypt_beacon", json!({})).await.expect_err("decrypt");
     assert!(b_err.contains("encrypted_beacon"), "unexpected: {b_err}");
@@ -481,11 +478,29 @@ async fn gossip_relay_to_local_target() {
 async fn gossip_relay_missing_topic_errors() {
     let h = ipc_handler();
 
-    let err = h
-        .handle("gossip.relay", json!({ "payload": {} }))
-        .await
-        .expect_err("should require topic");
+    let err =
+        h.handle("gossip.relay", json!({ "payload": {} })).await.expect_err("should require topic");
     assert!(err.contains("topic"), "expected topic error, got: {err}");
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn mesh_relay_alias_dispatches_like_gossip_relay() {
+    let h = ipc_handler();
+
+    let result = h
+        .handle(
+            "mesh.relay",
+            json!({
+                "target_gate": "local",
+                "topic": "capability",
+                "key": "cap.announce:test",
+                "payload": { "event": "register" }
+            }),
+        )
+        .await
+        .expect("mesh.relay alias should succeed");
+    assert_eq!(result["relayed_to"], "local");
+    assert_eq!(result["status"], "injected");
 }
 
 #[tokio::test]
@@ -493,9 +508,7 @@ async fn gossip_relay_to_unknown_gate_errors() {
     let h = ipc_handler();
 
     // Initialize mesh so we have a mesh reference (but no peers)
-    h.handle("mesh.init", json!({ "node_id": "gossip-relay-test" }))
-        .await
-        .expect("mesh.init");
+    h.handle("mesh.init", json!({ "node_id": "gossip-relay-test" })).await.expect("mesh.init");
 
     let err = h
         .handle(
@@ -714,9 +727,7 @@ async fn gossip_spread_without_mesh_returns_local_only() {
 async fn gossip_spread_with_empty_mesh_returns_zero_spread() {
     let h = ipc_handler();
 
-    h.handle("mesh.init", json!({ "node_id": "spread-test-gate" }))
-        .await
-        .expect("mesh.init");
+    h.handle("mesh.init", json!({ "node_id": "spread-test-gate" })).await.expect("mesh.init");
 
     let result = h
         .handle(
@@ -749,9 +760,7 @@ async fn gossip_spread_missing_topic_errors() {
 async fn gossip_spread_skips_origin_gate() {
     let h = ipc_handler();
 
-    h.handle("mesh.init", json!({ "node_id": "local-gate" }))
-        .await
-        .expect("mesh.init");
+    h.handle("mesh.init", json!({ "node_id": "local-gate" })).await.expect("mesh.init");
 
     let result = h
         .handle(
@@ -821,10 +830,7 @@ async fn gossip_subscribe_missing_topic_errors() {
     let h = ipc_handler();
 
     let err = h
-        .handle(
-            "gossip.subscribe",
-            json!({ "primal_id": "test", "endpoint": "/tmp/test.sock" }),
-        )
+        .handle("gossip.subscribe", json!({ "primal_id": "test", "endpoint": "/tmp/test.sock" }))
         .await
         .expect_err("should require topic");
     assert!(err.contains("topic"), "expected topic error, got: {err}");
@@ -835,10 +841,7 @@ async fn gossip_subscribe_missing_primal_id_errors() {
     let h = ipc_handler();
 
     let err = h
-        .handle(
-            "gossip.subscribe",
-            json!({ "topic": "tower", "endpoint": "/tmp/test.sock" }),
-        )
+        .handle("gossip.subscribe", json!({ "topic": "tower", "endpoint": "/tmp/test.sock" }))
         .await
         .expect_err("should require primal_id");
     assert!(err.contains("primal_id"), "expected primal_id error, got: {err}");
@@ -849,10 +852,7 @@ async fn gossip_subscribe_missing_endpoint_errors() {
     let h = ipc_handler();
 
     let err = h
-        .handle(
-            "gossip.subscribe",
-            json!({ "topic": "tower", "primal_id": "test" }),
-        )
+        .handle("gossip.subscribe", json!({ "topic": "tower", "primal_id": "test" }))
         .await
         .expect_err("should require endpoint");
     assert!(err.contains("endpoint"), "expected endpoint error, got: {err}");
@@ -888,4 +888,76 @@ async fn gossip_inject_reports_subscriber_count() {
         .expect("inject with subscriber");
     assert_eq!(result["status"], "injected");
     assert_eq!(result["subscribers_notified"], 0);
+}
+
+#[tokio::test]
+async fn content_locate_local_scope_empty_without_provider() {
+    let h = ipc_handler();
+    let hash = "blake3-deadbeef";
+    let res = h
+        .handle(
+            "content.locate",
+            json!({
+                "hash": hash,
+                "algorithm": "blake3",
+                "scope": "local"
+            }),
+        )
+        .await
+        .expect("content.locate local scope");
+    assert_eq!(res["hash"], hash);
+    assert_eq!(res["locations"].as_array().map(Vec::len), Some(0));
+}
+
+#[tokio::test]
+async fn content_locate_local_scope_returns_registered_provider() {
+    let h = ipc_handler();
+    h.handle(
+        "ipc.register",
+        json!({
+            "primal_id": "westGate",
+            "capabilities": ["content_storage"],
+            "endpoint": "/tmp/westgate-cas.sock"
+        }),
+    )
+    .await
+    .expect("register content_storage provider");
+
+    let hash = "blake3-cafebabe";
+    let res = h
+        .handle(
+            "content.locate",
+            json!({
+                "hash": hash,
+                "algorithm": "blake3",
+                "scope": "local"
+            }),
+        )
+        .await
+        .expect("content.locate with provider");
+    assert_eq!(res["hash"], hash);
+    let locations = res["locations"].as_array().expect("locations array");
+    assert_eq!(locations.len(), 1);
+    assert_eq!(locations[0]["gate"], "westGate");
+    assert!(locations[0]["endpoint"].as_str().is_some_and(|e| e.contains("westgate-cas.sock")));
+    assert_eq!(locations[0]["verified"], false);
+}
+
+#[tokio::test]
+async fn content_locate_mesh_scope_returns_empty_during_stub() {
+    let h = ipc_handler();
+    let hash = "sha256-001122";
+    let res = h
+        .handle(
+            "content.locate",
+            json!({
+                "hash": hash,
+                "algorithm": "sha256",
+                "scope": "mesh"
+            }),
+        )
+        .await
+        .expect("content.locate mesh scope");
+    assert_eq!(res["hash"], hash);
+    assert_eq!(res["locations"].as_array().map(Vec::len), Some(0));
 }

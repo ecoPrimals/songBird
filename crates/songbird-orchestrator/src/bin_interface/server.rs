@@ -49,6 +49,9 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     if let Some(ref pid_dir) = args.pid_dir {
         songbird_process_env::set_var("SONGBIRD_PID_DIR", pid_dir);
     }
+    if let Some(ref node_id) = args.node_id {
+        songbird_process_env::set_var("GATE_ID", node_id);
+    }
 
     let actual_port = args.federation_port.unwrap_or_else(|| {
         songbird_process_env::var("SONGBIRD_FEDERATION_PORT")
@@ -106,6 +109,9 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     }
     if let Some(ref node) = node_identity {
         tracing::info!("   Node ID: {}", node);
+    }
+    if let Some(ref gate_id) = args.node_id {
+        tracing::info!("   Gate ID: {}", gate_id);
     }
 
     tracing::info!("📋 Loading configuration...");

@@ -53,7 +53,7 @@ fn capabilities_list_wire_standard_l3_envelope() {
     let methods = v["methods"].as_array().unwrap();
     assert!(!methods.is_empty());
     assert!(methods.iter().any(|m| m == "health.liveness"));
-    assert!(methods.iter().any(|m| m == "capabilities.list"));
+    assert!(methods.iter().any(|m| m == "capability.list"));
     assert!(methods.iter().any(|m| m == "identity.get"));
     assert!(methods.iter().any(|m| m == "http.request"));
     assert!(methods.iter().any(|m| m == "stun.serve"));
@@ -103,6 +103,10 @@ fn identity_get_wire_standard() {
     assert!(v["version"].as_str().unwrap().contains('.'), "version must be semver");
     assert_eq!(v["domain"].as_str().unwrap(), "network");
     assert_eq!(v["license"].as_str().unwrap(), "AGPL-3.0-or-later");
+    let methods = v["methods"].as_array().expect("methods must be present");
+    assert!(!methods.is_empty(), "methods must list callable RPC methods");
+    assert!(methods.iter().any(|m| m == "identity.get"));
+    assert!(methods.iter().any(|m| m == "gossip.relay"));
 }
 
 #[test]
@@ -258,7 +262,7 @@ fn rpc_discover_standard_contains_capabilities_listing() {
     assert!(methods.iter().any(|m| m == "health.liveness"));
     assert!(methods.iter().any(|m| m == "health.readiness"));
     assert!(methods.iter().any(|m| m == "health.check"));
-    assert!(methods.iter().any(|m| m == "capabilities.list"));
+    assert!(methods.iter().any(|m| m == "capability.list"));
 }
 
 #[test]
@@ -291,8 +295,8 @@ fn health_check_includes_primal_and_version() {
 
 #[test]
 fn normalize_method_canonicalizes_capability_list_aliases() {
-    assert_eq!(normalize_method("capabilities.list"), "capabilities.list");
-    assert_eq!(normalize_method("capability.list"), "capabilities.list");
+    assert_eq!(normalize_method("capability.list"), "capability.list");
+    assert_eq!(normalize_method("capabilities.list"), "capability.list");
     assert_eq!(normalize_method("primal.capabilities"), "primal.capabilities");
 }
 

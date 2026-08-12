@@ -261,3 +261,134 @@ fn test_security_error_display_impl_path() {
     let err: &(dyn std::error::Error) = &s;
     assert!(err.to_string().contains("denied"));
 }
+
+#[test]
+fn test_runtime_and_response_extraction_variants_display() {
+    let runtime = SongbirdError::Runtime {
+        message: "task panicked".into(),
+        component: Some("worker".into()),
+        debug_info: Some("stack omitted".into()),
+    };
+    assert!(
+        runtime.to_string().contains("Async runtime")
+            || runtime.to_string().contains("task panicked")
+    );
+
+    let extract = SongbirdError::ResponseExtraction {
+        message: "empty data field".into(),
+    };
+    assert!(extract.to_string().contains("Response error"));
+    assert!(extract.to_string().contains("empty data"));
+}
+
+#[test]
+fn test_configuration_with_context_updates_suggestion() {
+    let mut e = SongbirdError::configuration("missing bind");
+    e.with_context("set SONGBIRD_BIND_ADDRESS");
+    match e {
+        SongbirdError::Configuration {
+            suggestion,
+            ..
+        } => {
+            assert_eq!(suggestion.as_deref(), Some("set SONGBIRD_BIND_ADDRESS"));
+        }
+        _ => panic!("expected Configuration"),
+    }
+}
+
+#[test]
+fn test_network_with_context_updates_suggestion() {
+    let mut e = SongbirdError::network("timeout");
+    e.with_context("retry after 5s");
+    match e {
+        SongbirdError::Network {
+            suggestion,
+            ..
+        } => {
+            assert_eq!(suggestion.as_deref(), Some("retry after 5s"));
+        }
+        _ => panic!("expected Network"),
+    }
+}
+
+#[test]
+fn test_automation_hint_all_variants_roundtrip() -> Result<(), Box<dyn std::error::Error>> {
+    let hints = [
+        AutomationHint::RetryExponential {
+            max_attempts: 5,
+            base_delay_ms: 200,
+        },
+        AutomationHint::RetryFixed {
+            max_attempts: 2,
+            interval_ms: 50,
+        },
+        AutomationHint::FallbackService {
+            alternatives: vec!["backup".into()],
+        },
+        AutomationHint::EscalateHuman {
+            urgency: Urgency::High,
+        },
+        AutomationHint::Ignore,
+        AutomationHint::CircuitOpen {
+            retry_after_secs: 30,
+        },
+    ];
+    for hint in hints {
+        let js = serde_json::to_string(&hint)?;
+        let _: AutomationHint = serde_json::from_str(&js)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn test_service_error_display_includes_service_name() {
+    let e = SongbirdError::service("orchestrator", "not ready");
+    let s = e.to_string();
+    assert!(s.contains("orchestrator"));
+    assert!(s.contains("not ready"));
+}
+
+#[test]
+fn test_validation_error_display() {
+    let e = SongbirdError::Validation {
+        message: "port out of range".into(),
+        field: Some("port".into()),
+        suggestion: None,
+    };
+    assert!(e.to_string().contains("Validation"));
+    assert!(e.to_string().contains("port"));
+}
+
+#[test]
+fn test_serialization_error_with_format_field() {
+    let e = SongbirdError::Serialization {
+        format: Some("TOML".into()),
+        message: "unexpected key".into(),
+        debug_info: Some("line 4".into()),
+    };
+    assert!(e.to_string().contains("Serialization"));
+    assert!(e.to_string().contains("unexpected key"));
+}
+
+#[test]
+fn test_rpc_error_with_method_and_code() {
+    let e = SongbirdError::Rpc {
+        message: "internal".into(),
+        method: Some("health.check".into()),
+        code: Some(-32000),
+    };
+    let s = e.to_string();
+    assert!(s.contains("RPC"));
+    assert!(s.contains("internal"));
+}
+
+#[test]
+fn test_discovery_error_with_backend() {
+    let e = SongbirdError::Discovery {
+        message: "timeout".into(),
+        backend: Some("consul".into()),
+        retry_strategy: Some("linear".into()),
+    };
+    assert!(e.to_string().contains("Discovery"));
+    assert!(e.to_string().contains("timeout"));
+}

@@ -4,6 +4,7 @@
 #![forbid(unsafe_code)]
 
 mod capability;
+mod content;
 mod gossip;
 mod introspection;
 mod mesh;
@@ -16,6 +17,7 @@ mod tests;
 use super::IpcServiceHandler;
 use crate::tower_atomic::JsonRpcHandler;
 use capability::dispatch_capability;
+use content::dispatch_content;
 use gossip::dispatch_gossip;
 use introspection::dispatch_introspection;
 use mesh::dispatch_mesh;
@@ -40,9 +42,12 @@ impl IpcServiceDispatch for IpcServiceHandler {
         match method {
             JsonRpcMethod::Primal(_)
             | JsonRpcMethod::Rpc(_)
-            | JsonRpcMethod::DiscoverCapabilities
+            | JsonRpcMethod::Capabilities(
+                CapabilitiesMethod::Discover
+                | CapabilitiesMethod::List
+                | CapabilitiesMethod::Methods,
+            )
             | JsonRpcMethod::Health(_)
-            | JsonRpcMethod::Capabilities(CapabilitiesMethod::List | CapabilitiesMethod::Methods)
             | JsonRpcMethod::Identity
             | JsonRpcMethod::IdentityGet(_)
             | JsonRpcMethod::Btsp(_)
@@ -77,6 +82,7 @@ impl IpcServiceDispatch for IpcServiceHandler {
 
             JsonRpcMethod::Mesh(_) => dispatch_mesh(self, method, params).await,
             JsonRpcMethod::Gossip(_) => dispatch_gossip(self, method, params).await,
+            JsonRpcMethod::Content(_) => dispatch_content(self, method, params).await,
 
             JsonRpcMethod::Stun(_)
             | JsonRpcMethod::Igd(_)

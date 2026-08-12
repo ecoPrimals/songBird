@@ -19,7 +19,7 @@ impl IpcServiceHandler {
     /// - Mesh initialization state
     /// - Peer connectivity summary
     /// - Drawbridge proxy readiness
-    #[allow(clippy::unused_async)]
+    #[allow(clippy::unused_async, reason = "async signature matches JsonRpcHandler dispatch table")]
     pub(super) async fn handle_tower_health(&self) -> Result<Value, String> {
         let mesh_initialized = self.mesh_handler.is_initialized();
         let peer_count = self.mesh_handler.peer_count();
@@ -52,7 +52,7 @@ impl IpcServiceHandler {
     }
 
     /// Handle `tower.mesh_status` — enriched mesh status for Tower validation.
-    #[allow(clippy::unused_async)]
+    #[allow(clippy::unused_async, reason = "async signature matches JsonRpcHandler dispatch table")]
     pub(super) async fn handle_tower_mesh_status(&self) -> Result<Value, String> {
         let mesh_initialized = self.mesh_handler.is_initialized();
         let peer_count = self.mesh_handler.peer_count();
@@ -75,7 +75,7 @@ impl IpcServiceHandler {
     /// bearDog calls this when it needs songBird's drawbridge to serve an
     /// ACME challenge response. Once registered, GET requests to
     /// `/.well-known/acme-challenge/{token}` will return the authorization.
-    #[allow(clippy::unused_async)]
+    #[allow(clippy::unused_async, reason = "async signature matches JsonRpcHandler dispatch table")]
     pub(super) async fn handle_acme_challenge_ready(&self, params: Value) -> Result<Value, String> {
         let token = params
             .get("token")
@@ -93,7 +93,7 @@ impl IpcServiceHandler {
     }
 
     /// Handle `acme.challenge_cleanup` — remove a completed challenge token.
-    #[allow(clippy::unused_async)]
+    #[allow(clippy::unused_async, reason = "async signature matches JsonRpcHandler dispatch table")]
     pub(super) async fn handle_acme_challenge_cleanup(
         &self,
         params: Value,

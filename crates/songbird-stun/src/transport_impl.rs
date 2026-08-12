@@ -72,10 +72,7 @@ impl CanonicalTransport for StunTransport {
         TransportHealth {
             ready,
             active_connections: stats.requests_handled,
-            message: format!(
-                "handled={} errors={}",
-                stats.requests_handled, stats.errors
-            ),
+            message: format!("handled={} errors={}", stats.requests_handled, stats.errors),
         }
     }
 

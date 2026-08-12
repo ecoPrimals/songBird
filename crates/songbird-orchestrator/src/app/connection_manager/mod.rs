@@ -95,7 +95,7 @@ impl ConnectionManager {
         capabilities: Vec<String>,
         peer_tags: Vec<String>,
         trust_decision: &PeerTrustDecision,
-        discovery_method: String,
+        discovery_method: impl AsRef<str>,
     ) -> Result<()> {
         self.trust_evaluator
             .handle_decision(
@@ -104,7 +104,7 @@ impl ConnectionManager {
                 capabilities,
                 peer_tags,
                 trust_decision,
-                discovery_method,
+                discovery_method.as_ref().into(),
                 &self.connections,
                 &self.peer_registry,
                 &self.btsp_factory,

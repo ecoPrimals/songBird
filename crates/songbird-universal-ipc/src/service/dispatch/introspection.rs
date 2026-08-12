@@ -27,7 +27,9 @@ pub(super) async fn dispatch_introspection(
         JsonRpcMethod::Rpc(RpcMethod::Discover) => {
             Ok(crate::introspection::rpc_discover_standard())
         }
-        JsonRpcMethod::DiscoverCapabilities => Ok(crate::introspection::discover_capabilities()),
+        JsonRpcMethod::Capabilities(CapabilitiesMethod::Discover) => {
+            Ok(crate::introspection::discover_capabilities())
+        }
 
         JsonRpcMethod::Health(HealthMethod::Liveness | HealthMethod::Ping) => {
             Ok(crate::introspection::health_liveness())

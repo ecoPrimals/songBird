@@ -4,7 +4,7 @@
 //! Node capability discovery for deployment endpoints.
 
 use axum::{Json, extract::State};
-use songbird_types::sys_metrics;
+use songbird_types::{network_info, sys_metrics};
 use tracing::info;
 
 use super::types::{
@@ -132,65 +132,14 @@ fn tun_interface_exists() -> bool {
 fn is_internet_facing() -> bool {
     let bind_addr =
         songbird_process_env::var("SONGBIRD_PRODUCTION_BIND_ADDRESS").unwrap_or_default();
-    if bind_addr == songbird_types::constants::PRODUCTION_BIND_ADDRESS && has_public_ip_interface()
+    if bind_addr == songbird_types::constants::PRODUCTION_BIND_ADDRESS
+        && network_info::has_public_ipv4_interface()
     {
         return true;
     }
 
     songbird_process_env::var("SONGBIRD_FEDERATION_MODE")
         .is_ok_and(|v| v.eq_ignore_ascii_case("internet") || v.eq_ignore_ascii_case("wan"))
-}
-
-/// Checks if any network interface has a non-private IPv4 address assigned.
-/// Reads local addresses from `/proc/net/fib_trie` LOCAL entries.
-fn has_public_ip_interface() -> bool {
-    let Ok(content) = std::fs::read_to_string("/proc/net/fib_trie") else {
-        return check_default_route_exists();
-    };
-
-    let mut prev_ip: Option<[u8; 4]> = None;
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if let Some(ip_str) = trimmed.strip_prefix("|-- ").or_else(|| trimmed.strip_prefix("+-- "))
-            && let Some(octets) = parse_ipv4_octets(ip_str.trim())
-        {
-            prev_ip = Some(octets);
-        }
-        if trimmed.contains("/32 host LOCAL")
-            && let Some(octets) = prev_ip
-            && !is_private_or_special(octets)
-        {
-            return true;
-        }
-    }
-    false
-}
-
-fn parse_ipv4_octets(s: &str) -> Option<[u8; 4]> {
-    let parts: Vec<&str> = s.split('.').collect();
-    if parts.len() != 4 {
-        return None;
-    }
-    Some([
-        parts[0].parse().ok()?,
-        parts[1].parse().ok()?,
-        parts[2].parse().ok()?,
-        parts[3].parse().ok()?,
-    ])
-}
-
-fn is_private_or_special(ip: [u8; 4]) -> bool {
-    matches!(ip, [10 | 127 | 0, ..] | [172, 16..=31, ..] | [192, 168, ..] | [169, 254, ..])
-}
-
-fn check_default_route_exists() -> bool {
-    let Ok(routes) = std::fs::read_to_string("/proc/net/route") else {
-        return false;
-    };
-    routes.lines().skip(1).any(|line| {
-        let fields: Vec<&str> = line.split_whitespace().collect();
-        fields.len() >= 3 && fields[1] == "00000000"
-    })
 }
 
 /// Peer-aware network type classification.
@@ -207,7 +156,7 @@ pub fn detect_network_type_for_peer(peer_ip: &str) -> String {
         return forced;
     }
 
-    let Some(peer_octets) = parse_ipv4_octets(peer_ip) else {
+    let Some(peer_octets) = network_info::parse_ipv4_octets(peer_ip) else {
         return detect_network_type();
     };
 
@@ -215,12 +164,13 @@ pub fn detect_network_type_for_peer(peer_ip: &str) -> String {
         return String::from("lan");
     }
 
-    let local_addrs = local_ipv4_addresses();
-    if local_addrs.iter().any(|local| same_subnet_24(*local, peer_octets)) {
+    let local_addrs: Vec<[u8; 4]> =
+        network_info::local_ipv4_from_fib_trie().into_iter().map(|ip| ip.octets()).collect();
+    if local_addrs.iter().any(|local| network_info::same_subnet_24(*local, peer_octets)) {
         return String::from("lan");
     }
 
-    if is_private_or_special(peer_octets) {
+    if network_info::is_private_or_special(peer_octets) {
         if tun_interface_exists() {
             return String::from("vpn");
         }
@@ -228,38 +178,6 @@ pub fn detect_network_type_for_peer(peer_ip: &str) -> String {
     }
 
     String::from("internet")
-}
-
-/// Collect local IPv4 addresses from `/proc/net/fib_trie` LOCAL entries.
-fn local_ipv4_addresses() -> Vec<[u8; 4]> {
-    let Ok(content) = std::fs::read_to_string("/proc/net/fib_trie") else {
-        return Vec::new();
-    };
-
-    let mut addrs = Vec::new();
-    let mut prev_ip: Option<[u8; 4]> = None;
-
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if let Some(ip_str) = trimmed.strip_prefix("|-- ").or_else(|| trimmed.strip_prefix("+-- "))
-            && let Some(octets) = parse_ipv4_octets(ip_str.trim())
-        {
-            prev_ip = Some(octets);
-        }
-        if trimmed.contains("/32 host LOCAL")
-            && let Some(octets) = prev_ip
-            && octets[0] != 127
-            && octets != [0, 0, 0, 0]
-        {
-            addrs.push(octets);
-        }
-    }
-    addrs
-}
-
-/// Check if two IPv4 addresses share the same /24 subnet.
-fn same_subnet_24(a: [u8; 4], b: [u8; 4]) -> bool {
-    a[0] == b[0] && a[1] == b[1] && a[2] == b[2]
 }
 
 /// Estimate bandwidth based on network type
@@ -317,36 +235,36 @@ mod tests {
 
     #[test]
     fn parse_ipv4_octets_valid() {
-        assert_eq!(parse_ipv4_octets("192.168.1.144"), Some([192, 168, 1, 144]));
-        assert_eq!(parse_ipv4_octets("10.0.0.1"), Some([10, 0, 0, 1]));
-        assert_eq!(parse_ipv4_octets("255.255.255.255"), Some([255, 255, 255, 255]));
+        assert_eq!(network_info::parse_ipv4_octets("192.168.1.144"), Some([192, 168, 1, 144]));
+        assert_eq!(network_info::parse_ipv4_octets("10.0.0.1"), Some([10, 0, 0, 1]));
+        assert_eq!(network_info::parse_ipv4_octets("255.255.255.255"), Some([255, 255, 255, 255]));
     }
 
     #[test]
     fn parse_ipv4_octets_invalid() {
-        assert_eq!(parse_ipv4_octets("not-an-ip"), None);
-        assert_eq!(parse_ipv4_octets("192.168.1"), None);
-        assert_eq!(parse_ipv4_octets(""), None);
+        assert_eq!(network_info::parse_ipv4_octets("not-an-ip"), None);
+        assert_eq!(network_info::parse_ipv4_octets("192.168.1"), None);
+        assert_eq!(network_info::parse_ipv4_octets(""), None);
     }
 
     #[test]
     fn is_private_or_special_classifies_correctly() {
-        assert!(is_private_or_special([10, 0, 0, 1]));
-        assert!(is_private_or_special([172, 16, 0, 1]));
-        assert!(is_private_or_special([172, 31, 255, 255]));
-        assert!(is_private_or_special([192, 168, 1, 1]));
-        assert!(is_private_or_special([127, 0, 0, 1]));
-        assert!(is_private_or_special([169, 254, 1, 1]));
-        assert!(!is_private_or_special([8, 8, 8, 8]));
-        assert!(!is_private_or_special([157, 230, 3, 183]));
-        assert!(!is_private_or_special([172, 32, 0, 1]));
+        assert!(network_info::is_private_or_special([10, 0, 0, 1]));
+        assert!(network_info::is_private_or_special([172, 16, 0, 1]));
+        assert!(network_info::is_private_or_special([172, 31, 255, 255]));
+        assert!(network_info::is_private_or_special([192, 168, 1, 1]));
+        assert!(network_info::is_private_or_special([127, 0, 0, 1]));
+        assert!(network_info::is_private_or_special([169, 254, 1, 1]));
+        assert!(!network_info::is_private_or_special([8, 8, 8, 8]));
+        assert!(!network_info::is_private_or_special([157, 230, 3, 183]));
+        assert!(!network_info::is_private_or_special([172, 32, 0, 1]));
     }
 
     #[test]
     fn same_subnet_24_works() {
-        assert!(same_subnet_24([192, 168, 1, 1], [192, 168, 1, 254]));
-        assert!(!same_subnet_24([192, 168, 1, 1], [192, 168, 2, 1]));
-        assert!(!same_subnet_24([10, 0, 0, 1], [10, 0, 1, 1]));
+        assert!(network_info::same_subnet_24([192, 168, 1, 1], [192, 168, 1, 254]));
+        assert!(!network_info::same_subnet_24([192, 168, 1, 1], [192, 168, 2, 1]));
+        assert!(!network_info::same_subnet_24([10, 0, 0, 1], [10, 0, 1, 1]));
     }
 
     #[test]

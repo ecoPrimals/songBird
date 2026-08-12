@@ -72,7 +72,10 @@ impl CircuitBreaker {
             CircuitState::Closed | CircuitState::HalfOpen => true,
             CircuitState::Open => {
                 let should_transition = {
-                    let last_failure = self.last_failure_time.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+                    let last_failure = self
+                        .last_failure_time
+                        .read()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
                     last_failure.is_some_and(|last| last.elapsed() >= self.config.timeout)
                 };
                 if should_transition {
@@ -95,7 +98,10 @@ impl CircuitBreaker {
             }
             CircuitState::HalfOpen => {
                 let should_close = {
-                    let mut success = self.success_count.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+                    let mut success = self
+                        .success_count
+                        .write()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
                     *success += 1;
                     *success >= self.config.success_threshold
                 };
@@ -117,7 +123,10 @@ impl CircuitBreaker {
         match state {
             CircuitState::Closed => {
                 let should_open = {
-                    let mut failures = self.failure_count.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+                    let mut failures = self
+                        .failure_count
+                        .write()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
                     *failures += 1;
                     *failures >= self.config.failure_threshold
                 };
@@ -129,7 +138,10 @@ impl CircuitBreaker {
                 self.transition_to_open();
             }
             CircuitState::Open => {
-                *self.last_failure_time.write().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Instant::now());
+                *self
+                    .last_failure_time
+                    .write()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Instant::now());
             }
         }
     }
@@ -142,18 +154,21 @@ impl CircuitBreaker {
 
     fn transition_to_open(&self) {
         *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Open;
-        *self.last_failure_time.write().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Instant::now());
+        *self.last_failure_time.write().unwrap_or_else(std::sync::PoisonError::into_inner) =
+            Some(Instant::now());
         *self.failure_count.write().unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
         *self.success_count.write().unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
     }
 
     fn transition_to_half_open(&self) {
-        *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::HalfOpen;
+        *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) =
+            CircuitState::HalfOpen;
         *self.success_count.write().unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
     }
 
     fn transition_to_closed(&self) {
-        *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) = CircuitState::Closed;
+        *self.state.write().unwrap_or_else(std::sync::PoisonError::into_inner) =
+            CircuitState::Closed;
         *self.failure_count.write().unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
         *self.success_count.write().unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
     }
@@ -297,5 +312,67 @@ mod tests {
         cb.reset().await;
         assert_eq!(cb.get_state().await, CircuitState::Closed);
         assert!(cb.is_request_allowed().await);
+    }
+
+    #[tokio::test]
+    async fn test_circuit_state_serde_roundtrip() {
+        for state in [CircuitState::Closed, CircuitState::Open, CircuitState::HalfOpen] {
+            let json = serde_json::to_string(&state).unwrap();
+            let back: CircuitState = serde_json::from_str(&json).unwrap();
+            assert_eq!(state, back);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_with_config_custom_thresholds() {
+        let config = CircuitBreakerConfig {
+            failure_threshold: 2,
+            timeout: Duration::from_secs(5),
+            success_threshold: 1,
+            half_open_max_requests: 3,
+            enabled: true,
+        };
+        let cb = CircuitBreaker::with_config(config);
+        cb.record_failure().await;
+        assert_eq!(cb.get_state().await, CircuitState::Closed);
+        cb.record_failure().await;
+        assert_eq!(cb.get_state().await, CircuitState::Open);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_open_state_extends_last_failure_on_repeated_failure() {
+        let config = CircuitBreakerConfig {
+            failure_threshold: 1,
+            timeout: Duration::from_millis(100),
+            ..Default::default()
+        };
+        let cb = CircuitBreaker::with_config(config);
+        cb.record_failure().await;
+        assert_eq!(cb.get_state().await, CircuitState::Open);
+
+        tokio::time::advance(Duration::from_millis(50)).await;
+        cb.record_failure().await;
+        assert_eq!(cb.get_state().await, CircuitState::Open);
+
+        tokio::time::advance(Duration::from_millis(110)).await;
+        assert!(cb.is_request_allowed().await);
+    }
+
+    #[tokio::test]
+    async fn test_success_in_open_transitions_to_closed() {
+        let cb = CircuitBreaker::new();
+        for _ in 0..5 {
+            cb.record_failure().await;
+        }
+        assert_eq!(cb.get_state().await, CircuitState::Open);
+        cb.record_success().await;
+        assert_eq!(cb.get_state().await, CircuitState::Closed);
+    }
+
+    #[tokio::test]
+    async fn test_default_impl_matches_new() {
+        let a = CircuitBreaker::default();
+        let b = CircuitBreaker::new();
+        assert_eq!(a.get_state().await, b.get_state().await);
     }
 }

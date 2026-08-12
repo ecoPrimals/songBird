@@ -46,7 +46,8 @@ impl ProductionAnalyticsEngine {
 
     async fn retrain_all_models(&self) -> SongbirdResult<()> {
         let metric_names: Vec<String> = {
-            let series_map = self.time_series.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let series_map =
+                self.time_series.read().unwrap_or_else(std::sync::PoisonError::into_inner);
             series_map.keys().cloned().collect()
         };
 
@@ -62,7 +63,8 @@ impl ProductionAnalyticsEngine {
 
     #[expect(clippy::unused_async, reason = "async for API stability")]
     async fn cleanup_old_data(&self) -> SongbirdResult<()> {
-        let mut series_map = self.time_series.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut series_map =
+            self.time_series.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         let cutoff_time = Utc::now() - chrono::Duration::hours(24);
 
         for series in series_map.values_mut() {

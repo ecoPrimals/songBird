@@ -645,4 +645,23 @@ mod tests {
         let val: i32 = SafeEnv::parse("__TEST_HELPERS_PARSE_MISSING__", 99);
         assert_eq!(val, 99);
     }
+
+    #[test]
+    fn parse_bool_relaxed_recognizes_case_insensitive() {
+        assert_eq!(parse_bool_relaxed(" TRUE "), Some(true));
+        assert_eq!(parse_bool_relaxed("No"), Some(false));
+        assert_eq!(parse_bool_relaxed("OFF"), Some(false));
+    }
+
+    #[test]
+    fn parse_bool_relaxed_unknown_returns_none() {
+        assert_eq!(parse_bool_relaxed("maybe"), None);
+        assert_eq!(parse_bool_relaxed(""), None);
+        assert_eq!(parse_bool_relaxed("2"), None);
+    }
+
+    #[test]
+    fn safe_parse_duration_millis_max_boundary_fails() {
+        assert!(SafeParse::duration_from_millis(u64::MAX, "timeout").is_err());
+    }
 }

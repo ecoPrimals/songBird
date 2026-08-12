@@ -206,7 +206,7 @@ pub async fn create_genetic_tunnel(
 /// # Errors
 ///
 /// Returns an error if the operation fails.
-#[allow(clippy::unused_async)]
+#[allow(clippy::unused_async, reason = "async signature matches other IPC handler entry points")]
 pub async fn announce_capabilities(
     _handlers: &IpcHandlers,
     params: serde_json::Value,

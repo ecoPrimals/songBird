@@ -55,7 +55,6 @@ pub mod drawbridge_auth;
 mod drawbridge_proxy;
 mod gossip_relay;
 mod http;
-mod swarmvine_gossip;
 mod http_proxy;
 pub mod ipc_pool;
 mod ipc_registry;
@@ -63,6 +62,7 @@ mod meta;
 pub mod relay_security;
 mod remote_dispatch;
 mod route;
+mod swarmvine_gossip;
 mod tower;
 mod util;
 pub mod virtual_relay;
@@ -84,7 +84,7 @@ pub struct GossipSubscription {
     /// Unique subscription ID (for unsubscribe).
     pub id: String,
     /// Subscriber's primal identifier.
-    pub primal_id: String,
+    pub primal_id: Arc<str>,
     /// UDS endpoint to deliver gossip payloads to.
     pub endpoint: std::path::PathBuf,
     /// Created timestamp for staleness detection.
@@ -95,12 +95,12 @@ pub struct GossipSubscription {
 #[derive(Debug, Default)]
 pub struct GossipSubscriptionRegistry {
     /// topic → list of subscriptions
-    pub subscriptions: std::collections::HashMap<String, Vec<GossipSubscription>>,
+    pub subscriptions: std::collections::HashMap<Arc<str>, Vec<GossipSubscription>>,
 }
 
 impl GossipSubscriptionRegistry {
     /// Register a subscription for a topic.
-    pub fn subscribe(&mut self, topic: String, sub: GossipSubscription) {
+    pub fn subscribe(&mut self, topic: Arc<str>, sub: GossipSubscription) {
         self.subscriptions.entry(topic).or_default().push(sub);
     }
 

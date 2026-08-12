@@ -88,6 +88,72 @@ pub fn total_memory_gb() -> usize {
     memory_info().map_or(0, |m| m.total_gb() as usize)
 }
 
+/// Extended memory fields from `/proc/meminfo` (cached, buffers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DetailedMemoryInfo {
+    /// Total physical memory in bytes.
+    pub total: u64,
+    /// Available memory in bytes.
+    pub available: u64,
+    /// Cached memory in bytes.
+    pub cached: u64,
+    /// Buffer memory in bytes.
+    pub buffers: u64,
+}
+
+impl DetailedMemoryInfo {
+    /// Used memory in bytes.
+    #[must_use]
+    pub const fn used(&self) -> u64 {
+        self.total.saturating_sub(self.available)
+    }
+
+    /// Total memory in gigabytes (integer, rounded down).
+    #[must_use]
+    pub const fn total_gb(&self) -> u64 {
+        self.total / BYTES_PER_GB
+    }
+
+    /// Available memory in gigabytes (integer, rounded down).
+    #[must_use]
+    pub const fn available_gb(&self) -> u64 {
+        self.available / BYTES_PER_GB
+    }
+
+    /// Used memory in gigabytes (integer, rounded down).
+    #[must_use]
+    pub const fn used_gb(&self) -> u64 {
+        self.used() / BYTES_PER_GB
+    }
+
+    /// Cached memory in gigabytes (integer, rounded down).
+    #[must_use]
+    pub const fn cached_gb(&self) -> u64 {
+        self.cached / BYTES_PER_GB
+    }
+
+    /// Buffer memory in gigabytes (integer, rounded down).
+    #[must_use]
+    pub const fn buffers_gb(&self) -> u64 {
+        self.buffers / BYTES_PER_GB
+    }
+}
+
+/// Read extended memory info from `/proc/meminfo`.
+#[cfg(target_os = "linux")]
+#[must_use]
+pub fn detailed_memory_info() -> Option<DetailedMemoryInfo> {
+    let contents = std::fs::read_to_string("/proc/meminfo").ok()?;
+    parse_detailed_meminfo(&contents)
+}
+
+/// Non-Linux fallback.
+#[cfg(not(target_os = "linux"))]
+#[must_use]
+pub fn detailed_memory_info() -> Option<DetailedMemoryInfo> {
+    None
+}
+
 /// Disk space information for a block device.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiskInfo {
@@ -174,12 +240,26 @@ pub fn total_disk_gb() -> Option<usize> {
 #[must_use]
 #[expect(clippy::cast_precision_loss, reason = "core count clamped to 1024 — fits f32 exactly")]
 pub fn load_percent() -> f32 {
-    let cores = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
-    let cores_f = cores.min(1024) as f32;
-    std::fs::read_to_string("/proc/loadavg")
-        .ok()
-        .and_then(|s| s.split_whitespace().next().and_then(|v| v.parse::<f32>().ok()))
-        .map_or(0.0, |load1| (load1 / cores_f * 100.0).min(100.0))
+    load_average().map_or(0.0, |loads| {
+        let cores = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
+        let cores_f = cores.min(1024) as f32;
+        (loads[0] / cores_f * 100.0).min(100.0)
+    })
+}
+
+/// Read 1/5/15-minute load averages from `/proc/loadavg` (Linux only).
+#[cfg(target_os = "linux")]
+#[must_use]
+pub fn load_average() -> Option<[f32; 3]> {
+    let contents = std::fs::read_to_string("/proc/loadavg").ok()?;
+    parse_loadavg(&contents)
+}
+
+/// Non-Linux fallback: returns `None`.
+#[cfg(not(target_os = "linux"))]
+#[must_use]
+pub fn load_average() -> Option<[f32; 3]> {
+    None
 }
 
 /// Non-Linux fallback: returns 0.0 (no /proc/loadavg available).
@@ -190,6 +270,42 @@ pub fn load_percent() -> f32 {
 }
 
 // ---- Internal parsers (Linux /proc) ----
+
+#[cfg(any(target_os = "linux", test))]
+fn parse_detailed_meminfo(contents: &str) -> Option<DetailedMemoryInfo> {
+    let mut total = None;
+    let mut available = None;
+    let mut cached = 0_u64;
+    let mut buffers = 0_u64;
+
+    for line in contents.lines() {
+        if let Some(rest) = line.strip_prefix("MemTotal:") {
+            total = parse_kb_value(rest);
+        } else if let Some(rest) = line.strip_prefix("MemAvailable:") {
+            available = parse_kb_value(rest);
+        } else if let Some(rest) = line.strip_prefix("Cached:") {
+            cached = parse_kb_value(rest).unwrap_or(0);
+        } else if let Some(rest) = line.strip_prefix("Buffers:") {
+            buffers = parse_kb_value(rest).unwrap_or(0);
+        }
+    }
+
+    Some(DetailedMemoryInfo {
+        total: total? * KB_TO_BYTES,
+        available: available? * KB_TO_BYTES,
+        cached: cached * KB_TO_BYTES,
+        buffers: buffers * KB_TO_BYTES,
+    })
+}
+
+#[cfg(any(target_os = "linux", test))]
+fn parse_loadavg(contents: &str) -> Option<[f32; 3]> {
+    let mut values = contents.split_whitespace();
+    let load1 = values.next()?.parse().ok()?;
+    let load5 = values.next()?.parse().ok()?;
+    let load15min = values.next()?.parse().ok()?;
+    Some([load1, load5, load15min])
+}
 
 #[cfg(any(target_os = "linux", test))]
 fn parse_meminfo(contents: &str) -> Option<MemoryInfo> {
@@ -224,6 +340,31 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
     use super::*;
+
+    #[test]
+    fn parse_loadavg_typical() {
+        let input = "0.52 0.48 0.45 2/341 12345\n";
+        let loads = parse_loadavg(input).unwrap();
+        assert!((loads[0] - 0.52).abs() < f32::EPSILON);
+        assert!((loads[1] - 0.48).abs() < f32::EPSILON);
+        assert!((loads[2] - 0.45).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn parse_detailed_meminfo_includes_cached_buffers() {
+        let input = "\
+MemTotal:       32768000 kB
+MemAvailable:   16000000 kB
+Cached:          2000000 kB
+Buffers:          500000 kB
+";
+        let info = parse_detailed_meminfo(input).unwrap();
+        assert_eq!(info.total_gb(), 31);
+        assert_eq!(info.available_gb(), 15);
+        assert_eq!(info.cached_gb(), 1);
+        assert_eq!(info.buffers_gb(), 0);
+        assert_eq!(info.used_gb(), 15);
+    }
 
     #[test]
     fn parse_meminfo_typical() {

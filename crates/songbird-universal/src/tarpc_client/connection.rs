@@ -3,6 +3,8 @@
 
 //! Lazy TCP and UDS connection with bincode-framed tarpc transport.
 
+use std::sync::Arc;
+
 use tracing::{debug, info};
 
 use crate::tarpc_types::SongbirdRpcClient;
@@ -11,23 +13,23 @@ use songbird_types::{SongbirdError, SongbirdResult};
 use super::TarpcClient;
 
 impl TarpcClient {
-    pub(super) async fn get_connection(&self) -> SongbirdResult<SongbirdRpcClient> {
+    pub(super) async fn get_connection(&self) -> SongbirdResult<Arc<SongbirdRpcClient>> {
         {
             let conn = self.connection.read().await;
             if let Some(ref client) = *conn {
-                return Ok(client.clone());
+                return Ok(Arc::clone(client));
             }
         }
 
         let mut conn = self.connection.write().await;
 
         if let Some(ref client) = *conn {
-            return Ok(client.clone());
+            return Ok(Arc::clone(client));
         }
 
         info!("Establishing tarpc connection to {}", self.addr);
-        let client = self.connect().await?;
-        *conn = Some(client.clone());
+        let client = Arc::new(self.connect().await?);
+        *conn = Some(Arc::clone(&client));
 
         Ok(client)
     }

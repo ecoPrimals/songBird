@@ -406,4 +406,56 @@ mod tests {
             "no primal errors when none enabled"
         );
     }
+
+    #[test]
+    fn validation_result_total_issues_counts_errors_and_warnings() {
+        let mut r = ValidationResult::new();
+        assert_eq!(r.total_issues(), 0);
+        assert!(r.is_valid());
+
+        r.errors.push(ValidationError {
+            field: String::from("a"),
+            message: String::from("err"),
+            current_value: None,
+            expected_value: None,
+            severity: ValidationSeverity::Critical,
+            suggestion: String::from("fix a"),
+        });
+        r.warnings.push(ValidationWarning {
+            field: String::from("b"),
+            message: String::from("warn"),
+            current_value: None,
+            recommended_value: None,
+            severity: ValidationSeverity::Low,
+            suggestion: String::from("fix b"),
+        });
+        assert_eq!(r.total_issues(), 2);
+        assert!(!r.is_valid());
+    }
+
+    #[test]
+    fn validation_result_is_valid_flag_follows_errors_vec() {
+        let mut r = ValidationResult::new();
+        r.is_valid = true;
+        r.errors.push(ValidationError {
+            field: String::from("x"),
+            message: String::from("bad"),
+            current_value: None,
+            expected_value: None,
+            severity: ValidationSeverity::High,
+            suggestion: String::from("fix"),
+        });
+        assert!(!r.is_valid());
+    }
+
+    #[test]
+    fn non_empty_bind_address_skips_empty_check() {
+        let mut c = SongbirdConfig::test_defaults();
+        c.network.bind_address = String::from("not-an-ip");
+        let r = c.validate().unwrap();
+        assert!(
+            !r.errors.iter().any(|e| e.field == "network.bind_address"),
+            "basic validation only rejects empty bind_address"
+        );
+    }
 }

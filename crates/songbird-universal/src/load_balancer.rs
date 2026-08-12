@@ -142,7 +142,8 @@ impl LoadBalancer {
         &self,
         available: &[&'a LoadBalancedEndpoint],
     ) -> &'a LoadBalancedEndpoint {
-        let mut counter = self.round_robin_counter.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut counter =
+            self.round_robin_counter.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         let index = *counter % available.len();
         *counter = counter.wrapping_add(1);
         available[index]
@@ -174,7 +175,8 @@ impl LoadBalancer {
     /// Mark an endpoint as unavailable
     #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn mark_endpoint_unavailable(&self, url: &str) {
-        let mut endpoints = self.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut endpoints =
+            self.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         if let Some(endpoint) = endpoints.iter_mut().find(|e| e.url == url) {
             endpoint.mark_unavailable();
         }
@@ -183,7 +185,8 @@ impl LoadBalancer {
     /// Mark an endpoint as available
     #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn mark_endpoint_available(&self, url: &str) {
-        let mut endpoints = self.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut endpoints =
+            self.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         if let Some(endpoint) = endpoints.iter_mut().find(|e| e.url == url) {
             endpoint.mark_available();
         }
@@ -192,7 +195,8 @@ impl LoadBalancer {
     /// Update health score for an endpoint
     #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn update_endpoint_health(&self, url: &str, health_score: f64) {
-        let mut endpoints = self.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut endpoints =
+            self.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         if let Some(endpoint) = endpoints.iter_mut().find(|e| e.url == url) {
             endpoint.update_health(health_score);
         }
@@ -210,13 +214,23 @@ impl LoadBalancer {
     /// Get count of healthy endpoints (zero-clone)
     #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn healthy_count(&self) -> usize {
-        self.endpoints.read().unwrap_or_else(std::sync::PoisonError::into_inner).iter().filter(|e| e.available && e.health_score > 0.5).count()
+        self.endpoints
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .iter()
+            .filter(|e| e.available && e.health_score > 0.5)
+            .count()
     }
 
     /// Get count of available endpoints
     #[expect(clippy::unused_async, reason = "async for API stability")]
     pub async fn available_count(&self) -> usize {
-        self.endpoints.read().unwrap_or_else(std::sync::PoisonError::into_inner).iter().filter(|e| e.available).count()
+        self.endpoints
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .iter()
+            .filter(|e| e.available)
+            .count()
     }
 }
 
@@ -394,5 +408,85 @@ mod tests {
         lb.update_endpoint_health(&endpoints[0], 0.0).await;
         let eps = lb.get_endpoints().await;
         assert!(!eps[0].available);
+    }
+
+    #[tokio::test]
+    async fn test_random_strategy_returns_valid_endpoint() {
+        let endpoints = vec![
+            String::from("http://a:1"),
+            String::from("http://b:2"),
+            String::from("http://c:3"),
+        ];
+        let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::Random);
+        let selected = lb.get_next_endpoint().await.unwrap();
+        assert!(endpoints.contains(&selected));
+    }
+
+    #[tokio::test]
+    async fn test_endpoint_connection_tracking() {
+        let endpoints = vec![String::from("http://endpoint1:8080")];
+        let lb = LoadBalancer::new(endpoints, LoadBalancingStrategy::LeastLoaded);
+        {
+            let mut eps = lb.endpoints.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+            eps[0].increment_connections();
+            eps[0].increment_connections();
+            eps[0].record_request();
+            assert_eq!(eps[0].active_connections, 2);
+            assert_eq!(eps[0].total_requests, 1);
+            eps[0].decrement_connections();
+            assert_eq!(eps[0].active_connections, 1);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_mark_available_restores_zero_health_to_one() {
+        let endpoints = vec![String::from("http://endpoint1:8080")];
+        let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
+        lb.mark_endpoint_unavailable(&endpoints[0]).await;
+        lb.mark_endpoint_available(&endpoints[0]).await;
+        let eps = lb.get_endpoints().await;
+        assert!(eps[0].available);
+        assert_eq!(eps[0].health_score, 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_update_health_clamps_out_of_range_scores() {
+        let endpoints = vec![String::from("http://endpoint1:8080")];
+        let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::HealthBased);
+        lb.update_endpoint_health(&endpoints[0], 1.5).await;
+        let eps = lb.get_endpoints().await;
+        assert_eq!(eps[0].health_score, 1.0);
+        lb.update_endpoint_health(&endpoints[0], -0.5).await;
+        let eps = lb.get_endpoints().await;
+        assert_eq!(eps[0].health_score, 0.0);
+        assert!(!eps[0].available);
+    }
+
+    #[tokio::test]
+    async fn test_healthy_count_excludes_low_health_endpoints() {
+        let endpoints = vec![String::from("http://a:1"), String::from("http://b:2")];
+        let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::HealthBased);
+        lb.update_endpoint_health(&endpoints[0], 0.9).await;
+        lb.update_endpoint_health(&endpoints[1], 0.3).await;
+        assert_eq!(lb.healthy_count().await, 1);
+    }
+
+    #[tokio::test]
+    async fn test_load_balanced_endpoint_mark_unavailable() {
+        let mut ep = LoadBalancedEndpoint::new(String::from("http://x:1"));
+        ep.mark_unavailable();
+        assert!(!ep.available);
+        assert_eq!(ep.health_score, 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_round_robin_skips_unavailable_endpoints() {
+        let endpoints = vec![String::from("http://a:1"), String::from("http://b:2")];
+        let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
+        lb.mark_endpoint_unavailable(&endpoints[0]).await;
+        let first = lb.get_next_endpoint().await.unwrap();
+        let second = lb.get_next_endpoint().await.unwrap();
+        assert_eq!(first, endpoints[1]);
+        assert_eq!(second, endpoints[1]);
     }
 }

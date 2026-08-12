@@ -5,7 +5,7 @@
 
 use songbird_types::json_rpc_method::{
     CapabilitiesMethod, CoordinationMethod, DiscoveryMethod, GraphMethod, HealthMethod, HttpMethod,
-    IpcMethod, LegacyMethod, PrimalMethod,
+    IpcMethod, PrimalMethod, TunnelMethod,
 };
 use songbird_types::{JsonRpcMethod, normalize_json_rpc_method_name};
 
@@ -114,7 +114,7 @@ impl UnixSocketServer {
                 let socket = self.socket_path.to_string_lossy();
                 Ok(songbird_universal_ipc::introspection::primal_announce_with_socket(&socket))
             }
-            Ok(JsonRpcMethod::DiscoverCapabilities) => {
+            Ok(JsonRpcMethod::Capabilities(CapabilitiesMethod::Discover)) => {
                 coordination_handlers::handle_discover_capabilities().await
             }
             Ok(JsonRpcMethod::Http(HttpMethod::Request)) => {
@@ -146,19 +146,19 @@ impl UnixSocketServer {
             Ok(JsonRpcMethod::Http(HttpMethod::Proxy)) => Ok(serde_json::json!({
                 "error": "http.proxy not available on this transport path — use the Universal IPC socket"
             })),
-            Ok(JsonRpcMethod::Legacy(LegacyMethod::DiscoverByFamily)) => {
+            Ok(JsonRpcMethod::Discovery(DiscoveryMethod::ByFamily)) => {
                 self.handlers.discover_by_family_json(request.params).await
             }
-            Ok(JsonRpcMethod::Legacy(LegacyMethod::CreateGeneticTunnel)) => {
+            Ok(JsonRpcMethod::Tunnel(TunnelMethod::CreateGenetic)) => {
                 self.handlers.create_genetic_tunnel_json(request.params).await
             }
-            Ok(JsonRpcMethod::Legacy(LegacyMethod::AnnounceCapabilities)) => {
+            Ok(JsonRpcMethod::Capabilities(CapabilitiesMethod::Announce)) => {
                 self.handlers.announce_capabilities_json(request.params).await
             }
-            Ok(JsonRpcMethod::Legacy(LegacyMethod::DiscoverByCapability)) => {
+            Ok(JsonRpcMethod::Discovery(DiscoveryMethod::ByCapability)) => {
                 self.handlers.discover_by_capability_json(request.params).await
             }
-            Ok(JsonRpcMethod::Legacy(LegacyMethod::GetServiceHealth)) => {
+            Ok(JsonRpcMethod::Health(HealthMethod::Service)) => {
                 self.handlers.get_service_health_json(request.params).await
             }
             Ok(JsonRpcMethod::Graph(GraphMethod::Validate)) => {

@@ -79,8 +79,8 @@ pub use zero_copy::{Shareable, Shared, SharedBytes, arc, share, smart_cow};
 // Re-export traits
 pub use traits::{
     CanonicalConfigProvider, CanonicalHealthCheck as HealthCheckTrait, CanonicalLoadBalancer,
-    CanonicalObservabilityProvider, CanonicalServiceDiscovery, CanonicalTransport, DetailedHealthInfo,
-    HealthStatus, ServiceInstanceStatus, TransportHealth,
+    CanonicalObservabilityProvider, CanonicalServiceDiscovery, CanonicalTransport,
+    DetailedHealthInfo, HealthStatus, ServiceInstanceStatus, TransportHealth,
 };
 
 // Re-export all canonical constants
@@ -105,11 +105,11 @@ pub mod health;
 pub mod ipc_stream;
 pub mod lineage; // Genetic lineage types
 pub mod memory_optimized;
+pub mod platform_substrate; // G68: PlatformAccess, platform_link — eliminate silicon deism
 pub mod primal;
 pub mod response;
 pub mod service;
 pub mod traits;
-pub mod platform_substrate; // G68: PlatformAccess, platform_link — eliminate silicon deism
 pub mod transport; // G66: TransportEndpoint (platform-neutral where-to-connect)
 pub mod transport_listener; // G66: TransportListener (platform-abstracted accept loop)
 pub mod trust;
@@ -128,6 +128,12 @@ pub use json_rpc_method::{JsonRpcMethod, JsonRpcMethodParseError, normalize_json
 
 // Pure Rust system metrics (replaces sysinfo crate for ecoBin v3.0)
 pub mod sys_metrics;
+
+/// Cross-platform process lifecycle operations.
+pub mod process_ops;
+
+/// Network route and local IP detection.
+pub mod network_info;
 
 // Modern safe buffer - 100% safe Rust (RECOMMENDED)
 //

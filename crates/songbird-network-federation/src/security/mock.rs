@@ -52,7 +52,10 @@ impl MockSecurityProvider {
 
     /// Add a fake lineage for testing
     pub async fn add_test_lineage(&self, root: String, descendants: Vec<String>) {
-        self.lineages.write().unwrap_or_else(std::sync::PoisonError::into_inner).insert(root, descendants);
+        self.lineages
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(root, descendants);
     }
 
     /// Generate lineage for a new node
@@ -152,7 +155,10 @@ impl MockSecurityProvider {
             valid_until: chrono::Utc::now() + chrono::Duration::days(30),
         };
 
-        self.keys.write().unwrap_or_else(std::sync::PoisonError::into_inner).insert(key_id, key.clone());
+        self.keys
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(key_id, key.clone());
         Ok(key)
     }
 
@@ -187,7 +193,10 @@ impl MockSecurityProvider {
             expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
         };
 
-        self.sessions.write().unwrap_or_else(std::sync::PoisonError::into_inner).insert(session.session_id.clone(), session.clone());
+        self.sessions
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(session.session_id.clone(), session.clone());
         Ok(session)
     }
 

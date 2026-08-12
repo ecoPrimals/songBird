@@ -28,7 +28,6 @@ serde_json = { workspace = true }
 songbird-process-env.workspace = true
 songbird-types = { path = "../songbird-types" }
 anyhow = { workspace = true }
-thiserror = { workspace = true }
 
 # Logging & tracing
 tracing = { workspace = true }

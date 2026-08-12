@@ -122,17 +122,14 @@ impl CapabilityPortRegistry {
         source: PortSource,
         description: Option<String>,
     ) {
-        self.ports
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .insert(
-                capability,
-                PortConfig {
-                    port,
-                    source,
-                    description,
-                },
-            );
+        self.ports.write().unwrap_or_else(std::sync::PoisonError::into_inner).insert(
+            capability,
+            PortConfig {
+                port,
+                source,
+                description,
+            },
+        );
     }
 
     /// Get the port for a capability
@@ -142,14 +139,13 @@ impl CapabilityPortRegistry {
     /// Returns an error if the capability is not registered.
     pub fn get_port(&self, capability: &CapabilityId) -> SongbirdResult<u16> {
         let ports = self.ports.read().unwrap_or_else(std::sync::PoisonError::into_inner);
-        ports
-            .get(capability)
-            .map(|config| config.port)
-            .ok_or_else(|| SongbirdError::Configuration {
+        ports.get(capability).map(|config| config.port).ok_or_else(|| {
+            SongbirdError::Configuration {
                 message: format!("Capability '{}' not registered", capability.as_str()),
                 field: Some(String::from("capability")),
                 suggestion: Some(String::from("Register the capability before querying its port")),
-            })
+            }
+        })
     }
 
     /// Get the full port configuration for a capability
@@ -213,10 +209,7 @@ impl CapabilityPortRegistry {
 
     /// Clear all registrations
     pub fn clear(&self) {
-        self.ports
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .clear();
+        self.ports.write().unwrap_or_else(std::sync::PoisonError::into_inner).clear();
     }
 }
 
@@ -344,14 +337,92 @@ mod tests {
 
     #[test]
     fn test_clear() {
-        let registry = RegistryBuilder::new()
-            .with_port("service.a", 8080, PortSource::ConfigFile)
-            .build();
+        let registry =
+            RegistryBuilder::new().with_port("service.a", 8080, PortSource::ConfigFile).build();
 
         assert!(registry.has_capability(&CapabilityId::new("service.a")));
 
         registry.clear();
 
         assert!(!registry.has_capability(&CapabilityId::new("service.a")));
+    }
+
+    #[test]
+    fn get_port_errors_for_unregistered_capability() {
+        let registry = CapabilityPortRegistry::new();
+        let cap = CapabilityId::new("missing.service");
+        let err = registry.get_port(&cap).unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("missing.service") || msg.contains("not registered"));
+    }
+
+    #[test]
+    fn get_config_errors_for_unregistered_capability() {
+        let registry = CapabilityPortRegistry::new();
+        let err = registry.get_config(&CapabilityId::from("unknown")).unwrap_err();
+        assert!(matches!(err, SongbirdError::Configuration { .. }));
+    }
+
+    #[test]
+    fn capability_id_from_str_and_string() {
+        let a = CapabilityId::from("alpha");
+        let b = CapabilityId::from(String::from("beta"));
+        assert_eq!(a.as_str(), "alpha");
+        assert_eq!(b.as_str(), "beta");
+    }
+
+    #[test]
+    fn register_overwrites_existing_capability_port() {
+        let registry = CapabilityPortRegistry::new();
+        let cap = CapabilityId::new("svc");
+        registry.register(cap.clone(), 8080, PortSource::ConfigFile, None);
+        registry.register(cap.clone(), 9090, PortSource::Environment, None);
+        assert_eq!(registry.get_port(&cap).unwrap(), 9090);
+        assert_eq!(registry.get_config(&cap).unwrap().source, PortSource::Environment);
+    }
+
+    #[test]
+    fn port_source_serde_roundtrip() {
+        for source in [
+            PortSource::ConfigFile,
+            PortSource::Environment,
+            PortSource::Discovery,
+            PortSource::Ephemeral,
+            PortSource::Default,
+        ] {
+            let json = serde_json::to_string(&source).unwrap();
+            let back: PortSource = serde_json::from_str(&json).unwrap();
+            assert_eq!(source, back);
+        }
+    }
+
+    #[test]
+    fn port_config_serde_roundtrip() {
+        let config = PortConfig {
+            port: 4242,
+            source: PortSource::Discovery,
+            description: Some("test".into()),
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        let back: PortConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.port, 4242);
+        assert_eq!(back.source, PortSource::Discovery);
+    }
+
+    #[test]
+    fn ephemeral_ports_are_unique_per_registration() {
+        let registry = CapabilityPortRegistry::new();
+        let p1 = registry.register_ephemeral(CapabilityId::new("a"), None).expect("ephemeral a");
+        let p2 = registry.register_ephemeral(CapabilityId::new("b"), None).expect("ephemeral b");
+        assert_ne!(p1, p2);
+        assert!(p1 > 0);
+        assert!(p2 > 0);
+    }
+
+    #[test]
+    fn default_registry_is_empty() {
+        let registry = CapabilityPortRegistry::default();
+        assert!(!registry.has_capability(&CapabilityId::new("any")));
+        assert!(registry.list_capabilities().is_empty());
     }
 }

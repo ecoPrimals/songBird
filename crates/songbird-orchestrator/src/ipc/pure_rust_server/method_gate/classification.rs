@@ -21,8 +21,8 @@ const PUBLIC_METHOD_PREFIXES: &[&str] = &["health."];
 /// Exact method names that are always public.
 const PUBLIC_METHODS: &[&str] = &[
     "identity.get",
-    "capabilities.list",
     "capability.list",
+    "capabilities.list",
     "lifecycle.status",
     "auth.check",
     "auth.mode",

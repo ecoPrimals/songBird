@@ -1,10 +1,10 @@
 # Songbird Remaining Work
 
-**Date**: August 11, 2026  
+**Date**: August 12, 2026  
 **Version**: v0.2.1-wave157k  
-**Last Deep Debt Audit**: Wave 157k (August 11, 2026) — **MeshRelay COMPLETE: relay/inject/spread/subscribe shipped.** `gossip.subscribe` topic-based pub-sub: local primals register interest, receive proactive `gossip.deliver` on their UDS endpoint when gossip arrives. `GossipSubscriptionRegistry` with subscribe/unsubscribe/deliver lifecycle. 14 gossip dispatch tests. Federation intrinsics advertise full gossip surface. Stale `test-with-security-provider.sh` fixed (triple-scoped plasmidBin + membrane CLI). `CHANGELOG.md` fossil-record note. **Previous (157j)**: `gossip.spread` epidemic fan-out + UDS framing fix + `node_id_async()`. **Previous (157i)**: G72 Tier 2 completion + typed error evolution + structural decomposition. **Previous (157g)**: G72 Tier 1 (tokio full excised from 16 crates) + dead deps + file refactoring. **Previous (157e)**: MeshRelay gossip + test hardening. **Previous (157d)**: riboCipher Tier 2 + TransportRegistry. **Previous (157a)**: CanonicalTransport + 9 adapters + G65/G66/G68.
+**Last Deep Debt Audit**: Wave 157k (August 12, 2026) — **Debt sweep COMPLETE.** Format/clippy/SPDX compliance restored; Capability Wire L2 (`identity.get`); mesh.*→gossip.* aliases; legacy method evolution; platform backend consolidation; 750L file split; 80+ tests; 14 dead deps removed. **Previous (157k gossip)**: MeshRelay COMPLETE — relay/inject/spread/subscribe shipped; `gossip.subscribe` topic-based pub-sub. **Previous (157j)**: `gossip.spread` epidemic fan-out + UDS framing fix + `node_id_async()`. **Previous (157i)**: G72 Tier 2 completion + typed error evolution + structural decomposition. **Previous (157g)**: G72 Tier 1 (tokio full excised from 16 crates) + dead deps + file refactoring. **Previous (157e)**: MeshRelay gossip + test hardening. **Previous (157d)**: riboCipher Tier 2 + TransportRegistry. **Previous (157a)**: CanonicalTransport + 9 adapters + G65/G66/G68.
 **Composition Audit Status**: **CLEAR THROUGH STADIAL GATE** — UB-1 resolved (`songbird-turn-client` crate for lithoSpore). `primal.announce` adopted (biomeOS v3.57). GAP-16 (Tower atomic: mesh.* on canonical UDS) resolved. Songbird is no longer a sentinel blocker. Wave 155i: Windows platform gate P0 fixed — unblocks G1 (Tower on Windows).  
-**Current Wave**: 157k — **MESHRELAY COMPLETE (relay/inject/spread/subscribe).** Full gossip surface shipped. `gossip.subscribe` enables topic-based pub-sub — local primals register interest and receive proactive delivery via UDS when gossip arrives. `GossipSubscriptionRegistry` with thread-safe subscribe/unsubscribe. `gossip.inject` now delivers to all local subscribers AND swarmVine. Stale script fixed. Fossil-record CHANGELOG note added. 14 gossip tests.  
+**Current Wave**: 157k — **DEBT SWEEP COMPLETE.** Format/clippy/SPDX clean; Capability Wire L2; mesh.* gossip aliases; legacy method canonicalization; platform backend consolidation; all files ≤750L; 80+ pure-logic tests; 14 dead deps removed; `--node-id`/`--gate-id` CLI. Prior: MeshRelay COMPLETE (relay/inject/spread/subscribe + `gossip.subscribe` pub-sub).  
 **Previous Waves** (full detail in `CHANGELOG.md`): 191 (ipc.register identity verification, whitespace-tolerant protocol detection, BufReader safety), 190 (IP literals, parse_endpoint IPv6, redundant clone, test Duration constants), 189 (ipc.resolve `socket` field for primalSpring tier-1 discovery), 188 (15 timeout constants, JSONRPC_VERSION, Box<dyn Error> elimination), 187 (smart refactor connection.rs, primal-name evolution, 4 timeout constants), 186 (BTSP Phase 3 live connection verification — 4 tests), 185 (deep debt: 11 timeout constants, JSON-RPC constructors, primal codename evolution), 184 (BTSP Phase 3 binary-framed dispatch fix), 183 (deep debt: lint evolution, timeout centralization, hardcoded elimination), 182 (BTSP Phase 3 spec alignment), 181 (port canonicalization), 180 (BTSP Phase 3 btsp.negotiate), 175 (PG-51 verified, ENVIRONMENT_VARIABLES.md), 174 (hardcoded IP/port elimination, flaky tests, dep cleanup, +18 tests), 173 (PG-51 socket discovery), 172 (root doc reconciliation), 171 (test coverage expansion 71.28%→73.41%, +271 tests), 170 (CLI flag alignment), 169 (remaining `new()` → `new_direct()` in bin_interface), 168 (BTSP routing + seed encoding), 167 (BTSP error frames, env fallbacks), 166 (root doc reconciliation), 165 (dep cleanup, hardcoded elimination, dead code removal), 162 (stream.shutdown BTSP fix), 161 (port centralization, dep cleanup, error typing), 160 (BTSP NDJSON auto-detect), 158 (BTSP Step 3→4 verification relay), 157 (hardcoded literals, dead deps, doc cleanup, debris removal), 154 (mock isolation, dead deps, lint hygiene), 153 (BTSP NDJSON wire-format alignment), 152 (dead deps, hardcoding, test hygiene), 151 (PG-37 capability-first routing), 150 (doc cleanup, debris removal), 149 (comprehensive deep debt: blanket lint removal, hardcoded paths, duplicate constants, mock features, stale CLI, expect safety), 148 (PG-21 persistent NDJSON sessions), 147 (mock isolation, hardcoded IP/path elimination, lint hygiene), 146 (stadial dyn audit + ring analysis), 139b (deep literal sweep), 139 (self-healing auto-discovery), 138b (hardcoded literal evolution), 138 (LD-08 socket auto-discovery), 137b-c (ipc.resolve dual-mode, stale features, port canonicalization, lint hygiene), 137 (capability naming), 136 (constant consolidation), 135 (SB-02/SB-03 resolved), 134 (primalSpring gaps), 133 (smart refactor), 132 (BTSP Phase 2), 131-119 (hardcoding, legacy scrub, coverage)
 
 ---
@@ -14,13 +14,13 @@
 | Metric | Value |
 |--------|-------|
 | **Tests** | 15,167+ total (694 in universal-ipc; integration suites) |
-| **Line Coverage** | **73.41%** measured (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
+| **Line Coverage** | **73.41%** last measured (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%). Wave 157k added **80+ pure-logic tests** — percentage pending re-measurement |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 31 crates compile clean (~10s incremental); Windows cross-compile (`x86_64-pc-windows-gnu`) zero warnings |
-| **Clippy Pedantic** | 31/31 crates clean — zero warnings (`clippy::pedantic + nursery`, `-D warnings`, Aug 11 verified) |
-| **Format** | Clean (`cargo fmt --check` passes) |
+| **Clippy** | 31/31 crates clean — `cargo clippy --workspace --all-targets -- -D warnings` passes (Aug 12). Fixed `large_enum_variant` (boxed `HttpTransport`), `let...else`, `map().unwrap_or()` → `map_or()` |
+| **Format** | Clean (`cargo fmt --all` passes — Aug 12; prior doc claim was stale: 42 files / 175 hunks were failing before this wave) |
 | **Docs** | Clean (`cargo doc --workspace --no-deps` — 0 warnings) |
-| **Files >800 lines** | **0** — all code below 800L (max 767L tests.rs). Wave 157i: `drawbridge.rs` (782→442L, proxy extracted to `drawbridge_proxy.rs`). Previous: `ipc_registry.rs` (831→759L), `http_server.rs` (854→4 modules), `service_tests.rs` (1018→5), `mesh_handler/tests.rs` (998→5). |
+| **Files >750 lines** | **0** — all code below 750L. Wave 157k: `ipc_registry.rs` → register/resolve/query/lifecycle/transport/tests; `gate_enrollment.rs` → types/proof/ip_allocation/wireguard/forgejo/seed/tests; `handlers/mod.rs` → typed_delegates/json_adapters/http_methods/discovery_handlers/mesh_dispatch; `app/core/mod.rs` → security_provisioning/broadcast/ipc_server/background_tasks; `process_manager.rs` → manager/pid_path/lock/process_health/guard/tests. Previous: Wave 157i `drawbridge.rs` (782→442L); `http_server.rs` (854→4 modules), `service_tests.rs` (1018→5), `mesh_handler/tests.rs` (998→5). |
 | **Unsafe blocks** | **0** — `forbid(unsafe_code)` on all 31 crates |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 unguarded — `.unwrap()` in production only under `#[expect(clippy::unwrap_used, reason = "...")]` for provably infallible operations (e.g. `write!` to `String`); all others in `#[cfg(test)]` or doc examples |
@@ -28,20 +28,42 @@
 | **Production `unreachable!()`** | 2 (provably unreachable QUIC VarInt 2-bit prefix arms, documented; HMAC-SHA1 infallible new_from_slice) |
 | **TODO/FIXME/HACK comments** | 0 in Rust source; 0 FIXME/HACK |
 | **Commented-out code** | 0 in production library code (Wave 124 scrub); doc-style examples in comments kept intentionally |
-| **`#[allow(` vs `#[expect(`** | **Wave 150x**: 47 production `#[allow(dead_code)]` evolved to `#[expect(dead_code)]` (will fire if code gets wired up). Remaining `#[allow(dead_code)]`: ~15 items that are test-only infrastructure (dead in lib, alive in test builds). Previous: Wave 58: 146 clippy allows → expects; Wave 134/136/147/154 refinements. Zero reasonless suppressions remain |
+| **`#[allow(` vs `#[expect(`** | **Wave 157k**: all production `#[allow(...)]` now include `reason = "..."` strings. **Wave 150x**: 47 production `#[allow(dead_code)]` evolved to `#[expect(dead_code)]`. Remaining `#[allow(dead_code)]`: ~15 test-only infrastructure items. Zero reasonless suppressions remain |
 | **Mocks in production** | 0 (all inside `#[cfg(test)]` or `#[cfg(any(test, feature = "test-mocks"))]`; `NoopVerifier` gated Wave 206; `birdsong::mocks` gated Wave 147; `StubAllow`/`StubDeny`/`StubPassthrough`/`StubMockEncrypted` gated Wave 154) |
+| **Capability Wire L2** | **Complete** (Wave 157k) — `identity.get` returns primal/version/domain/license/methods envelope |
 | **Capability discovery** | `find_primals_with_capability` — identity-agnostic, env-driven |
 | **Hardcoded elimination** | All ports env-driven; canonical constants for all port defaults (Wave 181: 8 new constants — `DEFAULT_DISCOVERY_SERVICE_PORT`, `DEFAULT_OBSERVABILITY_PORT`, `DEFAULT_DASHBOARD_UI_PORT`, `DEFAULT_FEDERATION_COORDINATION_PORT`, `DEFAULT_TARPC_RPC_PORT`, `DEFAULT_GAMING_BASE_PORT`, `EPHEMERAL_BIND_ADDR`); `discovery_port()` bug fixed (was using metrics constant); tarpc port harmonized to 8091 across 3 conflicting locations; all `SafeEnv::get_port()` calls in orchestrator/universal replaced with canonical functions; all IPs (`"0.0.0.0"`, `"127.0.0.1"`, `"localhost"`) evolved to constants (`PRODUCTION_BIND_ADDRESS`, `LOCALHOST`, `is_loopback_host()`); duplicate mDNS `"224.0.0.251:5353"` replaced with canonical `MDNS_MULTICAST_GROUP` + `MDNS_PORT`; capability-first across 11+ crates; all legacy primal env vars deprecated with `tracing::warn!` |
-| **JSON-RPC dispatch** | Typed `JsonRpcMethod` enum (62+ methods, 36 domain sub-enums including `Lifecycle`, `Inference`, `Graph`, `Coordination`, `Legacy`); `normalize_json_rpc_method_name()` absorbs `model.*`/`ai.*` → `inference.*`, `discovery.find_by_capability`/`net.discovery.find_by_capability` → `ipc.discover`; legacy string dispatch eliminated in orchestrator (Wave 131) |
+| **JSON-RPC dispatch** | Typed `JsonRpcMethod` enum (62+ methods, 36 domain sub-enums); `normalize_json_rpc_method_name()` absorbs `model.*`/`ai.*` → `inference.*`, legacy snake_case → canonical `domain.verb` (Wave 157k: 10 methods migrated, old names alias with `tracing::warn!`; `LegacyMethod` enum removed). Singular `capability.list`/`capability.methods` canonical; plural forms alias. `mesh.relay`/`mesh.inject`/`mesh.spread`/`mesh.subscribe` alias to `gossip.*` for swarmVine compatibility |
 | **License** | `AGPL-3.0-or-later` (workspace + per-crate; **Apr 7**: inconsistent `AGPL-3.0-only` strings eliminated) via workspace inheritance + ORC + CC-BY-SA 4.0 |
-| **SPDX headers** | 100% `.rs` coverage — **Apr 7**: all updated to `AGPL-3.0-or-later` (aligned with `Cargo.toml`) |
+| **SPDX headers** | 100% `.rs` coverage — Wave 157k: 2 missing test files fixed; all headers `AGPL-3.0-or-later` (aligned with `Cargo.toml`) |
 | **cargo-deny** | Fully passing (advisories ok, bans ok, licenses ok, sources ok); locally enforced (`cargo deny check`); CI runs fmt + clippy + test only |
 | **C dependencies** | Zero in default build (`blake3` uses `features=["pure"]`; `ring` NOT compiled — lockfile-only via `rustls-webpki` optional dep, see `deny.toml` stadial analysis; `ed25519-dalek` in quic behind `local-certs` feature); **Bluetooth** (`libudev`/USB stack paths): feature-gated; **sled** removed Wave 135 (SB-03 resolved), orphaned DB artifacts auto-cleaned on startup (Wave 51 fix); `parking_lot` removed (Wave 133) |
 | **`async-trait`** | **0** annotations, dependency fully removed from workspace (Wave 145). 141→0: every `dyn`-dispatched async trait converted to enum dispatch, concrete types, or native AFIT. No crate depends on `async-trait`. SB-06 resolved. Wave 155: eliminated 6 more production `dyn` sites (iterator, error, future, plugin, composable, callback). Remaining `dyn`: architectural `dyn Stream` (async watch), `Box<dyn SerialPort>` (external crate), `Arc<dyn Fn>` (test injection) |
 | **Test infrastructure** | Zero `#[serial]`, zero hardcoded ports, zero startup sleep waits; all time-dependent tests use `start_paused`/`advance`; all network binds use port 0; `ConnectionPool` uses `tokio::time::Instant` for deterministic testing; only `std::thread::sleep` allowed in mockito sync callbacks and `std::time::Instant`-dependent cache tests (documented); dispatch tests use `dispatched!` macro (100ms timeout fence) for calls that do real SSDP/STUN/Tor/UDS network IO — prevents indefinite hangs from live services on dev machines |
-| **Zero-copy** | `Arc<str>` IPC handler fields (mesh/punch/rendezvous/capability), `bytes::Bytes`, `SharedBytes`, `Cow<'_, str>` JSON-RPC wire types, move semantics, borrow-through redirects |
+| **Zero-copy** | Wave 157k hot-path pass: `Arc<str>` for node_id/endpoint/transport config; `serde_json::to_vec` replaces `format!`; move semantics in discovery bridge federation registration; 6 modules optimized. Prior: `bytes::Bytes`, `SharedBytes`, `Cow<'_, str>` JSON-RPC wire types, borrow-through redirects |
 | **Total Rust** | ~471,500 lines across 31 crates |
 | **primalSpring gaps** | All original gaps resolved Wave 134; Phase 43 downstream audit (6 items) completed Wave 140: UDS first-byte peek, mito-beacon credential tiers, STUN beacon auth, content distribution federation, ring lockfile documented; Wave 143: content distribution federation wired (`ContentAnnouncementStore`, `discovery.content_peers`, seeder/leecher coordination), `ring` deny.toml updated; Wave 145: `async-trait` fully eliminated (SB-06 resolved); `capability.resolve` + `discovery.peers` wired (Wave 137); LD-02 resolved (Wave 137b); LD-08 resolved + self-healing (Waves 138/139); **Phase 45c** BTSP wire-format fixes completed Wave 160: server.rs refactored with BTSP auto-detection (first-line peek routes `"protocol":"btsp"` → NDJSON handshake), `btsp.session.*` RPC mappings added |
+
+---
+
+## Wave 157k Completed Items (August 12, 2026)
+
+Session debt sweep — all items below verified complete:
+
+- [x] **Format compliance** — `cargo fmt --all` passes (was failing: 42 files / 175 hunks)
+- [x] **SPDX headers** — 100% `.rs` coverage; 2 missing test files fixed
+- [x] **Capability Wire L2** — `identity.get` implemented; returns primal/version/domain/license/methods envelope. **Level 2 Complete**
+- [x] **mesh.relay compatibility** — `mesh.relay`, `mesh.inject`, `mesh.spread`, `mesh.subscribe` alias to `gossip.*` variants; swarmVine can call `mesh.*` transparently
+- [x] **`--node-id` / `--gate-id` CLI** — added to `ServerArgs`; sets `GATE_ID` env overlay when provided; man page updated
+- [x] **Large file refactoring** — all files >750L split at logical boundaries: `ipc_registry`, `gate_enrollment`, `handlers/mod`, `app/core/mod`, `process_manager`
+- [x] **Legacy method evolution** — 10 snake_case methods migrated to canonical `domain.verb` wire names; old names remain aliases; `LegacyMethod` enum removed; `tracing::warn!` on legacy usage
+- [x] **capability/capabilities naming** — standardized on singular `capability.list`, `capability.methods`; plural forms are aliases
+- [x] **Zero-copy hot paths** — `Arc<str>` for node_id/endpoint/transport config; `serde_json::to_vec` instead of `format!`; move semantics in discovery bridge federation registration; 6 hot-path modules optimized
+- [x] **Platform backend consolidation** — `SysMetrics`, `ProcessOps`, `NetworkInfo` consolidated into `songbird-types`; duplicate implementations removed from discovery, orchestrator, cli, config, execution-agent
+- [x] **Test coverage expansion** — 80+ new pure-logic tests across songbird-types, songbird-config, songbird-orchestrator, songbird-universal, songbird-discovery (coverage % pending re-measurement)
+- [x] **Dependency cleanup** — 14 dead deps removed (`bt-hci`, `trouble-host`, `thiserror` from execution-agent, `tokio-util` from quic, `uuid` from observability, 6 from test-utils, 3 from canonical); workspace `tokio` features include `test-util`
+- [x] **Clippy compliance** — `cargo clippy --workspace --all-targets -- -D warnings` passes
+- [x] **Bare `#[allow()]` directives** — all production `#[allow(...)]` now have `reason = "..."` strings
 
 ---
 
@@ -58,9 +80,9 @@ Phase 2 relay fixed (Waves 132–169). **Phase 3 implemented** (Wave 180): `btsp
 **Priority trait boundaries** (deduplicate 15+ `#[cfg]` sites each):
 
 1. **`IpcStream`** (Wave 142b: SHIPPED in `songbird-types::ipc_stream`; **Wave 155b: NamedPipe variant added**) — platform-abstracted async IPC connection. On Unix: `UnixStream`; on Windows: native named pipe (first attempt) → port-file→TCP (fallback). `TransportEndpoint::NamedPipe` variant enables first-class Windows registry. Migrated in `songbird-crypto-provider`, `songbird-lineage-relay`, `songbird-network-federation`. Remaining: 12+ crates to migrate (orchestrator, http-client, sovereign-onion, tls, universal-ipc, etc.).
-2. **`SysMetricsBackend`** — memory/disk/load detection. Duplicated between `songbird-types::sys_metrics` and `songbird-discovery` Linux `/proc` parsers.
-3. **`ProcessBackend`** — `is_process_running()`, `stop_job()`, `stop_deployment()` — same operation, 3 implementations.
-4. **`NetworkBackend`** — route/IP detection across orchestrator, config, discovery, CLI (4+ implementations).
+2. ~~**`SysMetricsBackend`**~~ — **RESOLVED Wave 157k**: consolidated into `songbird-types`; duplicate Linux `/proc` parsers removed from discovery
+3. ~~**`ProcessBackend`**~~ — **RESOLVED Wave 157k**: `ProcessOps` consolidated into `songbird-types`; duplicate `is_process_running()`/`stop_job()`/`stop_deployment()` removed from orchestrator, cli, execution-agent
+4. ~~**`NetworkBackend`**~~ — **RESOLVED Wave 157k**: `NetworkInfo` consolidated into `songbird-types`; duplicate route/IP detection removed from orchestrator, config, discovery, CLI
 
 **Keep as `#[cfg]` gates** (inherently platform-specific): `/proc/net/route`, `/proc/meminfo`, `/sys/block`, `iptables`, domain socket symlinks, `chmod`, `SO_REUSEPORT`.
 
@@ -106,7 +128,9 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 
 ## Pending: Coverage Expansion (73.41% → 90% target)
 
-**Note (May 27, 2026)**: 73.41% measured via llvm-cov `--workspace --lib` (Apr 27 2026). Wave 53 coverage push added **+74 tests** across 5 modules in 3 crates: `primal_discovery` (+21 capability/parse/tcp tests), `graph/coordination` (+22 scheduler topology/analysis tests), `app/network` (+8 bind-address edge-case tests), `runtime_discovery/engine` (+13 cache/discovery tests), `capability_endpoints/resolver` (+8 override/cache tests), `tower_atomic/types` (+16 JSON-RPC wire-type serde tests). Prior: Wave 179 added 92 tests across 15+ files in 8 crates. Wave 171 added 271 tests (71.28% → 73.41%); Wave 174 added 18; Wave 177 added 9. Wave 180 added 19. Target 90% via ongoing coverage expansion of I/O-heavy modules with mock infrastructure.
+**Note (Aug 12, 2026)**: 73.41% last measured via llvm-cov `--workspace --lib` (Apr 27 2026). **Wave 157k** added **80+ pure-logic tests** across songbird-types (errors, transport, ipc_stream, platform_substrate), songbird-config (capability_port, validation, resilience), songbird-orchestrator (cache, rate_limiter), songbird-universal (load_balancer, circuit_breaker, protocol_negotiation), songbird-discovery (dark_forest_beacon). **Coverage percentage pending re-measurement.**
+
+Prior: Wave 53 coverage push added **+74 tests** across 5 modules in 3 crates. Wave 179 added 92 tests across 15+ files in 8 crates. Wave 171 added 271 tests (71.28% → 73.41%); Wave 174 added 18; Wave 177 added 9. Wave 180 added 19. Target 90% via ongoing coverage expansion of I/O-heavy modules with mock infrastructure.
 
 **Wave 171 coverage push**: 271 tests added across 30+ files in 13 crates (see CHANGELOG). All previously-tracked low-coverage modules in Waves 124-127 (adapters, STUN client, HTTP handler, tower_atomic) now have comprehensive tests. Wave 171 targeted 0%-coverage pure-logic modules across songbird-orchestrator, songbird-config, songbird-discovery, songbird-universal, songbird-network-federation, songbird-http-client, songbird-lineage-relay, songbird-cli, and 5 smaller crates.
 
@@ -144,6 +168,7 @@ HSDir descriptor superencryption, `ESTABLISH_INTRO` HMAC/signature, `INTRODUCE1`
 - [x] `ring-crypto` feature removed (Wave 135, SB-02 resolved): `rustls_rustcrypto` is the sole TLS provider. `ring` is NOT compiled in any build config (`cargo tree -i ring` = empty). Cargo.lock stanza persists because `rustls-webpki` (0.102 + 0.103) declares `ring` as an optional dep — Cargo's resolver locks optional dep versions by design. Investigated git `rustls-rustcrypto` (drops webpki 0.102) but pre-release RustCrypto crates are incompatible with stable workspace. Blocked on upstream `rustls-rustcrypto` crates.io release. See `deny.toml` for full stadial gate analysis.
 - [x] `hickory-resolver` 0.24 → 0.25 (Wave 70): Migrated 4 crates (`songbird-config`, `songbird-cli`, `songbird-discovery`, `songbird-universal`) from deprecated 0.24 to 0.25. Constructor `TokioAsyncResolver::tokio(config, opts)` replaced with `Resolver::builder_with_config(config, TokioConnectionProvider::default()).build()`. Type alias `TokioAsyncResolver` → `TokioResolver`. Feature `tokio-runtime` → `tokio`. All 9 DNS-SD tests + 938 songbird-config tests pass. 0.26 deferred — breaking changes to `SrvLookup`/`TxtLookup` (types removed, fields replace accessors) require full iteration rewrite when upstream stabilizes.
 - [x] Dead dependencies removed (Wave 152): `config` (songbird-config), `validator` (songbird-canonical), `dashmap` (songbird-registry), `chrono` (songbird-nfc, songbird-execution-agent), `anyhow` (songbird-igd, songbird-sovereign-onion, songbird-bluetooth, songbird-quic) — 8 crates trimmed
+- [x] **Wave 157k dead dependency sweep** — 14 additional dead deps removed: `bt-hci`, `trouble-host`, `thiserror` (execution-agent), `tokio-util` (quic), `uuid` (observability), 6 from test-utils, 3 from canonical. Workspace `tokio` features include `test-util`
 - [x] `anyhow` → typed errors in `songbird-config` + `songbird-http-client` (Wave 157i): `songbird-config` fully anyhow-free (`SongbirdResult<T>` typed errors). `songbird-http-client` public API evolved: all methods return `crate::error::Result` with typed `Error` enum (Connection, HttpProtocol, InvalidResponse, TlsAlert, Base64Decode, etc.). `anyhow` retained only as `From<anyhow::Error>` interop bridge for downstream consumers. Downstream crates adapted: `songbird-genesis` + `songbird-primal-coordination` added `From<songbird_http_client::Error>` conversions.
 - [ ] **`rustls-rustcrypto` elimination (Tower Atomic collab with bearDog)**:
   - Phase 1 DONE (Wave 155f): ACME HTTP-01 challenge responder shipped — `acme.challenge_ready` / `acme.challenge_cleanup` JSON-RPC methods enable bearDog to register challenge tokens on drawbridge for ACME CA validation (`/.well-known/acme-challenge/{token}`)
@@ -238,8 +263,8 @@ All 49 registered methods are annotated by stability:
 
 | Tier | Methods | Description |
 |------|---------|-------------|
-| **Stable** | `health.*`, `identity.get`, `capabilities.list`, `capabilities.methods`, `primal.info`, `primal.capabilities`, `primal.announce`, `ipc.register`, `ipc.resolve`, `ipc.discover`, `ipc.list`, `capability.resolve`, `http.request`, `http.get`, `http.post`, `auth.check`, `auth.mode`, `auth.peer_info`, `btsp.capabilities` | Wire-format frozen. Breaking changes require major version bump. |
-| **Operational** | `stun.*` (7), `igd.*` (5), `relay.*` (4), `mesh.*` (8 incl. `probe_latency`, `prune_stale`), `punch.*` (3), `discovery.*` (2), `federation.*` (3 incl. `broadcast`), `onion.*` (5), `tor.*` (6) | Semantics stable, response shapes may gain fields. No field removal without deprecation. |
+| **Stable** | `health.*`, `identity.get`, `capability.list`, `capability.methods` (plural forms alias), `primal.info`, `primal.capabilities`, `primal.announce`, `ipc.register`, `ipc.resolve`, `ipc.discover`, `ipc.list`, `capability.resolve`, `http.request`, `http.get`, `http.post`, `auth.check`, `auth.mode`, `auth.peer_info`, `btsp.capabilities` | Wire-format frozen. Breaking changes require major version bump. |
+| **Operational** | `stun.*` (7), `igd.*` (5), `relay.*` (4), `mesh.*` (8 incl. `probe_latency`, `prune_stale`; `mesh.relay`/`inject`/`spread`/`subscribe` alias `gossip.*`), `gossip.*` (4), `punch.*` (3), `discovery.*` (2), `federation.*` (3 incl. `broadcast`), `onion.*` (5), `tor.*` (6) | Semantics stable, response shapes may gain fields. No field removal without deprecation. |
 | **Introspection** | `rpc.methods`, `rpc.discover`, `discover_capabilities`, `lifecycle.*`, `btsp.negotiate` | Internal self-description; may evolve freely between minor versions. |
 | **Inference (passthrough)** | `inference.*` (4) | Routed to downstream AI provider; Songbird is pass-through only. |
 
@@ -272,7 +297,7 @@ All 49 registered methods are annotated by stability:
 - [ ] **biomeOS integration**: biomeOS needs to route `capability.call` to Songbird's UDS
   when the target capability is on a remote gate (biomeOS-side wiring, not songbird code).
 - [x] **Capability advertisement in mesh** (Wave 38): `peer_has_capability()` probes remote
-  peers via `capabilities.list` before dispatching. Checks both flat `capabilities` array
+  peers via `capability.list` (plural `capabilities.list` aliases) before dispatching. Checks both flat `capabilities` array
   and structured `provided_capabilities` (type field). Skips peers that lack the target
   capability, eliminating blind fan-out.
 - [x] **TURN/relay transport for cross-gate** (Wave 38): `forward_to_remote_via_turn()` allocates
@@ -286,6 +311,7 @@ All 49 registered methods are annotated by stability:
   `[{node_id, address}]` TCP peer entries and adds them as `Direct` endpoints at init time.
   Enables cross-gate discovery without relying on onion addresses. `--security-socket` CLI
   flag added to orchestrator binary (feeds `SECURITY_PROVIDER_ENDPOINT` via `songbird_process_env`).
+  **Wave 157k**: `--node-id` / `--gate-id` flags added to `ServerArgs`; sets `GATE_ID` env overlay
 - [x] **`SONGBIRD_PEERS` auto-seeding** (Wave 51): Mesh peers auto-initialized from env var on
   startup. Supports both `node_id@host:port` and bare `host:port` formats. `discovery.peers`
   immediately populated on boot without requiring external `mesh.init` RPC. `mesh_seed` module
@@ -293,9 +319,7 @@ All 49 registered methods are annotated by stability:
 - [x] **`discovery.peers` mesh bridge** (Wave 51): Orchestrator dispatch wired to merge mesh
   peers + registry services. De-duplicates by node_id. Cross-gate health probes work:
   gate A calls `discovery.peers` on gate B and gets B's local primals.
-- [x] **`ipc_registry.rs` refactoring** (Wave 51): Extracted `remote_dispatch.rs` (cross-gate
-  TCP/TURN routing) — 906L → 614L. `EndpointType::socket_addr()` added for port-preserving
-  peer addressing (eliminates hardcoded DEFAULT_HTTP_PORT fallback).
+- [x] **`ipc_registry.rs` refactoring** (Wave 51 + 157k): Wave 51 extracted `remote_dispatch.rs` (906L → 614L). Wave 157k split remainder into register/resolve/query/lifecycle/transport/tests submodules — all files ≤750L
 
 ---
 
@@ -348,6 +372,7 @@ All 49 registered methods are annotated by stability:
 
 | Location | Issue | Resolution |
 |----------|-------|------------|
+| ~~`songbird-types` / discovery / orchestrator / cli / config / execution-agent`~~ | ~~Duplicate SysMetrics, ProcessOps, NetworkInfo implementations~~ | **RESOLVED Wave 157k**: consolidated into `songbird-types` |
 | `songbird-nfc/src/platform.rs` | All backends return `PlatformUnsupported` | JNI/CoreNFC/libnfc |
 | `universal-ipc/src/platform/ios.rs:106–197` | iOS XPC stub | XPC bridge or TCP fallback |
 | `universal-ipc/src/platform/wasm.rs` | WASM listen returns error | Global in-process registry |

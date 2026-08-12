@@ -154,7 +154,9 @@ impl TransportEndpoint {
 
         let env_key = format!("{}_SOCKET", service_name.to_ascii_uppercase().replace('-', "_"));
         if let Ok(path) = std::env::var(&env_key) {
-            return Self::Uds { path };
+            return Self::Uds {
+                path,
+            };
         }
 
         Self::platform_default(service_name, default_port)
@@ -583,5 +585,67 @@ mod tests {
         let json = r#"{"transport":"uds","path":"/custom/path.sock"}"#;
         let ep: TransportEndpoint = serde_json::from_str(json).unwrap();
         assert_eq!(ep, TransportEndpoint::uds("/custom/path.sock"));
+    }
+
+    #[test]
+    fn is_network_complements_is_local() {
+        assert!(!TransportEndpoint::uds("/tmp/x.sock").is_network());
+        assert!(TransportEndpoint::tcp("203.0.113.1", 443).is_network());
+        assert!(TransportEndpoint::mesh_relay("gate", "cap").is_network());
+        assert!(!TransportEndpoint::tcp("127.0.0.1", 1).is_network());
+    }
+
+    #[test]
+    fn is_local_ipv6_loopback_brackets_in_display_uri() {
+        let ep = TransportEndpoint::tcp("::1", 7700);
+        assert!(ep.is_local());
+        assert_eq!(ep.display_uri(), "tcp://[::1]:7700");
+    }
+
+    #[test]
+    fn service_name_socket_env_key_normalizes_hyphens() {
+        // Documents env key shape used by from_env_or_default for hyphenated services
+        let service = "my-primal-service";
+        let env_key = format!("{}_SOCKET", service.to_ascii_uppercase().replace('-', "_"));
+        assert_eq!(env_key, "MY_PRIMAL_SERVICE_SOCKET");
+    }
+
+    #[test]
+    fn partial_eq_distinguishes_tcp_ports() {
+        assert_ne!(TransportEndpoint::tcp("host", 80), TransportEndpoint::tcp("host", 443));
+    }
+
+    #[test]
+    fn mesh_relay_is_not_local_and_is_network() {
+        let ep = TransportEndpoint::mesh_relay("east-gate", "crypto");
+        assert!(!ep.is_local());
+        assert!(ep.is_network());
+        assert!(ep.is_relayed());
+    }
+
+    #[test]
+    fn display_trait_equals_display_uri_for_all_variants() {
+        for ep in [
+            TransportEndpoint::uds("/run/s.sock"),
+            TransportEndpoint::tcp("example.com", 443),
+            TransportEndpoint::mesh_relay("p", "c"),
+            TransportEndpoint::named_pipe(r"\\.\pipe\x"),
+        ] {
+            assert_eq!(format!("{ep}"), ep.display_uri());
+        }
+    }
+
+    #[test]
+    fn invalid_transport_json_fails_deserialize() {
+        let bad: Result<TransportEndpoint, _> = serde_json::from_str(r#"{"transport":"quic"}"#);
+        assert!(bad.is_err());
+    }
+
+    #[test]
+    fn tcp_roundtrip_preserves_ipv6_host() {
+        let ep = TransportEndpoint::tcp("2001:db8::1", 8080);
+        let json = serde_json::to_string(&ep).unwrap();
+        let back: TransportEndpoint = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.tcp_addr(), Some(("2001:db8::1", 8080)));
     }
 }

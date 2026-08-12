@@ -20,6 +20,7 @@
 use super::IpcServiceHandler;
 use serde_json::{Value, json};
 use songbird_onion_relay::mesh::EndpointType;
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, warn};
 
@@ -35,25 +36,14 @@ impl IpcServiceHandler {
     ///
     /// Returns `{relayed_to, status}` on success.
     pub(super) async fn handle_gossip_relay(&self, params: Value) -> Result<Value, String> {
-        let target_gate = params
-            .get("target_gate")
-            .and_then(Value::as_str)
-            .unwrap_or("local");
+        let target_gate = params.get("target_gate").and_then(Value::as_str).unwrap_or("local");
 
-        let topic = params
-            .get("topic")
-            .and_then(Value::as_str)
-            .ok_or("Missing required field: topic")?;
+        let topic =
+            params.get("topic").and_then(Value::as_str).ok_or("Missing required field: topic")?;
 
-        let payload = params
-            .get("payload")
-            .cloned()
-            .unwrap_or(Value::Null);
+        let payload = params.get("payload").cloned().unwrap_or(Value::Null);
 
-        let key = params
-            .get("key")
-            .and_then(Value::as_str)
-            .unwrap_or("");
+        let key = params.get("key").and_then(Value::as_str).unwrap_or("");
 
         if target_gate.is_empty() || target_gate == "local" {
             self.inject_gossip_locally(topic, key, &payload).await?;
@@ -65,9 +55,7 @@ impl IpcServiceHandler {
 
         // Resolve path to target gate via mesh
         let mesh_guard = self.mesh_handler.mesh().await;
-        let mesh = mesh_guard
-            .as_ref()
-            .ok_or("Mesh not initialized — cannot relay gossip")?;
+        let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized — cannot relay gossip")?;
 
         let path = mesh
             .get_best_path(target_gate)
@@ -75,10 +63,22 @@ impl IpcServiceHandler {
             .ok_or_else(|| format!("No path to gate '{target_gate}'"))?;
 
         let addr = match path.endpoint_type {
-            EndpointType::Direct { addr }
-            | EndpointType::Local { addr }
-            | EndpointType::Overlay { addr, .. } => addr,
-            EndpointType::FamilyRelay { .. } | EndpointType::TorOnion { .. } => {
+            EndpointType::Direct {
+                addr,
+            }
+            | EndpointType::Local {
+                addr,
+            }
+            | EndpointType::Overlay {
+                addr,
+                ..
+            } => addr,
+            EndpointType::FamilyRelay {
+                ..
+            }
+            | EndpointType::TorOnion {
+                ..
+            } => {
                 return Err(format!(
                     "No direct/LAN/overlay path to '{target_gate}' — relay/onion not supported for gossip"
                 ));
@@ -123,25 +123,14 @@ impl IpcServiceHandler {
     /// Called by remote songBird peers (via `:7700` federation) or directly by
     /// local primals that want to inject gossip without specifying a target gate.
     pub(super) async fn handle_gossip_inject(&self, params: Value) -> Result<Value, String> {
-        let topic = params
-            .get("topic")
-            .and_then(Value::as_str)
-            .ok_or("Missing required field: topic")?;
+        let topic =
+            params.get("topic").and_then(Value::as_str).ok_or("Missing required field: topic")?;
 
-        let key = params
-            .get("key")
-            .and_then(Value::as_str)
-            .unwrap_or("");
+        let key = params.get("key").and_then(Value::as_str).unwrap_or("");
 
-        let payload = params
-            .get("payload")
-            .cloned()
-            .unwrap_or(Value::Null);
+        let payload = params.get("payload").cloned().unwrap_or(Value::Null);
 
-        let origin = params
-            .get("origin_gate")
-            .and_then(Value::as_str)
-            .unwrap_or("unknown");
+        let origin = params.get("origin_gate").and_then(Value::as_str).unwrap_or("unknown");
 
         debug!(
             target: "songbird::gossip_relay",
@@ -171,17 +160,13 @@ impl IpcServiceHandler {
     ///
     /// Returns `{subscription_id, topic, status}`.
     pub(super) async fn handle_gossip_subscribe(&self, params: Value) -> Result<Value, String> {
-        let topic = params
-            .get("topic")
-            .and_then(Value::as_str)
-            .ok_or("Missing required field: topic")?
-            .to_string();
+        let topic =
+            params.get("topic").and_then(Value::as_str).ok_or("Missing required field: topic")?;
 
         let primal_id = params
             .get("primal_id")
             .and_then(Value::as_str)
-            .ok_or("Missing required field: primal_id")?
-            .to_string();
+            .ok_or("Missing required field: primal_id")?;
 
         let endpoint = params
             .get("endpoint")
@@ -196,7 +181,7 @@ impl IpcServiceHandler {
 
         let sub = super::GossipSubscription {
             id: subscription_id.clone(),
-            primal_id: primal_id.clone(),
+            primal_id: Arc::from(primal_id),
             endpoint: std::path::PathBuf::from(endpoint),
             created: std::time::Instant::now(),
         };
@@ -206,13 +191,13 @@ impl IpcServiceHandler {
                 .gossip_subscriptions
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
-            registry.subscribe(topic.clone(), sub);
+            registry.subscribe(Arc::from(topic), sub);
         }
 
         debug!(
             target: "songbird::gossip_relay",
-            topic = %topic,
-            primal_id = %primal_id,
+            topic,
+            primal_id,
             subscription_id = %subscription_id,
             "gossip subscription registered"
         );
@@ -234,10 +219,8 @@ impl IpcServiceHandler {
         origin: &str,
     ) -> u32 {
         let subscribers = {
-            let registry = self
-                .gossip_subscriptions
-                .read()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            let registry =
+                self.gossip_subscriptions.read().unwrap_or_else(std::sync::PoisonError::into_inner);
             registry.subscribers_for(topic)
         };
 
@@ -286,8 +269,11 @@ impl IpcServiceHandler {
         match tokio::time::timeout(timeout, UnixStream::connect(&sub.endpoint)).await {
             Ok(Ok(stream)) => {
                 let (reader, mut writer) = stream.into_split();
-                let msg = format!("{rpc}\n");
-                if writer.write_all(msg.as_bytes()).await.is_ok() {
+                let Ok(mut msg) = serde_json::to_vec(&rpc) else {
+                    return false;
+                };
+                msg.push(b'\n');
+                if writer.write_all(&msg).await.is_ok() {
                     let mut response = String::new();
                     let mut buf_reader = BufReader::new(reader);
                     let _ = tokio::time::timeout(
@@ -345,35 +331,19 @@ impl IpcServiceHandler {
     /// - `origin_gate` (string, optional): originator gate (loop prevention)
     /// - `seen_gates` (array of strings, optional): gates that already have this entry
     pub(super) async fn handle_gossip_spread(&self, params: Value) -> Result<Value, String> {
-        let topic = params
-            .get("topic")
-            .and_then(Value::as_str)
-            .ok_or("Missing required field: topic")?;
+        let topic =
+            params.get("topic").and_then(Value::as_str).ok_or("Missing required field: topic")?;
 
-        let key = params
-            .get("key")
-            .and_then(Value::as_str)
-            .unwrap_or("");
+        let key = params.get("key").and_then(Value::as_str).unwrap_or("");
 
-        let payload = params
-            .get("payload")
-            .cloned()
-            .unwrap_or(Value::Null);
+        let payload = params.get("payload").cloned().unwrap_or(Value::Null);
 
-        let origin = params
-            .get("origin_gate")
-            .and_then(Value::as_str)
-            .unwrap_or("");
+        let origin = params.get("origin_gate").and_then(Value::as_str).unwrap_or("");
 
         let seen_gates: Vec<String> = params
             .get("seen_gates")
             .and_then(Value::as_array)
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(Value::as_str)
-                    .map(String::from)
-                    .collect()
-            })
+            .map(|arr| arr.iter().filter_map(Value::as_str).map(String::from).collect())
             .unwrap_or_default();
 
         self.inject_gossip_locally(topic, key, &payload).await?;
@@ -398,9 +368,9 @@ impl IpcServiceHandler {
             "origin_gate": our_node_id,
         });
 
-        let (spread_count, failures) =
-            self.fan_out_gossip(&reachable, origin, &seen_gates, &our_node_id, &inject_request)
-                .await;
+        let (spread_count, failures) = self
+            .fan_out_gossip(&reachable, origin, &seen_gates, &our_node_id, &inject_request)
+            .await;
 
         let mut result = json!({
             "status": "spread",
@@ -453,9 +423,16 @@ impl IpcServiceHandler {
                 continue;
             };
 
-            let (EndpointType::Direct { addr }
-            | EndpointType::Local { addr }
-            | EndpointType::Overlay { addr, .. }) = path.endpoint_type
+            let (EndpointType::Direct {
+                addr,
+            }
+            | EndpointType::Local {
+                addr,
+            }
+            | EndpointType::Overlay {
+                addr,
+                ..
+            }) = path.endpoint_type
             else {
                 continue;
             };
@@ -529,8 +506,11 @@ impl IpcServiceHandler {
                     if writer.write_all(&[0xEC, 0x01]).await.is_err() {
                         return Ok(());
                     }
-                    let msg = format!("{rpc}\n");
-                    if writer.write_all(msg.as_bytes()).await.is_ok() {
+                    let Ok(mut msg) = serde_json::to_vec(&rpc) else {
+                        return Ok(());
+                    };
+                    msg.push(b'\n');
+                    if writer.write_all(&msg).await.is_ok() {
                         let mut response = String::new();
                         let mut buf_reader = BufReader::new(reader);
                         let _ = tokio::time::timeout(

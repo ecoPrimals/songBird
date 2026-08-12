@@ -88,6 +88,9 @@ Create a bridge for StarCraft gaming sessions
 .B songbird orchestrator start
 Start the service orchestrator
 .TP
+.B songbird server --node-id GATE
+Start the orchestrator with an explicit gate identity (alias: \-\-gate-id)
+.TP
 .B songbird config init
 Initialize a new configuration file
 .TP
@@ -115,6 +118,9 @@ Set logging level (error, warn, info, debug, trace)
 .TP
 .B SONGBIRD_BIND_ADDRESS  
 Override default bind address for services
+.TP
+.B GATE_ID
+Gate/node identity for mesh federation and swarmVine gossip (overridden by \-\-node-id / \-\-gate-id)
 
 .SH EXIT STATUS
 .TP

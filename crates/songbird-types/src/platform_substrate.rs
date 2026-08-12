@@ -59,9 +59,7 @@ fn platform_link_impl(original: &Path, link: &Path) -> io::Result<()> {
 /// Check if a path is a symbolic link (all platforms).
 #[must_use]
 pub fn is_symlink(path: &Path) -> bool {
-    std::fs::symlink_metadata(path)
-        .map(|m| m.file_type().is_symlink())
-        .unwrap_or(false)
+    std::fs::symlink_metadata(path).map(|m| m.file_type().is_symlink()).unwrap_or(false)
 }
 
 // ─── L2: Permissions ───────────────────────────────────────────────────────
@@ -135,9 +133,7 @@ pub fn is_unix_socket(path: &Path) -> bool {
 #[cfg(unix)]
 fn is_unix_socket_impl(path: &Path) -> bool {
     use std::os::unix::fs::FileTypeExt;
-    std::fs::metadata(path)
-        .map(|m| m.file_type().is_socket())
-        .unwrap_or(false)
+    std::fs::metadata(path).map(|m| m.file_type().is_socket()).unwrap_or(false)
 }
 
 #[cfg(not(unix))]
@@ -237,5 +233,70 @@ mod tests {
         let file = dir.path().join("not_a_socket.txt");
         std::fs::write(&file, "hello").unwrap();
         assert!(!is_unix_socket(&file));
+    }
+
+    #[test]
+    fn platform_access_apply_owner_full() {
+        let dir = tempfile::tempdir().unwrap();
+        let subdir = dir.path().join("private");
+        std::fs::create_dir(&subdir).unwrap();
+        PlatformAccess::OwnerFull.apply(&subdir).unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&subdir).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o700);
+        }
+    }
+
+    #[test]
+    fn platform_access_apply_public_read() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("config.toml");
+        std::fs::write(&file, "key=value").unwrap();
+        PlatformAccess::PublicRead.apply(&file).unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&file).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o644);
+        }
+    }
+
+    #[test]
+    fn platform_access_apply_readonly() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("secret.key");
+        std::fs::write(&file, "material").unwrap();
+        PlatformAccess::Readonly.apply(&file).unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&file).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o400);
+        }
+    }
+
+    #[test]
+    fn platform_link_overwrites_existing_symlink_target() {
+        let dir = tempfile::tempdir().unwrap();
+        let original = dir.path().join("data.txt");
+        let updated = dir.path().join("new.txt");
+        let link = dir.path().join("link.txt");
+        std::fs::write(&original, "v1").unwrap();
+        std::fs::write(&updated, "v2").unwrap();
+        platform_link(&original, &link).unwrap();
+        std::fs::remove_file(&link).unwrap();
+        platform_link(&updated, &link).unwrap();
+        assert!(link.exists() || is_symlink(&link));
+    }
+
+    #[test]
+    fn is_symlink_false_for_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(!is_symlink(dir.path()));
     }
 }

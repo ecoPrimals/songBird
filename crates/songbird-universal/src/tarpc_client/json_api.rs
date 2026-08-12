@@ -22,10 +22,9 @@ impl TarpcClient {
                     .as_ref()
                     .and_then(|v| v.get("capability"))
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| SongbirdError::rpc("Missing capability parameter"))?
-                    .to_string();
+                    .ok_or_else(|| SongbirdError::rpc("Missing capability parameter"))?;
 
-                let result = self.discover(&capability).await?;
+                let result = self.discover(capability).await?;
                 serde_json::to_value(result)
                     .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {e}")))
             }
@@ -49,10 +48,9 @@ impl TarpcClient {
                     .as_ref()
                     .and_then(|v| v.get("service_id"))
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| SongbirdError::rpc("Missing service_id parameter"))?
-                    .to_string();
+                    .ok_or_else(|| SongbirdError::rpc("Missing service_id parameter"))?;
 
-                let result = self.unregister(&service_id).await?;
+                let result = self.unregister(service_id).await?;
                 serde_json::to_value(result)
                     .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {e}")))
             }

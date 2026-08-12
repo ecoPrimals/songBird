@@ -100,9 +100,9 @@ pub fn rpc_discover_standard() -> Value {
     serde_json::json!({
         "methods": [
             "health.liveness", "health.readiness", "health.check",
-            "capabilities.list",
+            "capability.list",
             "identity", "rpc.discover",
-            "discover_capabilities",
+            "capabilities.discover",
             "primal.info", "primal.capabilities", "rpc.methods",
             "ipc.register", "ipc.resolve", "ipc.resolve_by_name", "ipc.discover", "ipc.list", "ipc.watch",
             "capability.resolve", "capability.call",

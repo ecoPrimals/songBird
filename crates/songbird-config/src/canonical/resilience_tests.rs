@@ -426,3 +426,40 @@ fn test_backoff_strategy_serde_roundtrip() {
         serde_roundtrip(&strategy);
     }
 }
+
+#[test]
+fn test_circuit_breaker_state_serde_roundtrip() {
+    for state in
+        [CircuitBreakerState::Closed, CircuitBreakerState::Open, CircuitBreakerState::HalfOpen]
+    {
+        serde_roundtrip(&state);
+    }
+}
+
+#[test]
+fn test_retry_strategy_serde_roundtrip() {
+    for strategy in [
+        RetryStrategy::Fixed,
+        RetryStrategy::ExponentialBackoff {
+            jitter: false,
+        },
+        RetryStrategy::LinearBackoff,
+        RetryStrategy::Custom {
+            name: String::from("custom"),
+        },
+    ] {
+        serde_roundtrip(&strategy);
+    }
+}
+
+#[test]
+fn test_retry_calculate_delay_zero_when_disabled() {
+    let config = RetryConfig::disabled();
+    assert_eq!(config.calculate_delay(5), Duration::from_millis(0));
+}
+
+#[test]
+fn test_retry_calculate_delay_zero_for_attempt_zero() {
+    let config = RetryConfig::default();
+    assert_eq!(config.calculate_delay(0), Duration::from_millis(0));
+}

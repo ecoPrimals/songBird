@@ -45,7 +45,10 @@ impl HealthMonitor {
             error_message: None,
         };
 
-        self.services.write().unwrap_or_else(std::sync::PoisonError::into_inner).insert(service_id, health);
+        self.services
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(service_id, health);
         Ok(())
     }
 
@@ -59,7 +62,12 @@ impl HealthMonitor {
         service_id: &str,
         status: HealthStatus,
     ) -> Result<()> {
-        if let Some(health) = self.services.write().unwrap_or_else(std::sync::PoisonError::into_inner).get_mut(service_id) {
+        if let Some(health) = self
+            .services
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get_mut(service_id)
+        {
             health.status = status;
             health.last_check = Utc::now();
         }
@@ -124,7 +132,10 @@ impl HealthMonitor {
             memory_usage: 0.0,
             disk_usage: 0.0,
         };
-        self.nodes.write().unwrap_or_else(std::sync::PoisonError::into_inner).insert(node_id, health);
+        self.nodes
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(node_id, health);
         Ok(())
     }
 
@@ -141,7 +152,9 @@ impl HealthMonitor {
         memory_usage: f64,
         disk_usage: f64,
     ) -> Result<()> {
-        if let Some(node) = self.nodes.write().unwrap_or_else(std::sync::PoisonError::into_inner).get_mut(node_id) {
+        if let Some(node) =
+            self.nodes.write().unwrap_or_else(std::sync::PoisonError::into_inner).get_mut(node_id)
+        {
             node.status = status;
             node.last_heartbeat = Utc::now();
             node.cpu_usage = cpu_usage;

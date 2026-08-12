@@ -35,10 +35,14 @@ impl ResourceMonitor {
                                     0.0
                                 };
 
+                                let load_average = songbird_types::sys_metrics::load_average()
+                                    .map_or([0.0, 0.0, 0.0], |[a, b, c]| {
+                                        [f64::from(a), f64::from(b), f64::from(c)]
+                                    });
                                 return CpuUsage {
                                     overall_percent: usage_percent,
                                     per_core_percent: Vec::new(), // Simplified
-                                    load_average: [0.0, 0.0, 0.0], // Would need /proc/loadavg
+                                    load_average,
                                     context_switches_per_sec: 0,
                                     interrupts_per_sec: 0,
                                 };
@@ -61,41 +65,15 @@ impl ResourceMonitor {
 
     /// Collect detailed memory usage information
     pub async fn collect_memory_usage() -> MemoryUsage {
-        #[cfg(target_os = "linux")]
-        {
-            if let Ok(meminfo) = tokio::fs::read_to_string("/proc/meminfo").await {
-                let mut total_gb = 0;
-                let mut available_gb = 0;
-                let mut cached_gb = 0;
-                let mut buffer_gb = 0;
-
-                for line in meminfo.lines() {
-                    let parts: Vec<&str> = line.split_whitespace().collect();
-                    if parts.len() >= 2 {
-                        if let Ok(kb) = parts[1].parse::<u64>() {
-                            let gb = kb / 1024 / 1024;
-                            match parts[0] {
-                                "MemTotal:" => total_gb = gb,
-                                "MemAvailable:" => available_gb = gb,
-                                "Cached:" => cached_gb = gb,
-                                "Buffers:" => buffer_gb = gb,
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-
-                let used_gb = total_gb.saturating_sub(available_gb);
-
-                return MemoryUsage {
-                    total_gb,
-                    used_gb,
-                    cached_gb,
-                    buffer_gb,
-                    swap_total_gb: 0, // Simplified
-                    swap_used_gb: 0,
-                };
-            }
+        if let Some(mem) = songbird_types::sys_metrics::detailed_memory_info() {
+            return MemoryUsage {
+                total_gb: mem.total_gb(),
+                used_gb: mem.used_gb(),
+                cached_gb: mem.cached_gb(),
+                buffer_gb: mem.buffers_gb(),
+                swap_total_gb: 0, // Simplified
+                swap_used_gb: 0,
+            };
         }
 
         // Default fallback

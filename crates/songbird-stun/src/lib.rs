@@ -63,7 +63,7 @@ pub use ddns_cloudflare::CloudflareDdnsProvider;
 pub use error::{StunError, StunResult};
 pub use relay_args::RelayArgs;
 pub use server::{StunServer, StunServerStats};
+pub use transport_impl::StunTransport;
 pub use turn::{TurnAllocation, TurnClient, encode_xor_peer_address};
 pub use turn_server::{CredentialStore, StaticCredentialStore, TurnRelayServer, TurnRelayStats};
-pub use transport_impl::StunTransport;
 pub use types::{NatType, PortPattern, PublicEndpoint, StunCredentials};

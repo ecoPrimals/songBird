@@ -21,7 +21,8 @@ impl ProductionAnalyticsEngine {
         let check_real_time = self.config.enable_real_time;
 
         {
-            let mut series_map = self.time_series.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let mut series_map =
+                self.time_series.write().unwrap_or_else(std::sync::PoisonError::into_inner);
             let series = series_map.entry(metric_name.clone()).or_insert_with(|| TimeSeries {
                 name: metric_name.clone(),
                 data_points: VecDeque::new(),
@@ -35,7 +36,8 @@ impl ProductionAnalyticsEngine {
             }
         }
 
-        self.stats.write().unwrap_or_else(std::sync::PoisonError::into_inner).total_data_points += 1;
+        self.stats.write().unwrap_or_else(std::sync::PoisonError::into_inner).total_data_points +=
+            1;
 
         if check_real_time
             && let Ok(anomaly) = self.detect_anomaly(&metric_name, data_point.value).await
@@ -60,13 +62,15 @@ impl ProductionAnalyticsEngine {
         value: f64,
     ) -> SongbirdResult<AnomalyResult> {
         let model = {
-            let models = self.anomaly_models.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let models =
+                self.anomaly_models.read().unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(model) = models.get(metric_name) {
                 model.clone()
             } else {
                 drop(models);
                 let new_model = self.create_anomaly_model(metric_name, value);
-                let mut models = self.anomaly_models.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+                let mut models =
+                    self.anomaly_models.write().unwrap_or_else(std::sync::PoisonError::into_inner);
                 models.insert(metric_name.to_string(), new_model.clone());
                 new_model
             }

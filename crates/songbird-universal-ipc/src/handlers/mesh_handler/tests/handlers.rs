@@ -3,7 +3,35 @@
 
 use crate::handlers::mesh_handler::MeshHandler;
 use serde_json::json;
+use std::sync::Arc;
 use std::time::Duration;
+
+#[tokio::test]
+async fn node_id_async_returns_shared_arc_without_extra_allocation() {
+    let handler = MeshHandler::new();
+    handler
+        .handle_init(json!({
+            "node_id": "tower-node-abc",
+            "bootstrap_onions": []
+        }))
+        .await
+        .expect("mesh init");
+
+    let id_a = handler.node_id_async().await;
+    let id_b = handler.node_id_async().await;
+    assert_eq!(id_a.as_ref(), "tower-node-abc");
+    assert!(Arc::ptr_eq(&id_a, &id_b));
+}
+
+#[test]
+fn node_id_blocking_accessor_returns_arc_str() {
+    let handler = MeshHandler::with_mesh(
+        songbird_onion_relay::mesh::BeaconMesh::new(String::from("sync-node"), vec![]),
+        "sync-node",
+    );
+    let id = handler.node_id();
+    assert_eq!(id.as_ref(), "sync-node");
+}
 
 #[tokio::test]
 async fn test_mesh_find_path_not_found() {

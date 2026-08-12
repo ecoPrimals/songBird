@@ -86,6 +86,34 @@ fn cli_parses_rendezvous_subcommand() {
     }
 }
 
+#[test]
+fn cli_parses_server_node_id_flag() {
+    let cli = Cli::try_parse_from(["songbird", "server", "--node-id", "tower-1"])
+        .expect("server --node-id should parse");
+    match cli.command {
+        Commands::Server {
+            args,
+        } => {
+            assert_eq!(args.node_id.as_deref(), Some("tower-1"));
+        }
+        _ => panic!("expected Server variant"),
+    }
+}
+
+#[test]
+fn cli_parses_server_gate_id_alias() {
+    let cli = Cli::try_parse_from(["songbird", "server", "--gate-id", "flock-gate"])
+        .expect("server --gate-id should parse");
+    match cli.command {
+        Commands::Server {
+            args,
+        } => {
+            assert_eq!(args.node_id.as_deref(), Some("flock-gate"));
+        }
+        _ => panic!("expected Server variant"),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Help and version (clap error kinds)
 // ---------------------------------------------------------------------------

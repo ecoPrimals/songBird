@@ -140,9 +140,7 @@ impl PoolConfig {
             ));
         }
         if self.max_idle_time.is_zero() {
-            return Err(crate::error::Error::Connection(
-                "max_idle_time cannot be zero".into(),
-            ));
+            return Err(crate::error::Error::Connection("max_idle_time cannot be zero".into()));
         }
         Ok(())
     }

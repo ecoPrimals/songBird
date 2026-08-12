@@ -38,7 +38,7 @@ methods = [
     "mesh.discover_remotes",
     "mesh.mirror",
     "mesh.publish",
-    "mesh.subscribe",
+    "mesh.deliver",
     "mesh.probe_latency",
     "mesh.enroll",
     "mesh.gate_enroll",

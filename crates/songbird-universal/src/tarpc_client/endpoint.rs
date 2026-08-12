@@ -20,7 +20,7 @@ pub(super) fn new_client(endpoint: &str) -> SongbirdResult<TarpcClient> {
     let addr = TarpcClient::parse_endpoint(endpoint)?;
 
     Ok(TarpcClient {
-        endpoint: endpoint.to_string(),
+        endpoint: Arc::from(endpoint),
         addr,
         connection: Arc::new(RwLock::new(None)),
         timeout: Duration::from_secs(5),

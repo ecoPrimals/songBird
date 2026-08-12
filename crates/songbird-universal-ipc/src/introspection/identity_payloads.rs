@@ -3,6 +3,7 @@
 
 //! Identity payload and family ID resolution from environment.
 
+use super::capability_tokens::callable_methods_list;
 use serde_json::Value;
 use songbird_types::primal_names;
 
@@ -53,13 +54,14 @@ pub fn identity(family_id: &str) -> Value {
 
 /// Wire Standard Level 2 `identity.get` response.
 ///
-/// Returns `{primal, version, domain, license}` per Capability Wire Standard v1.0.
+/// Returns `{primal, version, domain, license, methods}` per Capability Wire Standard v1.0.
 #[must_use]
 pub fn identity_get() -> Value {
     serde_json::json!({
         "primal": primal_names::SELF_NAME,
         "version": env!("CARGO_PKG_VERSION"),
         "domain": "network",
-        "license": "AGPL-3.0-or-later"
+        "license": "AGPL-3.0-or-later",
+        "methods": callable_methods_list(),
     })
 }

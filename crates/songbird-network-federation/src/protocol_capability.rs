@@ -198,13 +198,15 @@ impl ProtocolCapabilityManager {
 
     /// Register a local protocol capability
     pub async fn register_protocol(&self, capability: ProtocolCapability) {
-        let mut caps = self.local_capabilities.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut caps =
+            self.local_capabilities.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         caps.add_protocol(capability);
     }
 
     /// Register a feature
     pub async fn register_feature(&self, feature: String) {
-        let mut caps = self.local_capabilities.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut caps =
+            self.local_capabilities.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         caps.add_feature(feature);
     }
 
@@ -215,20 +217,32 @@ impl ProtocolCapabilityManager {
 
     /// Store peer capabilities
     pub async fn store_peer_capabilities(&self, capabilities: TowerCapabilities) {
-        let mut peers = self.peer_capabilities.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut peers =
+            self.peer_capabilities.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         peers.insert(capabilities.tower_id.clone(), capabilities);
     }
 
     /// Get peer capabilities
     pub async fn get_peer_capabilities(&self, tower_id: &str) -> Option<TowerCapabilities> {
-        let peers = self.peer_capabilities.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let peers =
+            self.peer_capabilities.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         peers.get(tower_id).cloned()
     }
 
     /// Find best mutual protocol with peer
     pub async fn negotiate_protocol(&self, peer_id: &str) -> Option<Protocol> {
-        let peer = self.peer_capabilities.read().unwrap_or_else(std::sync::PoisonError::into_inner).get(peer_id).cloned()?;
-        let local_protocols = self.local_capabilities.read().unwrap_or_else(std::sync::PoisonError::into_inner).protocols.clone();
+        let peer = self
+            .peer_capabilities
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(peer_id)
+            .cloned()?;
+        let local_protocols = self
+            .local_capabilities
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .protocols
+            .clone();
 
         // Find protocols supported by both
         let mutual_protocols: Vec<_> = local_protocols
@@ -251,7 +265,8 @@ impl ProtocolCapabilityManager {
 
     /// Get all active peers
     pub async fn get_active_peers(&self) -> Vec<String> {
-        let peers = self.peer_capabilities.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let peers =
+            self.peer_capabilities.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         peers.keys().cloned().collect()
     }
 }
