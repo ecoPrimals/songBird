@@ -124,13 +124,15 @@ mod tests {
 
     #[test]
     fn cors_origins_default_is_localhost_3000() {
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::remove_var("SONGBIRD_CORS_ORIGINS");
         let origins = cors_origins();
         assert_eq!(origins, vec![DEFAULT_CORS_ORIGIN]);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn cors_origins_parses_comma_list() {
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::set_var("SONGBIRD_CORS_ORIGINS", "https://a.io, https://b.io");
         let origins = cors_origins();
         songbird_process_env::remove_var("SONGBIRD_CORS_ORIGINS");

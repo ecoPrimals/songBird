@@ -3,7 +3,7 @@
 
 //! Shared fixtures for evolution tests (e.g. serializing env mutations).
 
-use std::sync::Mutex;
-
-/// File-local mutex to serialize tests that modify process-wide env vars.
-pub static ENV_LOCK: Mutex<()> = Mutex::new(());
+/// Serialize tests that modify process-wide env vars.
+pub fn lock_env() -> std::sync::MutexGuard<'static, ()> {
+    songbird_process_env::test_env_lock()
+}

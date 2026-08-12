@@ -174,10 +174,6 @@ pub async fn handle_health() -> Result<serde_json::Value, JsonRpcError> {
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "unit tests")]
 
-    use std::sync::Mutex;
-
-    static COORD_ENV_LOCK: Mutex<()> = Mutex::new(());
-
     #[tokio::test]
     async fn handle_discover_capabilities_returns_expected_shape() {
         let v = super::handle_discover_capabilities().await.expect("ok");
@@ -193,7 +189,7 @@ mod tests {
 
     #[tokio::test]
     async fn handle_discover_capabilities_family_id_respects_env_override() {
-        let _g = COORD_ENV_LOCK.lock().expect("lock");
+        let _g = songbird_process_env::test_env_lock();
         for key in [
             "SONGBIRD_ORCHESTRATOR_FAMILY_ID",
             "SONGBIRD_ORCHESTRATOR_FAMILY",

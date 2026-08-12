@@ -141,6 +141,36 @@ pub fn reset_overlay() {
     overlay_lock().clear();
 }
 
+/// Process-wide lock for tests that mutate the environment overlay.
+///
+/// **Every** test in the workspace that calls [`set_var`], [`remove_var`], or [`reset_overlay`]
+/// must hold this lock for the duration of its env-dependent assertions. Crate-local locks
+/// (`ENV_TEST_LOCK`, `CONFIG_ENV_LOCK`, etc.) only serialize within a single binary; this lock
+/// is the canonical, cross-module serialization point shared by all crate test binaries
+/// (each binary gets its own static instance, which is sufficient since tests within a binary
+/// are the ones that run in parallel).
+///
+/// # Usage
+///
+/// ```no_run
+/// use songbird_process_env::{test_env_lock, set_var, var};
+///
+/// #[test]
+/// fn my_env_test() {
+///     let _lock = test_env_lock();
+///     set_var("MY_KEY", "value");
+///     assert_eq!(var("MY_KEY").unwrap(), "value");
+///     // lock released on drop — overlay mutation is visible only while held
+/// }
+/// ```
+///
+/// For async tests, acquire this lock **before** any `.await` that reads env, or prefer
+/// injectable `_with` / `from_map` readers that avoid overlay mutation entirely.
+pub fn test_env_lock() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(())).lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 /// RAII guard that sets an overlay environment entry and restores the previous overlay state on drop.
 ///
 /// Does **not** call [`std::env::set_var`]. Restoration uses the same overlay semantics as
@@ -165,10 +195,14 @@ pub fn reset_overlay() {
 pub struct ScopedEnv {
     key: String,
     previous: Option<Option<String>>,
+    _test_lock: Option<std::sync::MutexGuard<'static, ()>>,
 }
 
 impl ScopedEnv {
     /// Overlay `key` with `value` until this guard is dropped.
+    ///
+    /// Does **not** acquire [`test_env_lock`]. Use [`Self::locked`] in tests that run
+    /// in parallel with other env-mutating tests to avoid races.
     pub fn new(key: impl Into<String>, value: impl AsRef<OsStr>) -> Self {
         let key = key.into();
         let mut guard = overlay_lock();
@@ -177,6 +211,23 @@ impl ScopedEnv {
         Self {
             key,
             previous,
+            _test_lock: None,
+        }
+    }
+
+    /// Overlay `key` with `value` **and** hold [`test_env_lock`] until this guard is dropped.
+    ///
+    /// Preferred for tests: serializes env mutation across all test modules within the binary.
+    pub fn locked(key: impl Into<String>, value: impl AsRef<OsStr>) -> Self {
+        let lock = test_env_lock();
+        let key = key.into();
+        let mut guard = overlay_lock();
+        let previous = guard.insert(key.clone(), Some(key_str(value.as_ref())));
+        drop(guard);
+        Self {
+            key,
+            previous,
+            _test_lock: Some(lock),
         }
     }
 }
@@ -206,13 +257,11 @@ mod tests {
     use std::collections::HashSet;
     use std::ffi::{OsStr, OsString};
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::{Arc, Barrier, Mutex};
+    use std::sync::{Arc, Barrier};
     use std::thread;
 
-    static TEST_LOCK: Mutex<()> = Mutex::new(());
-
     fn lock() -> std::sync::MutexGuard<'static, ()> {
-        TEST_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+        test_env_lock()
     }
 
     #[test]

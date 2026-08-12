@@ -233,20 +233,6 @@ impl SongbirdOrchestrator {
 // - startup::{start_orchestrator, Orchestrator}
 // They are re-exported at the top of this module for backwards compatibility.
 
-/// Shared `SONGBIRD_BROADCAST_ADDRESSES` mutex for all `discover_broadcast_addresses` tests.
-#[cfg(test)]
-pub(crate) mod broadcast_test_lock {
-    use std::sync::{Mutex, OnceLock};
-
-    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-
-    pub fn guard() -> std::sync::MutexGuard<'static, ()> {
-        LOCK.get_or_init(|| Mutex::new(()))
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-    }
-}
-
 #[cfg(test)]
 #[path = "../core_broadcast_tests.rs"]
 mod discover_broadcast_tests;

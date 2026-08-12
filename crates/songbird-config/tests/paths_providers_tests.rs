@@ -30,18 +30,17 @@
 //! Covers: `PathConfig::default()`, `PathConfig::new()`, `PathConfig::ensure_dirs_exist()`,
 //! `ConfigFormat`, `ConfigProviderInfo`, `FileConfigProvider`, `EndpointSpec`.
 
-use std::sync::Mutex;
-
-/// File-local mutex to serialize tests that modify process-wide env vars.
-static ENV_LOCK: Mutex<()> = Mutex::new(());
+fn lock_env() -> std::sync::MutexGuard<'static, ()> {
+    songbird_process_env::test_env_lock()
+}
 
 mod path_config_tests {
-    use super::ENV_LOCK;
+    use super::lock_env;
     use songbird_config::config::paths::PathConfig;
 
     #[test]
     fn test_path_config_default() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = lock_env();
         let config = PathConfig::default();
 
         // All paths should be non-empty
@@ -61,7 +60,7 @@ mod path_config_tests {
 
     #[test]
     fn test_path_config_new() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = lock_env();
         let result = PathConfig::new();
         // Should succeed on most systems (needs HOME set)
         if songbird_process_env::var("HOME").is_ok() {
@@ -73,7 +72,7 @@ mod path_config_tests {
 
     #[test]
     fn test_path_config_serialization_roundtrip() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = lock_env();
         let config = PathConfig::default();
         let json = serde_json::to_string(&config).unwrap();
         let deserialized: PathConfig = serde_json::from_str(&json).unwrap();
@@ -84,7 +83,7 @@ mod path_config_tests {
 
     #[test]
     fn test_path_config_debug() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = lock_env();
         let config = PathConfig::default();
         let debug = format!("{config:?}");
         assert!(debug.contains("PathConfig"));
@@ -92,7 +91,7 @@ mod path_config_tests {
 
     #[test]
     fn test_path_config_clone() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = lock_env();
         let config = PathConfig::default();
         let cloned = config.clone();
         assert_eq!(config.data_dir, cloned.data_dir);
@@ -101,7 +100,7 @@ mod path_config_tests {
 
     #[test]
     fn test_path_config_service_data_dirs_are_subdirs() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = lock_env();
         let config = PathConfig::default();
         // All service dirs should contain their service name
         let orchestrator_str = config.service_data_dirs.orchestrator.to_string_lossy();
@@ -168,19 +167,19 @@ mod config_providers_tests {
 
 #[allow(deprecated, reason = "test assertions and harness ergonomics")]
 mod universal_primals_tests {
-    use super::ENV_LOCK;
+    use super::lock_env;
     use songbird_config::config::universal_primals::{AutoDiscoveryConfig, PrimalRegistry};
 
     #[test]
     fn test_primal_registry_default() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = lock_env();
         let registry = PrimalRegistry::default();
         assert!(registry.primals.is_empty());
     }
 
     #[test]
     fn test_primal_registry_serialization() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = lock_env();
         let registry = PrimalRegistry::default();
         let json = serde_json::to_string(&registry).unwrap();
         let deserialized: PrimalRegistry = serde_json::from_str(&json).unwrap();
@@ -189,7 +188,7 @@ mod universal_primals_tests {
 
     #[test]
     fn test_auto_discovery_config_default() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = lock_env();
         let config = AutoDiscoveryConfig::default();
         let debug = format!("{config:?}");
         assert!(debug.contains("AutoDiscoveryConfig"));
@@ -197,7 +196,7 @@ mod universal_primals_tests {
 
     #[test]
     fn test_primal_registry_debug() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = lock_env();
         let registry = PrimalRegistry::default();
         let debug = format!("{registry:?}");
         assert!(debug.contains("PrimalRegistry"));
@@ -205,7 +204,7 @@ mod universal_primals_tests {
 
     #[test]
     fn test_primal_registry_clone() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = lock_env();
         let registry = PrimalRegistry::default();
         let cloned = registry.clone();
         assert_eq!(registry.primals.len(), cloned.primals.len());

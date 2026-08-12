@@ -8,7 +8,7 @@ use songbird_orchestrator::task_lifecycle::{
 };
 use std::sync::Arc;
 
-use super::common::ENV_LOCK;
+use super::common::lock_env;
 
 #[test]
 fn test_fault_invalid_json_deserialization() {
@@ -51,7 +51,7 @@ fn test_fault_corrupted_status() {
 
 #[test]
 fn test_fault_missing_family_id_graceful_default() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    let _guard = lock_env();
     // Ensure missing family_id defaults gracefully
     songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
     songbird_process_env::remove_var("FAMILY_ID");

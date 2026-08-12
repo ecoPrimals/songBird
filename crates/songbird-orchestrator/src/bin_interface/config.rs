@@ -350,16 +350,12 @@ fn write_config_display(
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
-    use std::sync::Mutex;
-
     use serde_json::json;
     use songbird_types::config::consolidated_canonical::DiscoveryMode;
     use songbird_types::config::{
         CanonicalDiscoveryConfig, CanonicalEnvironmentConfigNew, CanonicalSongbirdConfig,
         CanonicalSystemConfigNew,
     };
-
-    static CONFIG_ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn default_canonical_config_constructs_and_validates() {
@@ -465,7 +461,7 @@ mod tests {
 
     #[tokio::test]
     async fn init_config_template_family_id_follows_env_priority() {
-        let _g = CONFIG_ENV_LOCK.lock().expect("lock");
+        let _g = songbird_process_env::test_env_lock();
         for key in [
             "SONGBIRD_ORCHESTRATOR_FAMILY_ID",
             "SONGBIRD_ORCHESTRATOR_FAMILY",

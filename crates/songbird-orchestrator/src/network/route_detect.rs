@@ -73,6 +73,7 @@ mod tests {
 
     #[test]
     fn route_detect_addr_v4_uses_documentation_space_by_default() {
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::remove_var("SONGBIRD_ROUTE_DETECT_ADDR");
         assert!(route_detect_addr_v4().contains("192.0.2.1"));
     }

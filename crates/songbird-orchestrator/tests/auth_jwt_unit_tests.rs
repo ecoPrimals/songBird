@@ -14,14 +14,10 @@ use songbird_orchestrator::auth::{
     discover_security_socket, discover_security_socket_for_family, get_security_socket_for_jwt,
     provision_jwt_secret,
 };
-use std::sync::Mutex;
-
-/// Serialize env var tests — process env vars are global mutable state.
-static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 #[test]
 fn test_capability_discovery_with_security_provider() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    let _guard = songbird_process_env::test_env_lock();
 
     // Clean environment
     songbird_process_env::remove_var("SECURITY_PROVIDER");
@@ -41,7 +37,7 @@ fn test_capability_discovery_with_security_provider() {
 
 #[test]
 fn test_capability_discovery_with_legacy_env_socket() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    let _guard = songbird_process_env::test_env_lock();
 
     // Clean environment
     songbird_process_env::remove_var("SECURITY_PROVIDER");
@@ -61,7 +57,7 @@ fn test_capability_discovery_with_legacy_env_socket() {
 
 #[test]
 fn test_capability_discovery_priority() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    let _guard = songbird_process_env::test_env_lock();
 
     // Clean environment
     songbird_process_env::remove_var("SECURITY_PROVIDER");
@@ -85,7 +81,7 @@ fn test_capability_discovery_priority() {
 
 #[test]
 fn test_family_specific_discovery() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    let _guard = songbird_process_env::test_env_lock();
 
     // Clean environment
     songbird_process_env::remove_var("SECURITY_PROVIDER");
@@ -104,7 +100,7 @@ fn test_family_specific_discovery() {
 
 #[test]
 fn test_get_security_socket_for_jwt() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    let _guard = songbird_process_env::test_env_lock();
 
     // Clean environment
     songbird_process_env::remove_var("SECURITY_PROVIDER");
@@ -163,7 +159,7 @@ async fn test_jwt_provisioning_base64_validity() {
 
 #[test]
 fn test_capability_discovery_no_env_vars() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    let _guard = songbird_process_env::test_env_lock();
 
     // Clean environment
     songbird_process_env::remove_var("SECURITY_PROVIDER");

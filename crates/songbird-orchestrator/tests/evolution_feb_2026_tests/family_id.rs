@@ -3,11 +3,11 @@
 
 //! `BirdSong` `family_id` environment integration.
 
-use super::common::ENV_LOCK;
+use super::common::lock_env;
 
 #[test]
 fn test_family_id_from_environment_priority() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    let _guard = lock_env();
     // Test environment variable priority for family_id
     // Priority: SONGBIRD_FAMILY_ID > FAMILY_ID > default "default"
 
@@ -36,7 +36,7 @@ fn test_family_id_from_environment_priority() {
 
 #[test]
 fn test_family_id_special_characters() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    let _guard = lock_env();
     // Test that family_id handles special characters
     let special_ids = vec![
         "nat0",

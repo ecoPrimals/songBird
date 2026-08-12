@@ -375,11 +375,7 @@ struct CreateLineageResponse {
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 
-    use std::sync::Mutex;
-
     use super::*;
-
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_deterministic_fingerprint() {
@@ -516,7 +512,7 @@ mod tests {
     )]
     async fn new_uses_security_endpoint_env_when_set() {
         use songbird_process_env::ScopedEnv;
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = songbird_process_env::test_env_lock();
         let _env = ScopedEnv::new("SECURITY_ENDPOINT", "http://env-test.local:9200");
         let client = SecurityCapabilityClient::new().await.expect("new with SECURITY_ENDPOINT");
         assert_eq!(client.base_url, "http://env-test.local:9200");
@@ -529,7 +525,7 @@ mod tests {
     )]
     async fn new_prefers_security_endpoint_over_legacy_beardog() {
         use songbird_process_env::ScopedEnv;
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = songbird_process_env::test_env_lock();
         let _sec = ScopedEnv::new("SECURITY_ENDPOINT", "http://preferred/");
         let _legacy = ScopedEnv::new("BEARDOG_ENDPOINT", "http://legacy/");
         let client = SecurityCapabilityClient::new().await.expect("new with env precedence");

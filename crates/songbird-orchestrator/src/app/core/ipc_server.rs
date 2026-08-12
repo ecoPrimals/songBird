@@ -5,6 +5,8 @@
 
 use anyhow::Result;
 use std::sync::Arc;
+#[cfg(not(unix))]
+use tracing::debug;
 #[cfg(unix)]
 use tracing::error;
 use tracing::{info, warn};
@@ -82,6 +84,7 @@ impl SongbirdOrchestrator {
     #[cfg(not(unix))]
     pub(crate) async fn start_ipc_server(&self) -> Result<()> {
         use songbird_types::defaults::ports::DEFAULT_IPC_LISTEN_PORT;
+        use songbird_universal_ipc::tower_atomic::JsonRpcHandler;
         use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
         let ipc_port = songbird_process_env::var("SONGBIRD_IPC_PORT")
@@ -131,19 +134,17 @@ impl SongbirdOrchestrator {
                             let (reader, mut writer) = stream.into_split();
                             let mut buf_reader = BufReader::new(reader);
 
-                            if let Ok(buf) = buf_reader.fill_buf().await {
-                                if buf.len() >= 2
-                                    && songbird_types::constants::ribocipher::is_signal_byte(buf[0])
-                                {
-                                    let consume = if buf[1]
-                                        == songbird_types::constants::ribocipher::VERSION_1
-                                    {
+                            if let Ok(buf) = buf_reader.fill_buf().await
+                                && buf.len() >= 2
+                                && songbird_types::constants::ribocipher::is_signal_byte(buf[0])
+                            {
+                                let consume =
+                                    if buf[1] == songbird_types::constants::ribocipher::VERSION_1 {
                                         2
                                     } else {
                                         1
                                     };
-                                    buf_reader.consume(consume);
-                                }
+                                buf_reader.consume(consume);
                             }
 
                             let mut lines = buf_reader.lines();
@@ -158,10 +159,9 @@ impl SongbirdOrchestrator {
                                 };
                                 let method =
                                     parsed["method"].as_str().unwrap_or_default().to_string();
-                                let params = parsed
-                                    .get("params")
-                                    .cloned()
-                                    .unwrap_or(serde_json::Value::Object(Default::default()));
+                                let params = parsed.get("params").cloned().unwrap_or_else(|| {
+                                    serde_json::Value::Object(Default::default())
+                                });
                                 let id = parsed.get("id").cloned();
 
                                 let result = handler.handle(&method, params).await;

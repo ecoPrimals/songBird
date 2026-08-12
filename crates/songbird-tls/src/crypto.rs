@@ -25,6 +25,7 @@ use crate::error::{Result, TlsError};
 use base64::{Engine as _, engine::general_purpose};
 use serde::Deserialize;
 use songbird_types::IpcStream;
+#[cfg(unix)]
 use std::path::Path;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -217,6 +218,10 @@ impl SecurityTlsCryptoClient {
     ///
     /// - Unix: Checks filesystem for socket files
     /// - Windows: Uses TCP localhost fallback (named pipes future)
+    #[allow(
+        clippy::unnecessary_wraps,
+        reason = "returns Err on unix; consistent signature across platforms"
+    )]
     fn discover_socket() -> Result<String> {
         #[cfg(unix)]
         {

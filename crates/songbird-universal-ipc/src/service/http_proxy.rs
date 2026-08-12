@@ -201,6 +201,7 @@ mod tests {
 
     #[test]
     fn from_env_parses_and_empty_when_unset() {
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::remove_var("SONGBIRD_PROXY_ROUTES");
         let empty_router = CapabilityProxyRouter::from_env();
         assert!(empty_router.list_capabilities().is_empty());
@@ -221,6 +222,7 @@ mod tests {
 
     #[test]
     fn from_env_parses_jsonrpc_scheme() {
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::set_var(
             "SONGBIRD_PROXY_ROUTES",
             "network=jsonrpc://songbird.sock,jupyter=http://localhost:8000",

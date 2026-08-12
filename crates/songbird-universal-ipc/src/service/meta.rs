@@ -491,8 +491,9 @@ mod tests {
         assert_eq!(st["active_connections"], json!(3));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn federation_peers_empty_state_serializes_like_meta_defaults() {
+        let _g = songbird_process_env::test_env_lock();
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
         let handler = IpcServiceHandler::new_isolated(registry);
 
@@ -514,12 +515,12 @@ mod tests {
         assert_eq!(st, expected_st);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn federation_status_reads_env_var_when_state_not_injected() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
         let handler = IpcServiceHandler::new_isolated(registry);
 
-        let _env = songbird_process_env::ScopedEnv::new("SONGBIRD_FEDERATION_ENABLED", "true");
+        let _env = songbird_process_env::ScopedEnv::locked("SONGBIRD_FEDERATION_ENABLED", "true");
 
         let st = handler.handle("federation.status", json!({})).await.expect("status");
         assert_eq!(st["enabled"], json!(true), "env var should wire into response");
@@ -529,12 +530,12 @@ mod tests {
         assert_eq!(p["federation_enabled"], json!(true));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn federation_status_reads_peers_env_as_implicit_enabled() {
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
         let handler = IpcServiceHandler::new_isolated(registry);
 
-        let _env = songbird_process_env::ScopedEnv::new("SONGBIRD_PEERS", "157.230.3.183:7700");
+        let _env = songbird_process_env::ScopedEnv::locked("SONGBIRD_PEERS", "157.230.3.183:7700");
 
         let st = handler.handle("federation.status", json!({})).await.expect("status");
         assert_eq!(st["enabled"], json!(true), "SONGBIRD_PEERS implies federation enabled");

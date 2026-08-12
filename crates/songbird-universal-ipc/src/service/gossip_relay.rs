@@ -22,7 +22,9 @@ use serde_json::{Value, json};
 use songbird_onion_relay::mesh::EndpointType;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{debug, warn};
+use tracing::debug;
+#[cfg(unix)]
+use tracing::warn;
 
 impl IpcServiceHandler {
     /// Handle `gossip.relay` — relay a gossip payload to a target gate's swarmVine.

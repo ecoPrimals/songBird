@@ -247,6 +247,7 @@ async fn test_chaos_concurrent_doctor_formats() -> Result<(), Box<dyn std::error
 #[tokio::test]
 // ✅ NO #[serial]! songbird_process_env::set_var only affects child processes via Command!
 async fn test_chaos_random_env_vars() -> Result<(), Box<dyn std::error::Error>> {
+    let _g = songbird_process_env::test_env_lock();
     let mut rng = rand::thread_rng();
 
     // Set random environment variables and run commands

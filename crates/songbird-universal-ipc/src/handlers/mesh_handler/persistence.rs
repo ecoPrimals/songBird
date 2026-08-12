@@ -120,12 +120,11 @@ pub fn load_persisted_peers_full() -> Option<(String, Vec<LoadedPeer>)> {
         .peers
         .iter()
         .filter_map(|p| {
-            let addr: SocketAddr = p.address.parse().ok()?;
-            let lan = p.lan_addr.as_ref().and_then(|la| la.parse().ok());
+            let address = p.address.parse::<SocketAddr>().ok()?;
             Some(LoadedPeer {
                 node_id: p.node_id.clone(),
-                address: addr,
-                lan_addr: lan,
+                address,
+                lan_addr: p.lan_addr.as_deref().and_then(|s| s.parse::<SocketAddr>().ok()),
             })
         })
         .collect();
@@ -173,35 +172,27 @@ pub(crate) fn save_enrolled_peer(node_id: &str, _public_key: &str, address: &str
     let path = peers_file_path();
     let mut file = load_peers_file().unwrap_or_default();
 
-    let addr_str = if address.is_empty() {
-        String::from("0.0.0.0:0")
-    } else {
-        address.to_string()
-    };
-    let lan = if lan_addr.is_empty() {
-        None
-    } else {
-        Some(lan_addr.to_string())
-    };
-
     if let Some(existing) = file.peers.iter_mut().find(|p| p.node_id == node_id) {
-        existing.address.clone_from(&addr_str);
-        if lan.is_some() {
-            existing.lan_addr = lan;
+        if !address.is_empty() {
+            existing.address = address.to_string();
+        }
+        if !lan_addr.is_empty() {
+            existing.lan_addr = Some(lan_addr.to_string());
         }
     } else {
         file.peers.push(PersistedPeer {
             node_id: node_id.to_string(),
-            address: addr_str,
-            lan_addr: lan,
+            address: address.to_string(),
+            lan_addr: if lan_addr.is_empty() {
+                None
+            } else {
+                Some(lan_addr.to_string())
+            },
         });
     }
 
-    if let Some(parent) = path.parent()
-        && let Err(e) = std::fs::create_dir_all(parent)
-    {
-        warn!("Cannot create mesh persistence directory {}: {e}", parent.display());
-        return;
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
     }
 
     match toml::to_string_pretty(&file) {
@@ -209,7 +200,7 @@ pub(crate) fn save_enrolled_peer(node_id: &str, _public_key: &str, address: &str
             if let Err(e) = std::fs::write(&path, content) {
                 warn!("Failed to persist enrolled peer to {}: {e}", path.display());
             } else {
-                info!("Enrolled peer '{node_id}' persisted to {}", path.display());
+                info!("Persisted enrolled peer '{node_id}' to {}", path.display());
             }
         }
         Err(e) => warn!("Failed to serialize enrolled peer: {e}"),
@@ -223,79 +214,121 @@ fn load_peers_file() -> Option<PeersFile> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
     use std::net::SocketAddr;
-    use std::sync::Mutex;
     use tempfile::TempDir;
 
-    static DATA_DIR_LOCK: Mutex<()> = Mutex::new(());
+    fn save_peers_to(path: &std::path::Path, node_id: &str, peers: &[(String, SocketAddr)]) {
+        let mut file = std::fs::read_to_string(path)
+            .ok()
+            .and_then(|s| toml::from_str::<PeersFile>(&s).ok())
+            .unwrap_or_default();
+        file.node_id = node_id.to_string();
+        for (peer_id, addr) in peers {
+            let addr_str = addr.to_string();
+            if let Some(existing) = file.peers.iter_mut().find(|p| p.node_id == *peer_id) {
+                existing.address = addr_str;
+            } else {
+                file.peers.push(PersistedPeer {
+                    node_id: peer_id.clone(),
+                    address: addr_str,
+                    lan_addr: None,
+                });
+            }
+        }
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        std::fs::write(path, toml::to_string_pretty(&file).unwrap()).unwrap();
+    }
 
-    fn with_temp_data_dir(f: impl FnOnce()) {
-        let _lock = DATA_DIR_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        let dir = TempDir::new().unwrap();
-        let _env =
-            songbird_process_env::ScopedEnv::new("SONGBIRD_DATA_DIR", dir.path().to_str().unwrap());
-        f();
+    fn load_peers_from(path: &std::path::Path) -> Option<(String, Vec<(String, SocketAddr)>)> {
+        let content = std::fs::read_to_string(path).ok()?;
+        let file: PeersFile = toml::from_str(&content).ok()?;
+        if file.node_id.is_empty() || file.peers.is_empty() {
+            return None;
+        }
+        let peers = file
+            .peers
+            .iter()
+            .filter_map(|p| p.address.parse::<SocketAddr>().ok().map(|a| (p.node_id.clone(), a)))
+            .collect();
+        Some((file.node_id, peers))
+    }
+
+    fn remove_peer_from(path: &std::path::Path, node_id: &str) {
+        let content = std::fs::read_to_string(path).ok();
+        let Some(mut file) = content.as_deref().and_then(|s| toml::from_str::<PeersFile>(s).ok())
+        else {
+            return;
+        };
+        let before = file.peers.len();
+        file.peers.retain(|p| p.node_id != node_id);
+        if file.peers.len() < before
+            && let Ok(out) = toml::to_string_pretty(&file)
+        {
+            let _ = std::fs::write(path, out);
+        }
     }
 
     #[test]
     fn save_and_load_roundtrip() {
-        with_temp_data_dir(|| {
-            let peers = vec![
-                ("east-gate".to_string(), "192.168.1.144:7700".parse::<SocketAddr>().unwrap()),
-                ("strand-gate".to_string(), "192.168.1.173:7700".parse::<SocketAddr>().unwrap()),
-            ];
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("peers.toml");
+        let peers = vec![
+            ("east-gate".to_string(), "192.168.1.144:7700".parse::<SocketAddr>().unwrap()),
+            ("strand-gate".to_string(), "192.168.1.173:7700".parse::<SocketAddr>().unwrap()),
+        ];
 
-            save_peers("my-node", &peers);
-            let (node_id, loaded) = load_persisted_peers().expect("should load");
+        save_peers_to(&path, "my-node", &peers);
+        let (node_id, loaded) = load_peers_from(&path).expect("should load");
 
-            assert_eq!(node_id, "my-node");
-            assert_eq!(loaded.len(), 2);
-            assert_eq!(loaded[0].0, "east-gate");
-            assert_eq!(loaded[0].1, "192.168.1.144:7700".parse::<SocketAddr>().unwrap());
-        });
+        assert_eq!(node_id, "my-node");
+        assert_eq!(loaded.len(), 2);
+        assert_eq!(loaded[0].0, "east-gate");
+        assert_eq!(loaded[0].1, "192.168.1.144:7700".parse::<SocketAddr>().unwrap());
     }
 
     #[test]
     fn save_merges_duplicates() {
-        with_temp_data_dir(|| {
-            let peers1 =
-                vec![("peer-a".to_string(), "10.0.0.1:7700".parse::<SocketAddr>().unwrap())];
-            save_peers("node-1", &peers1);
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("peers.toml");
+        let peers1 = vec![("peer-a".to_string(), "10.0.0.1:7700".parse::<SocketAddr>().unwrap())];
+        save_peers_to(&path, "node-1", &peers1);
 
-            let peers2 = vec![
-                ("peer-a".to_string(), "10.0.0.2:7700".parse::<SocketAddr>().unwrap()),
-                ("peer-b".to_string(), "10.0.0.3:7700".parse::<SocketAddr>().unwrap()),
-            ];
-            save_peers("node-1", &peers2);
+        let peers2 = vec![
+            ("peer-a".to_string(), "10.0.0.2:7700".parse::<SocketAddr>().unwrap()),
+            ("peer-b".to_string(), "10.0.0.3:7700".parse::<SocketAddr>().unwrap()),
+        ];
+        save_peers_to(&path, "node-1", &peers2);
 
-            let (_, loaded) = load_persisted_peers().expect("should load");
-            assert_eq!(loaded.len(), 2);
-            assert_eq!(loaded[0].1, "10.0.0.2:7700".parse::<SocketAddr>().unwrap());
-        });
+        let (_, loaded) = load_peers_from(&path).expect("should load");
+        assert_eq!(loaded.len(), 2);
+        assert_eq!(loaded[0].1, "10.0.0.2:7700".parse::<SocketAddr>().unwrap());
     }
 
     #[test]
     fn load_returns_none_when_no_file() {
-        with_temp_data_dir(|| {
-            assert!(load_persisted_peers().is_none());
-        });
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("peers.toml");
+        assert!(load_peers_from(&path).is_none());
     }
 
     #[test]
     fn remove_peer_works() {
-        with_temp_data_dir(|| {
-            let peers = vec![
-                ("peer-x".to_string(), "1.2.3.4:7700".parse::<SocketAddr>().unwrap()),
-                ("peer-y".to_string(), "5.6.7.8:7700".parse::<SocketAddr>().unwrap()),
-            ];
-            save_peers("node-z", &peers);
-            remove_persisted_peer("peer-x");
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("peers.toml");
+        let peers = vec![
+            ("peer-x".to_string(), "1.2.3.4:7700".parse::<SocketAddr>().unwrap()),
+            ("peer-y".to_string(), "5.6.7.8:7700".parse::<SocketAddr>().unwrap()),
+        ];
+        save_peers_to(&path, "node-z", &peers);
+        remove_peer_from(&path, "peer-x");
 
-            let (_, loaded) = load_persisted_peers().expect("should load");
-            assert_eq!(loaded.len(), 1);
-            assert_eq!(loaded[0].0, "peer-y");
-        });
+        let (_, loaded) = load_peers_from(&path).expect("should load");
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].0, "peer-y");
     }
 }

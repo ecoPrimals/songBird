@@ -307,10 +307,6 @@ mod tests {
     use std::time::Duration;
     use tracing_subscriber::layer::SubscriberExt;
 
-    fn discovery_env_guard() -> std::sync::MutexGuard<'static, ()> {
-        crate::adapters::discovery_test_sync::lock_discovery_env()
-    }
-
     #[tokio::test]
     async fn new_propagates_build_default_transport_unix_empty_path_err() {
         let err = ComputeAdapter::new("unix://".to_string()).await.expect_err("empty unix path");
@@ -486,9 +482,9 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn discovery_fallback_compute_endpoint_env() -> SongbirdResult<()> {
-        let _g = discovery_env_guard();
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::reset_overlay();
         songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
         songbird_process_env::remove_var("SONGBIRD_COMPUTE_ENDPOINT");
@@ -504,9 +500,9 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn discovery_fallback_default_host_and_compute_port() -> SongbirdResult<()> {
-        let _g = discovery_env_guard();
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::reset_overlay();
         for key in [
             "CAPABILITY_COMPUTE_ENDPOINT",
@@ -530,9 +526,9 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn discovery_fallback_propagates_new_error_from_bad_env_endpoint() {
-        let _g = discovery_env_guard();
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::reset_overlay();
         songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
         songbird_process_env::set_var("SONGBIRD_COMPUTE_ENDPOINT", "unix://");
@@ -550,7 +546,7 @@ mod tests {
         songbird_process_env::reset_overlay();
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn toadstool_endpoint_logs_deprecation_warning() -> SongbirdResult<()> {
         #[derive(Clone)]
         struct BufWriter(Arc<Mutex<Vec<u8>>>);
@@ -567,7 +563,7 @@ mod tests {
             }
         }
 
-        let _g = discovery_env_guard();
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::reset_overlay();
         songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
         for key in ["SONGBIRD_COMPUTE_ENDPOINT", "COMPUTE_CAPABILITY_ENDPOINT", "COMPUTE_ENDPOINT"]

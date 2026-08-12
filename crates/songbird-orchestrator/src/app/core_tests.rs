@@ -4,15 +4,10 @@
 //! Tests for [`crate::app::SongbirdOrchestrator`] helpers (broadcast discovery, lifecycle-related pure logic).
 
 use crate::app::SongbirdOrchestrator;
-use crate::app::core::broadcast_test_lock;
-
-fn broadcast_env_lock() -> std::sync::MutexGuard<'static, ()> {
-    broadcast_test_lock::guard()
-}
 
 #[test]
 fn discover_broadcast_addresses_respects_env_override() {
-    let _g = broadcast_env_lock();
+    let _g = songbird_process_env::test_env_lock();
     let prev = songbird_process_env::var("SONGBIRD_BROADCAST_ADDRESSES").ok();
     songbird_process_env::set_var("SONGBIRD_BROADCAST_ADDRESSES", "127.0.0.1:9999");
 
@@ -30,7 +25,7 @@ fn discover_broadcast_addresses_respects_env_override() {
 
 #[test]
 fn discover_broadcast_addresses_merges_config_and_fallbacks() {
-    let _g = broadcast_env_lock();
+    let _g = songbird_process_env::test_env_lock();
     let prev = songbird_process_env::var("SONGBIRD_BROADCAST_ADDRESSES").ok();
     songbird_process_env::remove_var("SONGBIRD_BROADCAST_ADDRESSES");
 
@@ -53,7 +48,7 @@ fn discover_broadcast_addresses_merges_config_and_fallbacks() {
 
 #[test]
 fn discover_broadcast_addresses_empty_config_uses_defaults_when_no_env() {
-    let _g = broadcast_env_lock();
+    let _g = songbird_process_env::test_env_lock();
     let prev = songbird_process_env::var("SONGBIRD_BROADCAST_ADDRESSES").ok();
     songbird_process_env::remove_var("SONGBIRD_BROADCAST_ADDRESSES");
 

@@ -512,10 +512,10 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_compute_adapter_from_discovery_fallback_songbird_compute_endpoint()
     -> SongbirdResult<()> {
-        let _g = crate::adapters::discovery_test_sync::lock_discovery_env();
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::reset_overlay();
         songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
         songbird_process_env::set_var(
@@ -533,10 +533,10 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_compute_adapter_from_discovery_fallback_compute_capability_endpoint()
     -> SongbirdResult<()> {
-        let _g = crate::adapters::discovery_test_sync::lock_discovery_env();
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::reset_overlay();
         songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
         songbird_process_env::set_var(
@@ -554,10 +554,10 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_compute_adapter_from_discovery_fallback_toadstool_endpoint() -> SongbirdResult<()>
     {
-        let _g = crate::adapters::discovery_test_sync::lock_discovery_env();
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::reset_overlay();
         songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
         songbird_process_env::set_var("TOADSTOOL_ENDPOINT", "http://from-toadstool:6600");
@@ -572,10 +572,10 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_compute_adapter_from_discovery_fallback_host_and_port_env() -> SongbirdResult<()>
     {
-        let _g = crate::adapters::discovery_test_sync::lock_discovery_env();
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::reset_overlay();
         songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
         songbird_process_env::set_var("SONGBIRD_HOST", "http://custom-compute-host");
@@ -591,10 +591,10 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_compute_adapter_from_discovery_fallback_prefers_songbird_compute_env()
     -> SongbirdResult<()> {
-        let _g = crate::adapters::discovery_test_sync::lock_discovery_env();
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::reset_overlay();
         songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
         songbird_process_env::set_var("SONGBIRD_COMPUTE_ENDPOINT", "http://songbird-wins:1111");

@@ -318,6 +318,7 @@ mod tests {
 
     #[test]
     fn data_dir_explicit_env_wins() {
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::set_var("SONGBIRD_DATA_DIR", "/custom/data");
         let dir = data_dir();
         songbird_process_env::remove_var("SONGBIRD_DATA_DIR");
@@ -326,6 +327,7 @@ mod tests {
 
     #[test]
     fn data_dir_xdg_fallback() {
+        let _g = songbird_process_env::test_env_lock();
         songbird_process_env::remove_var("SONGBIRD_DATA_DIR");
         songbird_process_env::set_var("XDG_DATA_HOME", "/xdg/share");
         let dir = data_dir();

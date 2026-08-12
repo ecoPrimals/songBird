@@ -31,12 +31,9 @@
 
 use songbird_config::config::paths::{PathConfig, get_path_config, testing_config};
 use std::collections::HashMap;
-use std::sync::Mutex;
-
-static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-    ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    songbird_process_env::test_env_lock()
 }
 
 // ==================== DEFAULT TESTS ====================

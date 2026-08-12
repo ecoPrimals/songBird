@@ -21,6 +21,7 @@ fn empty_allowlist() -> ExternalProxyAllowlist {
 
 #[test]
 fn config_from_env_defaults() {
+    let _g = songbird_process_env::test_env_lock();
     songbird_process_env::remove_var("SONGBIRD_DRAWBRIDGE_ADDR");
     songbird_process_env::remove_var("SONGBIRD_DRAWBRIDGE_ROUTES");
     songbird_process_env::remove_var("SONGBIRD_DRAWBRIDGE_AUTH_TOKENS");

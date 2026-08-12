@@ -232,7 +232,7 @@ async fn await_shutdown_signal() {
             }
             #[cfg(not(unix))]
             {
-                std::future::pending::<()>().await
+                std::future::pending::<()>().await;
             }
         } => {
             tracing::info!("🛑 Received SIGTERM, initiating graceful shutdown...");

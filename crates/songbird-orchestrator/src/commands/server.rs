@@ -136,7 +136,7 @@ pub async fn run_server(
             #[cfg(not(unix))]
             {
                 // Windows: only Ctrl+C is available
-                std::future::pending::<()>().await
+                std::future::pending::<()>().await;
             }
         } => {
             tracing::info!("🛑 Received SIGTERM, initiating graceful shutdown...");

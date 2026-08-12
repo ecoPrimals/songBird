@@ -229,9 +229,6 @@ pub fn calculate_max_concurrent(available_memory_gb: u64) -> usize {
 mod tests {
     use super::*;
     use songbird_process_env::ScopedEnv;
-    use std::sync::Mutex;
-
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn parse_ipv4_octets_valid() {
@@ -269,14 +266,14 @@ mod tests {
 
     #[test]
     fn peer_loopback_is_lan() {
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = songbird_process_env::test_env_lock();
         songbird_process_env::remove_var("SONGBIRD_NETWORK_TYPE");
         assert_eq!(detect_network_type_for_peer("127.0.0.1"), "lan");
     }
 
     #[test]
     fn peer_public_ip_is_internet() {
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = songbird_process_env::test_env_lock();
         songbird_process_env::remove_var("SONGBIRD_NETWORK_TYPE");
         assert_eq!(detect_network_type_for_peer("157.230.3.183"), "internet");
         assert_eq!(detect_network_type_for_peer("8.8.8.8"), "internet");
@@ -284,14 +281,14 @@ mod tests {
 
     #[test]
     fn env_override_applies_to_peer_detection() {
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = songbird_process_env::test_env_lock();
         let _env = ScopedEnv::new("SONGBIRD_NETWORK_TYPE", "vpn");
         assert_eq!(detect_network_type_for_peer("8.8.8.8"), "vpn");
     }
 
     #[test]
     fn invalid_peer_ip_falls_back_to_node_detection() {
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = songbird_process_env::test_env_lock();
         songbird_process_env::remove_var("SONGBIRD_NETWORK_TYPE");
         let result = detect_network_type_for_peer("not-an-ip");
         assert!(["lan", "vpn", "internet"].contains(&result.as_str()));
@@ -299,7 +296,7 @@ mod tests {
 
     #[test]
     fn private_peer_not_on_local_subnet_is_vpn() {
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = songbird_process_env::test_env_lock();
         songbird_process_env::remove_var("SONGBIRD_NETWORK_TYPE");
         // 172.16.x.x is private — unless this machine has a 172.16.x.0/24 interface,
         // it should classify as vpn
@@ -331,7 +328,7 @@ mod tests {
 
     #[test]
     fn detect_network_type_env_override() {
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = songbird_process_env::test_env_lock();
         let _env = ScopedEnv::new("SONGBIRD_NETWORK_TYPE", "internet");
         assert_eq!(detect_network_type(), "internet");
     }

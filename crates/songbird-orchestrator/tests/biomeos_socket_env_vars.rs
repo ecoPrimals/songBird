@@ -22,17 +22,11 @@
 use songbird_orchestrator::ipc::UnixSocketServer;
 use std::env;
 use std::path::PathBuf;
-use std::sync::Mutex;
-
-/// Serialize all env var tests in this file.
-/// Process env vars are global state — there is no way around serialization here.
-/// This is the correct pattern: env var tests serialize, everything else runs concurrent.
-static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 /// Test socket path derivation with `BiomeOS` Neural API environment variables
 #[test]
 fn test_biomeos_neural_api_socket_path_priority() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    let _guard = songbird_process_env::test_env_lock();
 
     // Save original env state
     let original_orchestrator_socket = env::var("SONGBIRD_ORCHESTRATOR_SOCKET").ok();
@@ -148,7 +142,7 @@ fn test_biomeos_neural_api_socket_path_priority() {
 /// `PRIMAL_DEPLOYMENT_STANDARD`: `XDG_RUNTIME_DIR/biomeos`/ is preferred, /tmp is fallback
 #[test]
 fn test_default_socket_directory_is_tmp() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    let _guard = songbird_process_env::test_env_lock();
 
     // Clear all explicit socket env vars (but NOT XDG_RUNTIME_DIR)
     songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
@@ -184,7 +178,7 @@ fn restore_env_var(key: &str, value: Option<String>) {
 
 #[test]
 fn test_family_id_priority_order() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    let _guard = songbird_process_env::test_env_lock();
 
     // Clear all env vars (including env_config vars)
     songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");

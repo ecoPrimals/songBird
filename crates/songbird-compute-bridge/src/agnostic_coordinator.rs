@@ -369,10 +369,15 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
+    #[allow(
+        clippy::await_holding_lock,
+        reason = "test_env_lock serializes overlay across env reads"
+    )]
     async fn request_compute_capability_cache_then_env_precedence() {
         // Serialized in one test so the shared `songbird_process_env` overlay is not raced by
         // other tests touching `CAPABILITY_COMPUTE_ENDPOINT`.
+        let _g = songbird_process_env::test_env_lock();
         let _mask = EnvOverlayGuard::mask_key("CAPABILITY_COMPUTE_ENDPOINT");
 
         let coordinator = AgnosticComputeCoordinator::new();
@@ -405,8 +410,13 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
+    #[allow(
+        clippy::await_holding_lock,
+        reason = "test_env_lock serializes overlay across env reads"
+    )]
     async fn deploy_workload_falls_back_to_local_id_when_http_unreachable() {
+        let _g = songbird_process_env::test_env_lock();
         let _mask = EnvOverlayGuard::mask_key("CAPABILITY_COMPUTE_ENDPOINT");
 
         let coordinator = AgnosticComputeCoordinator::new();

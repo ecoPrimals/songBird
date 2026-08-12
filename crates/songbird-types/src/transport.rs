@@ -116,9 +116,10 @@ impl TransportEndpoint {
     ///
     /// This eliminates silicon deism: callers never assume Unix.
     #[must_use]
-    pub fn platform_default(service_name: &str, _default_port: u16) -> Self {
+    pub fn platform_default(service_name: &str, default_port: u16) -> Self {
         #[cfg(unix)]
         {
+            let _ = default_port;
             let xdg = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
             Self::Uds {
                 path: format!("{xdg}/biomeos/{service_name}.sock"),
@@ -126,9 +127,10 @@ impl TransportEndpoint {
         }
         #[cfg(not(unix))]
         {
+            let _ = service_name;
             Self::Tcp {
                 host: String::from("127.0.0.1"),
-                port: _default_port,
+                port: default_port,
             }
         }
     }

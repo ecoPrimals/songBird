@@ -3,20 +3,20 @@
 
 #![cfg(test)]
 
-//! Synchronous env locking for async unit tests (avoids holding `tokio::sync::Mutex` across `await`).
-
-use std::sync::{Mutex, OnceLock};
-
-static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+//! Re-exports the canonical process-wide env test lock from [`songbird_process_env`].
+//!
+//! All test modules in this crate that mutate or depend on overlay env state
+//! must hold this lock for the duration of their assertions. Using a single
+//! lock eliminates the class of flaky tests caused by parallel mutations
+//! racing through independent per-module locks.
 
 /// Process-wide lock for tests that mutate `songbird_process_env`.
+///
+/// Delegates to [`songbird_process_env::test_env_lock`] — the canonical
+/// single serialization point shared by all test modules within this binary.
 #[must_use = "hold until test completes"]
-#[expect(
-    clippy::expect_used,
-    reason = "poisoned test mutex is unrecoverable; panic matches test harness expectations"
-)]
 pub fn env_lock() -> std::sync::MutexGuard<'static, ()> {
-    ENV_LOCK.get_or_init(|| Mutex::new(())).lock().expect("test env lock poisoned")
+    songbird_process_env::test_env_lock()
 }
 
 /// RAII restore for a single env var.

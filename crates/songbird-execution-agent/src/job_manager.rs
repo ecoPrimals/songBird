@@ -153,6 +153,10 @@ impl JobManager {
         #[cfg(not(unix))]
         {
             let _ = job;
+            #[allow(
+                clippy::needless_return,
+                reason = "early return needed for cfg(unix) fallthrough"
+            )]
             return Err(SongbirdError::Runtime {
                 message: String::from("Process stopping is only supported on Unix systems"),
                 component: Some(String::from("job_manager")),

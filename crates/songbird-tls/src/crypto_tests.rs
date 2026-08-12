@@ -7,15 +7,12 @@ use super::*;
 use base64::Engine;
 use base64::engine::general_purpose;
 use serde_json::json;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
-static ENV_OVERLAY_TEST_LOCK: Mutex<()> = Mutex::new(());
-
 fn with_isolated_env_overlay<F: FnOnce()>(f: F) {
-    let _guard = ENV_OVERLAY_TEST_LOCK.lock().expect("env test lock");
+    let _guard = songbird_process_env::test_env_lock();
     reset_overlay_for_test();
     f();
 }
@@ -635,7 +632,7 @@ async fn spawn_unix_jsonrpc_echo(expected_method: &str, response_body: &str) -> 
     reason = "env test serialization requires lock held across await"
 )]
 async fn new_parses_security_provider_mode_direct() {
-    let _guard = ENV_OVERLAY_TEST_LOCK.lock().expect("env test lock");
+    let _guard = songbird_process_env::test_env_lock();
     reset_overlay_for_test();
     let sock = spawn_unix_jsonrpc_echo(
         "crypto.x25519_generate_ephemeral",
@@ -654,7 +651,7 @@ async fn new_parses_security_provider_mode_direct() {
     reason = "env test serialization requires lock held across await"
 )]
 async fn new_parses_beardog_mode_direct_case_insensitive() {
-    let _guard = ENV_OVERLAY_TEST_LOCK.lock().expect("env test lock");
+    let _guard = songbird_process_env::test_env_lock();
     reset_overlay_for_test();
     let sock = spawn_unix_jsonrpc_echo(
         "crypto.sign_ed25519",
@@ -673,7 +670,7 @@ async fn new_parses_beardog_mode_direct_case_insensitive() {
     reason = "env test serialization requires lock held across await"
 )]
 async fn new_defaults_to_neural_mode_when_env_unset() {
-    let _guard = ENV_OVERLAY_TEST_LOCK.lock().expect("env test lock");
+    let _guard = songbird_process_env::test_env_lock();
     reset_overlay_for_test();
     let sock = spawn_unix_jsonrpc_echo(
         "capability.call",

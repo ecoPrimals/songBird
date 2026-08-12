@@ -119,9 +119,6 @@ mod tests {
 
     use super::*;
     use songbird_process_env::ScopedEnv;
-    use std::sync::Mutex;
-
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn network_discovery_new_default() {
@@ -132,7 +129,7 @@ mod tests {
 
     #[tokio::test]
     async fn discover_nodes_returns_empty_without_peers_env() {
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = songbird_process_env::test_env_lock();
         songbird_process_env::remove_var("SONGBIRD_PEERS");
         let _data = ScopedEnv::new("SONGBIRD_DATA_DIR", "/tmp/songbird-test-nonexistent-dir");
         let d = NetworkDiscovery::new();
@@ -142,7 +139,7 @@ mod tests {
 
     #[tokio::test]
     async fn discover_nodes_parses_songbird_peers_env() {
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = songbird_process_env::test_env_lock();
         let _env = ScopedEnv::new("SONGBIRD_PEERS", "east@10.0.0.1:7700,west@10.0.0.2:7700");
         let _data = ScopedEnv::new("SONGBIRD_DATA_DIR", "/tmp/songbird-test-nonexistent-dir");
         let d = NetworkDiscovery::new();
@@ -156,7 +153,7 @@ mod tests {
 
     #[tokio::test]
     async fn discover_nodes_bare_addresses_generate_peer_ids() {
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = songbird_process_env::test_env_lock();
         let _env = ScopedEnv::new("SONGBIRD_PEERS", "10.0.0.1:7700,10.0.0.2:7700");
         let _data = ScopedEnv::new("SONGBIRD_DATA_DIR", "/tmp/songbird-test-nonexistent-dir");
         let d = NetworkDiscovery::new();
@@ -168,7 +165,7 @@ mod tests {
 
     #[tokio::test]
     async fn discover_nodes_deduplicates_by_address() {
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = songbird_process_env::test_env_lock();
         let _env = ScopedEnv::new("SONGBIRD_PEERS", "a@10.0.0.1:7700,b@10.0.0.1:7700");
         let _data = ScopedEnv::new("SONGBIRD_DATA_DIR", "/tmp/songbird-test-nonexistent-dir");
         let d = NetworkDiscovery::new();
@@ -202,7 +199,7 @@ mod tests {
 
     #[test]
     fn load_persisted_peers_no_file() {
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = songbird_process_env::test_env_lock();
         let _data = ScopedEnv::new("SONGBIRD_DATA_DIR", "/tmp/songbird-test-nonexistent-dir");
         let peers = load_persisted_peers();
         assert!(peers.is_empty());

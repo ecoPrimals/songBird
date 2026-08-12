@@ -10,7 +10,7 @@ use songbird_orchestrator::task_lifecycle::{
 };
 use std::sync::Arc;
 
-use super::common::ENV_LOCK;
+use super::common::lock_env;
 
 #[tokio::test]
 async fn test_e2e_task_lifecycle_full_flow() -> Result<()> {
@@ -57,7 +57,7 @@ async fn test_e2e_task_lifecycle_full_flow() -> Result<()> {
 
 #[tokio::test]
 async fn test_e2e_family_id_propagation() -> Result<()> {
-    let _guard = ENV_LOCK.lock().unwrap();
+    let _guard = lock_env();
     // Test that family_id is properly propagated through the system
     let test_family = format!("test-family-{}", uuid::Uuid::new_v4());
     songbird_process_env::set_var("SONGBIRD_FAMILY_ID", &test_family);

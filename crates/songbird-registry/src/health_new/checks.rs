@@ -100,7 +100,7 @@ impl ProcessCheck {
             use std::process::Command;
 
             let output = Command::new("tasklist")
-                .args(&["/FI", &format!("IMAGENAME eq {}", self.process_name)])
+                .args(["/FI", &format!("IMAGENAME eq {}", self.process_name)])
                 .output();
 
             match output {

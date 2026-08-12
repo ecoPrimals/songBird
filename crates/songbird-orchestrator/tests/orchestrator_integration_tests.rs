@@ -19,6 +19,7 @@ use std::sync::Arc;
 
 #[tokio::test]
 async fn test_access_control_student_permissions() -> Result<()> {
+    let _g = songbird_process_env::test_env_lock();
     let _jwt = ScopedEnv::new("SONGBIRD_JWT_SECRET", "integration-test-secret");
     let ac = AccessControl::new(AuthMode::Standalone);
 
@@ -48,6 +49,7 @@ async fn test_access_control_student_permissions() -> Result<()> {
 
 #[tokio::test]
 async fn test_access_control_ta_permissions() -> Result<()> {
+    let _g = songbird_process_env::test_env_lock();
     let _jwt = ScopedEnv::new("SONGBIRD_JWT_SECRET", "integration-test-secret");
     let ac = AccessControl::new(AuthMode::Standalone);
 
@@ -83,6 +85,7 @@ async fn test_access_control_ta_permissions() -> Result<()> {
 
 #[tokio::test]
 async fn test_access_control_admin_permissions() -> Result<()> {
+    let _g = songbird_process_env::test_env_lock();
     let _jwt = ScopedEnv::new("SONGBIRD_JWT_SECRET", "integration-test-secret");
     let ac = AccessControl::new(AuthMode::Standalone);
 
@@ -110,6 +113,7 @@ async fn test_access_control_admin_permissions() -> Result<()> {
 
 #[tokio::test]
 async fn test_capability_implication_hierarchy() -> Result<()> {
+    let _g = songbird_process_env::test_env_lock();
     let _jwt = ScopedEnv::new("SONGBIRD_JWT_SECRET", "integration-test-secret");
     let ac = AccessControl::new(AuthMode::Standalone);
 
@@ -181,6 +185,7 @@ async fn test_token_encoding_and_decoding() -> Result<()> {
 
 #[tokio::test]
 async fn test_information_layer_building() -> Result<()> {
+    let _g = songbird_process_env::test_env_lock();
     let _jwt = ScopedEnv::new("SONGBIRD_JWT_SECRET", "integration-test-secret");
     let ac = AccessControl::new(AuthMode::Standalone);
 
@@ -233,6 +238,7 @@ async fn test_information_layer_building() -> Result<()> {
 
 #[tokio::test]
 async fn test_anonymous_access_restrictions() -> Result<()> {
+    let _g = songbird_process_env::test_env_lock();
     let _jwt = ScopedEnv::new("SONGBIRD_JWT_SECRET", "integration-test-secret");
     let ac = AccessControl::new(AuthMode::Standalone);
 
@@ -261,6 +267,7 @@ async fn test_anonymous_access_restrictions() -> Result<()> {
 
 #[tokio::test]
 async fn test_professor_permissions() -> Result<()> {
+    let _g = songbird_process_env::test_env_lock();
     let _jwt = ScopedEnv::new("SONGBIRD_JWT_SECRET", "integration-test-secret");
     let ac = AccessControl::new(AuthMode::Standalone);
 

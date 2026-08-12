@@ -210,7 +210,7 @@ impl IpcServiceHandler {
                     let exists = response
                         .get("result")
                         .and_then(|r| r.get("exists"))
-                        .and_then(|v| v.as_bool())
+                        .and_then(serde_json::Value::as_bool)
                         .unwrap_or(false);
 
                     if exists {

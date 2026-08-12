@@ -109,9 +109,10 @@ pub fn songbird_runtime_dir() -> std::path::PathBuf {
     }
     #[cfg(not(unix))]
     {
-        std::env::var("PROGRAMDATA")
-            .map(|pd| std::path::PathBuf::from(pd).join("songbird"))
-            .unwrap_or_else(|_| std::path::PathBuf::from(r"C:\ProgramData\songbird"))
+        std::env::var("PROGRAMDATA").map_or_else(
+            |_| std::path::PathBuf::from(r"C:\ProgramData\songbird"),
+            |pd| std::path::PathBuf::from(pd).join("songbird"),
+        )
     }
 }
 

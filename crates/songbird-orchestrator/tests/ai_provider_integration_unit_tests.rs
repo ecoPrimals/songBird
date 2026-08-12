@@ -244,6 +244,7 @@ async fn test_jsonrpc_response_structure() {
 
 #[tokio::test]
 async fn test_family_id_environment_variable() {
+    let _g = songbird_process_env::test_env_lock();
     // Test that family_id can be customized via environment
 
     songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "test-family");

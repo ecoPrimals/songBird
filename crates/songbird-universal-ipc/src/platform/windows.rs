@@ -77,33 +77,31 @@ impl WindowsPlatformIPC {
     /// Create a listener on the native endpoint.
     pub async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<PlatformListenerImpl> {
         match endpoint {
-            NativeEndpoint::NamedPipe(_name) => {
+            NativeEndpoint::NamedPipe(name) => {
                 #[cfg(windows)]
                 {
-                    debug!("Creating named pipe server on: {}", _name);
+                    debug!("Creating named pipe server on: {name}");
 
-                    // Create named pipe server (first instance)
-                    // ServerOptions provides Pure Rust interface to Windows API
                     let server = ServerOptions::new()
                         .first_pipe_instance(true)
-                        .create(_name)
+                        .create(name)
                         .map_err(|e| {
                             IpcError::ListenerFailed(format!(
-                                "Failed to create named pipe server {}: {}",
-                                _name, e
+                                "Failed to create named pipe server {name}: {e}"
                             ))
                         })?;
 
-                    info!("Named pipe server created: {} (Windows-optimized)", _name);
+                    info!("Named pipe server created: {name} (Windows-optimized)");
 
                     Ok(PlatformListenerImpl::Windows(WindowsListener {
                         server,
-                        pipe_name: _name.clone(),
+                        pipe_name: name.clone(),
                     }))
                 }
 
                 #[cfg(not(windows))]
                 {
+                    let _ = name;
                     Err(IpcError::PlatformError(String::from(
                         "Named pipes require Windows platform",
                     )))
@@ -118,37 +116,36 @@ impl WindowsPlatformIPC {
     /// Connect to a native endpoint.
     pub async fn connect(&self, endpoint: &NativeEndpoint) -> IpcResult<AsyncStreamImpl> {
         match endpoint {
-            NativeEndpoint::NamedPipe(_name) => {
+            NativeEndpoint::NamedPipe(name) => {
                 #[cfg(windows)]
                 {
-                    debug!("Connecting to named pipe: {}", _name);
+                    debug!("Connecting to named pipe: {name}");
 
-                    // Retry connection (named pipe may not be ready immediately)
                     let mut retries = 5;
                     let client = loop {
-                        match ClientOptions::new().open(_name) {
+                        match ClientOptions::new().open(name) {
                             Ok(client) => break client,
                             Err(_) if retries > 0 => {
-                                debug!("Named pipe not ready, retrying... ({} left)", retries);
+                                debug!("Named pipe not ready, retrying... ({retries} left)");
                                 tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
                                 retries -= 1;
                             }
                             Err(e) => {
                                 return Err(IpcError::ConnectionFailed(format!(
-                                    "Failed to connect to named pipe {} after retries: {}",
-                                    _name, e
+                                    "Failed to connect to named pipe {name} after retries: {e}"
                                 )));
                             }
                         }
                     };
 
-                    info!("Connected to named pipe: {}", _name);
+                    info!("Connected to named pipe: {name}");
 
                     Ok(AsyncStreamImpl::WindowsPipeClient(client))
                 }
 
                 #[cfg(not(windows))]
                 {
+                    let _ = name;
                     Err(IpcError::PlatformError(String::from(
                         "Named pipes require Windows platform",
                     )))

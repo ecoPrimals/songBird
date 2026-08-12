@@ -26,13 +26,7 @@
 )]
 
 use songbird_process_env;
-use std::sync::{Mutex, MutexGuard};
-
-/// Global lock for environment variable tests
-///
-/// This ensures that tests modifying environment variables don't interfere
-/// with each other when running concurrently.
-static ENV_LOCK: Mutex<()> = Mutex::new(());
+use std::sync::MutexGuard;
 
 /// RAII guard for environment variable testing
 ///
@@ -62,7 +56,7 @@ impl EnvironmentLock {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            _guard: ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner),
+            _guard: songbird_process_env::test_env_lock(),
         }
     }
 }

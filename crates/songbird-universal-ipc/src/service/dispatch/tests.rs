@@ -990,6 +990,6 @@ async fn content_locate_all_scope_includes_local_and_mesh() {
         .expect("content.locate all scope");
     assert_eq!(res["hash"], hash);
     let locations = res["locations"].as_array().expect("locations array");
-    assert!(locations.len() >= 1, "should have at least the local provider");
+    assert!(!locations.is_empty(), "should have at least the local provider");
     assert_eq!(locations[0]["gate"], "localCAS");
 }

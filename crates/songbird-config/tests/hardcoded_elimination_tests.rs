@@ -30,14 +30,8 @@
 //! Covers: `HardcodingEliminationConfig`, all sub-configs,
 //! Default trait impls, convenience functions, and the replace module.
 
-use std::sync::Mutex;
-
-/// File-local mutex to serialize tests that modify process-wide env vars.
-/// We use `unwrap_or_else` to handle poisoned mutex (from prior panics in other tests).
-static ENV_LOCK: Mutex<()> = Mutex::new(());
-
 fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-    ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    songbird_process_env::test_env_lock()
 }
 
 #[allow(deprecated, reason = "test assertions and harness ergonomics")]

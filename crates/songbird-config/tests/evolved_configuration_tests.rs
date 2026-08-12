@@ -34,15 +34,10 @@
 //! - Service locator functionality
 //! - Migration from old patterns
 
-use std::sync::Mutex;
-
 use songbird_config::defaults::{
     hosts_evolved::{AdvertiseConfig, BindConfig, Environment, SelfAwareConfig, ServiceLocator},
     ports_evolved::{PortAllocator, ServicePort},
 };
-
-/// File-local mutex to serialize tests that modify process-wide env vars.
-static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 // ============================================================================
 // Environment Detection Tests
@@ -50,7 +45,7 @@ static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 #[test]
 fn test_environment_detection_default() {
-    let _guard = ENV_LOCK.lock().unwrap();
+    let _guard = songbird_process_env::test_env_lock();
     let env = Environment::detect();
     // Should detect without panicking
     assert!(matches!(

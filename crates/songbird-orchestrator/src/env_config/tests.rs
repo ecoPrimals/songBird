@@ -6,7 +6,6 @@
 use std::collections::HashMap;
 use std::env::VarError;
 use std::path::PathBuf;
-use std::sync::Mutex;
 
 use songbird_process_env;
 use songbird_types::defaults::ports::DEFAULT_HTTP_PORT;
@@ -20,7 +19,9 @@ fn env_map(pairs: Vec<(&'static str, &'static str)>) -> impl Fn(&str) -> Result<
     move |key: &str| map.get(key).cloned().ok_or(VarError::NotPresent)
 }
 
-static ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
+fn env_test_lock() -> std::sync::MutexGuard<'static, ()> {
+    songbird_process_env::test_env_lock()
+}
 
 // Note: These tests validate default behavior when env vars are NOT set.
 // We avoid set_var/remove_var where possible to prevent concurrent test pollution.
@@ -84,7 +85,7 @@ fn test_dark_forest_config() {
 
 #[test]
 fn http_port_reads_songbird_http_port() {
-    let _g = ENV_TEST_LOCK.lock().unwrap();
+    let _g = env_test_lock();
     songbird_process_env::set_var("SONGBIRD_HTTP_PORT", "9443");
     songbird_process_env::remove_var("SONGBIRD_HTTP_ADDR");
     assert_eq!(http_port(), 9443);
@@ -93,7 +94,7 @@ fn http_port_reads_songbird_http_port() {
 
 #[test]
 fn http_port_invalid_falls_back_to_default() {
-    let _g = ENV_TEST_LOCK.lock().unwrap();
+    let _g = env_test_lock();
     songbird_process_env::set_var("SONGBIRD_HTTP_PORT", "not-a-number");
     songbird_process_env::remove_var("SONGBIRD_HTTP_ADDR");
     assert_eq!(http_port(), DEFAULT_HTTP_PORT);
@@ -102,7 +103,7 @@ fn http_port_invalid_falls_back_to_default() {
 
 #[test]
 fn http_port_parsed_from_bind_addr_when_port_env_unset() {
-    let _g = ENV_TEST_LOCK.lock().unwrap();
+    let _g = env_test_lock();
     songbird_process_env::remove_var("SONGBIRD_HTTP_PORT");
     songbird_process_env::set_var("SONGBIRD_HTTP_ADDR", "0.0.0.0:18080");
     assert_eq!(http_port(), 18080);
@@ -111,7 +112,7 @@ fn http_port_parsed_from_bind_addr_when_port_env_unset() {
 
 #[test]
 fn http_bind_address_respects_override() {
-    let _g = ENV_TEST_LOCK.lock().unwrap();
+    let _g = env_test_lock();
     songbird_process_env::set_var("SONGBIRD_HTTP_ADDR", "10.0.0.2:9000");
     assert_eq!(http_bind_address(), "10.0.0.2:9000");
     songbird_process_env::remove_var("SONGBIRD_HTTP_ADDR");
@@ -119,7 +120,7 @@ fn http_bind_address_respects_override() {
 
 #[test]
 fn is_production_true_when_songbird_env_set() {
-    let _g = ENV_TEST_LOCK.lock().unwrap();
+    let _g = env_test_lock();
     songbird_process_env::set_var("SONGBIRD_ENV", "production");
     songbird_process_env::remove_var("RUST_ENV");
     assert!(is_production());
@@ -128,7 +129,7 @@ fn is_production_true_when_songbird_env_set() {
 
 #[test]
 fn is_production_checks_rust_env_when_songbird_unset() {
-    let _g = ENV_TEST_LOCK.lock().unwrap();
+    let _g = env_test_lock();
     songbird_process_env::remove_var("SONGBIRD_ENV");
     songbird_process_env::set_var("RUST_ENV", "production");
     assert!(is_production());
@@ -137,7 +138,7 @@ fn is_production_checks_rust_env_when_songbird_unset() {
 
 #[test]
 fn primal_name_env_override() {
-    let _g = ENV_TEST_LOCK.lock().unwrap();
+    let _g = env_test_lock();
     songbird_process_env::set_var("PRIMAL_NAME", "custom-primal");
     assert_eq!(primal_name(), "custom-primal");
     songbird_process_env::remove_var("PRIMAL_NAME");
@@ -145,7 +146,7 @@ fn primal_name_env_override() {
 
 #[test]
 fn family_id_prefers_songbird_orchestrator_family_id() {
-    let _g = ENV_TEST_LOCK.lock().unwrap();
+    let _g = env_test_lock();
     songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
     songbird_process_env::remove_var("BIOMEOS_FAMILY_ID");
     songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
@@ -281,11 +282,13 @@ fn deployment_dir_with_explicit_and_defaults() {
 #[cfg(unix)]
 #[test]
 fn domain_socket_symlink_create_and_remove() {
+    let _g = env_test_lock();
     let tmp = tempfile::tempdir().expect("tempdir");
     let bound = tmp.path().join("songbird.sock");
     std::fs::write(&bound, "").expect("touch bound path");
+    let sock_name = super::socket_name();
     super::create_domain_socket_symlink(&bound);
-    let domain = tmp.path().join("network.sock");
+    let domain = tmp.path().join(&sock_name);
     assert!(
         std::fs::symlink_metadata(&domain).expect("symlink metadata").file_type().is_symlink(),
         "domain path should be a symlink"

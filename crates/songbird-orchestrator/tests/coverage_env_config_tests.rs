@@ -8,10 +8,8 @@
 
 use songbird_orchestrator::env_config;
 
-static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
 fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-    ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    songbird_process_env::test_env_lock()
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

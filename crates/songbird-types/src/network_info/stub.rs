@@ -14,21 +14,25 @@ pub struct RouteEntry {
     pub gateway: Ipv4Addr,
 }
 
+/// Returns the default network route (unavailable on non-Linux).
 #[must_use]
 pub fn default_route() -> Option<RouteEntry> {
     None
 }
 
+/// Returns whether a default route exists (always `false` on non-Linux).
 #[must_use]
 pub fn has_default_route() -> bool {
     false
 }
 
+/// Returns local IPv4 addresses from the FIB trie (unavailable on non-Linux).
 #[must_use]
 pub fn local_ipv4_from_fib_trie() -> Vec<Ipv4Addr> {
     Vec::new()
 }
 
+/// Returns whether a public IPv4 interface exists (always `false` on non-Linux).
 #[must_use]
 pub fn has_public_ipv4_interface() -> bool {
     false

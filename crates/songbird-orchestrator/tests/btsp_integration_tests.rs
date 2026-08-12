@@ -42,14 +42,10 @@
 use anyhow::Result;
 use songbird_orchestrator::btsp_client::{BtspClient, Direction, PeerEndpoint};
 use std::env;
-use std::sync::Mutex;
-
-/// File-local mutex to serialize tests that modify process-wide env vars.
-static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 /// Acquire env lock with poison recovery (prevents cascade failures).
 fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-    ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    songbird_process_env::test_env_lock()
 }
 
 /// Helper: Check if `security provider` is available for testing

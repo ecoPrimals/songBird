@@ -370,11 +370,9 @@ mod tests {
         assert!(throughput_score > 0.0);
     }
 
-    static REGISTRY_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
     #[test]
     fn test_from_env_errors_when_registry_endpoint_missing() {
-        let _lock = REGISTRY_ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = songbird_process_env::test_env_lock();
         let prev = songbird_process_env::var("SONGBIRD_REGISTRY_ENDPOINT").ok();
         songbird_process_env::remove_var("SONGBIRD_REGISTRY_ENDPOINT");
         let err = ServiceRegistryDiscovery::from_env().expect_err("missing env");
@@ -387,7 +385,7 @@ mod tests {
 
     #[test]
     fn test_from_env_ok_when_registry_endpoint_set() {
-        let _lock = REGISTRY_ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _lock = songbird_process_env::test_env_lock();
         let _g = EnvRestore::set("SONGBIRD_REGISTRY_ENDPOINT", "http://registry.local:8500");
         let d = ServiceRegistryDiscovery::from_env().expect("from_env");
         assert_eq!(d.registry_endpoint, "http://registry.local:8500");

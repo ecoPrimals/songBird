@@ -7,10 +7,6 @@
 use super::*;
 use std::collections::HashMap;
 use std::env::VarError;
-use std::sync::{Mutex, OnceLock};
-
-/// `BIOMEOS_SOCKET_DIR` is process-global; serialize tests that mutate it.
-static BIOMEOS_SOCKET_DIR_TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 #[test]
 fn new_creates_locator_without_panicking() {
@@ -37,6 +33,7 @@ fn discover_by_capability_returns_empty_when_nothing_configured() {
 
 #[test]
 fn discover_from_environment_parses_comma_separated_endpoints() {
+    let _g = songbird_process_env::test_env_lock();
     songbird_process_env::set_var(
         "SONGBIRD_CAPABILITY_STORAGE_ENDPOINTS",
         "127.0.0.1:3000,127.0.0.1:3001",
@@ -54,6 +51,7 @@ fn discover_from_environment_parses_comma_separated_endpoints() {
 
 #[test]
 fn discover_from_environment_handles_dashes_in_capability() {
+    let _g = songbird_process_env::test_env_lock();
     songbird_process_env::set_var("SONGBIRD_CAPABILITY_KEY_VALUE_ENDPOINTS", "10.0.0.1:6379");
 
     let locator = ServiceLocator::new();
@@ -80,7 +78,7 @@ fn discover_dns_sd_returns_empty_when_no_matching_sockets() {
 
 #[test]
 fn discover_dns_sd_resolves_tcp_from_sidecar_next_to_domain_sock() {
-    let _guard = BIOMEOS_SOCKET_DIR_TEST_LOCK.get_or_init(|| Mutex::new(())).lock();
+    let _g = songbird_process_env::test_env_lock();
 
     let dir = tempfile::tempdir().expect("tempdir");
     std::fs::File::create(dir.path().join("storage.sock")).expect("touch sock");
@@ -98,7 +96,7 @@ fn discover_dns_sd_resolves_tcp_from_sidecar_next_to_domain_sock() {
 
 #[test]
 fn discover_dns_sd_matches_prefixed_instance_socks() {
-    let _guard = BIOMEOS_SOCKET_DIR_TEST_LOCK.get_or_init(|| Mutex::new(())).lock();
+    let _g = songbird_process_env::test_env_lock();
 
     let dir = tempfile::tempdir().expect("tempdir");
     std::fs::File::create(dir.path().join("cache-replica-2.sock")).expect("touch sock");
@@ -128,6 +126,7 @@ fn discover_by_capability_with_env_unset_skips_registry_query_when_url_missing()
 
 #[test]
 fn discover_by_capability_with_registry_url_set_returns_empty_until_http_impl() {
+    let _g = songbird_process_env::test_env_lock();
     let locator = ServiceLocator::new();
     let vars: HashMap<String, String> = HashMap::from([(
         "SONGBIRD_REGISTRY_URL".to_string(),
@@ -141,6 +140,7 @@ fn discover_by_capability_with_registry_url_set_returns_empty_until_http_impl() 
 
 #[test]
 fn discover_by_capability_with_empty_env_endpoints_falls_through_chain() {
+    let _g = songbird_process_env::test_env_lock();
     let locator = ServiceLocator::new();
     let vars: HashMap<String, String> =
         HashMap::from([("SONGBIRD_CAPABILITY_CACHE_ENDPOINTS".to_string(), String::new())]);

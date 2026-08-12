@@ -146,11 +146,7 @@ impl NfcConfig {
 #[allow(clippy::unwrap_used, clippy::expect_used, reason = "test assertions")]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
     use std::time::Duration;
-
-    /// Serialize overlay mutations for `discover_security_socket` resolution order tests.
-    static ENV_OVERLAY_LOCK: Mutex<()> = Mutex::new(());
 
     fn clear_socket_overlay_keys() {
         for key in [
@@ -197,7 +193,7 @@ mod tests {
 
     #[test]
     fn discover_security_socket_prefers_security_provider_overlay() {
-        let _g = ENV_OVERLAY_LOCK.lock().expect("env overlay lock");
+        let _g = songbird_process_env::test_env_lock();
         clear_socket_overlay_keys();
         songbird_process_env::set_var("SECURITY_PROVIDER_SOCKET", "/tmp/overlay-security.sock");
         songbird_process_env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/overlay-crypto.sock");
@@ -212,7 +208,7 @@ mod tests {
 
     #[test]
     fn discover_security_socket_falls_through_to_crypto_when_security_unset() {
-        let _g = ENV_OVERLAY_LOCK.lock().expect("env overlay lock");
+        let _g = songbird_process_env::test_env_lock();
         clear_socket_overlay_keys();
         songbird_process_env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/only-crypto.sock");
         let cfg = NfcConfig::default();
@@ -246,7 +242,7 @@ mod tests {
     #[test]
     fn discover_security_socket_backward_compat_prefers_songbird_security_provider_over_legacy_beardog_socket()
      {
-        let _g = ENV_OVERLAY_LOCK.lock().expect("env overlay lock");
+        let _g = songbird_process_env::test_env_lock();
         clear_socket_overlay_keys();
         songbird_process_env::set_var("SONGBIRD_SECURITY_PROVIDER", "/tmp/songbird.sock");
         songbird_process_env::set_var("BEARDOG_SOCKET", "/tmp/legacy-env-security.sock");

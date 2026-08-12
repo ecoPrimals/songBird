@@ -6,10 +6,13 @@
 //! Consolidates process existence checks and signal delivery used by the
 //! orchestrator, execution agent, and deployment API.
 
-use std::fs;
 use std::time::Duration;
 
-use tracing::{debug, warn};
+#[cfg(unix)]
+use std::fs;
+#[cfg(unix)]
+use tracing::debug;
+use tracing::warn;
 
 use crate::{SongbirdError, SongbirdResult};
 

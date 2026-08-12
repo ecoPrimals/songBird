@@ -10,6 +10,7 @@
 use tracing::debug;
 
 /// Capability token for epidemic gossip propagation (owned by mesh gossip provider).
+#[cfg(unix)]
 const MESH_GOSSIP_CAPABILITY: &str = "mesh_gossip";
 
 /// Inject a capability advertisement into the mesh gossip provider.
@@ -134,6 +135,7 @@ fn parse_unix_socket_endpoint(endpoint: &str) -> Option<std::path::PathBuf> {
 }
 
 #[cfg(not(unix))]
+#[allow(dead_code, reason = "stub for platform parity; callers are cfg(unix)")]
 pub(super) fn discover_swarmvine_socket() -> Option<std::path::PathBuf> {
     None
 }

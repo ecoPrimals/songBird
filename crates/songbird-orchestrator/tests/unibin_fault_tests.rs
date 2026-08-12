@@ -178,6 +178,7 @@ async fn test_fault_special_characters_in_args() -> Result<(), Box<dyn std::erro
 
 #[tokio::test]
 async fn test_fault_unicode_in_args() -> Result<(), Box<dyn std::error::Error>> {
+    let _g = songbird_process_env::test_env_lock();
     let _env = ScopedEnv::new("SONGBIRD_NODE_ID", "node-测试-🦀");
 
     let mut cmd = clean_cmd();
@@ -188,6 +189,7 @@ async fn test_fault_unicode_in_args() -> Result<(), Box<dyn std::error::Error>> 
 
 #[tokio::test]
 async fn test_fault_whitespace_only_args() -> Result<(), Box<dyn std::error::Error>> {
+    let _g = songbird_process_env::test_env_lock();
     let _env = ScopedEnv::new("SONGBIRD_NODE_ID", "   ");
 
     let mut cmd = clean_cmd();
@@ -198,6 +200,7 @@ async fn test_fault_whitespace_only_args() -> Result<(), Box<dyn std::error::Err
 
 #[tokio::test]
 async fn test_fault_extremely_long_env_var() -> Result<(), Box<dyn std::error::Error>> {
+    let _g = songbird_process_env::test_env_lock();
     let long_value = "a".repeat(10000);
     let _env = ScopedEnv::new("SONGBIRD_NODE_ID", &long_value);
 
@@ -209,6 +212,7 @@ async fn test_fault_extremely_long_env_var() -> Result<(), Box<dyn std::error::E
 
 #[tokio::test]
 async fn test_fault_empty_env_var() -> Result<(), Box<dyn std::error::Error>> {
+    let _g = songbird_process_env::test_env_lock();
     let _env = ScopedEnv::new("SONGBIRD_NODE_ID", "");
 
     let mut cmd = clean_cmd();
@@ -240,6 +244,7 @@ async fn test_fault_multiple_flags() -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::test]
 async fn test_fault_conflicting_env_and_args() -> Result<(), Box<dyn std::error::Error>> {
+    let _g = songbird_process_env::test_env_lock();
     let _env = ScopedEnv::new("SONGBIRD_PORT", "9000");
 
     let mut cmd = clean_cmd();

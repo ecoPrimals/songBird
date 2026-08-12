@@ -29,8 +29,9 @@ async fn test_discover_self() {
     assert!(!identity.name.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "current_thread")]
 async fn test_environment_discovery() {
+    let _g = songbird_process_env::test_env_lock();
     songbird_process_env::set_var("SECURITY_HOST", "localhost");
     songbird_process_env::set_var("SECURITY_PORT", "9000");
 
@@ -46,8 +47,9 @@ async fn test_environment_discovery() {
     assert_eq!(info.port, 9000);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "current_thread")]
 async fn environment_discovery_fails_without_env() {
+    let _g = songbird_process_env::test_env_lock();
     songbird_process_env::remove_var("MISSINGCAP_HOST");
     songbird_process_env::remove_var("MISSINGCAP_PORT");
     let discovery = EnvironmentDiscovery::new();

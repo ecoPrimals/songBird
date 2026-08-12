@@ -27,10 +27,6 @@
     reason = "integration tests: strict clippy matches crate [lints] policy"
 )]
 
-use std::sync::{Mutex, MutexGuard};
-
-pub static ENV_LOCK: Mutex<()> = Mutex::new(());
-
-pub fn lock_env() -> MutexGuard<'static, ()> {
-    ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+pub fn lock_env() -> std::sync::MutexGuard<'static, ()> {
+    songbird_process_env::test_env_lock()
 }

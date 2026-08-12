@@ -33,10 +33,7 @@
 //! MUST serialize. The static mutex ensures mutual exclusion within this binary.
 
 use std::collections::HashMap;
-use std::sync::{Mutex, MutexGuard};
-
-/// Global lock for env var serialization within this test binary.
-static ENV_LOCK: Mutex<()> = Mutex::new(());
+use std::sync::MutexGuard;
 
 /// RAII guard for environment variables
 ///
@@ -54,7 +51,7 @@ impl ScopedEnv {
     pub fn new() -> Self {
         Self {
             restore: HashMap::new(),
-            _guard: ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner),
+            _guard: songbird_process_env::test_env_lock(),
         }
     }
 

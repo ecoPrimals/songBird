@@ -23,17 +23,13 @@ use rand::Rng;
 use songbird_orchestrator::ipc::UnixSocketServer;
 use std::env;
 use std::path::PathBuf;
-use std::sync::Mutex;
-
-/// Serialize all env var chaos tests in this file.
-static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 /// Chaos Test: Random environment variable mutations
 ///
 /// Randomly mutates environment variables and ensures no panics.
 #[test]
 fn chaos_random_env_mutations() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = songbird_process_env::test_env_lock();
     let original = save_env_state();
     let mut rng = rand::thread_rng();
 
@@ -81,7 +77,7 @@ fn chaos_random_env_mutations() {
 /// Rapidly changes environment variables to simulate racing conditions.
 #[test]
 fn chaos_rapid_env_changes() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = songbird_process_env::test_env_lock();
     let original = save_env_state();
 
     let socket_paths =
@@ -113,7 +109,7 @@ fn chaos_rapid_env_changes() {
 /// Sets random combinations of env vars to test priority resolution.
 #[test]
 fn chaos_random_priority_conflicts() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = songbird_process_env::test_env_lock();
     let original = save_env_state();
     let mut rng = rand::thread_rng();
 
@@ -178,7 +174,7 @@ fn chaos_random_priority_conflicts() {
 /// Makes thousands of calls to test performance and memory leaks.
 #[test]
 fn chaos_stress_many_calls() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = songbird_process_env::test_env_lock();
     let original = save_env_state();
 
     songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/stress-test.sock");
@@ -199,7 +195,7 @@ fn chaos_stress_many_calls() {
 /// Tests handling of various special characters in socket paths.
 #[test]
 fn chaos_special_characters() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = songbird_process_env::test_env_lock();
     let original = save_env_state();
 
     let special_chars = vec![
@@ -231,7 +227,7 @@ fn chaos_special_characters() {
 /// Tests handling of various family ID formats.
 #[test]
 fn chaos_family_id_formats() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = songbird_process_env::test_env_lock();
     let original = save_env_state();
 
     let family_ids = vec![
@@ -271,7 +267,7 @@ fn chaos_family_id_formats() {
 /// Rapidly alternates between clearing and setting env vars.
 #[test]
 fn chaos_alternating_clear_set() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = songbird_process_env::test_env_lock();
     let original = save_env_state();
 
     for i in 0..100 {
@@ -306,7 +302,7 @@ fn chaos_alternating_clear_set() {
 /// Tests handling of paths with various lengths.
 #[test]
 fn chaos_random_path_lengths() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = songbird_process_env::test_env_lock();
     let original = save_env_state();
     let mut rng = rand::thread_rng();
 
@@ -328,7 +324,7 @@ fn chaos_random_path_lengths() {
 /// Randomly mixes valid and invalid environment states.
 #[test]
 fn chaos_mixed_valid_invalid() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = songbird_process_env::test_env_lock();
     let original = save_env_state();
     let mut rng = rand::thread_rng();
 
@@ -364,7 +360,7 @@ fn chaos_mixed_valid_invalid() {
 /// Sets many unrelated env vars to simulate polluted environment.
 #[test]
 fn chaos_environment_pollution() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = songbird_process_env::test_env_lock();
     let original = save_env_state();
 
     // Pollute environment with unrelated vars
@@ -398,7 +394,7 @@ fn chaos_environment_pollution() {
 /// Tests handling of Unicode and international characters.
 #[test]
 fn chaos_unicode_international() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = songbird_process_env::test_env_lock();
     let original = save_env_state();
 
     let test_cases = vec![
