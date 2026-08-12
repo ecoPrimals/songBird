@@ -516,7 +516,7 @@ impl ProcessLifecycleManager {
 **Goal**: Add lifecycle phase tracking to process manager
 
 ```rust
-// In process_manager.rs
+// In process_manager/mod.rs
 
 pub struct ProcessManager {
     pid_file: PathBuf,
@@ -567,7 +567,7 @@ impl ProcessManager {
 **Goal**: Enable process to spawn children
 
 ```rust
-// In process_manager.rs
+// In process_manager/mod.rs
 
 impl ProcessManager {
     /// Spawn a child Songbird instance
@@ -604,7 +604,7 @@ impl ProcessManager {
 **Goal**: Enable process to migrate to remote host
 
 ```rust
-// In process_manager.rs
+// In process_manager/mod.rs
 
 impl ProcessManager {
     /// Clone self to remote host

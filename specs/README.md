@@ -29,7 +29,6 @@ songbird-quic           (root: songbird)
 ## Active Specifications
 
 ### Core Architecture
-- [UNIVERSAL_CAPABILITY_ADAPTER_IMPLEMENTATION_SPEC.md](./UNIVERSAL_CAPABILITY_ADAPTER_IMPLEMENTATION_SPEC.md) — Capability adapter implementation
 - [PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md](./PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md) — Self-knowledge standard
 
 ### Implementation (archived — superseded by BTSP Phase 3 + `JsonRpcMethod` enum dispatch)
@@ -40,16 +39,19 @@ songbird-quic           (root: songbird)
 - [SOVEREIGN_MULTIPATH_PROTOCOL.md](./SOVEREIGN_MULTIPATH_PROTOCOL.md) — Sovereign multipath protocol
 - [SOVEREIGN_ONION_PROTOCOL.md](./SOVEREIGN_ONION_PROTOCOL.md) — Onion routing
 - [BIRDSONG_PROTOCOL.md](./BIRDSONG_PROTOCOL.md) — Encrypted discovery multicast
-- [SONGBIRD_ROLE_CLARIFICATION_SPEC.md](./SONGBIRD_ROLE_CLARIFICATION_SPEC.md) — Songbird vs other primals
 
 ## Archived Specifications (`specs/archived/`)
 
-22 specs archived (May 2–4, 2026). These reference crates that were never created
+33 specs archived (May 2–4, 2026). These reference crates that were never created
 (`songbird-client`, `songbird-primal-sdk`, `songbird-universal-primals`,
 `songbird-federation`, `songbird-rpc`) or file paths that no longer exist.
 Retained as design fossil record.
 
-See also the [consolidated fossil record](../../../infra/wateringHole/fossilRecord/consolidated-apr2026/) for
+Notable archived specs:
+- [UNIVERSAL_CAPABILITY_ADAPTER_IMPLEMENTATION_SPEC.md](./archived/UNIVERSAL_CAPABILITY_ADAPTER_IMPLEMENTATION_SPEC.md) — Capability adapter implementation
+- [SONGBIRD_ROLE_CLARIFICATION_SPEC.md](./archived/SONGBIRD_ROLE_CLARIFICATION_SPEC.md) — Songbird vs other primals
+
+See also the [consolidated fossil record](../../../infra/fossilRecord/wateringHole/consolidated-apr2026/) for
 September 2025 crate layout specs (`songbird-core`, `songbird-network`, etc.).
 
 See [00_SPECIFICATIONS_INDEX.md](./00_SPECIFICATIONS_INDEX.md) for the full historical index.

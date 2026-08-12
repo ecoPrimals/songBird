@@ -10,7 +10,6 @@
 
 // Core orchestration modules
 pub mod api;
-pub mod benchmarks;
 pub mod biome;
 pub mod caching;
 pub mod execution;

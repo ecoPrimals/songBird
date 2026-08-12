@@ -64,11 +64,6 @@ pub mod signaling;
 pub mod onion_transport;
 pub mod transport_impl;
 
-// DEPRECATED: Arti-based transport (removed Feb 6, 2026)
-// Code removed, keeping this comment for historical reference
-// See: BEARDOG_ONION_CRYPTO_HANDOFF_FEB_06_2026.md for Phase 2 guidance
-// See: SOVEREIGN_ONION_TRUE_PRIMAL_ARCHITECTURE.md for architecture
-
 pub use coordinator::{HolePunchConfig, HolePunchCoordinator, PunchResult};
 pub use error::{OnionRelayError, Result};
 pub use mesh::{BeaconMesh, EndpointType, RelayEndpoint};

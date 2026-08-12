@@ -1,7 +1,7 @@
 # Songbird Security
 
-**Last Updated**: July 24, 2026
-**Status**: Production Ready (v0.2.1-wave150x, S+ Tier)
+**Last Updated**: August 12, 2026
+**Status**: Production Ready (v0.2.1-wave157k, S+ Tier)
 
 ---
 
@@ -15,7 +15,7 @@
 | **Cast Safety** | ✅ `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | **Panic Paths** | ✅ `unwrap_used`/`expect_used` warn workspace-wide |
 | **JSON-RPC 2.0** | ✅ Strict version validation, notification suppression, serialization fallbacks |
-| **Capability Discovery** | ✅ Runtime discovery, no hardcoded primal names or ports |
+| **Capability Discovery** | ✅ Runtime discovery, no hardcoded primal names or ports; `identity.get` Wire Standard L2 complete (Wave 157k: returns `{primal, version, domain, license, methods}`) |
 
 ---
 
@@ -73,6 +73,7 @@ cargo deny check                  # Full check: bans, licenses, advisories, sour
 
 - **`ring`** — `ring-crypto` feature **removed** (Wave 135); `rustls_rustcrypto` is the sole TLS bootstrap provider; `ring` remains only as unactivated optional dep of `rustls` in lockfile and via optional `k8s` feature; `songbird-quic` is fully ring-free (native QUIC engine with security provider crypto delegation)
 - **System metrics** — Pure Rust `/proc` and `/sys` readers (replaced `sysinfo`)
+- **Dead dependency removal** — 14 additional dead deps removed in Wave 157k (`bt-hci`, `trouble-host`, `thiserror` from execution-agent, `tokio-util` from quic, `uuid` from observability, 6 from test-utils, 3 from canonical); 38 total removed across Waves 152/150x/157k
 
 ---
 

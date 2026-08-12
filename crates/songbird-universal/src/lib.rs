@@ -105,7 +105,7 @@ pub mod unified_adapter;
 pub mod unix_rpc_client; // Pure Rust Unix socket JSON-RPC client (v3.35.0)
 
 // NOTE: zero_knowledge_bootstrap removed - will be properly reimplemented in Phase 2B
-// with modern idiomatic Rust patterns. Feature tracked in IMPLEMENTATION_CHECKLIST.md
+// with modern idiomatic Rust patterns. Feature tracked in REMAINING_WORK.md
 
 // Re-export the unified adapter as the primary interface
 pub use unified_adapter::{

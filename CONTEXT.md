@@ -3,9 +3,9 @@
 **Primal**: Songbird  
 **Role**: Network Orchestration & Discovery Primal — Inner Membrane Port Solver  
 **Phase**: Stadial (S1-S4 graduated, 11-gate mesh collective LIVE, zero-config mesh init)  
-**Version**: 0.2.1-wave157g  
+**Version**: 0.2.1-wave157k  
 **License**: AGPL-3.0-or-later (scyBorg triple: AGPL + ORC + CC-BY-SA)  
-**Last Updated**: August 10, 2026
+**Last Updated**: August 12, 2026
 
 ## What It Does
 
@@ -35,13 +35,14 @@ transport stack targeting WireGuard replacement. Every other primal and spring u
 | Metric | Value |
 |--------|-------|
 | Crates | 31 workspace members |
-| Tests | 14,840+ total (689+ in universal-ipc; integration suites) |
-| Coverage | Line coverage **73.41%** (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%) |
+| Tests | 15,200+ total (694+ in universal-ipc; integration suites) |
+| Coverage | Line coverage **73.41%** (llvm-cov `--workspace --lib`, Apr 27 2026; target 90%; +80 tests Wave 157k; re-measure pending) |
 | Edition | Rust 2024 |
-| Clippy | pedantic + nursery, zero warnings (`-D warnings`; Aug 4 verified); Windows cross-compile zero warnings |
-| Files >800 LOC | **0** — all production code below threshold (largest: gate_enrollment.rs at 753L, mesh_handler/mod.rs at 735L, drawbridge.rs at 782L) |
+| Clippy | pedantic + nursery, zero warnings (`-D warnings`; Aug 12 verified); Windows cross-compile zero warnings |
+| Files >800 LOC | **0** — Wave 157k splits: `ipc_registry/mod.rs`, `gate_enrollment/mod.rs`, `handlers/mod.rs`, `app/core/mod.rs`, `process_manager/mod.rs`; all production code below threshold |
 | Unsafe blocks | 0 (`forbid(unsafe_code)` all 31 crates) |
-| C dependencies | Zero in default/production build; `ring` eliminated from production path (Wave 150x: `rustls-rustcrypto`); 24 dead deps removed; `chrono` eliminated from 3 crates; Bluetooth native deps only with `bluetooth` feature |
+| C dependencies | Zero in default/production build; `ring` eliminated from production path (Wave 150x: `rustls-rustcrypto`); 38 dead deps removed; `chrono` eliminated from 3 crates; Bluetooth native deps only with `bluetooth` feature |
+| Total Rust | ~420,000 lines across 31 crates |
 | Hardcoded primal names | 0 in production discovery (capability-first); all paths env-driven or XDG-compliant; zero `/tmp/` writes |
 | Resolver / DNS probes | No fixed `8.8.8.8` in production paths — netdev-based discovery |
 | Production panics/unwrap/todo | 0 unguarded; `.unwrap()` only under `#[expect(reason)]` for infallible ops |
@@ -53,7 +54,8 @@ JSON-RPC 2.0 methods via typed `JsonRpcMethod` enum dispatch (ecosystem standard
 - `health.liveness`, `health.readiness`, `health.check`, `health.ping`
 - `tower.health`, `tower.mesh_status` (Tower Atomic stack facade for biomeOS signal graphs)
 - `capabilities.list` (Wire Standard L3 envelope: `{primal, version, methods, provided_capabilities, consumed_capabilities, protocol, transport}`), `capabilities.methods`
-- `identity.get` (Wire Standard L3: `{primal, version, domain, license}`), `identity`
+- `identity.get` (Wire Standard L2: `{primal, version, domain, license, methods}` — Wave 157k), `identity`
+- `content.locate`, `content.verify`, `content.availability` (CAS federation — Wave 157k)
 - `capability.resolve` (single-step capability→endpoint, wired Wave 137), `discovery.peers` (wired Wave 137), `ipc.resolve` (capability-first with primal-name fallback; `capability`/`primal_id`/`name` params; `ipc.resolve_by_name` alias; evolved Wave 137b LD-02, Wave 151 PG-37), `lifecycle.composition`, `lifecycle.validate_consumed`
 - `inference.infer`, `inference.status`, `inference.list`, `inference.load` (canonical namespace; absorbs `model.*`/`ai.*`)
 - `ipc.register` (Ed25519-signed payloads via `BearDog` `crypto.sign.ed25519` when `FAMILY_ID` set; graceful degradation), `ipc.resolve`, `ipc.discover`, `ipc.list`, `ipc.find_capability`, `ipc.heartbeat`

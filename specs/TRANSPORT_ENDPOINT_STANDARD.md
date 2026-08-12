@@ -159,5 +159,5 @@ For primals providing services:
 
 - **Canonical type**: `crates/songbird-types/src/transport.rs`
 - **IPC wire integration**: `crates/songbird-universal-ipc/src/service_types.rs`
-- **Registry population**: `crates/songbird-universal-ipc/src/service/ipc_registry.rs`
+- **Registry population**: `crates/songbird-universal-ipc/src/service/ipc_registry/mod.rs`
 - **Tests**: 18 unit tests in `songbird-types`, 10+ integration tests in `songbird-universal-ipc`

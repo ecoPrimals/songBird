@@ -2,7 +2,7 @@
 
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: August 4, 2026
+**Last Updated**: August 12, 2026
 
 ---
 
@@ -75,7 +75,7 @@ pub async fn my_function() -> SongbirdResult<Value> {
 
 ### Zero-Copy
 
-Prefer borrowing over cloning. Use `Arc<str>` for shared strings in hot paths:
+Prefer borrowing over cloning. Use `Arc<str>` for shared strings in hot paths (Wave 157k: node_id, endpoint, and IPC config strings):
 
 ```rust
 fn process_name(name: &str) { }
@@ -94,7 +94,7 @@ process_name(&service.name);
 
 ### Coverage Target
 
-**Goal**: 90% line coverage. Current: **73.41%** (llvm-cov measured, Apr 27 2026; 7,803 lib tests). Priority: pure-logic modules first.
+**Goal**: 90% line coverage. Current: **73.41%** (llvm-cov measured, Apr 27 2026; +80 tests Wave 157k; re-measure pending). Priority: pure-logic modules first.
 
 ```bash
 cargo llvm-cov --workspace --lib --html

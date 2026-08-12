@@ -1,10 +1,10 @@
 # Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v0.2.1-wave157g  
+**Version**: v0.2.1-wave157k  
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0-or-later (scyBorg provenance trio)  
 **Edition**: Rust 2024  
-**Last Updated**: August 10, 2026
+**Last Updated**: August 12, 2026
 
 Songbird is the universal network orchestrator and **inner membrane port solver** for the ecoPrimals ecosystem. It manages service discovery, connection management, inter-primal communication across multiple protocols, and drawbridge capability→port resolution for production routing. All cryptographic operations are delegated to the security provider capability (`security.sock` / `SECURITY_PROVIDER_SOCKET`) via JSON-RPC IPC at runtime through capability-based discovery.
 
@@ -23,29 +23,29 @@ Songbird is one third of **Tower Atomic** (bearDog + songBird + skunkBat) — th
 | Production `FIXME`/`HACK` | Zero |
 | Lint suppressions | `#[allow(reason)]` / `#[expect(reason)]` throughout — Wave 150x: 47 `#[allow(dead_code)]` evolved to `#[expect(dead_code)]` (warns if code gets wired); Wave 58: 146 item-level suppressions evolved to `#[expect(clippy::...)]`; module-level `unwrap_used`/`expect_used` blanket suppressions remain `#[allow]` (correct for module scope); Wave 149: blanket `#![allow(clippy::all, pedantic, nursery)]` removed from 11 files; zero reasonless suppressions, zero blanket suppressions remain |
 | Concurrent Tests | Injectable env via `songbird-process-env` overlay (all production env sites migrated — zero `std::env` in production); all tests fully concurrent; `#[serial_test]` fully eliminated (0 suites); `tokio::time::pause()` for deterministic timing |
-| Tests | 14,840+ total tests (689+ in universal-ipc; integration suites) |
-| Line Coverage | **73.41%** (`llvm-cov --workspace --lib`, Apr 27 2026; target 90%; Wave 53: +74 tests across pure-logic modules) |
+| Tests | 15,200+ total tests (694+ in universal-ipc; integration suites) |
+| Line Coverage | **73.41%** (`llvm-cov --workspace --lib`, Apr 27 2026; target 90%; +80 pure-logic tests added Wave 157k; re-measure pending) |
 | Cast Safety | `cast_possible_truncation`, `cast_sign_loss`, `cast_precision_loss`, `cast_possible_wrap` denied workspace-wide |
 | JSON-RPC Strict | Version validation, notification suppression, serialization-safe fallbacks across all dispatch handlers |
-| JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (60+ methods, 34 domain sub-enums including `Btsp`, `Lifecycle` and `Inference`) — zero string matching in dispatch; `birdsong.schema` introspection; `normalize_json_rpc_method_name()` absorbs `discovery.find_by_capability`, `net.discovery.find_by_capability`, `model.*`, `ai.*` aliases; Wave 60: `mesh.discover_remotes`, `mesh.mirror`, `mesh.publish`; Wave 70: `mesh.probe_latency`; Wave 74: `ipc.relay_stats`; Wave 75: `mesh.capabilities_announce`; Wave 155n: `mesh.connectivity_check`, `mesh.throughput` |
-| Clippy Pedantic | All 31 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets`; Aug 5 2026 verified); **Windows cross-compile zero warnings** (`x86_64-pc-windows-gnu`) |
+| JSON-RPC Dispatch | Typed `JsonRpcMethod` enum routing (65+ methods, 35 domain sub-enums including `Btsp`, `Content`, `Lifecycle` and `Inference`) — zero string matching in dispatch; `birdsong.schema` introspection; `normalize_json_rpc_method_name()` absorbs `discovery.find_by_capability`, `net.discovery.find_by_capability`, `model.*`, `ai.*` aliases; Wave 60: `mesh.discover_remotes`, `mesh.mirror`, `mesh.publish`; Wave 70: `mesh.probe_latency`; Wave 74: `ipc.relay_stats`; Wave 75: `mesh.capabilities_announce`; Wave 155n: `mesh.connectivity_check`, `mesh.throughput`; Wave 157k: `content.locate`, `content.verify`, `content.availability` |
+| Clippy Pedantic | All 31 crates clean (`clippy::pedantic + nursery`, zero warnings, `--all-targets`; Aug 12 2026 verified); **Windows cross-compile zero warnings** (`x86_64-pc-windows-gnu`) |
 | Build | Clean (zero errors, zero warnings; cross-platform verified) |
-| Formatting | Clean (`cargo fmt --check`; Aug 4 verified) |
+| Formatting | Clean (`cargo fmt --check`; Aug 12 verified) |
 | Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
-| Files >800 lines | **0** (max 782L drawbridge.rs) — Wave 157i: `ipc_registry.rs` (831L→759L, swarmVine gossip extracted). Wave 157g: `http_server.rs` (854L→4 focused modules). Wave 155i: `service_tests.rs` (1,018→5 modules), `mesh_handler/tests.rs` (998→5 modules). Wave 152: `security.rs` (761→mod tree). Wave 150t: `mesh_handler/mod.rs` (841→746L) |
+| Files >800 lines | **0** — Wave 157k: `ipc_registry.rs` → `ipc_registry/mod.rs` (register/resolve/query/lifecycle/transport); `gate_enrollment.rs` → `gate_enrollment/mod.rs` (types/proof/ip_allocation/wireguard/forgejo/seed); `handlers/mod.rs` → typed_delegates/json_adapters/http_methods/discovery_handlers/mesh_dispatch; `app/core/mod.rs` → security_provisioning/broadcast/ipc_server/background_tasks; `process_manager.rs` → `process_manager/mod.rs` (manager/pid_path/lock/process_health/guard). Wave 157i: `drawbridge.rs` (782→442L). Wave 157g: `http_server.rs` (854L→4 focused modules). Wave 155i: `service_tests.rs` (1,018→5 modules), `mesh_handler/tests.rs` (998→5 modules) |
 | License | `AGPL-3.0-or-later` via workspace inheritance; all crates use `license.workspace = true` (`AGPL-3.0-only` drift eliminated) |
 | SPDX Headers | 100% of `.rs` files have `AGPL-3.0-or-later` — consistent with Cargo.toml and LICENSE body |
 | JSON-RPC Gateway | 53+ semantic methods across 33 domain sub-enums (health, discovery, stun, relay, federation, tor, birdsong, ipc, lifecycle, inference, etc.) |
-| Wire Standard L3 | `capabilities.list` returns L3 envelope: `{primal, version, methods, provided_capabilities, consumed_capabilities, protocol, transport}`; `identity.get` returns `{primal, version, domain, license}`; `capabilities.methods` token→method map |
+| Wire Standard L3 | `capabilities.list` returns L3 envelope: `{primal, version, methods, provided_capabilities, consumed_capabilities, protocol, transport}`; `identity.get` returns full L2 envelope: `{primal, version, domain, license, methods}` (Wave 157k); `capabilities.methods` token→method map |
 | riboCipher (Stream 7) | Transport signal detection in all 3 accept loops (`pure_rust_server`, `bin_interface`, `http_server`). Signal bytes: `0xEC` (clear), `0xED` (mito/federation), `0xEE` (nuclear). Deterministic routing before protocol detection. Deprecation: WARN (111-112) → ERROR (112) → REJECT (113) → REMOVE (114) |
 | BTSP Phase 2 | ClientHello/ChallengeResponse handshake client + server; `perform_server_handshake` (length-prefix) + `perform_server_handshake_ndjson` (JSON-line) on UDS accept when `FAMILY_ID` set; first-line auto-detect: riboCipher signal → tier routing, `"protocol":"btsp"` → NDJSON BTSP, plain `{` → JSON-RPC, other → binary BTSP; BIOMEOS_INSECURE guard; domain-based socket naming (`network.sock`); domain symlink `network.sock` → `songbird.sock` |
 | BTSP Phase 3 (FULL) | `btsp.negotiate` server-side handler — ChaCha20-Poly1305 encrypted framing post-handshake; HKDF-SHA256 session key derivation (directional c2s/s2c keys); graceful NULL cipher fallback; `btsp.server.export_keys` delegation to security provider; length-prefixed encrypted frames `[4B len][12B nonce][ciphertext + Poly1305 tag]`; 16 MiB max frame; `BondingPolicy` cipher floor enforcement; negotiate dispatch wired on all 3 transport paths (NDJSON session, binary-framed BTSP, bin_interface) |
 | Method Normalization | `normalize_json_rpc_method_name()` in `songbird-types`; handles ecosystem naming drift |
 | Lint Inheritance | 30/30 crates inherit workspace lints; 2 with justified custom tables |
 | cargo-deny | Fully passing (advisories ok, bans ok, licenses ok, sources ok); locally enforced (`cargo deny check`); CI runs fmt + clippy + test only |
-| Dependencies | Pure Rust in default build; 24 dead deps removed (Wave 152: 8, Wave 150x: 16); `ring` eliminated from production path (Wave 150x: `rustls-rustcrypto` replaces `ring` in universal-ipc TLS); `rand` replaced with `fastrand` in non-crypto paths; `chrono` eliminated from 3 trivial crates; `kube`/`k8s-openapi`/`bollard` feature-gated; Bluetooth native C deps only with `bluetooth` feature; zero first-party `-sys` crates, zero `cc`, zero `build.rs`; `cargo deny check` fully passing |
+| Dependencies | Pure Rust in default build; 38 dead deps removed (Wave 152: 8, Wave 150x: 16, Wave 157k: 14); `ring` eliminated from production path (Wave 150x: `rustls-rustcrypto` replaces `ring` in universal-ipc TLS); `rand` replaced with `fastrand` in non-crypto paths; `chrono` eliminated from 3 trivial crates; `kube`/`k8s-openapi`/`bollard` feature-gated; Bluetooth native C deps only with `bluetooth` feature; zero first-party `-sys` crates, zero `cc`, zero `build.rs`; `cargo deny check` fully passing |
 | UniBin | Single binary: `server`, `cli` (REPL), `compute-bridge`, `deploy`, `rendezvous`, `relay` |
-| Total Rust | ~422,000 lines across 31 crates |
+| Total Rust | ~420,000 lines across 31 crates |
 
 ## Architecture
 
@@ -84,7 +84,7 @@ Security Provider (capability discovery: security.sock / SECURITY_PROVIDER_SOCKE
 8. **Concurrent Testing** - Injectable `_with` env readers for fully concurrent tests
 9. **JSON-RPC + tarpc First** - Dual-protocol: JSON-RPC on `.sock` (discovery/diagnostics), tarpc on `.tarpc.sock` (high-frequency binary RPC). **G65 Protocol Negotiation**: primary UDS auto-detects `PROTOCOLS:` request and negotiates tarpc or jsonrpc at connection time (Phase 3 cephalization)
 10. **Canonical Naming** - `normalize_json_rpc_method_name()` absorbs all ecosystem aliases to canonical `domain.verb`
-11. **Vertebrate Evolution** (Wave 157a/d/e) - Shared `CanonicalTransport` trait abstracts 9 transport crates behind uniform lifecycle. `TransportRegistry` in orchestrator provides unified start/health/shutdown. Gossip (`mesh.capabilities_announce`) actively forwarded to swarmVine when available (formal excision). `capability_registry.toml` matches actual RPC surface. PID legacy path cleanup on startup. `MeshRelay` gossip transport (`gossip.relay` + `gossip.inject`) for cross-gate propagation through `:7700` federation mesh. Dispatch test suite hardened against live-service IO hangs (100ms timeout fence for real-network calls).
+11. **Vertebrate Evolution** (Wave 157a/d/e/k) - Shared `CanonicalTransport` trait abstracts 9 transport crates behind uniform lifecycle. `TransportRegistry` in orchestrator provides unified start/health/shutdown. Gossip (`mesh.capabilities_announce`) actively forwarded to swarmVine when available (formal excision). `capability_registry.toml` matches actual RPC surface. PID legacy path cleanup on startup. `MeshRelay` gossip transport (`gossip.relay` + `gossip.inject`) for cross-gate propagation through `:7700` federation mesh. Dispatch test suite hardened against live-service IO hangs (100ms timeout fence for real-network calls). Wave 157k: `content.locate` CAS federation, `identity.get` Capability Wire L2, `mesh.*`→`gossip.*` aliases, platform backend consolidation (`SysMetrics`/`ProcessOps`/`NetworkInfo` in `songbird-types`), zero-copy `Arc<str>` hot paths.
 
 ## Quick Start
 
@@ -106,6 +106,7 @@ cargo run --bin songbird -- deploy
 | `--port` | HTTP/HTTPS server port | `8080` (env: `SONGBIRD_HTTP_PORT`) |
 | `--listen` | **IPC only** — TCP JSON-RPC inter-primal listener | derived from `--port` |
 | `--socket` | **IPC only** — Unix socket path for inter-primal IPC | XDG auto |
+| `--node-id` / `--gate-id` | Gate/node identity for mesh federation and swarmVine gossip; sets `GATE_ID` env overlay | env `GATE_ID` → `HOSTNAME` → hostname-derived |
 
 `--bind` defaults to localhost for security. Use `--bind 0.0.0.0` to expose on all interfaces (LAN/WAN). Accepts `host` or `host:port` (port overrides `--port`).
 

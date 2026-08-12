@@ -37,14 +37,11 @@ pub struct SongbirdOrchestrator {
     pub(super) _config: CanonicalSongbirdConfig,
     pub(super) _service_registry: Arc<FederatedServiceRegistry>,
     pub(super) service_registry: Arc<crate::service_registry::ServiceRegistry>,
-    // gaming_manager: Arc<GamingManager>, // Temporarily disabled
-    // federation_manager: Arc<CanonicalFederation>, // Temporarily disabled
     pub(super) federation_coordinator: Option<Arc<FederationCoordinator>>,
     pub(super) federation_config: Option<FederationConfig>,
     pub(super) federation_state: Arc<FederationState>,
     pub(super) federated_service_registry: Arc<FederatedServiceRegistry>,
     pub(super) observability_manager: Arc<ObservabilityManager>,
-    // security_integration: Arc<UniversalSecurityIntegration>, // Temporarily disabled
     pub(super) trust_manager: Arc<TrustEscalationManager>,
     pub(super) connection_manager: Arc<ConnectionManager>,
 
@@ -186,14 +183,11 @@ impl SongbirdOrchestrator {
             _config: config,
             _service_registry: service_registry,
             service_registry: universal_service_registry,
-            // gaming_manager, // Temporarily disabled
-            // federation_manager, // Temporarily disabled
             federation_coordinator,
             federation_config,
             federation_state,
             federated_service_registry,
             observability_manager,
-            // security_integration, // Temporarily disabled
             trust_manager,
             connection_manager,
             discovery_listener_pending, // ✅ Holds non-Arc listener for configuration
