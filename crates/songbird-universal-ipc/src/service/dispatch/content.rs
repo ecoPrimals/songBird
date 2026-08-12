@@ -163,7 +163,81 @@ impl IpcServiceHandler {
         hash: &str,
         algorithm: &str,
     ) -> SongbirdResult<Vec<ContentLocation>> {
-        debug!(hash, algorithm, "content.locate mesh scope: federation forwarding pending");
-        Ok(Vec::new())
+        use songbird_types::defaults::ports::DEFAULT_HTTP_PORT;
+
+        let mesh_guard = self.mesh_handler.mesh().await;
+        let Some(mesh) = mesh_guard.as_ref() else {
+            debug!("content.locate mesh: mesh not initialized");
+            return Ok(Vec::new());
+        };
+
+        let reachable = mesh.get_reachable_nodes().await;
+        if reachable.is_empty() {
+            debug!("content.locate mesh: no reachable peers");
+            return Ok(Vec::new());
+        }
+
+        let mut locations = Vec::new();
+
+        for node_id in &reachable {
+            let Some(path) = mesh.get_best_path(node_id).await else {
+                continue;
+            };
+            let peer_sock = path.endpoint_type.socket_addr().unwrap_or_else(|| {
+                let ip = path
+                    .endpoint_type
+                    .address()
+                    .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
+                std::net::SocketAddr::new(ip, DEFAULT_HTTP_PORT)
+            });
+
+            let tcp_endpoint = songbird_types::constants::jsonrpc_endpoint_url(&peer_sock);
+
+            let request = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "capability.call",
+                "params": {
+                    "capability": "content",
+                    "operation": "exists",
+                    "params": { "hash": hash, "algorithm": algorithm },
+                    "routing": "local"
+                },
+                "id": 1
+            });
+
+            match self.http_post_jsonrpc(&tcp_endpoint, &request).await {
+                Ok(response) => {
+                    let exists = response
+                        .get("result")
+                        .and_then(|r| r.get("exists"))
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+
+                    if exists {
+                        debug!(
+                            peer = %node_id,
+                            hash,
+                            "content.locate: peer confirms content exists"
+                        );
+                        locations.push(ContentLocation {
+                            gate: node_id.clone(),
+                            endpoint: tcp_endpoint,
+                            verified: true,
+                        });
+                    } else {
+                        debug!(peer = %node_id, hash, "content.locate: peer does not have content");
+                    }
+                }
+                Err(e) => {
+                    debug!(
+                        peer = %node_id,
+                        error = %e,
+                        "content.locate: failed to probe peer"
+                    );
+                }
+            }
+        }
+
+        Ok(locations)
     }
 }

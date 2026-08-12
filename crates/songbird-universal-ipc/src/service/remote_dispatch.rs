@@ -319,7 +319,7 @@ impl IpcServiceHandler {
     ///
     /// Uses hyper for HTTP/1.1 transport — the remote peer is an axum server,
     /// not a raw NDJSON stream.
-    async fn http_post_jsonrpc(&self, url: &str, request: &Value) -> Result<Value, String> {
+    pub(super) async fn http_post_jsonrpc(&self, url: &str, request: &Value) -> Result<Value, String> {
         use http_body_util::{BodyExt, Full};
         use hyper::Request;
         use hyper::body::Bytes;

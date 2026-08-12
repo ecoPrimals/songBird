@@ -944,7 +944,7 @@ async fn content_locate_local_scope_returns_registered_provider() {
 }
 
 #[tokio::test]
-async fn content_locate_mesh_scope_returns_empty_during_stub() {
+async fn content_locate_mesh_scope_returns_empty_without_peers() {
     let h = ipc_handler();
     let hash = "sha256-001122";
     let res = h
@@ -960,4 +960,36 @@ async fn content_locate_mesh_scope_returns_empty_during_stub() {
         .expect("content.locate mesh scope");
     assert_eq!(res["hash"], hash);
     assert_eq!(res["locations"].as_array().map(Vec::len), Some(0));
+}
+
+#[tokio::test]
+async fn content_locate_all_scope_includes_local_and_mesh() {
+    let h = ipc_handler();
+    h.handle(
+        "ipc.register",
+        json!({
+            "primal_id": "localCAS",
+            "capabilities": ["content_storage"],
+            "endpoint": "/tmp/local-cas.sock"
+        }),
+    )
+    .await
+    .expect("register local CAS");
+
+    let hash = "blake3-federated";
+    let res = h
+        .handle(
+            "content.locate",
+            json!({
+                "hash": hash,
+                "algorithm": "blake3",
+                "scope": "all"
+            }),
+        )
+        .await
+        .expect("content.locate all scope");
+    assert_eq!(res["hash"], hash);
+    let locations = res["locations"].as_array().expect("locations array");
+    assert!(locations.len() >= 1, "should have at least the local provider");
+    assert_eq!(locations[0]["gate"], "localCAS");
 }
