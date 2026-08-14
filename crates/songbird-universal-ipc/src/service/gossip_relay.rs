@@ -22,7 +22,7 @@ use serde_json::{Value, json};
 use songbird_onion_relay::mesh::EndpointType;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::debug;
+use tracing::{debug, info};
 #[cfg(unix)]
 use tracing::warn;
 
@@ -40,8 +40,25 @@ impl IpcServiceHandler {
     pub(super) async fn handle_gossip_relay(&self, params: Value) -> Result<Value, String> {
         let target_gate = params.get("target_gate").and_then(Value::as_str).unwrap_or("local");
 
-        let topic =
-            params.get("topic").and_then(Value::as_str).ok_or("Missing required field: topic")?;
+        let explicit_topic = params.get("topic").and_then(Value::as_str);
+        let topic = explicit_topic
+            .or_else(|| {
+                params
+                    .get("payload")
+                    .and_then(|p| p.get("topic"))
+                    .and_then(Value::as_str)
+            })
+            .ok_or(
+                "Missing required field: topic (include top-level 'topic' or 'payload.topic')",
+            )?;
+
+        if explicit_topic.is_none() {
+            info!(
+                target: "songbird::gossip_relay",
+                inferred_topic = topic,
+                "mesh.relay compat: topic inferred from payload; callers should include top-level 'topic' field"
+            );
+        }
 
         let payload = params.get("payload").cloned().unwrap_or(Value::Null);
 

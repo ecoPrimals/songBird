@@ -503,6 +503,25 @@ async fn mesh_relay_alias_dispatches_like_gossip_relay() {
     assert_eq!(result["status"], "injected");
 }
 
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn mesh_relay_infers_topic_from_payload() {
+    let h = ipc_handler();
+
+    let result = h
+        .handle(
+            "mesh.relay",
+            json!({
+                "target_gate": "local",
+                "key": "cap.announce:compat",
+                "payload": { "topic": "capability", "event": "register" }
+            }),
+        )
+        .await
+        .expect("mesh.relay should infer topic from payload.topic");
+    assert_eq!(result["relayed_to"], "local");
+    assert_eq!(result["status"], "injected");
+}
+
 #[tokio::test]
 async fn gossip_relay_to_unknown_gate_errors() {
     let h = ipc_handler();
@@ -992,4 +1011,54 @@ async fn content_locate_all_scope_includes_local_and_mesh() {
     let locations = res["locations"].as_array().expect("locations array");
     assert!(!locations.is_empty(), "should have at least the local provider");
     assert_eq!(locations[0]["gate"], "localCAS");
+}
+
+#[tokio::test]
+async fn content_put_validates_hash() {
+    let h = ipc_handler();
+
+    let err = h
+        .handle("content.put", json!({ "content": "dGVzdA==" }))
+        .await
+        .expect_err("should require hash");
+    assert!(err.contains("hash"), "expected hash error, got: {err}");
+}
+
+#[tokio::test]
+async fn content_put_validates_algorithm() {
+    let h = ipc_handler();
+
+    let err = h
+        .handle(
+            "content.put",
+            json!({
+                "hash": "abc123",
+                "content": "dGVzdA==",
+                "algorithm": "md5"
+            }),
+        )
+        .await
+        .expect_err("should reject invalid algorithm");
+    assert!(err.contains("algorithm"), "expected algorithm error, got: {err}");
+}
+
+#[tokio::test]
+async fn content_put_no_provider_errors() {
+    let h = ipc_handler();
+
+    let err = h
+        .handle(
+            "content.put",
+            json!({
+                "hash": "abc123",
+                "content": "dGVzdA==",
+                "algorithm": "blake3"
+            }),
+        )
+        .await
+        .expect_err("should error without providers");
+    assert!(
+        err.contains("content_storage") || err.contains("capability"),
+        "expected provider error, got: {err}"
+    );
 }

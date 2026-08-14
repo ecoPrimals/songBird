@@ -33,6 +33,10 @@ pub(super) async fn dispatch_content(
             handler.handle_content_availability(params).await,
             "content.availability failed",
         ),
+        JsonRpcMethod::Content(ContentMethod::Put) => IpcServiceHandler::wrap_result(
+            handler.handle_content_put(params).await,
+            "content.put failed",
+        ),
         other => Err(format!("Unknown content method: {other}")),
     }
 }
@@ -134,6 +138,61 @@ impl IpcServiceHandler {
         _params: Value,
     ) -> SongbirdResult<Value> {
         Err(SongbirdError::not_implemented("content.availability"))
+    }
+
+    /// Handle `content.put` — route a CAS write to a local provider with `content_storage` capability.
+    ///
+    /// Accepts: `{ hash, content, algorithm?, scope? }`
+    /// - `hash` (string): content-addressable hash of the content
+    /// - `content` (string): base64-encoded content bytes
+    /// - `algorithm` (string, default `"blake3"`): hash algorithm
+    /// - `scope` (string, default `"local"`): `"local"` routes to local CAS providers only
+    ///
+    /// Delegates to `capability.call` with `content_storage` capability for routing.
+    pub(super) async fn handle_content_put(&self, params: Value) -> SongbirdResult<Value> {
+        let hash = params
+            .get("hash")
+            .and_then(Value::as_str)
+            .ok_or_else(|| SongbirdError::validation("Missing or empty 'hash'"))?;
+
+        if hash.is_empty() {
+            return Err(SongbirdError::validation("Missing or empty 'hash'"));
+        }
+
+        let content = params
+            .get("content")
+            .ok_or_else(|| SongbirdError::validation("Missing 'content' field"))?;
+
+        let algorithm = params
+            .get("algorithm")
+            .and_then(Value::as_str)
+            .unwrap_or("blake3");
+
+        match algorithm {
+            "blake3" | "sha256" => {}
+            other => {
+                return Err(SongbirdError::validation(format!(
+                    "Invalid 'algorithm': {other} (expected 'blake3' or 'sha256')"
+                )));
+            }
+        }
+
+        debug!(hash, algorithm, "content.put: routing via capability.call to content_storage provider");
+
+        let cap_call_params = serde_json::json!({
+            "capability": CONTENT_STORAGE_CAPABILITY,
+            "operation": "put",
+            "params": {
+                "hash": hash,
+                "content": content,
+                "algorithm": algorithm,
+            },
+            "routing": "local"
+        });
+
+        self.handle_capability_call(cap_call_params)
+            .await
+            .map_err(|e| SongbirdError::service("content.put", format!("capability.call: {e}")))
     }
 
     async fn locate_local_content_providers(&self) -> SongbirdResult<Vec<ContentLocation>> {

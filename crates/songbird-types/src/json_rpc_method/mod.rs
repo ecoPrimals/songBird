@@ -344,6 +344,7 @@ impl JsonRpcMethod {
             Self::Content(ContentMethod::Locate) => "content.locate",
             Self::Content(ContentMethod::Verify) => "content.verify",
             Self::Content(ContentMethod::Availability) => "content.availability",
+            Self::Content(ContentMethod::Put) => "content.put",
         }
     }
 
@@ -564,6 +565,7 @@ impl JsonRpcMethod {
             "content.locate" => Self::Content(ContentMethod::Locate),
             "content.verify" => Self::Content(ContentMethod::Verify),
             "content.availability" => Self::Content(ContentMethod::Availability),
+            "content.put" => Self::Content(ContentMethod::Put),
             _ => {
                 return Err(JsonRpcMethodParseError(format!("unknown JSON-RPC method: {s}")));
             }

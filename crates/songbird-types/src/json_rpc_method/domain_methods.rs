@@ -453,7 +453,7 @@ pub enum CoordinationMethod {
     ValidatePattern,
 }
 
-/// `content.*` — content-addressable storage (CAS) location and verification.
+/// `content.*` — content-addressable storage (CAS) location, verification, and write.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ContentMethod {
     /// `content.locate` — find endpoint(s) where content by hash can be fetched.
@@ -462,4 +462,6 @@ pub enum ContentMethod {
     Verify,
     /// `content.availability` — check whether content is available locally or on mesh peers.
     Availability,
+    /// `content.put` — store content via a local CAS provider (routes to `content_storage` capability).
+    Put,
 }

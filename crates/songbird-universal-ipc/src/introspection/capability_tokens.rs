@@ -27,6 +27,7 @@ pub const SONGBIRD_CAPABILITY_STRINGS: &[&str] = &[
     "crypto.delegate",
     "nfc.genesis",
     "bluetooth.pair",
+    "content.federation",
     "compute.gpu",
     "access.remote",
 ];
@@ -148,6 +149,7 @@ const CALLABLE_METHODS: &[&str] = &[
     "content.locate",
     "content.verify",
     "content.availability",
+    "content.put",
     // ── Federation ──
     "federation.peers",
     "federation.status",
@@ -283,6 +285,10 @@ pub const CAPABILITY_METHOD_MAP: &[(&str, &[&str])] = &[
             "lifecycle.composition",
             "lifecycle.validate_consumed",
         ],
+    ),
+    (
+        "content.federation",
+        &["content.locate", "content.verify", "content.availability", "content.put"],
     ),
     ("ipc.tarpc", &["rpc.methods"]),
     ("crypto.delegate", &["health.readiness"]),
