@@ -83,9 +83,6 @@ ignore = [
     # bincode 1.x unmaintained (RUSTSEC-2025-0141) — transitive via tarpc /
     # tokio-serde. Migration: tarpc on bincode 2.x, or serde formats like postcard.
     "RUSTSEC-2025-0141",
-    # opentelemetry_api: merged into opentelemetry — transitive; awaiting
-    # upstream migration in sysinfo/tracing ecosystem
-    "RUSTSEC-2024-0387",
     # paste: unmaintained — transitive; no known vulnerabilities
     "RUSTSEC-2024-0436",
     # hickory-proto O(n²) name compression (RUSTSEC-2026-0119) — Songbird is a
