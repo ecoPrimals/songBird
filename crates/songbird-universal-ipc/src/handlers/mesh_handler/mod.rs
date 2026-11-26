@@ -124,12 +124,16 @@ impl MeshHandler {
     }
 
     /// Whether the mesh has been initialized (has a node ID set).
+    ///
+    /// Blocking — panics inside an async runtime; use [`Self::is_initialized_async`] there.
     #[must_use]
     pub fn is_initialized(&self) -> bool {
         !self.node_id.blocking_read().is_empty()
     }
 
     /// Number of peers with known capabilities.
+    ///
+    /// Blocking — panics inside an async runtime; use [`Self::peer_count_async`] there.
     #[must_use]
     pub fn peer_count(&self) -> usize {
         self.peer_capabilities.blocking_read().len()
@@ -144,6 +148,20 @@ impl MeshHandler {
     /// The local node ID (async-safe).
     pub async fn node_id_async(&self) -> Arc<str> {
         Arc::clone(&*self.node_id.read().await)
+    }
+
+    /// Whether the mesh has been initialized (async-safe).
+    ///
+    /// [`Self::is_initialized`] blocks, and blocking inside the runtime panics;
+    /// the release profile aborts on panic, so one `tower.health` call from an
+    /// async handler took the whole process down. Handlers use this one.
+    pub async fn is_initialized_async(&self) -> bool {
+        !self.node_id.read().await.is_empty()
+    }
+
+    /// Number of peers with known capabilities (async-safe).
+    pub async fn peer_count_async(&self) -> usize {
+        self.peer_capabilities.read().await.len()
     }
 
     /// Initialize the mesh with node ID, bootstrap onions, and/or bootstrap peers.

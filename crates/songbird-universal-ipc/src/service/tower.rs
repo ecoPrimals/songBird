@@ -19,14 +19,15 @@ impl IpcServiceHandler {
     /// - Mesh initialization state
     /// - Peer connectivity summary
     /// - Drawbridge proxy readiness
-    #[allow(clippy::unused_async, reason = "async signature matches JsonRpcHandler dispatch table")]
     pub(super) async fn handle_tower_health(&self) -> Result<Value, String> {
-        let mesh_initialized = self.mesh_handler.is_initialized();
-        let peer_count = self.mesh_handler.peer_count();
+        let mesh_initialized = self.mesh_handler.is_initialized_async().await;
+        let peer_count = self.mesh_handler.peer_count_async().await;
         let capabilities = self.capability_router.list_capabilities();
 
         let crypto_socket = songbird_crypto_provider::socket_discovery::discover_security_socket();
-        let crypto_available = std::path::Path::new(&crypto_socket).exists();
+        // An abstract name (`@...`, Android) has no file; it counts as configured.
+        let crypto_available = songbird_types::ipc_stream::is_abstract_name(&crypto_socket)
+            || std::path::Path::new(&crypto_socket).exists();
 
         let status = if mesh_initialized && crypto_available {
             "healthy"
@@ -52,11 +53,10 @@ impl IpcServiceHandler {
     }
 
     /// Handle `tower.mesh_status` — enriched mesh status for Tower validation.
-    #[allow(clippy::unused_async, reason = "async signature matches JsonRpcHandler dispatch table")]
     pub(super) async fn handle_tower_mesh_status(&self) -> Result<Value, String> {
-        let mesh_initialized = self.mesh_handler.is_initialized();
-        let peer_count = self.mesh_handler.peer_count();
-        let node_id = self.mesh_handler.node_id();
+        let mesh_initialized = self.mesh_handler.is_initialized_async().await;
+        let peer_count = self.mesh_handler.peer_count_async().await;
+        let node_id = self.mesh_handler.node_id_async().await;
 
         Ok(json!({
             "initialized": mesh_initialized,

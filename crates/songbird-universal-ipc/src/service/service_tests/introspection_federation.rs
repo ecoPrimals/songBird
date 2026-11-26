@@ -81,6 +81,22 @@ async fn health_liveness_returns_healthy_status_only() {
     assert_eq!(v, json!({ "status": "alive" }));
 }
 
+/// `tower.health` and `tower.mesh_status` run on a runtime worker. They used to take a
+/// blocking lock there, which panics — and the release profile aborts on panic, so one
+/// call ended the process. A multi-thread runtime is what the server runs on.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn tower_health_and_mesh_status_answer_from_inside_the_runtime() {
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let handler = IpcServiceHandler::new_isolated(registry.clone());
+
+    let health = handler.handle("tower.health", json!({})).await.expect("tower.health");
+    assert!(health["status"].is_string(), "tower.health must report a status: {health}");
+
+    let mesh = handler.handle("tower.mesh_status", json!({})).await.expect("tower.mesh_status");
+    assert!(mesh["initialized"].is_boolean(), "mesh_status must say whether it is up: {mesh}");
+    assert!(mesh["peers"].is_number(), "mesh_status must count peers: {mesh}");
+}
+
 #[tokio::test]
 async fn capabilities_list_returns_wire_standard_envelope() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
