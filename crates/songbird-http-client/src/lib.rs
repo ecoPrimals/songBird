@@ -91,6 +91,8 @@ pub mod error;
 pub mod http_config;
 /// IPC-backed HTTP client, multipart forms, and request builders.
 pub mod ipc_client;
+/// Lineage proof: family membership a peer can prove, and the gate that asks for it.
+pub mod lineage;
 mod redirect; // ✅ NEW: HTTP redirect handling (extracted from client.rs)
 mod request; // ✅ NEW: HTTP request building (extracted from client.rs)
 mod response; // ✅ NEW: HTTP response parsing (extracted from client.rs)

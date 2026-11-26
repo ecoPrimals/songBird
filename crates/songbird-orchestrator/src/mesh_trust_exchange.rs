@@ -56,6 +56,26 @@ pub fn spawn_trust_exchange(peers: Vec<(String, SocketAddr)>) {
         };
 
         for (peer_id, peer_addr) in &peers {
+            // What the peer answers is registered with our security provider as a trusted
+            // key, so with the lineage gate on the peer proves the family before we ask.
+            let gate_mode = songbird_http_client::lineage::gate().mode();
+            if gate_mode != songbird_http_client::lineage::GateMode::Off {
+                match crate::trust::peer_trust::evaluation::challenge_addr(*peer_addr).await {
+                    Ok(device) => {
+                        info!(peer = %peer_id, device = %device, "Peer proved its lineage");
+                    }
+                    Err(reason)
+                        if gate_mode == songbird_http_client::lineage::GateMode::Observe =>
+                    {
+                        warn!(peer = %peer_id, reason = %reason, "Peer did not prove its lineage — observe mode, trust exchange goes on");
+                    }
+                    Err(reason) => {
+                        warn!(peer = %peer_id, reason = %reason, "Peer did not prove its lineage — no trust exchange");
+                        continue;
+                    }
+                }
+            }
+
             match exchange_trust_with_peer(peer_id, *peer_addr, &local_key, &node_id, &family_id)
                 .await
             {
@@ -130,7 +150,7 @@ async fn exchange_trust_with_peer(
         "/jsonrpc",
     );
 
-    let request = json!({
+    let mut request = json!({
         "jsonrpc": "2.0",
         "method": "capability.call",
         "params": {
@@ -145,6 +165,14 @@ async fn exchange_trust_with_peer(
         },
         "id": 1
     });
+
+    // A peer with its lineage gate on serves this only to a caller that proves the family.
+    let gate = songbird_http_client::lineage::gate();
+    if let Err(e) =
+        gate.attach_to_rpc(&mut request, &songbird_http_client::lineage::addr_text(peer_addr)).await
+    {
+        debug!(peer = %peer_id, error = %e, "No lineage proof attached to trust exchange");
+    }
 
     let response = http_post_jsonrpc(&endpoint, &request)
         .await
@@ -279,7 +307,7 @@ async fn call_uds_jsonrpc(socket_path: &str, request: &Value) -> Result<Value, S
 }
 
 /// Send a JSON-RPC request via HTTP POST and return the full response.
-async fn http_post_jsonrpc(endpoint: &str, request: &Value) -> Result<Value, String> {
+pub(crate) async fn http_post_jsonrpc(endpoint: &str, request: &Value) -> Result<Value, String> {
     use http_body_util::{BodyExt, Full};
     use hyper::Request;
     use hyper::body::Bytes;

@@ -21,7 +21,18 @@ impl SongbirdOrchestrator {
             return Ok(());
         }
 
-        let bind_host = &self._config.network.bind_host;
+        // The tarpc port cannot carry a lineage proof. While the lineage gate is on it stays on
+        // this host, unless SONGBIRD_TARPC_BIND names another address.
+        let bind_host = &songbird_process_env::var("SONGBIRD_TARPC_BIND")
+            .ok()
+            .filter(|v| !v.trim().is_empty())
+            .unwrap_or_else(|| {
+                if crate::app::http_server::lineage_door::is_enforcing() {
+                    String::from("127.0.0.1")
+                } else {
+                    self._config.network.bind_host.clone()
+                }
+            });
         let port = songbird_config::defaults::ports::tarpc_port();
 
         crate::app::http_server::start_tarpc_server(

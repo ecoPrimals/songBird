@@ -4,6 +4,10 @@
 //! Trust evaluation pipeline: tags → security provider → [`PeerTrustDecision`](super::types::PeerTrustDecision).
 
 use anyhow::Result;
+use songbird_http_client::lineage::{self, GateMode};
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock, PoisonError};
+use std::time::{Duration, Instant};
 use tracing::{info, warn};
 
 use crate::security_capability_client::{
@@ -25,6 +29,14 @@ pub async fn evaluate_peer_trust(
     security_client: &SecurityCapabilityClient,
 ) -> Result<PeerTrustDecision> {
     info!("🔍 Evaluating trust for peer: {}", peer.node_id);
+
+    // A family tag is a claim. With the lineage gate on, the claim counts only once the peer
+    // has proved it; until then the peer is evaluated as one that announced no family.
+    let proven_tags = proven_tags(peer).await;
+    let peer = &DiscoveredPeer {
+        tags: proven_tags,
+        ..peer.clone()
+    };
 
     let peer_family = extract_family_from_tags(&peer.tags);
 
@@ -63,6 +75,142 @@ pub async fn evaluate_peer_trust(
             })
         }
     }
+}
+
+/// How long a peer's proof (or its failure) stands before it is asked again.
+const PROOF_STANDS: Duration = Duration::from_secs(300);
+const PROOF_FAILURE_STANDS: Duration = Duration::from_secs(30);
+
+/// Whether a discovery tag names a family at all.
+fn is_family_claim(tag: &str) -> bool {
+    tag.contains(":family:") || tag.contains("family_")
+}
+
+/// Whether any of the tags claims the family `ours`.
+pub fn claims_family(tags: &[String], ours: &str) -> bool {
+    !ours.is_empty()
+        && tags.iter().any(|tag| {
+            tag.split_once(":family:").is_some_and(|(_, rest)| {
+                rest == ours || rest.strip_prefix(ours).is_some_and(|r| r.starts_with(':'))
+            }) || tag.contains(&format!("family_{ours}"))
+        })
+}
+
+/// The tags without any family claim.
+pub fn without_family_claims(tags: &[String]) -> Vec<String> {
+    tags.iter().filter(|tag| !is_family_claim(tag)).cloned().collect()
+}
+
+/// The peer's tags as far as they are proven.
+///
+/// Gate off, or the peer does not claim our family: the tags as announced. Otherwise the
+/// peer is challenged (`lineage.prove`); if it cannot prove the claim, every family claim is
+/// dropped (enforce) or kept with a warning (observe).
+async fn proven_tags(peer: &DiscoveredPeer) -> Vec<String> {
+    let gate = lineage::gate();
+    if gate.mode() == GateMode::Off || !claims_family(&peer.tags, &gate.config().family_id) {
+        return peer.tags.clone();
+    }
+
+    match cached_challenge(&peer.endpoint).await {
+        Ok(device) => {
+            info!(
+                "🧬 Peer {} proved family '{}' as device '{}'",
+                peer.node_id,
+                gate.config().family_id,
+                device
+            );
+            peer.tags.clone()
+        }
+        Err(reason) if gate.mode() == GateMode::Observe => {
+            warn!(
+                "🧬 Peer {} claims family '{}' without proof ({}) — observe mode, claim kept",
+                peer.node_id,
+                gate.config().family_id,
+                reason
+            );
+            peer.tags.clone()
+        }
+        Err(reason) => {
+            warn!(
+                "🧬 Peer {} claims family '{}' without proof ({}) — claim dropped",
+                peer.node_id,
+                gate.config().family_id,
+                reason
+            );
+            without_family_claims(&peer.tags)
+        }
+    }
+}
+
+/// [`challenge_peer`], remembered per endpoint so a discovery tick does not re-ask every peer.
+async fn cached_challenge(endpoint: &str) -> Result<String, String> {
+    /// When an endpoint was last challenged, and what came of it.
+    type Asked = HashMap<String, (Instant, Result<String, String>)>;
+    static ASKED: OnceLock<Mutex<Asked>> = OnceLock::new();
+    let asked = ASKED.get_or_init(|| Mutex::new(HashMap::new()));
+
+    let remembered = asked.lock().unwrap_or_else(PoisonError::into_inner).get(endpoint).cloned();
+    if let Some((at, outcome)) = remembered {
+        let stands = if outcome.is_ok() {
+            PROOF_STANDS
+        } else {
+            PROOF_FAILURE_STANDS
+        };
+        if at.elapsed() < stands {
+            return outcome;
+        }
+    }
+
+    let outcome = challenge_peer(endpoint).await;
+    let mut asked = asked.lock().unwrap_or_else(PoisonError::into_inner);
+    asked.retain(|_, (at, _)| at.elapsed() < PROOF_STANDS);
+    asked.insert(endpoint.to_string(), (Instant::now(), outcome.clone()));
+    outcome
+}
+
+/// Ask the peer at `endpoint` to prove it belongs to our family. Returns its device name.
+async fn challenge_peer(endpoint: &str) -> Result<String, String> {
+    let uri: hyper::Uri =
+        endpoint.parse().map_err(|e| format!("peer endpoint '{endpoint}': {e}"))?;
+    let host = uri.host().ok_or_else(|| format!("peer endpoint '{endpoint}' has no host"))?;
+    let port = uri.port_u16().ok_or_else(|| format!("peer endpoint '{endpoint}' has no port"))?;
+    let addr = tokio::net::lookup_host((host.trim_matches(['[', ']']), port))
+        .await
+        .map_err(|e| format!("resolve {host}: {e}"))?
+        .next()
+        .ok_or_else(|| format!("{host} resolves to nothing"))?;
+
+    challenge_addr(addr).await
+}
+
+/// Ask the songBird listening at `addr` to prove it belongs to our family: it must sign our
+/// fresh nonce, for the address we dialled, with a key our family's anchor vouches for.
+/// Returns its device name.
+///
+/// # Errors
+///
+/// Returns why the peer is not proven (unreachable, no such method, proof does not hold).
+pub async fn challenge_addr(addr: std::net::SocketAddr) -> Result<String, String> {
+    let nonce = lineage::new_nonce();
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": lineage::METHOD_PROVE,
+        "params": { "nonce": nonce },
+        "id": 1
+    });
+    let url = songbird_types::constants::endpoint_url(
+        &addr.ip().to_string(),
+        addr.port(),
+        songbird_types::constants::JSONRPC_PATH,
+    );
+    let response = crate::mesh_trust_exchange::http_post_jsonrpc(&url, &request).await?;
+    if let Some(error) = response.get("error").filter(|e| !e.is_null()) {
+        let msg = error.get("message").and_then(serde_json::Value::as_str).unwrap_or("error");
+        return Err(format!("peer refused to prove: {msg}"));
+    }
+    let answer = response.get("result").ok_or("peer gave no answer")?;
+    lineage::gate().check_prove_answer(answer, addr, &nonce).await.map(|peer| peer.device_id)
 }
 
 /// Handle trust response from security provider

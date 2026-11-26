@@ -430,3 +430,40 @@ fn prompt_user_peer_id_matches_input() {
         _ => panic!("expected prompt"),
     }
 }
+
+#[test]
+fn a_tag_claims_our_family_in_each_of_the_forms_peers_announce() {
+    use super::evaluation::claims_family;
+    let tags = |t: &str| vec!["encryption_enabled".to_string(), t.to_string()];
+
+    assert!(claims_family(&tags("crypto:family:mitoBeacon"), "mitoBeacon"));
+    assert!(claims_family(&tags("security:family:mitoBeacon"), "mitoBeacon"));
+    assert!(claims_family(&tags("beardog:family:mitoBeacon:node-1"), "mitoBeacon"));
+    assert!(claims_family(&tags("prefix_family_mitoBeacon_suffix"), "mitoBeacon"));
+
+    assert!(!claims_family(&tags("crypto:family:mitoBeaconX"), "mitoBeacon"));
+    assert!(!claims_family(&tags("crypto:family:other"), "mitoBeacon"));
+    assert!(!claims_family(&tags("crypto:org:mitoBeacon"), "mitoBeacon"));
+    assert!(
+        !claims_family(&tags("crypto:family:anything"), ""),
+        "a node with no family has no family peers"
+    );
+}
+
+#[test]
+fn an_unproven_peer_is_left_with_no_family_claim_at_all() {
+    use super::evaluation::without_family_claims;
+    let tags = vec![
+        "crypto:family:mitoBeacon".to_string(),
+        "encryption_enabled".to_string(),
+        "beardog:family:mitoBeacon:node-1".to_string(),
+        "prefix_family_mitoBeacon_suffix".to_string(),
+    ];
+    let left = without_family_claims(&tags);
+    assert_eq!(left, vec!["encryption_enabled".to_string()]);
+    assert_eq!(
+        extract_family_from_tags(&left),
+        None,
+        "the security provider sees a peer with no family"
+    );
+}

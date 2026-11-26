@@ -11,6 +11,7 @@
 //! - RiboCipher federation dispatch on `:7700`
 
 mod federation_dispatch;
+pub(crate) mod lineage_door;
 mod port_binding;
 mod tls_server;
 
@@ -45,6 +46,8 @@ pub async fn start_http_server(
         shared_ipc_handler,
     )
     .await?;
+
+    lineage_door::announce().await;
 
     let (listener, actual_addr) = port_binding::bind_with_fallback(&bind_addr).await?;
     let actual_port = actual_addr.port();
@@ -190,18 +193,57 @@ async fn build_router(
         .nest("/api/v1/services", service_registry_router)
         .merge(info_router)
         .route("/health", axum::routing::get(|| async { "OK" }))
-        .layer(axum::extract::DefaultBodyLimit::max(100 * 1024 * 1024)))
+        .layer(axum::extract::DefaultBodyLimit::max(100 * 1024 * 1024))
+        // Outermost: nothing above is reached from the network without passing the lineage gate.
+        .layer(axum::middleware::from_fn(lineage_door::http_gate)))
 }
 
 /// Start plain HTTP server (no TLS)
+///
+/// Accepts connections itself rather than through `axum::serve`, so every request carries both
+/// ends of its connection for the lineage gate.
 #[expect(
     clippy::unused_async,
     reason = "async signature required by Axum, trait objects, or future I/O"
 )]
 async fn start_http_server_plain(app: Router, listener: tokio::net::TcpListener) -> Result<()> {
+    use hyper::body::Incoming;
+    use hyper_util::rt::TokioIo;
+    use tower::Service;
+
     tokio::spawn(async move {
-        if let Err(e) = axum::serve(listener, app).await {
-            error!("❌ HTTP server error: {}", e);
+        loop {
+            let (tcp_stream, remote) = match listener.accept().await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    error!("❌ HTTP server accept error: {}", e);
+                    continue;
+                }
+            };
+            let Ok(local) = tcp_stream.local_addr() else {
+                continue;
+            };
+            let addrs = lineage_door::PeerAddrs {
+                remote,
+                local,
+            };
+            let app = app.clone();
+            tokio::spawn(async move {
+                let hyper_service =
+                    hyper::service::service_fn(move |mut request: hyper::Request<Incoming>| {
+                        request.extensions_mut().insert(addrs);
+                        let mut app = app.clone();
+                        async move { app.call(request).await }
+                    });
+                if let Err(e) = hyper::server::conn::http1::Builder::new()
+                    .serve_connection(TokioIo::new(tcp_stream), hyper_service)
+                    .with_upgrades()
+                    .await
+                    && !e.to_string().contains("connection closed")
+                {
+                    error!("❌ HTTP server error from {}: {}", remote, e);
+                }
+            });
         }
     });
 

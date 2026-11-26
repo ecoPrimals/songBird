@@ -16,6 +16,7 @@ use std::sync::Arc;
 use tracing::{error, info};
 
 use super::federation_dispatch::dispatch_ribocipher_rpc;
+use super::lineage_door::{PeerAddrs, rpc_gate};
 
 /// Start HTTPS server with Pure Rust TLS (songbird-tls + security provider).
 pub(super) async fn start_https_server(
@@ -116,9 +117,18 @@ pub(super) async fn start_https_server(
                     }
                 };
 
+                // Which of our addresses the caller reached: lineage proofs name it.
+                let Ok(local_addr) = tcp_stream.local_addr() else {
+                    error!("No local address for connection from {}, closing", remote_addr);
+                    return;
+                };
+                let addrs = PeerAddrs {
+                    remote: remote_addr,
+                    local: local_addr,
+                };
+
                 if songbird_types::constants::ribocipher::is_signal_byte(first_byte) {
-                    handle_ribocipher_connection(tcp_stream, remote_addr, first_byte, ipc_handler)
-                        .await;
+                    handle_ribocipher_connection(tcp_stream, addrs, first_byte, ipc_handler).await;
                     return;
                 }
 
@@ -128,7 +138,7 @@ pub(super) async fn start_https_server(
                 );
 
                 let is_tls = first_byte == 0x16;
-                serve_http_or_tls(tcp_stream, remote_addr, is_tls, app, tls_acceptor).await;
+                serve_http_or_tls(tcp_stream, addrs, is_tls, app, tls_acceptor).await;
             });
         }
     });
@@ -139,12 +149,14 @@ pub(super) async fn start_https_server(
 /// Handle a riboCipher-signalled connection (federation tier).
 async fn handle_ribocipher_connection(
     tcp_stream: tokio::net::TcpStream,
-    remote_addr: SocketAddr,
+    addrs: PeerAddrs,
     first_byte: u8,
     ipc_handler: Option<Arc<songbird_universal_ipc::service::IpcServiceHandler>>,
 ) {
     use songbird_types::constants::ribocipher;
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+    let remote_addr = addrs.remote;
 
     let tier = ribocipher::tier_name(first_byte);
     tracing::info!("riboCipher {tier} signal from {} on federation port", remote_addr);
@@ -181,9 +193,16 @@ async fn handle_ribocipher_connection(
             Ok(req) => {
                 let method = req["method"].as_str().unwrap_or("").to_string();
                 let id = req["id"].clone();
-                let params = req.get("params").cloned().unwrap_or(serde_json::Value::Null);
+                let mut params = req.get("params").cloned().unwrap_or(serde_json::Value::Null);
                 tracing::debug!("riboCipher {tier} RPC from {}: {}", remote_addr, method);
-                dispatch_ribocipher_rpc(&method, params, id, tier, ipc_handler.as_deref()).await
+                // The signal byte names a tier; it proves nothing. The lineage gate decides.
+                match rpc_gate(addrs, &method, &mut params, &id).await {
+                    Some(answer) => answer,
+                    None => {
+                        dispatch_ribocipher_rpc(&method, params, id, tier, ipc_handler.as_deref())
+                            .await
+                    }
+                }
             }
             Err(e) => serde_json::json!({
                 "jsonrpc": "2.0",
@@ -203,7 +222,7 @@ async fn handle_ribocipher_connection(
 /// Serve an HTTP or HTTPS connection after protocol detection.
 async fn serve_http_or_tls(
     tcp_stream: tokio::net::TcpStream,
-    remote_addr: SocketAddr,
+    addrs: PeerAddrs,
     is_tls: bool,
     app: Router,
     tls_acceptor: Arc<songbird_tls::TlsAcceptor>,
@@ -211,6 +230,8 @@ async fn serve_http_or_tls(
     use hyper::body::Incoming;
     use hyper_util::rt::TokioIo;
     use tower::Service;
+
+    let remote_addr = addrs.remote;
 
     if is_tls {
         let tls_stream = match tls_acceptor.accept(tcp_stream).await {
@@ -223,10 +244,12 @@ async fn serve_http_or_tls(
 
         tracing::debug!("🔒 Pure Rust TLS connection established from {}", remote_addr);
 
-        let hyper_service = hyper::service::service_fn(move |request: hyper::Request<Incoming>| {
-            let mut app = app.clone();
-            async move { app.call(request).await }
-        });
+        let hyper_service =
+            hyper::service::service_fn(move |mut request: hyper::Request<Incoming>| {
+                request.extensions_mut().insert(addrs);
+                let mut app = app.clone();
+                async move { app.call(request).await }
+            });
 
         if let Err(e) = hyper::server::conn::http1::Builder::new()
             .serve_connection(TokioIo::new(tls_stream), hyper_service)
@@ -238,10 +261,12 @@ async fn serve_http_or_tls(
     } else {
         tracing::debug!("📡 Plain HTTP connection from {} (protocol detection)", remote_addr);
 
-        let hyper_service = hyper::service::service_fn(move |request: hyper::Request<Incoming>| {
-            let mut app = app.clone();
-            async move { app.call(request).await }
-        });
+        let hyper_service =
+            hyper::service::service_fn(move |mut request: hyper::Request<Incoming>| {
+                request.extensions_mut().insert(addrs);
+                let mut app = app.clone();
+                async move { app.call(request).await }
+            });
 
         if let Err(e) = hyper::server::conn::http1::Builder::new()
             .serve_connection(TokioIo::new(tcp_stream), hyper_service)
