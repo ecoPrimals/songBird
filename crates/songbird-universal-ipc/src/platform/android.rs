@@ -47,7 +47,6 @@ use crate::error::{IpcError, IpcResult};
 use crate::platform::{AsyncStreamImpl, PlatformListenerImpl};
 use songbird_types::primal_names::BIOMEOS_DIR;
 use tokio::net::UnixListener as TokioUnixListener;
-use tokio::net::UnixStream;
 use tracing::{debug, info};
 
 /// Android abstract socket IPC implementation
@@ -60,8 +59,8 @@ impl AndroidPlatformIPC {
     /// Create a native endpoint for the given primal name.
     pub async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
         // Abstract socket naming: @biomeos_{primal_name}
-        // The @ prefix is a convention for abstract sockets
-        // Rust's UnixListener automatically converts @ to null byte
+        // The @ prefix is a convention for abstract sockets; `bind_unix` and
+        // `connect_unix` in songbird-types turn it into a real abstract address.
         let abstract_name = format!("@{BIOMEOS_DIR}_{primal_name}");
 
         debug!("Creating abstract socket endpoint for '{}': {}", primal_name, abstract_name);
@@ -77,9 +76,9 @@ impl AndroidPlatformIPC {
             NativeEndpoint::AbstractSocket(name) => {
                 debug!("Creating abstract socket listener on: {}", name);
 
-                // Abstract sockets: path with @ prefix
-                // UnixListener automatically handles null byte conversion
-                let listener = TokioUnixListener::bind(name).map_err(|e| {
+                // `@name` is bound by name in the abstract namespace. The path API
+                // would make a file called `@name` instead, so it is not used here.
+                let listener = songbird_types::ipc_stream::bind_unix(name).map_err(|e| {
                     IpcError::ListenerFailed(format!("Failed to bind abstract socket {name}: {e}"))
                 })?;
 
@@ -101,7 +100,7 @@ impl AndroidPlatformIPC {
             NativeEndpoint::AbstractSocket(name) => {
                 debug!("Connecting to abstract socket: {}", name);
 
-                let stream = UnixStream::connect(name).await.map_err(|e| {
+                let stream = songbird_types::ipc_stream::connect_unix(name).await.map_err(|e| {
                     IpcError::ConnectionFailed(format!(
                         "Failed to connect to abstract socket {name}: {e}"
                     ))

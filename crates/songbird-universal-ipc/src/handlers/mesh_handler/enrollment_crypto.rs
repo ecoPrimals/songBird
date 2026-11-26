@@ -100,10 +100,13 @@ pub async fn call_security_provider(method: &str, params: Value) -> Result<Value
 
     #[cfg(unix)]
     let stream = {
-        if !std::path::Path::new(&socket_path).exists() {
+        // An abstract name (`@...`) has no file to look for; only a path is checked.
+        if !songbird_types::ipc_stream::is_abstract_name(&socket_path)
+            && !std::path::Path::new(&socket_path).exists()
+        {
             return Err(format!("security provider socket not found: {socket_path}"));
         }
-        tokio::net::UnixStream::connect(&socket_path)
+        songbird_types::ipc_stream::connect_unix(&socket_path)
             .await
             .map_err(|e| format!("connect to security provider (UDS): {e}"))?
     };

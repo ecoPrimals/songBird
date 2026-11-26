@@ -27,6 +27,102 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
+/// The abstract-namespace address for `name` (the part after the leading `@`).
+///
+/// Abstract sockets exist only in the kernel: there is no file. Passing a path
+/// that starts with `@` to `UnixStream::connect` or `UnixListener::bind` does
+/// NOT reach them; it opens or creates a file literally called `@...` in the
+/// working directory. The address has to be built by name.
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn abstract_addr(name: &str) -> io::Result<std::os::unix::net::SocketAddr> {
+    #[cfg(target_os = "android")]
+    use std::os::android::net::SocketAddrExt;
+    #[cfg(target_os = "linux")]
+    use std::os::linux::net::SocketAddrExt;
+
+    if name.is_empty() {
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, "abstract socket name is empty"));
+    }
+    std::os::unix::net::SocketAddr::from_abstract_name(name.as_bytes())
+}
+
+/// Whether `path` names an abstract socket (`@name`) rather than a socket file.
+///
+/// An abstract socket has no file, so "does the file exist?" is the wrong
+/// question for it: the only way to learn whether someone listens is to dial.
+#[must_use]
+pub fn is_abstract_name(path: &str) -> bool {
+    path.starts_with('@')
+}
+
+/// Dial a Unix socket by path, or by abstract name when `path` starts with `@`.
+///
+/// `@biomeos_beardog` dials the abstract socket named `biomeos_beardog` — the
+/// only local socket two shell-user processes can share on Android, where
+/// `SELinux` refuses socket files. Anything else is dialled as a file path.
+///
+/// # Errors
+///
+/// Returns an I/O error if nothing listens there, or if an abstract name is
+/// asked for on a platform without the abstract namespace.
+#[cfg(unix)]
+pub async fn connect_unix(path: &str) -> io::Result<tokio::net::UnixStream> {
+    if let Some(name) = path.strip_prefix('@') {
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        {
+            let addr = abstract_addr(name)?;
+            // The std connect blocks; keep it off the async workers.
+            let std_stream = tokio::task::spawn_blocking(move || {
+                let s = std::os::unix::net::UnixStream::connect_addr(&addr)?;
+                s.set_nonblocking(true)?;
+                Ok::<_, io::Error>(s)
+            })
+            .await
+            .map_err(io::Error::other)??;
+            return tokio::net::UnixStream::from_std(std_stream);
+        }
+        #[cfg(not(any(target_os = "linux", target_os = "android")))]
+        {
+            let _ = name;
+            return Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "abstract sockets exist only on Linux and Android",
+            ));
+        }
+    }
+    tokio::net::UnixStream::connect(path).await
+}
+
+/// Listen on a Unix socket by path, or by abstract name when `path` starts with `@`.
+///
+/// Must be called from inside a Tokio runtime.
+///
+/// # Errors
+///
+/// Returns an I/O error if the address is taken or cannot be bound, or if an
+/// abstract name is asked for on a platform without the abstract namespace.
+#[cfg(unix)]
+pub fn bind_unix(path: &str) -> io::Result<tokio::net::UnixListener> {
+    if let Some(name) = path.strip_prefix('@') {
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        {
+            let addr = abstract_addr(name)?;
+            let std_listener = std::os::unix::net::UnixListener::bind_addr(&addr)?;
+            std_listener.set_nonblocking(true)?;
+            return tokio::net::UnixListener::from_std(std_listener);
+        }
+        #[cfg(not(any(target_os = "linux", target_os = "android")))]
+        {
+            let _ = name;
+            return Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "abstract sockets exist only on Linux and Android",
+            ));
+        }
+    }
+    tokio::net::UnixListener::bind(path)
+}
+
 /// A platform-abstracted IPC connection.
 ///
 /// On Unix this wraps a `UnixStream`; on other platforms it wraps a `TcpStream`
@@ -45,7 +141,8 @@ pub enum IpcStream {
 impl IpcStream {
     /// Connect to a local IPC endpoint by socket path.
     ///
-    /// On Unix, connects directly to the socket at `path`.
+    /// On Unix, connects directly to the socket at `path`; a `path` that starts
+    /// with `@` names an abstract socket (Linux, Android) — see [`connect_unix`].
     /// On other platforms, reads `{path}.port` to get a TCP port and connects
     /// to `127.0.0.1:{port}`.
     ///
@@ -56,7 +153,7 @@ impl IpcStream {
     pub async fn connect(path: &str) -> io::Result<Self> {
         #[cfg(unix)]
         {
-            let stream = tokio::net::UnixStream::connect(path).await?;
+            let stream = connect_unix(path).await?;
             Ok(Self::Unix(stream))
         }
         #[cfg(windows)]
@@ -338,6 +435,85 @@ mod tests {
         server.read_exact(&mut buf).await.unwrap();
         assert_eq!(&buf, b"hi");
         client.await.unwrap();
+    }
+
+    /// A name no other test or process on this machine is using.
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    fn unique_abstract(tag: &str) -> String {
+        let nanos =
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+        format!("@songbird_test_{tag}_{}_{nanos}", std::process::id())
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[tokio::test]
+    async fn at_name_is_dialled_in_the_abstract_namespace() {
+        let name = unique_abstract("dial");
+        let listener = bind_unix(&name).unwrap();
+
+        let dial = name.clone();
+        let client = tokio::spawn(async move {
+            let mut stream = IpcStream::connect(&dial).await.unwrap();
+            stream.write_all(b"abs").await.unwrap();
+            stream.flush().await.unwrap();
+            let mut buf = [0u8; 2];
+            stream.read_exact(&mut buf).await.unwrap();
+            assert_eq!(&buf, b"ok");
+        });
+
+        let (mut server, _) = listener.accept().await.unwrap();
+        let mut buf = [0u8; 3];
+        server.read_exact(&mut buf).await.unwrap();
+        assert_eq!(&buf, b"abs");
+        server.write_all(b"ok").await.unwrap();
+        client.await.unwrap();
+    }
+
+    /// The bug this guards against: `@name` handed to the path API makes a file.
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[tokio::test]
+    async fn at_name_never_touches_the_filesystem() {
+        let name = unique_abstract("nofile");
+        let _listener = bind_unix(&name).unwrap();
+        assert!(!std::path::Path::new(&name).exists(), "a file called {name} was created");
+        let _stream = connect_unix(&name).await.unwrap();
+        assert!(!std::path::Path::new(&name).exists(), "a file called {name} was created");
+    }
+
+    /// A listener bound by a std abstract address (what another primal does) is reachable by `@name`.
+    #[cfg(target_os = "linux")]
+    #[tokio::test]
+    async fn at_name_reaches_a_listener_bound_by_std_abstract_address() {
+        use std::os::linux::net::SocketAddrExt;
+        let name = unique_abstract("std");
+        let addr =
+            std::os::unix::net::SocketAddr::from_abstract_name(&name.as_bytes()[1..]).unwrap();
+        let listener = std::os::unix::net::UnixListener::bind_addr(&addr).unwrap();
+        let accept = std::thread::spawn(move || {
+            use std::io::Read;
+            let (mut s, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 4];
+            s.read_exact(&mut buf).unwrap();
+            buf
+        });
+        let mut stream = connect_unix(&name).await.unwrap();
+        stream.write_all(b"peer").await.unwrap();
+        stream.flush().await.unwrap();
+        assert_eq!(&accept.join().unwrap(), b"peer");
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[tokio::test]
+    async fn at_name_with_no_listener_is_refused_not_missing_file() {
+        let err = connect_unix(&unique_abstract("absent")).await.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::ConnectionRefused, "{err}");
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[tokio::test]
+    async fn empty_abstract_name_is_rejected() {
+        assert_eq!(connect_unix("@").await.unwrap_err().kind(), io::ErrorKind::InvalidInput);
+        assert_eq!(bind_unix("@").unwrap_err().kind(), io::ErrorKind::InvalidInput);
     }
 
     #[tokio::test]

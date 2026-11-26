@@ -131,8 +131,8 @@ impl SecurityRpcClient {
             IpcEndpoint::UnixSocket(path) => {
                 #[cfg(unix)]
                 {
-                    use tokio::net::UnixStream;
-                    let stream = UnixStream::connect(path).await?;
+                    // `@name` dials the abstract namespace (Android: no socket files).
+                    let stream = songbird_types::ipc_stream::connect_unix(path).await?;
                     Ok(AsyncStreamImpl::Unix(stream))
                 }
                 #[cfg(not(unix))]

@@ -35,8 +35,10 @@ impl BirdSongHandler {
 
         let path_str = socket_path.to_string_lossy();
         let is_tcp = path_str.starts_with("tcp:");
+        // An abstract name (`@...`, Android) has no file to look for.
+        let is_abstract = songbird_types::ipc_stream::is_abstract_name(&path_str);
 
-        if !is_tcp && !socket_path.exists() {
+        if !is_tcp && !is_abstract && !socket_path.exists() {
             return Err(format!(
                 "Security provider socket not found at {}. \
                  Is the crypto provider running? Set SECURITY_PROVIDER_SOCKET=/path/to/socket.sock \

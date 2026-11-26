@@ -36,12 +36,15 @@ impl TowerAtomicClient {
     pub async fn connect_unix_path(path: &Path) -> IpcResult<Self> {
         debug!("Tower Atomic: connecting to Unix socket {}", path.display());
 
-        let mut stream = tokio::net::UnixStream::connect(path).await.map_err(|e| {
-            IpcError::ConnectionFailed(format!(
-                "Failed to connect to Unix socket at {}: {e}",
-                path.display()
-            ))
-        })?;
+        // `@name` dials the abstract namespace (Android: no socket files).
+        let mut stream = songbird_types::ipc_stream::connect_unix(&path.to_string_lossy())
+            .await
+            .map_err(|e| {
+                IpcError::ConnectionFailed(format!(
+                    "Failed to connect to Unix socket at {}: {e}",
+                    path.display()
+                ))
+            })?;
 
         // Send riboCipher clear-tier signal before any JSON-RPC traffic.
         // This identifies the connection as a protocol-aware client to

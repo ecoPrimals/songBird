@@ -82,7 +82,10 @@ impl SecurityTlsCryptoClient {
         // Verify socket exists (Unix only - Windows uses TCP)
         #[cfg(unix)]
         {
-            if !Path::new(&socket_path).exists() {
+            // An abstract name (`@...`, Android) has no file to look for.
+            if !songbird_types::ipc_stream::is_abstract_name(&socket_path)
+                && !Path::new(&socket_path).exists()
+            {
                 return Err(TlsError::CryptoError(format!("Socket not found at: {socket_path}")));
             }
         }
