@@ -19,7 +19,7 @@ use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use serde_json::{Value, json};
 use songbird_http_client::lineage::{
-    self, Decision, GateMode, METHOD_PROVE, METHOD_STATUS, PROOF_HEADER, PROOF_PARAM,
+    self, Decision, GateMode, METHOD_ENROLL, METHOD_PROVE, METHOD_STATUS, PROOF_HEADER, PROOF_PARAM,
 };
 use std::net::SocketAddr;
 use tracing::{debug, info, warn};
@@ -82,6 +82,15 @@ pub(super) async fn announce() {
             warn!("lineage gate: could not ask the security provider for this node's key: {e}");
         }
     }
+    let status = gate.status();
+    if let Some(generations) = status["enroll"].as_u64().filter(|g| *g > 0) {
+        let until = status["enroll_expires_at"]
+            .as_u64()
+            .map_or_else(|| String::from("with no end date"), |t| format!("until {t} (Unix time)"));
+        info!(
+            "lineage gate: this node may enroll other devices ({generations} generation(s)), {until}; only callers on the device itself can ask it to"
+        );
+    }
 }
 
 /// Whether the gate refuses callers (so other listeners can follow it). Observe changes nothing.
@@ -107,7 +116,34 @@ pub(super) async fn rpc_gate(
     let gate = lineage::gate();
 
     if method == METHOD_STATUS {
-        return Some(json!({"jsonrpc": "2.0", "result": gate.status(), "id": id}));
+        let mut status = gate.status();
+        // The device's public key is what an enrolling device signs. It is public, and a
+        // device that has no certificate yet can show it this way.
+        if let Ok(key) = gate.crypto().public_key().await {
+            status["device_public_key"] = Value::String(key);
+        }
+        return Some(json!({"jsonrpc": "2.0", "result": status, "id": id}));
+    }
+    if method == METHOD_ENROLL {
+        // Signing a certificate is an act of the device's holder: never served to the
+        // network, with or without a proof.
+        if !lineage::is_local(addrs.remote) {
+            warn!(remote = %addrs.remote, method, "lineage gate: refused — enrolling is done on the device itself");
+            return Some(rpc_error(
+                id,
+                "permission denied: lineage.enroll is served to callers on this device only",
+            ));
+        }
+        return Some(match gate.enroll(params).await {
+            Ok(result) => {
+                let child = result["certificate"]["child_device_id"].as_str().unwrap_or("?");
+                info!(child, "lineage gate: signed a certificate for another device");
+                json!({"jsonrpc": "2.0", "result": result, "id": id})
+            }
+            Err(reason) => {
+                json!({"jsonrpc": "2.0", "error": {"code": -32_602, "message": reason}, "id": id})
+            }
+        });
     }
     if method == METHOD_PROVE {
         return Some(match gate.answer_prove(params, addrs.local).await {
@@ -406,5 +442,30 @@ mod tests {
         let mut params = json!({"x": 1, PROOF_PARAM: {"v": 1}});
         assert!(rpc_gate(addrs, "mesh.status", &mut params, &json!(1)).await.is_none());
         assert_eq!(params, json!({"x": 1}));
+    }
+
+    #[tokio::test]
+    async fn enrolling_is_never_served_to_the_network() {
+        let request = json!({"child_device_id": "laptop", "child_public_key": "AAAA"});
+
+        // From the network: refused as a matter of permission, before anything is looked at.
+        let network = PeerAddrs {
+            remote: "192.168.4.50:4000".parse().unwrap(),
+            local: "192.168.4.244:7700".parse().unwrap(),
+        };
+        let answer =
+            rpc_gate(network, METHOD_ENROLL, &mut request.clone(), &json!(1)).await.unwrap();
+        assert_eq!(answer["error"]["code"], PERMISSION_DENIED);
+
+        // From the device itself the request is looked at (and fails here for lack of a certificate).
+        for remote in ["127.0.0.1:4000", "[::ffff:127.0.0.1]:4000", "[::1]:4000"] {
+            let local = PeerAddrs {
+                remote: remote.parse().unwrap(),
+                local: "127.0.0.1:7700".parse().unwrap(),
+            };
+            let answer =
+                rpc_gate(local, METHOD_ENROLL, &mut request.clone(), &json!(1)).await.unwrap();
+            assert_eq!(answer["error"]["code"], -32_602, "{remote}");
+        }
     }
 }

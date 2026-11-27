@@ -53,8 +53,15 @@ pub const PROOF_HEADER: &str = "x-lineage-proof";
 pub const METHOD_PROVE: &str = "lineage.prove";
 /// Public method: what this node's gate is set to.
 pub const METHOD_STATUS: &str = "lineage.status";
+/// JSON-RPC method by which a device that holds the right signs a certificate for another
+/// device. Served to callers on the device itself only.
+pub const METHOD_ENROLL: &str = "lineage.enroll";
 
 const DOMAIN: &str = "songbird-lineage-proof-v1";
+const CERT_DOMAIN_V2: &str = "songbird-lineage-cert-v2";
+/// Most certificates between a device and the family's key, the device's own included.
+const MAX_CHAIN: usize = 4;
+const MAX_NAME_LEN: usize = 64;
 const KEY_ID: &str = "lineage";
 const KEY_PURPOSE: &str = "family-proof";
 /// How far a proof's clock may be from ours, either way.
@@ -140,6 +147,13 @@ pub struct LineageConfig {
     pub anchor: Option<Vec<u8>>,
     /// This device's lineage certificate.
     pub certificate: Option<Value>,
+    /// The certificates above ours, nearest first, when a device and not the family's key
+    /// signed ours. Empty when the family's key signed it.
+    pub chain: Vec<Value>,
+    /// A second certificate for this device's key that carries the right to enroll others,
+    /// with the certificates above it. Kept apart from `certificate` so that the right can
+    /// end without the device itself leaving the family.
+    pub enroller: Option<(Value, Vec<Value>)>,
 }
 
 impl LineageConfig {
@@ -173,11 +187,23 @@ impl LineageConfig {
             (bytes.len() == 32).then_some(bytes)
         });
 
-        let certificate = non_empty("SONGBIRD_LINEAGE_CERT")
-            .and_then(|p| read(&p))
-            .and_then(|text| serde_json::from_str::<Value>(&text).ok())
-            .map(|v| v.get("certificate").filter(|c| c.is_object()).cloned().unwrap_or(v))
-            .filter(Value::is_object);
+        // The file holds one certificate, or `{"certificate": .., "chain": [..]}` as
+        // `lineage.enroll` returns it.
+        let bundle = |key: &str| -> Option<(Value, Vec<Value>)> {
+            let v = non_empty(key)
+                .and_then(|p| read(&p))
+                .and_then(|text| serde_json::from_str::<Value>(&text).ok())?;
+            let chain = v
+                .get("chain")
+                .and_then(Value::as_array)
+                .map(|certs| certs.iter().filter(|c| c.is_object()).cloned().collect())
+                .unwrap_or_default();
+            let certificate = v.get("certificate").filter(|c| c.is_object()).cloned().unwrap_or(v);
+            certificate.is_object().then_some((certificate, chain))
+        };
+        let (certificate, chain) = bundle("SONGBIRD_LINEAGE_CERT")
+            .map_or((None, Vec::new()), |(c, chain)| (Some(c), chain));
+        let enroller = bundle("SONGBIRD_LINEAGE_ENROLLER_CERT");
 
         let mode = match non_empty("SONGBIRD_LINEAGE_GATE").map(|v| v.to_lowercase()).as_deref() {
             Some("enforce" | "enforced" | "strict" | "on") => GateMode::Enforce,
@@ -192,6 +218,8 @@ impl LineageConfig {
             family_id,
             anchor,
             certificate,
+            chain,
+            enroller,
         }
     }
 }
@@ -440,6 +468,10 @@ impl<C: LineageCrypto> LineageGate<C> {
             "can_verify": self.can_verify(),
             "anchor_fingerprint": self.config.anchor.as_deref().map(|a| hex::encode(&Sha256::digest(a)[..8])),
             "device_id": self.config.certificate.as_ref().and_then(|c| c.get("child_device_id")).cloned(),
+            "depth": self.config.certificate.as_ref().map(|c| cert_u64(c, "depth")),
+            "enroll": self.enroller().map_or(0, |(c, _)| cert_u64(c, "enroll")),
+            "enroll_expires_at": self.enroller().map(|(c, _)| cert_u64(c, "expires_at")).filter(|e| *e != 0),
+            "expires_at": self.config.certificate.as_ref().map(|c| cert_u64(c, "expires_at")).filter(|e| *e != 0),
         })
     }
 
@@ -473,7 +505,7 @@ impl<C: LineageCrypto> LineageGate<C> {
             ));
         }
 
-        Ok(json!({
+        let mut proof = json!({
             "v": 1,
             "kind": kind.as_str(),
             "aud": aud,
@@ -481,7 +513,11 @@ impl<C: LineageCrypto> LineageGate<C> {
             "nonce": nonce,
             "signature": signature,
             "certificate": certificate,
-        }))
+        });
+        if !self.config.chain.is_empty() {
+            proof["chain"] = Value::Array(self.config.chain.clone());
+        }
+        Ok(proof)
     }
 
     /// Check a peer's proof.
@@ -529,27 +565,17 @@ impl<C: LineageCrypto> LineageGate<C> {
 
         let certificate =
             proof.get("certificate").filter(|c| c.is_object()).ok_or("proof has no certificate")?;
+        let chain: Vec<Value> = match proof.get("chain") {
+            None | Some(Value::Null) => Vec::new(),
+            Some(Value::Array(certs)) if certs.iter().all(Value::is_object) => certs.clone(),
+            Some(_) => return Err(String::from("proof has a malformed chain")),
+        };
         let family_id = text(certificate, "family_id").unwrap_or_default();
-        if family_id != self.config.family_id {
-            return Err(String::from("certificate is for another family"));
-        }
-        let parent = text(certificate, "parent_public_key")
-            .and_then(|p| B64.decode(p).ok())
-            .ok_or("certificate has no parent key")?;
-        if parent != anchor {
-            return Err(String::from("certificate was not signed by this family's key"));
-        }
         let public_key =
             text(certificate, "child_public_key").ok_or("certificate has no device key")?;
         let device_id = text(certificate, "child_device_id").unwrap_or_default();
 
-        let cert_id = hex::encode(Sha256::digest(canonical_json(certificate).as_bytes()));
-        if !self.cert_is_cached(&cert_id) {
-            if !self.crypto.verify_certificate(certificate, &self.config.family_id).await? {
-                return Err(String::from("certificate signature does not hold"));
-            }
-            remember(&self.good_certs, cert_id, CERT_CACHE_TTL);
-        }
+        self.check_lineage(certificate, &chain, anchor).await?;
 
         let message = proof_message(kind, aud, ts, &nonce, binding);
         if !self.crypto.verify_signature(&message, &signature, &public_key).await? {
@@ -575,6 +601,183 @@ impl<C: LineageCrypto> LineageGate<C> {
             family_id,
             public_key,
         })
+    }
+
+    /// Check that `leaf`, with the certificates above it (nearest first), leads to the
+    /// family's key, and that every device on the way had the right to sign the next.
+    async fn check_lineage(
+        &self,
+        leaf: &Value,
+        chain: &[Value],
+        anchor: &[u8],
+    ) -> Result<(), String> {
+        let certs: Vec<&Value> = std::iter::once(leaf).chain(chain.iter()).collect();
+        if certs.len() > MAX_CHAIN {
+            return Err(String::from("certificate chain is too long"));
+        }
+        let now = now_secs();
+        let top = certs.len() - 1;
+
+        for (i, cert) in certs.iter().enumerate() {
+            if cert_text(cert, "family_id") != self.config.family_id {
+                return Err(String::from("certificate is for another family"));
+            }
+            let version = cert_u64(cert, "version");
+            if i == top {
+                let parent = B64
+                    .decode(cert_text(cert, "parent_public_key"))
+                    .map_err(|_| "certificate has no parent key")?;
+                if parent != anchor {
+                    return Err(String::from("certificate was not signed by this family's key"));
+                }
+                if version == 2 && cert_u64(cert, "depth") != 1 {
+                    return Err(String::from("certificate chain has the wrong depth"));
+                }
+            } else {
+                let above = certs[i + 1];
+                if version != 2 {
+                    return Err(String::from("a certificate signed by a device must be version 2"));
+                }
+                if cert_u64(above, "version") != 2 || cert_u64(above, "enroll") == 0 {
+                    return Err(String::from("the signing device has no right to enroll"));
+                }
+                if cert_text(cert, "parent_public_key") != cert_text(above, "child_public_key") {
+                    return Err(String::from("certificate chain is broken"));
+                }
+                if cert_u64(cert, "depth") != cert_u64(above, "depth") + 1 {
+                    return Err(String::from("certificate chain has the wrong depth"));
+                }
+                if cert_u64(cert, "enroll") >= cert_u64(above, "enroll") {
+                    return Err(String::from("certificate grants more than its signer may"));
+                }
+            }
+            match version {
+                1 => {}
+                2 => {
+                    let expires = cert_u64(cert, "expires_at");
+                    if expires != 0 && now >= expires {
+                        return Err(String::from("certificate has expired"));
+                    }
+                    if cert_u64(cert, "issued_at") > now + CLOCK_WINDOW_SECS {
+                        return Err(String::from("certificate is from the future"));
+                    }
+                }
+                _ => return Err(String::from("unknown certificate version")),
+            }
+        }
+
+        // Signatures are the costly part; a chain that held is remembered for a while.
+        // Expiry and rights above are checked every time.
+        let all = Value::Array(certs.iter().map(|c| (*c).clone()).collect());
+        let cert_id = hex::encode(Sha256::digest(canonical_json(&all).as_bytes()));
+        if !self.cert_is_cached(&cert_id) {
+            for cert in &certs {
+                let holds = if cert_u64(cert, "version") == 2 {
+                    let message = cert_v2_message(cert)?;
+                    self.crypto
+                        .verify_signature(
+                            &message,
+                            cert_text(cert, "parent_signature"),
+                            cert_text(cert, "parent_public_key"),
+                        )
+                        .await?
+                } else {
+                    self.crypto.verify_certificate(cert, &self.config.family_id).await?
+                };
+                if !holds {
+                    return Err(String::from("certificate signature does not hold"));
+                }
+            }
+            remember(&self.good_certs, cert_id, CERT_CACHE_TTL);
+        }
+        Ok(())
+    }
+
+    /// Sign a certificate for another device (`lineage.enroll`).
+    ///
+    /// Only a device whose own certificate carries the right (`enroll` of 1 or more, given
+    /// by the family's key or by a device above it) can do this. The new certificate can
+    /// carry less of that right than ours, never as much, and cannot outlive ours.
+    ///
+    /// Returns `{"certificate": .., "chain": [..]}`, the file the new device needs.
+    ///
+    /// # Errors
+    ///
+    /// Returns the reason no certificate was made.
+    pub async fn enroll(&self, params: &Value) -> Result<Value, String> {
+        let (own, above) =
+            self.enroller().ok_or("this node's certificate carries no right to enroll")?;
+        let own_enroll = cert_u64(own, "enroll");
+        if above.len() + 2 > MAX_CHAIN {
+            return Err(String::from("the chain would be too long"));
+        }
+        let now = now_secs();
+        let own_expires = cert_u64(own, "expires_at");
+        if own_expires != 0 && now >= own_expires {
+            return Err(String::from("this node's right to enroll has ended"));
+        }
+
+        let text = |k: &str| params.get(k).and_then(Value::as_str);
+        let child_id = text("child_device_id")
+            .filter(|n| valid_name(n))
+            .ok_or("lineage.enroll needs child_device_id (letters, digits, - _ .)")?;
+        let child_key = text("child_public_key")
+            .filter(|k| valid_key(k))
+            .ok_or("lineage.enroll needs child_public_key (base64 of 32 bytes)")?;
+        let own_key = cert_text(own, "child_public_key");
+        if child_key == own_key {
+            return Err(String::from("a device cannot enroll itself"));
+        }
+        let enroll = params.get("enroll").and_then(Value::as_u64).unwrap_or(0);
+        if enroll >= own_enroll {
+            return Err(String::from("the new certificate cannot carry as much right as ours"));
+        }
+        let asked = params.get("expires_at").and_then(Value::as_u64).unwrap_or(0);
+        let expires_at = match (own_expires, asked) {
+            (0, asked) => asked,
+            (own, 0) => own,
+            (own, asked) => own.min(asked),
+        };
+        if expires_at != 0 && expires_at <= now {
+            return Err(String::from("expires_at is in the past"));
+        }
+
+        let mut certificate = json!({
+            "version": 2,
+            "family_id": self.config.family_id,
+            "parent_device_id": cert_text(own, "child_device_id"),
+            "parent_public_key": own_key,
+            "child_device_id": child_id,
+            "child_public_key": child_key,
+            "issued_at": now,
+            "expires_at": expires_at,
+            "depth": cert_u64(own, "depth") + 1,
+            "enroll": enroll,
+        });
+        let message = cert_v2_message(&certificate)?;
+        let (signature, public_key) = self.crypto.sign(&message).await?;
+        if public_key != own_key {
+            return Err(String::from(
+                "the lineage certificate was issued for a different key than the security provider signs with",
+            ));
+        }
+        certificate["parent_signature"] = Value::String(signature);
+
+        let mut chain = vec![own.clone()];
+        chain.extend(above.iter().cloned());
+        Ok(json!({"certificate": certificate, "chain": chain}))
+    }
+
+    /// The certificate under which this node may enroll others, with the certificates above
+    /// it: the separate enroller certificate when there is one, else our own if it carries
+    /// the right.
+    fn enroller(&self) -> Option<(&Value, &[Value])> {
+        let carries = |c: &Value| cert_u64(c, "version") == 2 && cert_u64(c, "enroll") > 0;
+        if let Some((cert, above)) = self.config.enroller.as_ref().filter(|(c, _)| carries(c)) {
+            return Some((cert, above.as_slice()));
+        }
+        let own = self.config.certificate.as_ref().filter(|c| carries(c))?;
+        Some((own, self.config.chain.as_slice()))
     }
 
     fn cert_is_cached(&self, cert_id: &str) -> bool {
@@ -844,6 +1047,57 @@ fn proof_message(kind: ProofKind, aud: &str, ts: u64, nonce: &str, binding: &str
     format!("{DOMAIN}\n{}\n{aud}\n{ts}\n{nonce}\n{binding}", kind.as_str()).into_bytes()
 }
 
+fn cert_u64(cert: &Value, key: &str) -> u64 {
+    cert.get(key).and_then(Value::as_u64).unwrap_or(0)
+}
+
+fn cert_text<'a>(cert: &'a Value, key: &str) -> &'a str {
+    cert.get(key).and_then(Value::as_str).unwrap_or_default()
+}
+
+/// A family or device name that can stand in a signed line of text.
+fn valid_name(name: &str) -> bool {
+    (1..=MAX_NAME_LEN).contains(&name.len())
+        && name.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.'))
+}
+
+fn valid_key(key: &str) -> bool {
+    B64.decode(key).is_ok_and(|bytes| bytes.len() == 32)
+}
+
+/// The text a version 2 certificate's signature covers: every field that says who was
+/// enrolled, by whom, until when, and how much further the right to enroll goes.
+///
+/// ```text
+/// "songbird-lineage-cert-v2\n" family "\n" parent_id "\n" parent_key "\n" child_id "\n"
+///     child_key "\n" issued_at "\n" expires_at "\n" depth "\n" enroll
+/// ```
+///
+/// # Errors
+///
+/// Returns an error for a name or key that cannot be signed unambiguously.
+pub fn cert_v2_message(cert: &Value) -> Result<Vec<u8>, String> {
+    let family = cert_text(cert, "family_id");
+    let parent_id = cert_text(cert, "parent_device_id");
+    let child_id = cert_text(cert, "child_device_id");
+    let parent_key = cert_text(cert, "parent_public_key");
+    let child_key = cert_text(cert, "child_public_key");
+    if !(valid_name(family) && valid_name(parent_id) && valid_name(child_id)) {
+        return Err(String::from("certificate has a name that cannot be signed"));
+    }
+    if !(valid_key(parent_key) && valid_key(child_key)) {
+        return Err(String::from("certificate has a malformed key"));
+    }
+    Ok(format!(
+        "{CERT_DOMAIN_V2}\n{family}\n{parent_id}\n{parent_key}\n{child_id}\n{child_key}\n{}\n{}\n{}\n{}",
+        cert_u64(cert, "issued_at"),
+        cert_u64(cert, "expires_at"),
+        cert_u64(cert, "depth"),
+        cert_u64(cert, "enroll"),
+    )
+    .into_bytes())
+}
+
 fn valid_nonce(nonce: &str) -> bool {
     (MIN_NONCE_LEN..=MAX_NONCE_LEN).contains(&nonce.len())
         && nonce.bytes().all(|b| b.is_ascii_alphanumeric())
@@ -949,6 +1203,8 @@ mod tests {
                 family_id: FAMILY.to_string(),
                 anchor: Some(B64.decode(fake_public(root)).unwrap()),
                 certificate: Some(fake_cert(root, device_secret, device, FAMILY)),
+                chain: Vec::new(),
+                enroller: None,
             },
             FakeCrypto {
                 device_secret: device_secret.to_string(),
@@ -958,6 +1214,333 @@ mod tests {
 
     fn addr(s: &str) -> SocketAddr {
         s.parse().unwrap()
+    }
+
+    /// A version 2 certificate signed by `parent_secret` (the root's, or a device's).
+    fn cert_v2(
+        parent: (&str, &str),
+        child: (&str, &str),
+        depth: u64,
+        enroll: u64,
+        expires_at: u64,
+    ) -> Value {
+        let mut cert = json!({
+            "version": 2,
+            "family_id": FAMILY,
+            "parent_device_id": parent.1,
+            "parent_public_key": fake_public(parent.0),
+            "child_device_id": child.1,
+            "child_public_key": fake_public(child.0),
+            "issued_at": now_secs(),
+            "expires_at": expires_at,
+            "depth": depth,
+            "enroll": enroll,
+        });
+        let message = cert_v2_message(&cert).unwrap();
+        cert["parent_signature"] = Value::String(fake_sign(parent.0, &message));
+        cert
+    }
+
+    const ROOT: (&str, &str) = ("root", "family-root");
+
+    fn node_with(
+        device_secret: &str,
+        certificate: Value,
+        chain: Vec<Value>,
+    ) -> LineageGate<FakeCrypto> {
+        LineageGate::new(
+            LineageConfig {
+                mode: GateMode::Enforce,
+                family_id: FAMILY.to_string(),
+                anchor: Some(B64.decode(fake_public("root")).unwrap()),
+                certificate: Some(certificate),
+                chain,
+                enroller: None,
+            },
+            FakeCrypto {
+                device_secret: device_secret.to_string(),
+            },
+        )
+    }
+
+    fn from_bundle(device_secret: &str, bundle: &Value) -> LineageGate<FakeCrypto> {
+        node_with(
+            device_secret,
+            bundle["certificate"].clone(),
+            bundle["chain"].as_array().unwrap().clone(),
+        )
+    }
+
+    async fn ask(server: &LineageGate<FakeCrypto>, caller: &LineageGate<FakeCrypto>) -> Decision {
+        let request = proven_request(caller, "mesh.status", json!({})).await;
+        let mut params = request["params"].clone();
+        server.authorize_rpc(addr(CALLER), addr(SERVER), "mesh.status", &mut params).await
+    }
+
+    fn denied(reason: &str) -> Decision {
+        Decision::Deny(String::from(reason))
+    }
+
+    #[tokio::test]
+    async fn a_device_enrolled_by_a_device_with_the_right_is_served() {
+        let server = node("root", "east", "eastGate", GateMode::Enforce);
+        let phone = node_with("pixel", cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 1, 0), vec![]);
+
+        let bundle = phone
+            .enroll(&json!({"child_device_id": "laptop", "child_public_key": fake_public("lap")}))
+            .await
+            .unwrap();
+        assert_eq!(bundle["certificate"]["depth"], 2);
+        assert_eq!(bundle["certificate"]["enroll"], 0);
+        assert_eq!(bundle["chain"].as_array().unwrap().len(), 1);
+
+        let laptop = from_bundle("lap", &bundle);
+        match ask(&server, &laptop).await {
+            Decision::AllowFamily(peer) => assert_eq!(peer.device_id, "laptop"),
+            other => panic!("expected family, got {other:?}"),
+        }
+        // The phone itself, with its version 2 certificate, is served too.
+        assert!(matches!(ask(&server, &phone).await, Decision::AllowFamily(_)));
+        // And the laptop's door answers a challenge with its chain.
+        let answer =
+            laptop.answer_prove(&json!({"nonce": "n".repeat(32)}), addr(SERVER)).await.unwrap();
+        let peer = server.check_prove_answer(&answer, addr(SERVER), &"n".repeat(32)).await.unwrap();
+        assert_eq!(peer.device_id, "laptop");
+    }
+
+    #[tokio::test]
+    async fn the_right_to_enroll_can_end_without_the_device_leaving_the_family() {
+        let server = node("root", "east", "eastGate", GateMode::Enforce);
+        let request = json!({"child_device_id": "laptop", "child_public_key": fake_public("lap")});
+        // The phone keeps its own certificate (version 1, no end) and holds the right apart.
+        let phone_with = |grant: Value| {
+            let mut phone = node("root", "pixel", "grapheneGate", GateMode::Enforce);
+            phone.config.enroller = Some((grant, Vec::new()));
+            phone
+        };
+
+        let phone = phone_with(cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 1, now_secs() + 600));
+        let bundle = phone.enroll(&request).await.unwrap();
+        // The laptop's chain runs through the grant, not through the phone's own certificate.
+        assert_eq!(bundle["chain"][0]["version"], 2);
+        assert!(matches!(
+            ask(&server, &from_bundle("lap", &bundle)).await,
+            Decision::AllowFamily(_)
+        ));
+        assert_eq!(phone.status()["enroll"], 1);
+
+        // The right has ended: the phone signs nothing new, and is still family itself.
+        let phone = phone_with(cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 1, now_secs() - 10));
+        assert_eq!(
+            phone.enroll(&request).await.unwrap_err(),
+            "this node's right to enroll has ended"
+        );
+        assert!(matches!(ask(&server, &phone).await, Decision::AllowFamily(_)));
+
+        // A grant made out to another device's key is of no use to this one.
+        let phone = phone_with(cert_v2(ROOT, ("other", "otherGate"), 1, 1, 0));
+        assert!(phone.enroll(&request).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn a_device_without_the_right_cannot_enroll() {
+        let server = node("root", "east", "eastGate", GateMode::Enforce);
+        let child = json!({"child_device_id": "laptop", "child_public_key": fake_public("lap")});
+
+        // A version 1 certificate, as every device has today: no right.
+        let v1 = node("root", "pixel", "grapheneGate", GateMode::Enforce);
+        assert_eq!(
+            v1.enroll(&child).await.unwrap_err(),
+            "this node's certificate carries no right to enroll"
+        );
+        // A version 2 certificate with enroll 0: no right.
+        let plain = node_with("pixel", cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 0, 0), vec![]);
+        assert_eq!(
+            plain.enroll(&child).await.unwrap_err(),
+            "this node's certificate carries no right to enroll"
+        );
+
+        // Signing one by hand does not help: the chain says the signer had no right.
+        let forged = cert_v2(("pixel", "grapheneGate"), ("lap", "laptop"), 2, 0, 0);
+        let under_v1 = node_with(
+            "lap",
+            forged.clone(),
+            vec![fake_cert("root", "pixel", "grapheneGate", FAMILY)],
+        );
+        assert_eq!(
+            ask(&server, &under_v1).await,
+            denied("the signing device has no right to enroll")
+        );
+        let under_plain =
+            node_with("lap", forged, vec![cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 0, 0)]);
+        assert_eq!(
+            ask(&server, &under_plain).await,
+            denied("the signing device has no right to enroll")
+        );
+    }
+
+    #[tokio::test]
+    async fn the_right_does_not_pass_further_than_it_was_given() {
+        let server = node("root", "east", "eastGate", GateMode::Enforce);
+        let phone = node_with("pixel", cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 1, 0), vec![]);
+
+        // The phone may enroll, but may not hand the right on.
+        let err = phone
+            .enroll(&json!({"child_device_id": "laptop", "child_public_key": fake_public("lap"), "enroll": 1}))
+            .await
+            .unwrap_err();
+        assert_eq!(err, "the new certificate cannot carry as much right as ours");
+
+        // A laptop enrolled by the phone cannot enroll a tablet, whatever it signs.
+        let bundle = phone
+            .enroll(&json!({"child_device_id": "laptop", "child_public_key": fake_public("lap")}))
+            .await
+            .unwrap();
+        let laptop = from_bundle("lap", &bundle);
+        assert!(
+            laptop
+                .enroll(
+                    &json!({"child_device_id": "tablet", "child_public_key": fake_public("tab")})
+                )
+                .await
+                .is_err()
+        );
+        let mut chain = vec![bundle["certificate"].clone()];
+        chain.extend(bundle["chain"].as_array().unwrap().iter().cloned());
+        let tablet =
+            node_with("tab", cert_v2(("lap", "laptop"), ("tab", "tablet"), 3, 0, 0), chain);
+        assert_eq!(
+            ask(&server, &tablet).await,
+            denied("the signing device has no right to enroll")
+        );
+
+        // A certificate that claims more than its signer had is refused.
+        let greedy = node_with(
+            "lap",
+            cert_v2(("pixel", "grapheneGate"), ("lap", "laptop"), 2, 1, 0),
+            vec![cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 1, 0)],
+        );
+        assert_eq!(
+            ask(&server, &greedy).await,
+            denied("certificate grants more than its signer may")
+        );
+    }
+
+    #[tokio::test]
+    async fn an_expired_enroller_takes_its_children_with_it() {
+        let server = node("root", "east", "eastGate", GateMode::Enforce);
+        let past = now_secs() - 10;
+        let child = cert_v2(("pixel", "grapheneGate"), ("lap", "laptop"), 2, 0, 0);
+
+        let laptop = node_with(
+            "lap",
+            child.clone(),
+            vec![cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 1, past)],
+        );
+        assert_eq!(ask(&server, &laptop).await, denied("certificate has expired"));
+
+        // The same child under an enroller that is still good is served ...
+        let laptop = node_with(
+            "lap",
+            child,
+            vec![cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 1, now_secs() + 600)],
+        );
+        assert!(matches!(ask(&server, &laptop).await, Decision::AllowFamily(_)));
+
+        // ... and an expired enroller signs nothing new, and a child cannot outlive it.
+        let expired =
+            node_with("pixel", cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 1, past), vec![]);
+        let request = json!({"child_device_id": "laptop", "child_public_key": fake_public("lap")});
+        assert_eq!(
+            expired.enroll(&request).await.unwrap_err(),
+            "this node's right to enroll has ended"
+        );
+        let soon = now_secs() + 600;
+        let phone =
+            node_with("pixel", cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 1, soon), vec![]);
+        let mut long = request.clone();
+        long["expires_at"] = json!(soon + 86_400);
+        assert_eq!(phone.enroll(&long).await.unwrap()["certificate"]["expires_at"], soon);
+        assert_eq!(phone.enroll(&request).await.unwrap()["certificate"]["expires_at"], soon);
+    }
+
+    #[tokio::test]
+    async fn a_chain_that_was_touched_or_does_not_reach_the_family_is_refused() {
+        let server = node("root", "east", "eastGate", GateMode::Enforce);
+        let child = cert_v2(("pixel", "grapheneGate"), ("lap", "laptop"), 2, 0, 0);
+
+        // The enroller's certificate said enroll 0; someone edits it to 1.
+        let mut edited = cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 0, 0);
+        edited["enroll"] = json!(1);
+        let laptop = node_with("lap", child.clone(), vec![edited]);
+        assert_eq!(ask(&server, &laptop).await, denied("certificate signature does not hold"));
+
+        // The expiry is signed too.
+        let mut extended = cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 1, now_secs() + 5);
+        extended["expires_at"] = json!(now_secs() + 86_400);
+        let laptop = node_with("lap", child.clone(), vec![extended]);
+        assert_eq!(ask(&server, &laptop).await, denied("certificate signature does not hold"));
+
+        // A chain that ends at another root.
+        let other = ("someone-elses-root", "family-root");
+        let laptop = node_with(
+            "lap",
+            child.clone(),
+            vec![cert_v2(other, ("pixel", "grapheneGate"), 1, 1, 0)],
+        );
+        assert_eq!(
+            ask(&server, &laptop).await,
+            denied("certificate was not signed by this family's key")
+        );
+
+        // A chain whose links do not join: signed by a device other than the one above.
+        let laptop =
+            node_with("lap", child.clone(), vec![cert_v2(ROOT, ("other", "otherGate"), 1, 1, 0)]);
+        assert_eq!(ask(&server, &laptop).await, denied("certificate chain is broken"));
+
+        // The wrong depth, and a chain longer than allowed.
+        let laptop = node_with(
+            "lap",
+            cert_v2(("pixel", "grapheneGate"), ("lap", "laptop"), 5, 0, 0),
+            vec![cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 1, 0)],
+        );
+        assert_eq!(ask(&server, &laptop).await, denied("certificate chain has the wrong depth"));
+        let top = cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 9, 0);
+        let laptop = node_with("lap", child, vec![top.clone(), top.clone(), top.clone(), top]);
+        assert_eq!(ask(&server, &laptop).await, denied("certificate chain is too long"));
+    }
+
+    #[tokio::test]
+    async fn enroll_refuses_names_and_keys_it_cannot_sign() {
+        let phone = node_with("pixel", cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 1, 0), vec![]);
+        for bad in [
+            json!({"child_device_id": "two\nlines", "child_public_key": fake_public("lap")}),
+            json!({"child_device_id": "", "child_public_key": fake_public("lap")}),
+            json!({"child_device_id": "laptop", "child_public_key": "not-a-key"}),
+            json!({"child_device_id": "laptop"}),
+            json!({"child_device_id": "grapheneGate", "child_public_key": fake_public("pixel")}),
+            json!({"child_device_id": "laptop", "child_public_key": fake_public("lap"), "expires_at": 5}),
+        ] {
+            assert!(phone.enroll(&bad).await.is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn the_certificate_file_may_hold_a_certificate_with_its_chain() {
+        let top = cert_v2(ROOT, ("pixel", "grapheneGate"), 1, 1, 0);
+        let leaf = cert_v2(("pixel", "grapheneGate"), ("lap", "laptop"), 2, 0, 0);
+        let file = json!({"certificate": leaf, "chain": [top]}).to_string();
+        let config = LineageConfig::from_lookup(
+            |k| match k {
+                "SONGBIRD_FAMILY_ID" => Some(String::from(FAMILY)),
+                "SONGBIRD_LINEAGE_CERT" => Some(String::from("/cert.json")),
+                _ => None,
+            },
+            |_| Some(file.clone()),
+        );
+        assert_eq!(config.certificate.unwrap()["child_device_id"], "laptop");
+        assert_eq!(config.chain.len(), 1);
+        assert_eq!(config.chain[0]["child_device_id"], "grapheneGate");
     }
 
     const SERVER: &str = "192.168.4.244:7700";
@@ -1247,6 +1830,8 @@ mod tests {
                 family_id: String::new(),
                 anchor: None,
                 certificate: None,
+                chain: Vec::new(),
+                enroller: None,
             },
             FakeCrypto {
                 device_secret: String::from("bare"),
